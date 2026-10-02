@@ -107,19 +107,15 @@ function registraClienteSeNuovo(cognome, nome, dataNascita){
   if(clienteEsiste(cognome, nome, dataNascita)) return;
   const nuovo = { nomeCompleto: (cognome+' '+nome).trim(), cognome: cognome, nome: nome, dataNascita: (dataNascita||'').trim() };
   ARCHIVIO_CLIENTI.push(nuovo);
-  if(dbApi){ dbApi.collection('clienti_extra').add(nuovo).catch(function(e){ console.error('registrazione cliente', e); }); }
+  // Usa la nuova API data.js
+  data.clienti.aggiungi(nuovo);
 }
-function subscribeClientiExtra(){
-  dbApi.collection('clienti_extra').onSnapshot(function(qs){
-    const base = ARCHIVIO_CLIENTI.filter(function(c){ return !c._extra; });
-    const extra = qs.docs.map(function(d){ const c = Object.assign({ _extra:true }, d.data()); return c; });
-    ARCHIVIO_CLIENTI = base.concat(extra);
-  }, function(err){ console.error('sottoscrizione clienti extra', err); });
-}
+// DEPRECATED: subscribeClientiExtra è sostituito dalla sottoscrizione realtime di data.js
+// MODIFICATO: caricaArchivioClienti ora usa i dati da Supabase
 function caricaArchivioClienti(){
-  const tag = document.getElementById('__clienti__');
-  if(!tag) return;
-  try{ ARCHIVIO_CLIENTI = JSON.parse(tag.textContent); }catch(e){ ARCHIVIO_CLIENTI = []; }
+  // I clienti sono caricati da Supabase via data.caricaTutto()
+  // Inizialmente vuoto, verrà popolato dopo il login
+  ARCHIVIO_CLIENTI = [];
 }
 function cercaClienti(q, ctx){
   ctx = ctx || 'main';
@@ -171,28 +167,13 @@ function annoDiData(s){
   return d ? d.a : (new Date()).getFullYear();
 }
 function annoPratica(p){ return p.anno || annoDiData(p.data); }
+// DEPRECATED: La numerazione è gestita dal trigger del database.
+// Questa funzione è usata solo per il fallback offline.
 async function prossimoNumeroProtocollo(anno){
-  if(!dbApi){
-    if(!state.nextNumByYear) state.nextNumByYear = {};
-    const n = state.nextNumByYear[anno] || 1;
-    state.nextNumByYear[anno] = n + 1;
-    return n;
-  }
-  const ref = dbApi.doc('counters/anno_' + anno);
-  const holder = 'h' + Math.random().toString(36).slice(2) + Date.now();
-  for(let tentativi = 0; tentativi < 25; tentativi++){
-    let res;
-    try{ res = await ref.acquire({ holder: holder, ttlMs: 2000 }); }
-    catch(e){ res = { acquired:false }; }
-    if(res.acquired){
-      let corrente = 1;
-      try{ const snap = await ref.get(); corrente = (snap.exists && snap.data().next) || 1; }catch(e){}
-      try{ await ref.set({ next: corrente + 1 }); }catch(e){}
-      return corrente;
-    }
-    await new Promise(function(r){ setTimeout(r, 150 + Math.random()*200); });
-  }
-  return Date.now() % 100000;
+  if(!state.nextNumByYear) state.nextNumByYear = {};
+  const n = state.nextNumByYear[anno] || 1;
+  state.nextNumByYear[anno] = n + 1;
+  return n;
 }
 function storicoClienteHTML(p){
   if(!p.nome) return '';
@@ -386,8 +367,6 @@ function pulisciArray(arr){
   return (arr||[]).map(function(x){ var c=Object.assign({},x); delete c._editing; delete c._confirmDelete; delete c._editingFattura; return c; });
 }
 async function esportaBackupJSON(){
-  const downloads = await claude.use('downloads').catch(function(){ return null; });
-  if(!downloads){ alert('Il download non è disponibile in questa sessione.'); return; }
   const payload = {
     versione: 1,
     esportatoIl: new Date().toISOString(),
@@ -398,7 +377,15 @@ async function esportaBackupJSON(){
     utenti: pulisciArray(getUtenti())
   };
   try{
-    await downloads.save({ filename: 'backup-protocollo-' + dataOraFile() + '.json', data: JSON.stringify(payload, null, 2) });
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'backup-protocollo-' + dataOraFile() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }catch(e){ console.error('esportazione backup', e); }
 }
 const PALETTE_COLLABORATORI = ['#1d4f91','#2f9e5f','#c0392b','#8e5bd6','#d98b1e','#2f9e9e','#b5486b','#5a6b3b','#3b6fa0','#a0522d','#5e4fa2','#1f8a70','#c2622f','#4a6b8a','#9c3f7a'];
@@ -434,8 +421,6 @@ function formattaProtocolloTesto(p){
   return anno >= ANNO_INIZIO_PROTOCOLLO ? (num + '/' + anno) : num;
 }
 async function esportaRegistroExcel(){
-  const downloads = await claude.use('downloads').catch(function(){ return null; });
-  if(!downloads){ alert('Il download non è disponibile in questa sessione.'); return; }
   if(!window.XLSX){ alert('La libreria per generare il file Excel non si è caricata. Riprova tra poco.'); return; }
 
   const anno = annoAttivo();
@@ -489,7 +474,15 @@ async function esportaRegistroExcel(){
 
   const buf = XLSX.write(wb, { bookType:'xlsx', type:'array' });
   try{
-    await downloads.save({ filename: 'registro-protocollo-' + anno + '-' + dataOraFile() + '.xlsx', data: new Blob([buf], { type:'application/octet-stream' }) });
+    const blob = new Blob([buf], { type:'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'registro-protocollo-' + anno + '-' + dataOraFile() + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }catch(e){ console.error('esportazione excel', e); }
 }
 async function importaBackup(){
@@ -506,27 +499,9 @@ async function importaBackup(){
     const testo = await inp.files[0].text();
     const dati = JSON.parse(testo);
     if(!dati || !Array.isArray(dati.pratiche)) throw new Error('Il file non sembra un backup valido.');
-    if(dbApi){
-      const vecchie = await dbApi.collection('pratiche').get();
-      for(const d of vecchie.docs){ await dbApi.doc('pratiche/'+d.id).delete(); }
-      for(const p of dati.pratiche){ await dbApi.collection('pratiche').add(pulisciArray([p])[0]); }
-      const vecchiV = await dbApi.collection('versamenti').get();
-      for(const d of vecchiV.docs){ await dbApi.doc('versamenti/'+d.id).delete(); }
-      for(const v of (dati.versamenti||[])){ await dbApi.collection('versamenti').add(pulisciArray([v])[0]); }
-      if(dati.collaboratori) await dbApi.doc('config/collaboratori').set({ lista: dati.collaboratori });
-      if(dati.permessi) await dbApi.doc('config/permessi').set(dati.permessi);
-      if(dati.utenti && dati.utenti.length) await dbApi.doc('config/utenti').set({ lista: dati.utenti });
-      const maxPerAnno = {};
-      dati.pratiche.forEach(function(p){ const a = p.anno || annoDiData(p.data); maxPerAnno[a] = Math.max(maxPerAnno[a]||0, Number(p.numero)||0); });
-      for(const anno in maxPerAnno){ await dbApi.doc('counters/anno_'+anno).set({ next: maxPerAnno[anno]+1 }); }
-    } else {
-      state.pratiche = dati.pratiche;
-      state.versamenti = dati.versamenti || [];
-      state.collaboratori = dati.collaboratori || TIPI_DEFAULT.slice();
-      state.permessi = dati.permessi || permessiDefault();
-      state.utenti = dati.utenti && dati.utenti.length ? dati.utenti : utentiDefault();
-      embedState();
-    }
+    // Usa la nuova API data.js
+    const result = await data.admin.importa(dati);
+    if(result.error) throw new Error(result.error);
     msg.style.color = 'var(--accent)';
     msg.textContent = '✅ Backup importato correttamente.'; msg.style.display='block';
     inp.value = '';
@@ -550,15 +525,9 @@ async function svuotaRegistro(){
   }
   confermaSvuota = false;
   if(btn){ btn.disabled = true; btn.textContent = 'Eliminazione in corso...'; }
-  if(dbApi){
-    try{
-      const snap = await dbApi.collection('pratiche').get();
-      for(const d of snap.docs){ await dbApi.doc('pratiche/'+d.id).delete(); }
-      for(const anno of elencoAnniDisponibili()){ try{ await dbApi.doc('counters/anno_'+anno).delete(); }catch(e){} }
-    }catch(e){ console.error('svuotamento registro', e); }
-  } else {
-    state.pratiche = [];
-  }
+  // Usa la nuova API data.js
+  const result = await data.admin.svuota();
+  if(result.error){ console.error('svuotamento registro', result.error); }
   if(btn){ btn.disabled = false; btn.textContent = 'Svuota registro (elimina tutte le pratiche)'; }
   render();
 }
@@ -594,100 +563,61 @@ function togglePermSoloLettura(id, val){
   salvaUtenti(getUtenti());
 }
 
-let dbApi = null;
-function pulisciPerDb(obj){
-  const c = {};
-  Object.keys(obj).forEach(function(k){ if(k.charAt(0)!=='_' && k!=='id') c[k]=obj[k]; });
-  return c;
-}
-async function initDb(){
-  try{ dbApi = await claude.use('db'); }catch(e){ dbApi = null; }
-  const avviso = document.getElementById('db-avviso');
-  if(!dbApi){
-    if(avviso) avviso.style.display = 'block';
-    return;
+// NUOVO: Inizializzazione con Supabase (sostituisce initDb)
+async function initSupabase(){
+  try {
+    // Inizializza auth
+    await initAuth();
+
+    // Se non autenticato, non fare nulla (la pagina di login lo gestisce)
+    if (!auth.session) return;
+
+    // Carica tutti i dati
+    const ok = await data.caricaTutto();
+    if (!ok) {
+      console.error('Errore nel caricamento dei dati');
+      return;
+    }
+
+    // Sincronizza i dati dal modulo data.js al state locale di app.js
+    syncDataFromSupabase();
+
+    // Sottoscrivi ai cambiamenti realtime
+    data.sottoscrivi('pratiche', () => {
+      syncDataFromSupabase();
+      render();
+    });
+    data.sottoscrivi('versamenti', () => {
+      syncDataFromSupabase();
+      render();
+    });
+    data.sottoscrivi('isee', () => {
+      syncDataFromSupabase();
+      render();
+    });
+    data.sottoscrivi('collaboratori', () => {
+      syncDataFromSupabase();
+      initTipoBtns();
+      renderCollaboratori();
+      render();
+    });
+
+  } catch (e) {
+    console.error('Errore inizializzazione Supabase:', e);
   }
-  if(avviso) avviso.style.display = 'none';
-  await migraDatiSeNecessario();
-  subscribePratiche();
-  subscribeVersamenti();
-  subscribeClientiExtra();
-  subscribeConfig();
 }
-async function migraDatiSeNecessario(){
-  try{
-    const snap = await dbApi.collection('pratiche').limit(1).get();
-    if(snap.empty && state.pratiche && state.pratiche.length){
-      for(const p of state.pratiche){ await dbApi.collection('pratiche').add(pulisciPerDb(p)); }
-    }
-  }catch(e){ console.error('migrazione pratiche', e); }
-  try{
-    const collDoc = await dbApi.doc('config/collaboratori').get();
-    if(!collDoc.exists){ await dbApi.doc('config/collaboratori').set({ lista: (state.collaboratori && state.collaboratori.length) ? state.collaboratori : TIPI_DEFAULT }); }
-  }catch(e){ console.error('migrazione collaboratori', e); }
-  try{
-    const permDoc = await dbApi.doc('config/permessi').get();
-    if(!permDoc.exists){ await dbApi.doc('config/permessi').set(state.permessi || permessiDefault()); }
-  }catch(e){ console.error('migrazione permessi', e); }
-  try{
-    const utDoc = await dbApi.doc('config/utenti').get();
-    if(!utDoc.exists){ await dbApi.doc('config/utenti').set({ lista: getUtenti() }); }
-    else if(utDoc.data().lista){ state.utenti = utDoc.data().lista; }
-  }catch(e){ console.error('migrazione utenti', e); }
-  try{
-    if(state.versamenti && state.versamenti.length){
-      const vsnap = await dbApi.collection('versamenti').limit(1).get();
-      if(vsnap.empty){ for(const v of state.versamenti){ await dbApi.collection('versamenti').add(pulisciPerDb(v)); } }
-    }
-  }catch(e){ console.error('migrazione versamenti', e); }
-  try{
-    const maxPerAnno = {};
-    (state.pratiche||[]).forEach(function(p){
-      const a = annoPratica(p);
-      maxPerAnno[a] = Math.max(maxPerAnno[a] || 0, Number(p.numero)||0);
-    });
-    for(const anno in maxPerAnno){
-      const cdoc = dbApi.doc('counters/anno_'+anno);
-      const csnap = await cdoc.get();
-      if(!csnap.exists) await cdoc.set({ next: maxPerAnno[anno] + 1 });
-    }
-  }catch(e){ console.error('migrazione contatori', e); }
+
+// Sincronizza i dati dal modulo data.js al state locale di app.js
+function syncDataFromSupabase(){
+  if (data && data.state) {
+    state.pratiche = data.state.pratiche || [];
+    state.versamenti = data.state.versamenti || [];
+    state.isee = data.state.isee || [];
+    state.collaboratori = data.state.collaboratori || [];
+    ARCHIVIO_CLIENTI = data.state.clienti || [];
+  }
 }
-function subscribePratiche(){
-  dbApi.collection('pratiche').onSnapshot(function(qs){
-    const flags = {};
-    (state.pratiche||[]).forEach(function(p){
-      if(p._editing || p._confirmDelete) flags[p.id] = { _editing:p._editing, _confirmDelete:p._confirmDelete };
-    });
-    state.pratiche = qs.docs.map(function(d){
-      const obj = Object.assign({ id:d.id }, d.data());
-      if(flags[d.id]) Object.assign(obj, flags[d.id]);
-      return obj;
-    });
-    render();
-  }, function(err){ console.error('sottoscrizione pratiche', err); });
-}
-function subscribeVersamenti(){
-  dbApi.collection('versamenti').onSnapshot(function(qs){
-    state.versamenti = qs.docs.map(function(d){ return Object.assign({ id:d.id }, d.data()); });
-    render();
-  }, function(err){ console.error('sottoscrizione versamenti', err); });
-}
-function subscribeConfig(){
-  dbApi.doc('config/collaboratori').onSnapshot(function(d){
-    if(d.exists){ state.collaboratori = d.data().lista || []; initTipoBtns(); renderCollaboratori(); render(); }
-  }, function(err){ console.error('sottoscrizione collaboratori', err); });
-  dbApi.doc('config/permessi').onSnapshot(function(d){
-    if(d.exists){ state.permessi = d.data(); applicaPermessi(); }
-  }, function(err){ console.error('sottoscrizione permessi', err); });
-  dbApi.doc('config/utenti').onSnapshot(function(d){
-    if(d.exists && d.data().lista){
-      state.utenti = d.data().lista;
-      if(document.getElementById('login-overlay').style.display !== 'none') renderLogin();
-      applicaPermessi();
-    }
-  }, function(err){ console.error('sottoscrizione utenti', err); });
-}
+// Queste funzioni sono sostituite da data.js e dalla sottoscrizione realtime di Supabase
 
 const chipDDLabel = {};
 function toggleDD(ddId){
@@ -731,21 +661,13 @@ function aggiungiCollaboratore(){
   const lista = (state.collaboratori && state.collaboratori.length) ? state.collaboratori.slice() : TIPI_DEFAULT.slice();
   if(lista.indexOf(v) < 0) lista.push(v);
   inp.value = '';
-  if(dbApi){
-    dbApi.doc('config/collaboratori').set({ lista: lista }).catch(function(e){ console.error(e); });
-  } else {
-    state.collaboratori = lista;
-    renderCollaboratori(); initTipoBtns(); embedState();
-  }
+  // Usa la nuova API data.js
+  data.collaboratori.salva(lista);
 }
 function rimuoviCollaboratore(v){
   const lista = ((state.collaboratori && state.collaboratori.length) ? state.collaboratori : TIPI_DEFAULT).filter(function(c){ return c!==v; });
-  if(dbApi){
-    dbApi.doc('config/collaboratori').set({ lista: lista }).catch(function(e){ console.error(e); });
-  } else {
-    state.collaboratori = lista;
-    renderCollaboratori(); initTipoBtns(); embedState();
-  }
+  // Usa la nuova API data.js
+  data.collaboratori.salva(lista);
 }
 
 function initTipoBtns(){
@@ -789,22 +711,16 @@ function aggiungiIsee(){
   document.getElementById('is-nome').value = '';
   document.getElementById('is-importo').value = '';
   document.getElementById('is-data').value = '';
-  if(dbApi){
-    dbApi.collection('isee').add(nuovo).catch(function(e){ console.error(e); });
-  } else {
-    nuovo.id = 'is'+Date.now();
-    if(!state.isee) state.isee = [];
-    state.isee.push(nuovo);
-    render(); embedState();
-  }
+  // Usa la nuova API data.js
+  data.isee.aggiungi(nuovo);
 }
 function toggleIseePagato(id, val){
-  if(dbApi){ dbApi.doc('isee/'+id).update({ pagato: val }).catch(function(e){ console.error(e); }); }
-  else { const x = (state.isee||[]).find(function(i){ return i.id===id; }); if(x){ x.pagato=val; render(); embedState(); } }
+  // Usa la nuova API data.js
+  data.isee.togglePagato(id, val);
 }
 function rimuoviIsee(id){
-  if(dbApi){ dbApi.doc('isee/'+id).delete().catch(function(e){ console.error(e); }); }
-  else { state.isee = (state.isee||[]).filter(function(i){ return i.id!==id; }); render(); embedState(); }
+  // Usa la nuova API data.js
+  data.isee.elimina(id);
 }
 function aggiungiVersamento(){
   const msg = document.getElementById('caf-msg');
@@ -821,22 +737,12 @@ function aggiungiVersamento(){
   document.getElementById('vc-importo').value='';
   document.getElementById('vc-data').value='';
   document.getElementById('vc-causale').value='';
-  if(dbApi){
-    dbApi.collection('versamenti').add(nuovoVers).catch(function(e){ console.error(e); });
-  } else {
-    nuovoVers.id = 'v'+Date.now();
-    if(!state.versamenti) state.versamenti = [];
-    state.versamenti.push(nuovoVers);
-    render(); embedState();
-  }
+  // Usa la nuova API data.js
+  data.versamenti.aggiungi(nuovoVers);
 }
 function rimuoviVersamento(id){
-  if(dbApi){
-    dbApi.doc('versamenti/'+id).delete().catch(function(e){ console.error(e); });
-  } else {
-    state.versamenti = (state.versamenti||[]).filter(function(v){ return v.id!==id; });
-    render(); embedState();
-  }
+  // Usa la nuova API data.js
+  data.versamenti.elimina(id);
 }
 
 const aperti = {};
@@ -1083,9 +989,9 @@ async function addPraticaInterna(){
   const annoPr = annoDiData(data);
   registraClienteSeNuovo(cognome, nomeProprio, cf);
   if(congCognome || congNome){ registraClienteSeNuovo(congCognome, congNome, congData); }
-  const numeroPr = await prossimoNumeroProtocollo(annoPr);
+
+  // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
   const nuovaPratica = {
-    numero: numeroPr,
     anno: annoPr,
     nome, congiunta, congCognome, congNome, congData, telefono, cf, tipo, compenso, pagato, data, note,
     stato: document.getElementById('f-stato').value || 'arrivo',
@@ -1095,12 +1001,13 @@ async function addPraticaInterna(){
     inseritoDa: (currentUser||'').toUpperCase(),
     inseritoIl: new Date().toISOString()
   };
-  if(dbApi){
-    try{ await dbApi.collection('pratiche').add(nuovaPratica); }
-    catch(e){ console.error('salvataggio pratica', e); }
-  } else {
-    nuovaPratica.id = 'p'+Date.now();
-    state.pratiche.push(nuovaPratica);
+
+  // Usa la nuova API data.js
+  const result = await data.pratiche.aggiungi(nuovaPratica);
+  if(result.error){
+    msg.textContent = '❌ Errore: ' + result.error;
+    msg.style.display = 'block';
+    return;
   }
 
   document.getElementById('f-cognome').value='';
@@ -1120,13 +1027,11 @@ async function addPraticaInterna(){
   document.getElementById('f-data').value=todayIT();
 
   render();
-  embedState();
 }
 
 function cambiaStato(id, stato){
-  if(dbApi){ dbApi.doc('pratiche/'+id).update({ stato: stato }).catch(function(e){ console.error(e); }); return; }
-  const p = state.pratiche.find(x=>x.id===id);
-  if(p){ p.stato = stato; render(); embedState(); }
+  // Usa la nuova API data.js
+  data.pratiche.aggiorna(id, { stato: stato });
 }
 
 function apriPraticaDaTabella(id){
@@ -1175,62 +1080,43 @@ function salvaModifica(id){
     fatt: (numFattura || dataFattura) ? 'fatturata' : 'dafatturare'
   };
   delete p._editing;
-  if(dbApi){
-    dbApi.doc('pratiche/'+id).update(campi).catch(function(e){ console.error(e); });
-    render();
-  } else {
-    Object.assign(p, campi);
-    render(); embedState();
-  }
+  // Usa la nuova API data.js
+  data.pratiche.aggiorna(id, campi);
 }
 
 function rimuovi(id){
   const pr = state.pratiche.find(x=>x.id===id);
   if(!pr) return;
   if(!pr._confirmDelete){ pr._confirmDelete = true; render(); return; }
-  if(dbApi){
-    dbApi.doc('pratiche/'+id).delete().catch(function(e){ console.error(e); });
-  } else {
-    state.pratiche = state.pratiche.filter(x=>x.id!==id);
-    embedState();
-  }
-  render();
+  // Usa la nuova API data.js
+  data.pratiche.elimina(id);
 }
 
-function embedState(){
-  let tag = document.getElementById('__state__');
-  if(!tag){
-    tag = document.createElement('script');
-    tag.type = 'application/json';
-    tag.id = '__state__';
-    document.body.appendChild(tag);
-  }
-  tag.textContent = JSON.stringify(state, function(k,v){ return (k.charAt(0)==='_') ? undefined : v; });
-}
+// DEPRECATED: embedState e loadEmbeddedState non sono più necessari con Supabase
+// Lo stato è gestito direttamente da data.js e Supabase realtime
 
-function loadEmbeddedState(){
-  const tag = document.getElementById('__state__');
-  if(tag){
-    try{ state = JSON.parse(tag.textContent); }catch(e){}
-  }
-}
-
-document.addEventListener('DOMContentLoaded', function(){
+document.addEventListener('DOMContentLoaded', async function(){
   caricaArchivioClienti();
   initSelettoreAnno();
   renderLogin();
+
+  // Backward compatibility: se c'è un utente salvato in localStorage, usalo (ma Supabase Auth avrà precedenza)
   try{
     const salvato = localStorage.getItem('protocollo-utente');
-    if(salvato){ currentUser = salvato; document.getElementById('login-overlay').style.display = 'none'; }
+    if(salvato){ currentUser = salvato; }
   }catch(e){}
+
   initTipoBtns();
   initStatoBtns();
   var firstTab = document.querySelector('.navmenu button[data-tab="anagrafica"]'); if(firstTab) showTab(firstTab);
   applicaPermessi();
-  loadEmbeddedState();
   render();
+
+  // Carica i dati da Supabase e sottoscrivi ai cambiamenti realtime
+  await initSupabase();
+
+  // Aggiorna l'interfaccia con il tipo di pratica dell'ultima pratica
   const ultima = state.pratiche.slice().sort(function(a,b){ return b.numero - a.numero; })[0];
   if(ultima && ultima.tipo){ document.getElementById('f-tipo').value = ultima.tipo; pickChip('f-tipo-btns','f-tipo', ultima.tipo); }
-  initDb();
 });
 
