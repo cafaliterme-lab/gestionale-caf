@@ -8,6 +8,17 @@
  * Usa la variabile globale 'state' dichiarata in app.js
  */
 
+// Aspetta che supabase sia disponibile (copiato da config.js)
+async function waitForSupabase() {
+  for (let i = 0; i < 100; i++) {
+    if (typeof supabase !== 'undefined' && supabase.auth) {
+      return supabase;
+    }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  throw new Error('Supabase non disponibile');
+}
+
 // Gestori di event realtime (da app.js: render(), ecc.)
 let subscribers = {
   pratiche: [],
@@ -440,7 +451,8 @@ async function salvaCollaboratori(lista) {
  */
 async function svuotaRegistro() {
   try {
-    const { error } = await supabase.rpc('svuota_registro');
+    const sb = await waitForSupabase();
+    const { error } = await sb.rpc('svuota_registro');
 
     if (error) throw new Error(error.message);
 
@@ -457,7 +469,8 @@ async function svuotaRegistro() {
  */
 async function importaBackup(dati) {
   try {
-    const { error } = await supabase.rpc('importa_backup', {
+    const sb = await waitForSupabase();
+    const { error } = await sb.rpc('importa_backup', {
       dati: dati,
     });
 
