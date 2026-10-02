@@ -1,4 +1,5 @@
-let state = { pratiche: [], nextNum: 1 };
+// state è già dichiarato nell'HTML globalmente
+Object.assign(state, { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 });
 let ready = false;
 
 function todayISO(){ return new Date().toISOString().slice(0,10); }
