@@ -19,5 +19,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
 }
