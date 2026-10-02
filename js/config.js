@@ -9,7 +9,7 @@ const SUPABASE_URL = 'https://mmaqmprukghyazlibphv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tYXFtcHJ1a2doeWF6bGlicGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NDUyMTUsImV4cCI6MjEwNjUyMTIxNX0.ByRES--bYHZG6o_BX8Ha0YzqfcQIIr-D08Q-AbR8bhs';
 
 // Simula l'oggetto supabase usando l'API REST
-const supabase = {
+var supabase = {
   auth: {
     signInWithPassword: async (credentials) => {
       try {
@@ -70,6 +70,12 @@ const supabase = {
     getSession: async () => {
       const token = localStorage.getItem('auth_token');
       return token ? { data: { session: { access_token: token } }, error: null } : { data: { session: null }, error: null };
+    },
+
+    onAuthStateChange: (callback) => {
+      // Semplice implementazione: controlla il token nel localStorage
+      const token = localStorage.getItem('auth_token');
+      callback(token ? 'SIGNED_IN' : 'SIGNED_OUT', token ? { access_token: token } : null);
     },
   },
 
