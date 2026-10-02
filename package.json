@@ -1,0 +1,23 @@
+{
+  "name": "gestionale-caf",
+  "version": "1.0.0",
+  "description": "Gestionale pratiche CAF con database Supabase",
+  "type": "module",
+  "main": "index.html",
+  "scripts": {
+    "import-backup": "node scripts/importa-backup.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "CAF",
+    "pratiche",
+    "protocollo",
+    "supabase"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2"
+  },
+  "devDependencies": {}
+}
