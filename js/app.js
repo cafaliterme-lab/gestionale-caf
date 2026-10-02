@@ -344,15 +344,10 @@ async function creaAccount(){
   }
 
   try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password: pwd,
-      options: {
-        data: { nome },
-      },
-    });
+    // Usa la funzione signup() da auth.js che crea sia l'utente che il profilo
+    const result = await signup(nome, email, pwd);
 
-    if(error) throw new Error(error.message);
+    if(result.error) throw new Error(result.error);
 
     if(msg){
       msg.textContent = '✅ Account creato! Accedi con le tue credenziali.';
