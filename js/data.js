@@ -515,7 +515,6 @@ function scaricaFile(nomeFile, blob) {
 
 // Esporta (come namespace globale in HTML)
 window.data = {
-  state,
   caricaTutto,
   sottoscrivi,
   pratiche: {
