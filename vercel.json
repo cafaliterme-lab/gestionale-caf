@@ -3,14 +3,6 @@
   "outputDirectory": "",
   "framework": null,
   "regions": ["cdg1"],
-  "env": {
-    "SUPABASE_URL": {
-      "description": "URL del progetto Supabase"
-    },
-    "SUPABASE_ANON_KEY": {
-      "description": "Chiave anonima di Supabase"
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
