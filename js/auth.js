@@ -23,6 +23,45 @@ async function waitForSupabase() {
 }
 
 /**
+ * Registrazione nuovo utente
+ * @param {string} nome
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<{user, session, error}>}
+ */
+async function signup(nome, email, password) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  // Crea il profilo dell'utente nel database (ruolo: operatore, no tabs per default)
+  const { error: errProfilo } = await supabase
+    .from('profili')
+    .insert([{
+      id: data.user.id,
+      nome,
+      email,
+      ruolo: 'operatore',
+      tabs: {},
+      sola_lettura: true,
+    }]);
+
+  if (errProfilo) {
+    return { error: 'Utente creato ma profilo non salvato: ' + errProfilo.message };
+  }
+
+  auth.session = data.session;
+  await caricaProfilo();
+
+  return { user: data.user, session: data.session };
+}
+
+/**
  * Login con email e password
  * @param {string} email
  * @param {string} password
