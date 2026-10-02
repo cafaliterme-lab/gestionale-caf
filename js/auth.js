@@ -101,8 +101,11 @@ async function logout() {
  */
 async function caricaProfilo() {
   const sb = await waitForSupabase();
-  const token = localStorage.getItem('auth_token');
-  if (!token) {
+
+  // Ottieni l'ID dell'utente dalla sessione attuale
+  const { data: { user }, error: userError } = await sb.auth.getUser();
+
+  if (userError || !user) {
     auth.profilo = null;
     return null;
   }
@@ -110,7 +113,7 @@ async function caricaProfilo() {
   const { data, error } = await sb
     .from('profili')
     .select('*')
-    .eq('id', token)
+    .eq('id', user.id)
     .single();
 
   if (error) {
