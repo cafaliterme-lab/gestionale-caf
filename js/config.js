@@ -147,7 +147,6 @@ const supabaseClient = {
 };
 
 // Assegna a window.supabase (variabile globale)
-var supabase = supabaseClient;
-window.supabase = supabase;
+window.supabase = supabaseClient;
 
 console.log('✓ Supabase API REST configurato');
