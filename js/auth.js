@@ -127,6 +127,53 @@ async function cambiaPassword(newPassword) {
 }
 
 /**
+ * Carica tutti i profili (solo admin)
+ * @returns {Promise<Array|null>}
+ */
+async function caricaTuttiProfili() {
+  if (!isAdmin()) {
+    console.error('Errore: solo admin può caricare tutti i profili');
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('profili')
+    .select('*')
+    .order('nome');
+
+  if (error) {
+    console.error('Errore caricamento profili:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Aggiorna i permessi di un profilo (solo admin)
+ * @param {string} userId - ID dell'utente
+ * @param {object} updates - { tabs, sola_lettura }
+ * @returns {Promise<{error?}>}
+ */
+async function aggiornaProfilo(userId, updates) {
+  if (!isAdmin()) {
+    return { error: 'Solo admin può modificare i profili' };
+  }
+
+  const { error } = await supabase
+    .from('profili')
+    .update(updates)
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Errore aggiornamento profilo:', error);
+    return { error: error.message };
+  }
+
+  return {};
+}
+
+/**
  * Al caricamento della pagina, ripristina la sessione se esiste
  */
 async function initAuth() {

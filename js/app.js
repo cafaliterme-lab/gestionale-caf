@@ -258,107 +258,330 @@ function getUtenti(){
 function trovaUtente(id){
   return getUtenti().find(function(u){ return u.id === id; });
 }
+// Login con Supabase Auth (email + password)
 function renderLogin(){
   const wrap = document.getElementById('login-lista');
   if(!wrap) return;
-  wrap.innerHTML = getUtenti().map(function(u){
-    return '<button type="button" class="login-btn" onclick="selezionaLogin(&quot;'+u.id+'&quot;)">👤 '+esc(u.nome)+(u.ruolo==='admin'?' — Amministratore':'')+'</button>';
-  }).join('');
+
+  // Form di login con email/password
+  wrap.innerHTML = `
+    <div style="text-align: left">
+      <label style="font-size:12px; color:var(--sub); display:block; margin-bottom:4px">Email</label>
+      <input type="email" id="login-email" placeholder="tuo@email.com" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:10px; font-size:14px">
+
+      <label style="font-size:12px; color:var(--sub); display:block; margin-bottom:4px">Password</label>
+      <input type="password" id="login-pwd" placeholder="Password" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:10px; font-size:14px" onkeydown="if(event.key==='Enter') confermaLogin()">
+
+      <button type="button" class="login-btn" style="background:var(--accent); color:var(--accent-ink); border:none; width:100%; margin-bottom:8px" onclick="confermaLogin()">🔓 Accedi</button>
+      <button type="button" class="login-btn" style="background:var(--line); color:var(--ink); border:none; width:100%; margin-bottom:10px" onclick="toggleCreaAccount()">➕ Crea nuovo account</button>
+
+      <div id="crea-account" style="display:none; border-top:1px solid var(--line); padding-top:12px; margin-top:12px">
+        <label style="font-size:12px; color:var(--sub); display:block; margin-bottom:4px">Tuo nome</label>
+        <input type="text" id="create-nome" placeholder="Es. Angelo Gugliotta" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:10px; font-size:14px">
+
+        <label style="font-size:12px; color:var(--sub); display:block; margin-bottom:4px">Email (nuovo account)</label>
+        <input type="email" id="create-email" placeholder="tuo@email.com" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:10px; font-size:14px">
+
+        <label style="font-size:12px; color:var(--sub); display:block; margin-bottom:4px">Password</label>
+        <input type="password" id="create-pwd" placeholder="Almeno 6 caratteri" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:10px; font-size:14px">
+
+        <button type="button" class="login-btn" style="background:var(--accent); color:var(--accent-ink); border:none; width:100%; margin-bottom:6px" onclick="creaAccount()">✅ Crea account</button>
+        <button type="button" class="login-btn" style="background:var(--line); color:var(--ink); border:none; width:100%" onclick="toggleCreaAccount()">❌ Annulla</button>
+      </div>
+    </div>
+  `;
+
+  // Focus su email se primo caricamento
+  setTimeout(() => {
+    const emailInput = document.getElementById('login-email');
+    if(emailInput) emailInput.focus();
+  }, 100);
 }
-function selezionaLogin(id){
-  loginSelezionato = id;
-  document.getElementById('login-pwd-box').style.display = '';
-  document.getElementById('login-pwd').value = '';
-  document.getElementById('login-msg').style.display = 'none';
-  document.getElementById('login-pwd').focus();
+
+function toggleCreaAccount(){
+  const box = document.getElementById('crea-account');
+  if(box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
 }
+
 function confermaLogin(){
-  const u = trovaUtente(loginSelezionato);
-  if(!u) return;
-  const pwd = document.getElementById('login-pwd').value;
-  if((u.password||'') !== pwd){
-    const msg = document.getElementById('login-msg');
-    msg.textContent = '⚠️ Password errata.';
-    msg.style.display = 'block';
+  const email = document.getElementById('login-email')?.value.trim();
+  const pwd = document.getElementById('login-pwd')?.value;
+  const msg = document.getElementById('login-msg');
+
+  if(!email || !pwd){
+    if(msg){ msg.textContent = '⚠️ Inserisci email e password.'; msg.style.display = 'block'; }
     return;
   }
-  accedi(u.id);
+
+  // Chiama login di auth.js
+  login(email, pwd).then(function(result){
+    if(result.error){
+      if(msg){ msg.textContent = '❌ ' + result.error; msg.style.display = 'block'; }
+    } else {
+      // Login riuscito
+      document.getElementById('login-overlay').style.display = 'none';
+      applicaPermessi();
+      initSupabase(); // Carica dati
+    }
+  }).catch(function(e){
+    if(msg){ msg.textContent = '❌ Errore: ' + e.message; msg.style.display = 'block'; }
+  });
 }
+
+async function creaAccount(){
+  const nome = document.getElementById('create-nome')?.value.trim().toUpperCase();
+  const email = document.getElementById('create-email')?.value.trim();
+  const pwd = document.getElementById('create-pwd')?.value;
+  const msg = document.getElementById('login-msg');
+
+  if(!nome || !email || !pwd){
+    if(msg){ msg.textContent = '⚠️ Compila tutti i campi.'; msg.style.display = 'block'; }
+    return;
+  }
+
+  if(pwd.length < 6){
+    if(msg){ msg.textContent = '⚠️ Password troppo corta (min 6 caratteri).'; msg.style.display = 'block'; }
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: pwd,
+      options: {
+        data: { nome },
+      },
+    });
+
+    if(error) throw new Error(error.message);
+
+    if(msg){
+      msg.textContent = '✅ Account creato! Accedi con le tue credenziali.';
+      msg.style.color = 'var(--accent)';
+      msg.style.display = 'block';
+    }
+
+    // Pulisci form creazione
+    document.getElementById('create-nome').value = '';
+    document.getElementById('create-email').value = '';
+    document.getElementById('create-pwd').value = '';
+    toggleCreaAccount();
+
+    // Focus su email per accesso
+    setTimeout(() => {
+      document.getElementById('login-email').value = email;
+      document.getElementById('login-pwd').focus();
+    }, 500);
+  } catch(e) {
+    if(msg){
+      msg.textContent = '❌ ' + e.message;
+      msg.style.color = '#c0392b';
+      msg.style.display = 'block';
+    }
+  }
+}
+
+// Deprecated: selezionaLogin non più usato
+function selezionaLogin(id){
+  // Non usato con Supabase Auth
+}
+
 function accedi(id){
-  currentUser = id;
-  try{ localStorage.setItem('protocollo-utente', id); }catch(e){}
-  document.getElementById('login-overlay').style.display = 'none';
-  applicaPermessi();
+  // Deprecated: usare login() di auth.js invece
 }
+
 function cambiaUtente(){
-  loginSelezionato = null;
-  document.getElementById('login-pwd-box').style.display = 'none';
-  document.getElementById('login-msg').style.display = 'none';
-  renderLogin();
-  document.getElementById('login-overlay').style.display = 'flex';
+  // Logout e torna al login
+  logout().then(function(){
+    document.getElementById('login-overlay').style.display = 'flex';
+    renderLogin();
+    document.getElementById('login-msg').style.display = 'none';
+  });
 }
-function esciDalProgramma(){
-  currentUser = null;
-  try{ localStorage.removeItem('protocollo-utente'); }catch(e){}
+
+async function esciDalProgramma(){
+  await logout();
   cambiaUtente();
 }
 function applicaPermessi(){
   const bar = document.getElementById('userbar');
-  const u = trovaUtente(currentUser);
-  if(!u){ cambiaUtente(); return; }
+  const u = auth.profilo; // Usa profilo da Supabase
+
+  if(!u){
+    // Non autenticato
+    bar.innerHTML = '<span>Non autenticato</span>';
+    document.getElementById('nav-permessi').style.display = 'none';
+    Object.keys(TAB_LABELS).forEach(function(tab){
+      const btn = document.querySelector('.navmenu button[data-tab="'+tab+'"]');
+      if(btn) btn.style.display = 'none';
+    });
+    return;
+  }
+
   const isAdmin = u.ruolo === 'admin';
   bar.innerHTML = '<span>Accesso come <b>'+esc(u.nome)+(isAdmin?' (amministratore)':'')+'</b></span><button type="button" onclick="cambiaUtente()">Cambia utente</button><button type="button" onclick="esciDalProgramma()">🚪 Esci dal programma</button>';
   document.getElementById('nav-permessi').style.display = isAdmin ? '' : 'none';
-  const perm = u.permessi || permessiDefault();
+
+  const tabs = u.tabs || {};
   Object.keys(TAB_LABELS).forEach(function(tab){
     const btn = document.querySelector('.navmenu button[data-tab="'+tab+'"]');
     if(!btn) return;
-    const visibile = isAdmin || perm.tabs[tab];
+    const visibile = isAdmin || tabs[tab];
     btn.style.display = visibile ? '' : 'none';
   });
-  document.body.classList.toggle('sola-lettura', !isAdmin && perm.soloLettura);
+
+  document.body.classList.toggle('sola-lettura', !isAdmin && u.sola_lettura);
+
   const attivo = document.querySelector('.navmenu button.active');
   if(!attivo || attivo.style.display === 'none'){
     const primo = Array.from(document.querySelectorAll('.navmenu button')).find(function(b){ return b.style.display !== 'none'; });
     if(primo) showTab(primo);
   }
+
   if(document.getElementById('tab-permessi').classList.contains('active')) renderPermessi();
 }
-function salvaUtenti(lista){
-  if(dbApi){ dbApi.doc('config/utenti').set({ lista: lista }).catch(function(e){ console.error(e); }); }
-  else { state.utenti = lista; embedState(); }
+// NUOVO: Funzioni per gestione utenti con Supabase Auth + Edge Function
+async function aggiungiUtente(){
+  const nome = document.getElementById('nu-nome')?.value.trim().toUpperCase();
+  const email = document.getElementById('nu-email')?.value.trim();
+  const pwd = document.getElementById('nu-pwd')?.value;
+
+  if(!nome || !email){
+    alert('⚠️ Inserisci nome e email');
+    return;
+  }
+
+  if(!auth.session){
+    alert('❌ Non autenticato');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-utenti/create-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${auth.session.access_token}`,
+      },
+      body: JSON.stringify({
+        email,
+        password: pwd || Math.random().toString(36).slice(-8), // password temporanea
+        nome,
+      }),
+    });
+
+    if(!response.ok){
+      const err = await response.json();
+      throw new Error(err.error || 'Errore creazione utente');
+    }
+
+    const result = await response.json();
+    alert('✅ ' + result.message);
+    document.getElementById('nu-nome').value = '';
+    document.getElementById('nu-email').value = '';
+    document.getElementById('nu-pwd').value = '';
+    renderPermessi();
+  } catch(e){
+    alert('❌ Errore: ' + e.message);
+  }
 }
-function aggiungiUtente(){
-  const nome = document.getElementById('nu-nome').value.trim().toUpperCase();
-  const pwd = document.getElementById('nu-pwd').value;
-  if(!nome){ return; }
-  const lista = getUtenti().slice();
-  const id = 'u' + Date.now();
-  lista.push({ id:id, nome:nome, password:pwd, ruolo:'operatore', permessi: permessiDefault() });
-  document.getElementById('nu-nome').value = '';
-  document.getElementById('nu-pwd').value = '';
-  salvaUtenti(lista);
-  if(!dbApi) renderPermessi();
+
+async function rimuoviUtente(id){
+  if(!confirm('Sei sicuro di voler eliminare questo utente?')) return;
+
+  if(!auth.session){
+    alert('❌ Non autenticato');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-utenti/delete-user`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${auth.session.access_token}`,
+      },
+      body: JSON.stringify({ user_id: id }),
+    });
+
+    if(!response.ok){
+      const err = await response.json();
+      throw new Error(err.error || 'Errore eliminazione utente');
+    }
+
+    alert('✅ Utente eliminato');
+    renderPermessi();
+  } catch(e){
+    alert('❌ Errore: ' + e.message);
+  }
 }
-function rimuoviUtente(id){
-  const lista = getUtenti().filter(function(u){ return u.id !== id; });
-  salvaUtenti(lista);
-  if(!dbApi) renderPermessi();
-}
-function cambiaMiaPassword(){
-  const pwd = document.getElementById('mia-pwd').value;
-  cambiaPasswordUtente(currentUser, pwd);
-  document.getElementById('mia-pwd').value = '';
+
+async function cambiaMiaPassword(){
+  const pwd = document.getElementById('mia-pwd')?.value;
+  if(!pwd){
+    alert('⚠️ Inserisci la nuova password');
+    return;
+  }
+
+  if(pwd.length < 6){
+    alert('⚠️ Password troppo corta (min 6 caratteri)');
+    return;
+  }
+
+  const result = await cambiaPassword(pwd);
   const msg = document.getElementById('mia-pwd-msg');
+
+  if(result.error){
+    msg.textContent = '❌ Errore: ' + result.error;
+    msg.style.color = '#c0392b';
+  } else {
+    msg.textContent = '✅ Password cambiata';
+    msg.style.color = 'var(--accent)';
+    document.getElementById('mia-pwd').value = '';
+  }
+
   msg.style.display = 'block';
   setTimeout(function(){ msg.style.display = 'none'; }, 3000);
 }
-function cambiaPasswordUtente(id, pwd){
-  const lista = getUtenti().slice();
-  const u = lista.find(function(x){ return x.id===id; });
-  if(u) u.password = pwd;
-  salvaUtenti(lista);
+
+async function cambiaPasswordUtente(id, pwd){
+  if(!pwd){
+    alert('⚠️ Inserisci la nuova password');
+    return;
+  }
+
+  if(!auth.session){
+    alert('❌ Non autenticato');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-utenti/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${auth.session.access_token}`,
+      },
+      body: JSON.stringify({ user_id: id, password: pwd }),
+    });
+
+    if(!response.ok){
+      const err = await response.json();
+      throw new Error(err.error || 'Errore reset password');
+    }
+
+    alert('✅ Password resettata');
+  } catch(e){
+    alert('❌ Errore: ' + e.message);
+  }
 }
+
+// DEPRECATED: salvaUtenti non più usato
+function salvaUtenti(lista){}
+
+// DEPRECATED: getUtenti, trovaUtente sostituiti da Supabase
+function getUtenti(){ return []; }
+function trovaUtente(id){ return null; }
 function dataOraFile(){
   const d = new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
@@ -531,36 +754,60 @@ async function svuotaRegistro(){
   if(btn){ btn.disabled = false; btn.textContent = 'Svuota registro (elimina tutte le pratiche)'; }
   render();
 }
-function renderPermessi(){
+async function renderPermessi(){
   const wrap = document.getElementById('perm-lista');
-  const operatori = getUtenti().filter(function(u){ return u.ruolo !== 'admin'; });
+  const allProfili = await caricaTuttiProfili();
+
+  if(!allProfili){
+    wrap.innerHTML = '<div class="empty">Errore nel caricamento dei profili</div>';
+    return;
+  }
+
+  const operatori = allProfili.filter(function(u){ return u.ruolo !== 'admin'; });
   wrap.innerHTML = operatori.length ? operatori.map(function(u){
-    const perm = u.permessi || permessiDefault();
+    const tabs = u.tabs || {};
     const righeTab = Object.keys(TAB_LABELS).map(function(tab){
-      return '<div class="perm-row"><span>'+TAB_LABELS[tab]+'</span><label class="chk"><input type="checkbox" '+(perm.tabs[tab]?'checked':'')+' onchange="togglePermTab(&quot;'+u.id+'&quot;,&quot;'+tab+'&quot;,this.checked)"> Visibile</label></div>';
+      return '<div class="perm-row"><span>'+TAB_LABELS[tab]+'</span><label class="chk"><input type="checkbox" '+(tabs[tab]?'checked':'')+' onchange="togglePermTab(&quot;'+u.id+'&quot;,&quot;'+tab+'&quot;,this.checked)"> Visibile</label></div>';
     }).join('');
     return '<div class="card" style="margin-bottom:12px">'
       + '<div class="raff-title">'+esc(u.nome)+'</div>'
       + righeTab
-      + '<div class="perm-row" style="margin-top:6px; border-top:2px solid var(--line); padding-top:12px"><span>Sola lettura</span><label class="chk"><input type="checkbox" '+(perm.soloLettura?'checked':'')+' onchange="togglePermSoloLettura(&quot;'+u.id+'&quot;,this.checked)"> Attiva</label></div>'
+      + '<div class="perm-row" style="margin-top:6px; border-top:2px solid var(--line); padding-top:12px"><span>Sola lettura</span><label class="chk"><input type="checkbox" '+(u.sola_lettura?'checked':'')+' onchange="togglePermSoloLettura(&quot;'+u.id+'&quot;,this.checked)"> Attiva</label></div>'
       + '<div class="perm-row"><span>Nuova password</span><span style="display:flex; gap:6px"><input type="password" id="pwd-'+u.id+'" placeholder="Lascia vuoto per non cambiarla" style="width:160px; padding:6px 8px; font-size:12.5px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink)"><button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer" onclick="cambiaPasswordUtente(&quot;'+u.id+'&quot;, document.getElementById(&quot;pwd-'+u.id+'&quot;).value); document.getElementById(&quot;pwd-'+u.id+'&quot;).value=&quot;&quot;">Salva</button></span></div>'
       + '<div class="perm-row"><span></span><button type="button" style="background:none; border:none; color:#c0392b; font-weight:700; cursor:pointer" onclick="rimuoviUtente(&quot;'+u.id+'&quot;)">Elimina utente</button></div>'
       + '</div>';
   }).join('') : '<div class="empty">Nessun operatore oltre all\'amministratore</div>';
 }
-function togglePermTab(id, tab, val){
-  const u = trovaUtente(id);
-  if(!u) return;
-  if(!u.permessi) u.permessi = permessiDefault();
-  u.permessi.tabs[tab] = val;
-  salvaUtenti(getUtenti());
+
+async function togglePermTab(id, tab, val){
+  try {
+    const allProfili = await caricaTuttiProfili();
+    if(!allProfili) return;
+
+    const u = allProfili.find(p => p.id === id);
+    if(!u) return;
+
+    const tabs = u.tabs || {};
+    tabs[tab] = val;
+
+    const result = await aggiornaProfilo(id, { tabs });
+    if(result.error){
+      alert('❌ Errore: ' + result.error);
+    }
+  } catch(e){
+    alert('❌ Errore: ' + e.message);
+  }
 }
-function togglePermSoloLettura(id, val){
-  const u = trovaUtente(id);
-  if(!u) return;
-  if(!u.permessi) u.permessi = permessiDefault();
-  u.permessi.soloLettura = val;
-  salvaUtenti(getUtenti());
+
+async function togglePermSoloLettura(id, val){
+  try {
+    const result = await aggiornaProfilo(id, { sola_lettura: val });
+    if(result.error){
+      alert('❌ Errore: ' + result.error);
+    }
+  } catch(e){
+    alert('❌ Errore: ' + e.message);
+  }
 }
 
 // NUOVO: Inizializzazione con Supabase (sostituisce initDb)
@@ -644,7 +891,7 @@ function showTab(btn){
   if(sec) sec.classList.add('active');
   btn.classList.add('active');
   if(tab === 'collaboratori') renderCollaboratori();
-  if(tab === 'permessi') renderPermessi();
+  if(tab === 'permessi') renderPermessi(); // async, but fires in background
 }
 function renderCollaboratori(){
   const wrap = document.getElementById('coll-lista');
