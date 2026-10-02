@@ -8,6 +8,11 @@
  * Usa la variabile globale 'state' dichiarata in app.js
  */
 
+// Dichiara state globalmente se non esiste ancora (per gestire ordine di caricamento)
+if (typeof state === 'undefined') {
+  window.state = { pratiche: [], versamenti: [], isee: [], clienti: [], collaboratori: [], nextNum: 1 };
+}
+
 // Aspetta che supabase sia disponibile
 async function waitForSupabase() {
   for (let i = 0; i < 100; i++) {
