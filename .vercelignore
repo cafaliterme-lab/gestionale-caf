@@ -1,0 +1,41 @@
+# File da ignorare nel deploy Vercel
+
+# Database e configurazione locale
+.supabase/
+supabase/migrations/
+scripts/
+tests/
+
+# Environment e credenziali
+.env
+.env.local
+.env*.local
+
+# Dati sensibili (non committati, ma escludiamo anche se presenti)
+backup*.json
+clienti*.json
+
+# Build e cache
+node_modules/
+.cache/
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# File di documentazione (servono in local, non necessari in deploy)
+README.md
+DEVELOPMENT.md
+PROGRESS_SUMMARY.md
+SESSION_SUMMARY.md
+
+# Playwright test
+playwright.config.ts
+tests/
