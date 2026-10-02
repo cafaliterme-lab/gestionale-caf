@@ -11,6 +11,17 @@ let auth = {
   profilo: null,  // { id, nome, email, ruolo, tabs, sola_lettura }
 };
 
+// Aspetta che supabase sia disponibile
+async function waitForSupabase() {
+  for (let i = 0; i < 100; i++) {
+    if (typeof supabase !== 'undefined' && supabase.auth) {
+      return supabase;
+    }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  throw new Error('Supabase non disponibile');
+}
+
 /**
  * Login con email e password
  * @param {string} email
@@ -18,7 +29,8 @@ let auth = {
  * @returns {Promise<{user, session, error}>}
  */
 async function login(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const sb = await waitForSupabase();
+  const { data, error } = await sb.auth.signInWithPassword({
     email,
     password,
   });
@@ -38,7 +50,8 @@ async function login(email, password) {
  * @returns {Promise<void>}
  */
 async function logout() {
-  await supabase.auth.signOut();
+  const sb = await waitForSupabase();
+  await sb.auth.signOut();
   auth.session = null;
   auth.profilo = null;
 }
@@ -48,15 +61,17 @@ async function logout() {
  * @returns {Promise<object|null>} il profilo, o null se non loggato
  */
 async function caricaProfilo() {
-  if (!supabase.auth.user?.id) {
+  const sb = await waitForSupabase();
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
     auth.profilo = null;
     return null;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('profili')
     .select('*')
-    .eq('id', supabase.auth.user.id)
+    .eq('id', token)
     .single();
 
   if (error) {
@@ -119,7 +134,8 @@ function puo(tab, scrittura = false) {
  * @returns {Promise<{error?}>}
  */
 async function cambiaPassword(newPassword) {
-  const { error } = await supabase.auth.updateUser({
+  const sb = await waitForSupabase();
+  const { error } = await sb.auth.updateUser({
     password: newPassword,
   });
 
@@ -136,7 +152,8 @@ async function caricaTuttiProfili() {
     return null;
   }
 
-  const { data, error } = await supabase
+  const sb = await waitForSupabase();
+  const { data, error } = await sb
     .from('profili')
     .select('*')
     .order('nome');
@@ -160,7 +177,8 @@ async function aggiornaProfilo(userId, updates) {
     return { error: 'Solo admin può modificare i profili' };
   }
 
-  const { error } = await supabase
+  const sb = await waitForSupabase();
+  const { error } = await sb
     .from('profili')
     .update(updates)
     .eq('id', userId);
@@ -177,21 +195,24 @@ async function aggiornaProfilo(userId, updates) {
  * Al caricamento della pagina, ripristina la sessione se esiste
  */
 async function initAuth() {
-  const { data } = await supabase.auth.getSession();
+  const sb = await waitForSupabase();
+  const { data } = await sb.auth.getSession();
   if (data.session) {
     auth.session = data.session;
     await caricaProfilo();
   }
 
   // Ascolta i cambiamenti di autenticazione
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    auth.session = session;
-    if (session) {
-      await caricaProfilo();
-    } else {
-      auth.profilo = null;
-    }
-  });
+  if (sb.auth.onAuthStateChange) {
+    sb.auth.onAuthStateChange(async (event, session) => {
+      auth.session = session;
+      if (session) {
+        await caricaProfilo();
+      } else {
+        auth.profilo = null;
+      }
+    });
+  }
 }
 
 // Esporta le funzioni (usate da app.js e dal login overlay)
