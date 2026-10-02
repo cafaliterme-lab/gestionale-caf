@@ -1,6 +1,6 @@
+let state = { pratiche: [], nextNum: 1 };
 let ready = false;
 
-// Fix: dichiarazione di state rimossa, usa quella da data.js
 function todayISO(){ return new Date().toISOString().slice(0,10); }
 function todayIT(){
   const d = new Date();

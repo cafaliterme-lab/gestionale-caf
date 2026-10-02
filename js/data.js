@@ -4,20 +4,9 @@
  * Fornisce le stesse operazioni che app.js chiama oggi, ma usando
  * Supabase in background. Gli oggetti hanno la stessa forma (camelCase),
  * la conversione da snake_case avviene qui.
+ *
+ * Usa la variabile globale 'state' dichiarata in app.js
  */
-
-// Lo stato globale (come state.js nella pagina)
-const state = {
-  pratiche: [],
-  versamenti: [],
-  isee: [],
-  clienti: [],           // anagrafica + quelli aggiunti
-  collaboratori: [],
-
-  // Flag di UI (usati da app.js per non rigenerare durante edits)
-  _editingPracticeId: null,
-  _deletingPracticeId: null,
-};
 
 // Gestori di event realtime (da app.js: render(), ecc.)
 let subscribers = {
