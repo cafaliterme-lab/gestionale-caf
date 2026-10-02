@@ -1,5 +1,3 @@
-
-let state = { pratiche: [], nextNum: 1 };
 let ready = false;
 
 function todayISO(){ return new Date().toISOString().slice(0,10); }
