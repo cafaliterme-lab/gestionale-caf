@@ -146,4 +146,41 @@ var supabase = {
   },
 };
 
-console.log('✓ Supabase configurato - API REST diretta');
+// Crea un Proxy che aspetta il caricamento
+const supabaseReady = new Promise(resolve => {
+  const checkInterval = setInterval(() => {
+    if (typeof supabase !== 'undefined' && supabase.auth) {
+      clearInterval(checkInterval);
+      resolve(supabase);
+    }
+  }, 50);
+});
+
+// Sostituisci supabase con un Proxy che aspetta
+const supabaseProxy = new Proxy(supabase, {
+  get(target, prop) {
+    if (prop === 'then' || prop === 'catch') return undefined;
+    const value = target[prop];
+    if (typeof value === 'object' && value !== null) {
+      return new Proxy(value, {
+        get(t, p) {
+          if (typeof t[p] === 'function') {
+            return async function(...args) {
+              await supabaseReady;
+              return t[p](...args);
+            };
+          }
+          return t[p];
+        },
+      });
+    }
+    return value;
+  },
+});
+
+// Assegna il proxy come supabase globale
+if (typeof window !== 'undefined') {
+  window.supabase = supabaseProxy;
+}
+
+console.log('✓ Supabase configurato - API REST diretta con Proxy di attesa');
