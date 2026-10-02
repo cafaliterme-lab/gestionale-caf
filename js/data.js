@@ -8,7 +8,7 @@
  * Usa la variabile globale 'state' dichiarata in app.js
  */
 
-// Aspetta che supabase sia disponibile (copiato da config.js)
+// Aspetta che supabase sia disponibile
 async function waitForSupabase() {
   for (let i = 0; i < 100; i++) {
     if (typeof supabase !== 'undefined' && supabase.auth) {
@@ -17,6 +17,17 @@ async function waitForSupabase() {
     await new Promise(resolve => setTimeout(resolve, 50));
   }
   throw new Error('Supabase non disponibile');
+}
+
+// Aspetta che state sia disponibile (definito da app.js)
+async function waitForState() {
+  for (let i = 0; i < 100; i++) {
+    if (typeof state !== 'undefined' && state !== null) {
+      return state;
+    }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  return { pratiche: [], versamenti: [], isee: [], clienti: [], collaboratori: [] };
 }
 
 // Gestori di event realtime (da app.js: render(), ecc.)
@@ -132,8 +143,12 @@ function mostraErrore(messaggio) {
  */
 async function caricaTutto() {
   try {
+    // Aspetta che state e supabase siano disponibili
+    await waitForState();
+    const sb = await waitForSupabase();
+
     // Pratiche
-    const { data: pratiche, error: errP } = await supabase
+    const { data: pratiche, error: errP } = await sb
       .from('pratiche')
       .select('*')
       .order('anno', { ascending: false })
@@ -143,7 +158,7 @@ async function caricaTutto() {
     state.pratiche = pratiche.map(p => mapFromDb(p, schemas.pratica));
 
     // Versamenti
-    const { data: versamenti, error: errV } = await supabase
+    const { data: versamenti, error: errV } = await sb
       .from('versamenti')
       .select('*')
       .order('creato_il', { ascending: false });
@@ -152,7 +167,7 @@ async function caricaTutto() {
     state.versamenti = versamenti.map(v => mapFromDb(v, schemas.versamento));
 
     // ISEE
-    const { data: isee, error: errI } = await supabase
+    const { data: isee, error: errI } = await sb
       .from('isee')
       .select('*')
       .order('creato_il', { ascending: false });
@@ -161,7 +176,7 @@ async function caricaTutto() {
     state.isee = isee.map(i => mapFromDb(i, schemas.isee));
 
     // Clienti (archivio)
-    const { data: clienti, error: errC } = await supabase
+    const { data: clienti, error: errC } = await sb
       .from('clienti')
       .select('*')
       .order('nome_completo');
@@ -170,7 +185,7 @@ async function caricaTutto() {
     state.clienti = clienti.map(c => mapFromDb(c, schemas.cliente));
 
     // Collaboratori
-    const { data: collaboratori, error: errCo } = await supabase
+    const { data: collaboratori, error: errCo } = await sb
       .from('collaboratori')
       .select('*')
       .order('ordine');
