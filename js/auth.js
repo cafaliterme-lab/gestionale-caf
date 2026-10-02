@@ -33,27 +33,18 @@ async function signup(nome, email, password) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      data: { nome },
+    },
   });
 
   if (error) {
     return { error: error.message };
   }
 
-  // Crea il profilo dell'utente nel database (ruolo: operatore, no tabs per default)
-  const { error: errProfilo } = await supabase
-    .from('profili')
-    .insert([{
-      id: data.user.id,
-      nome,
-      email,
-      ruolo: 'operatore',
-      tabs: {},
-      sola_lettura: true,
-    }]);
-
-  if (errProfilo) {
-    return { error: 'Utente creato ma profilo non salvato: ' + errProfilo.message };
-  }
+  // Il trigger on_auth_user_created crea automaticamente il profilo nel database
+  // Attendiamo un attimo che il trigger si esegua
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   auth.session = data.session;
   await caricaProfilo();
