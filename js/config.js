@@ -1,129 +1,149 @@
 /**
  * Configurazione Supabase
  *
- * Usa l'API REST di Supabase direttamente via fetch()
- * Non richiede la libreria JS, evita problemi di CDN
+ * Usa Supabase Auth API v1 direttamente via fetch
  */
 
 const SUPABASE_URL = 'https://mmaqmprukghyazlibphv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tYXFtcHJ1a2doeWF6bGlicGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NDUyMTUsImV4cCI6MjEwNjUyMTIxNX0.ByRES--bYHZG6o_BX8Ha0YzqfcQIIr-D08Q-AbR8bhs';
 
-// Simula l'oggetto supabase usando l'API REST
+// Helpers
+async function fetchSupabase(endpoint, method = 'GET', body = null) {
+  const token = localStorage.getItem('auth_token');
+  const headers = {
+    'apikey': SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const options = { method, headers };
+  if (body) options.body = JSON.stringify(body);
+
+  const res = await fetch(`${SUPABASE_URL}${endpoint}`, options);
+  const data = await res.json();
+
+  return { data, status: res.status, ok: res.ok };
+}
+
+// Mock Supabase client
 var supabase = {
   auth: {
-    signInWithPassword: async (credentials) => {
+    signUp: async (credentials) => {
       try {
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: credentials.email,
-            password: credentials.password,
-          }),
+        console.log('📝 SignUp:', credentials.email);
+        const { data, ok } = await fetchSupabase('/auth/v1/signup', 'POST', {
+          email: credentials.email,
+          password: credentials.password,
+          data: credentials.user_metadata || {},
         });
 
-        const data = await res.json();
-        if (!res.ok) return { data: null, error: { message: data.error_description || 'Errore di login' } };
+        if (!ok || data.error) {
+          console.error('SignUp error:', data.error || data);
+          return { data: null, error: { message: data.error?.message || 'Registrazione fallita' } };
+        }
 
-        localStorage.setItem('auth_token', data.access_token);
-        localStorage.setItem('auth_refresh', data.refresh_token);
-        return { data: { user: data.user, session: data }, error: null };
-      } catch (error) {
-        return { data: null, error: { message: error.message } };
+        if (data.session) {
+          localStorage.setItem('auth_token', data.session.access_token);
+          localStorage.setItem('auth_refresh', data.session.refresh_token);
+        }
+
+        console.log('✓ SignUp success:', data.user?.email);
+        return { data: { user: data.user, session: data.session }, error: null };
+      } catch (err) {
+        console.error('SignUp exception:', err);
+        return { data: null, error: { message: err.message } };
       }
     },
 
-    signUp: async (credentials) => {
+    signInWithPassword: async (credentials) => {
       try {
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: credentials.email,
-            password: credentials.password,
-            user_metadata: credentials.user_metadata || {},
-          }),
+        console.log('🔐 SignIn:', credentials.email);
+        const { data, ok } = await fetchSupabase('/auth/v1/token?grant_type=password', 'POST', {
+          email: credentials.email,
+          password: credentials.password,
         });
 
-        const data = await res.json();
-        if (!res.ok) return { data: null, error: { message: data.error_description || 'Errore di registrazione' } };
+        if (!ok || data.error) {
+          console.error('SignIn error:', data.error || data);
+          return { data: null, error: { message: data.error?.message || 'Login fallito' } };
+        }
 
-        localStorage.setItem('auth_token', data.session?.access_token);
-        localStorage.setItem('auth_refresh', data.session?.refresh_token);
-        return { data: { user: data.user, session: data.session }, error: null };
-      } catch (error) {
-        return { data: null, error: { message: error.message } };
+        localStorage.setItem('auth_token', data.access_token);
+        localStorage.setItem('auth_refresh', data.refresh_token);
+
+        console.log('✓ SignIn success');
+        return { data: { user: data.user, session: { access_token: data.access_token } }, error: null };
+      } catch (err) {
+        console.error('SignIn exception:', err);
+        return { data: null, error: { message: err.message } };
       }
     },
 
     signOut: async () => {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_refresh');
+      console.log('✓ SignOut');
     },
 
     getSession: async () => {
       const token = localStorage.getItem('auth_token');
-      return token ? { data: { session: { access_token: token } }, error: null } : { data: { session: null }, error: null };
+      if (!token) return { data: { session: null }, error: null };
+      return { data: { session: { access_token: token } }, error: null };
     },
 
     onAuthStateChange: (callback) => {
-      // Semplice implementazione: controlla il token nel localStorage
       const token = localStorage.getItem('auth_token');
-      callback(token ? 'SIGNED_IN' : 'SIGNED_OUT', token ? { access_token: token } : null);
+      if (callback) callback(token ? 'SIGNED_IN' : 'SIGNED_OUT', token ? { access_token: token } : null);
+    },
+
+    updateUser: async (updates) => {
+      try {
+        const { data, ok } = await fetchSupabase('/auth/v1/user', 'PUT', updates);
+        if (!ok) return { error: { message: data.error?.message || 'Update failed' } };
+        return { error: null };
+      } catch (err) {
+        return { error: { message: err.message } };
+      }
     },
   },
 
   from: (table) => ({
     select: (columns = '*') => ({
+      order: () => ({ async execute() { return { data: [], error: null }; } }),
+      async execute() { return { data: [], error: null }; },
       eq: (col, val) => ({
         single: async () => {
-          const token = localStorage.getItem('auth_token');
-          const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${col}=eq.${val}`, {
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          const data = await res.json();
-          return { data: data[0], error: res.ok ? null : { message: 'Errore' } };
+          const { data, ok } = await fetchSupabase(`/rest/v1/${table}?${col}=eq.${val}`);
+          return { data: data?.[0] || null, error: ok ? null : { message: 'Errore' } };
         },
       }),
-      async () {
-        const token = localStorage.getItem('auth_token');
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${columns}`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        const data = await res.json();
-        return { data, error: res.ok ? null : { message: 'Errore' } };
-      },
+    }),
+
+    update: (updates) => ({
+      eq: (col, val) => ({
+        async execute() {
+          const { data, ok } = await fetchSupabase(`/rest/v1/${table}?${col}=eq.${val}`, 'PATCH', updates);
+          return { error: ok ? null : { message: data?.error || 'Errore' } };
+        },
+      }),
     }),
 
     insert: (records) => ({
-      async select() {
-        const token = localStorage.getItem('auth_token');
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(records),
-        });
-        const data = await res.json();
-        return { data, error: res.ok ? null : { message: 'Errore' } };
-      },
+      select: () => ({
+        async execute() {
+          const { data, ok } = await fetchSupabase(`/rest/v1/${table}`, 'POST', Array.isArray(records) ? records : [records]);
+          return { data, error: ok ? null : { message: 'Errore' } };
+        },
+      }),
     }),
   }),
+
+  rpc: async (name, params) => {
+    const { data, ok } = await fetchSupabase(`/rest/v1/rpc/${name}`, 'POST', params);
+    return { data, error: ok ? null : { message: data?.error || 'RPC error' } };
+  },
 };
 
-console.log('✓ Supabase API REST configurato (nessun CDN esterno)');
+console.log('✓ Supabase configurato - API REST diretta');
