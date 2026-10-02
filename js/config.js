@@ -1,39 +1,123 @@
 /**
  * Configurazione Supabase
  *
- * Durante l'installazione:
- * 1. Andare su https://app.supabase.com e creare un nuovo progetto
- * 2. Copiare l'URL del progetto e la chiave anonima
- * 3. Sostituire i valori qui sotto
- *
- * La chiave anonima è pubblica per natura (sta nell'HTML client).
- * Le operazioni sensibili (creazione utenti, reimposta password) usano
- * una service-role key che sta solo nel server (Edge Function).
+ * Usa l'API REST di Supabase direttamente via fetch()
+ * Non richiede la libreria JS, evita problemi di CDN
  */
 
 const SUPABASE_URL = 'https://mmaqmprukghyazlibphv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tYXFtcHJ1a2doeWF6bGlicGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NDUyMTUsImV4cCI6MjEwNjUyMTIxNX0.ByRES--bYHZG6o_BX8Ha0YzqfcQIIr-D08Q-AbR8bhs';
 
-// Importa Supabase da CDN - con polling robusto
-let supabase;
-let supabaseReady = false;
+// Simula l'oggetto supabase usando l'API REST
+const supabase = {
+  auth: {
+    signInWithPassword: async (credentials) => {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: credentials.email,
+            password: credentials.password,
+          }),
+        });
 
-async function initSupabase() {
-  // Polling per aspettare che Supabase sia disponibile
-  for (let i = 0; i < 50; i++) {
-    if (window.supabase?.createClient) {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      supabaseReady = true;
-      console.log('✓ Supabase inizializzato correttamente');
-      return true;
-    }
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+        const data = await res.json();
+        if (!res.ok) return { data: null, error: { message: data.error_description || 'Errore di login' } };
 
-  console.error('CRITICO: Supabase non disponibile dopo 5 secondi');
-  document.body.innerHTML = '<div style="padding:20px; color:red; font-family:sans-serif;"><h2>Errore di connessione</h2><p>Non riesco a caricare la libreria Supabase. Prova:</p><ol><li>Ricarica la pagina</li><li>Controlla la tua connessione Internet</li><li>Svuota la cache del browser (Ctrl+Shift+Delete)</li></ol></div>';
-  return false;
-}
+        localStorage.setItem('auth_token', data.access_token);
+        localStorage.setItem('auth_refresh', data.refresh_token);
+        return { data: { user: data.user, session: data }, error: null };
+      } catch (error) {
+        return { data: null, error: { message: error.message } };
+      }
+    },
 
-// Inizializza subito
-initSupabase();
+    signUp: async (credentials) => {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: credentials.email,
+            password: credentials.password,
+            user_metadata: credentials.user_metadata || {},
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) return { data: null, error: { message: data.error_description || 'Errore di registrazione' } };
+
+        localStorage.setItem('auth_token', data.session?.access_token);
+        localStorage.setItem('auth_refresh', data.session?.refresh_token);
+        return { data: { user: data.user, session: data.session }, error: null };
+      } catch (error) {
+        return { data: null, error: { message: error.message } };
+      }
+    },
+
+    signOut: async () => {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_refresh');
+    },
+
+    getSession: async () => {
+      const token = localStorage.getItem('auth_token');
+      return token ? { data: { session: { access_token: token } }, error: null } : { data: { session: null }, error: null };
+    },
+  },
+
+  from: (table) => ({
+    select: (columns = '*') => ({
+      eq: (col, val) => ({
+        single: async () => {
+          const token = localStorage.getItem('auth_token');
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${col}=eq.${val}`, {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          const data = await res.json();
+          return { data: data[0], error: res.ok ? null : { message: 'Errore' } };
+        },
+      }),
+      async () {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${columns}`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        return { data, error: res.ok ? null : { message: 'Errore' } };
+      },
+    }),
+
+    insert: (records) => ({
+      async select() {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(records),
+        });
+        const data = await res.json();
+        return { data, error: res.ok ? null : { message: 'Errore' } };
+      },
+    }),
+  }),
+};
+
+console.log('✓ Supabase API REST configurato (nessun CDN esterno)');
