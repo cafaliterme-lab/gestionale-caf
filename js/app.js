@@ -1460,6 +1460,12 @@ async function addPraticaInterna(){
   }
 
   const annoPr = annoDiData(dataPratica);
+  const doppione = await cercaDoppione(annoPr, nome, tipo, codiceFiscale, null);
+  if(doppione){
+    msg.textContent = '⚠️ ' + nome + ' ha gia\' una pratica ' + tipo + ' nel ' + annoPr + ' (protocollo ' + doppione + '). Non e\' possibile inserire un doppione.';
+    msg.style.display = 'block';
+    return;
+  }
   registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale);
   if(congCognome || congNome){ registraClienteSeNuovo(congCognome, congNome, congData); }
 
@@ -1590,7 +1596,7 @@ function annullaModifica(id){
   if(p){ delete p._editing; render(); }
 }
 
-function salvaModifica(id){
+async function salvaModifica(id){
   const p = state.pratiche.find(x=>x.id===id);
   if(!p) return;
   const g = k => document.getElementById(k+'-'+id).value;
@@ -1614,6 +1620,12 @@ function salvaModifica(id){
   };
   if(!campi.telefono && !campi.telefonoFisso){
     avviso('❌ Inserisci almeno un numero di telefono: cellulare o telefono fisso.', true);
+    return;
+  }
+  const annoP = annoPratica(p);
+  const doppione = await cercaDoppione(annoP, campi.nome, campi.tipo, p.codiceFiscale, id);
+  if(doppione){
+    avviso('❌ ' + campi.nome + ' ha gia\' una pratica ' + campi.tipo + ' nel ' + annoP + ' (protocollo ' + doppione + '): modifica non salvata.', true);
     return;
   }
   delete p._editing;
@@ -1747,4 +1759,20 @@ async function caricaNomiOperatori(){
     NOMI_OPERATORI = righe.map(function(r){ return r.nome; }).filter(Boolean);
     render();
   }catch(e){ console.error('nomi operatori', e); }
+}
+
+// Stesso nominativo + stesso tipo + stesso anno = doppione; due omonimi con codice fiscale diverso restano distinti.
+async function cercaDoppione(anno, nome, tipo, codiceFiscale, escludiId){
+  if(!nome || !tipo) return null;
+  let elenco = (state.pratiche||[]).map(function(p){ return { id:p.id, numero:p.numero, anno:annoPratica(p), nome:p.nome, tipo:p.tipo, codiceFiscale:p.codiceFiscale }; });
+  try{
+    const { data: righe, error } = await supabase.from('pratiche').select('id,numero,anno,nome,tipo,codice_fiscale').eq('anno', anno).eq('nome', nome).eq('tipo', tipo);
+    if(!error && Array.isArray(righe)) elenco = righe.map(function(r){ return { id:r.id, numero:r.numero, anno:r.anno, nome:r.nome, tipo:r.tipo, codiceFiscale:r.codice_fiscale }; });
+  }catch(e){ console.error('controllo doppioni', e); }
+  const trovato = elenco.find(function(p){
+    if(p.id === escludiId) return false;
+    if(Number(p.anno) !== Number(anno) || (p.nome||'').toUpperCase() !== nome.toUpperCase() || p.tipo !== tipo) return false;
+    return !(codiceFiscale && p.codiceFiscale && p.codiceFiscale !== codiceFiscale);
+  });
+  return trovato ? String(trovato.numero).padStart(4,'0') + '/' + anno : null;
 }
