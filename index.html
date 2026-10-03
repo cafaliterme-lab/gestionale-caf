@@ -164,6 +164,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .chip-dd.open .chip-dd-panel{display:flex}
 .chip{border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:999px; padding:6px 12px; font-size:12.5px; cursor:pointer; font-weight:500}
 .chip.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600}
+.chip.chip-tipo{color:#fff; font-weight:600}
+.chip.chip-tipo.active{box-shadow:0 0 0 2px var(--card), 0 0 0 4px var(--ink)}
+#f-tipo-dd .chip-dd-trigger[style*="color"] .arrow{color:inherit}
 .stat.gray{background:#374151; border-color:#374151; color:#fff}
 .stat.gray span{color:rgba(255,255,255,.9); font-weight:600}
 .caf-row{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px}
@@ -571,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610049"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610049"></script>
+<script src="js/app.js?v=202610050"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

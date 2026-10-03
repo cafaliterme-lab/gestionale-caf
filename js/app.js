@@ -1026,6 +1026,7 @@ function pickChip(containerId, selectId, val){
     if(lbl && chip){ lbl.innerHTML = chip.innerHTML; }
     dd.classList.remove('open');
   }
+  if(containerId === 'f-tipo-btns') coloraTriggerTipo();
 }
 function showTab(btn){
   const tab = btn.dataset.tab;
@@ -1066,8 +1067,25 @@ function initTipoBtns(){
   const sel = document.getElementById('f-tipo');
   sel.innerHTML = TIPI.map(function(o){ return '<option value="'+esc(o)+'">'+esc(o)+'</option>'; }).join('');
   renderChips('f-tipo-btns','f-tipo', TIPI, function(o){ return o; }, function(o){ return o; });
+  Array.from(document.getElementById('f-tipo-btns').children).forEach(function(b, i){
+    const col = coloreCollaboratore(TIPI[i]);
+    b.classList.add('chip-tipo');
+    b.style.background = col;
+    b.style.borderColor = col;
+  });
   const lbl = document.getElementById('f-tipo-dd-label');
   if(lbl && sel.value){ lbl.textContent = sel.value; }
+  coloraTriggerTipo();
+}
+function coloraTriggerTipo(){
+  const trig = document.querySelector('#f-tipo-dd .chip-dd-trigger');
+  const val = document.getElementById('f-tipo').value;
+  if(!trig) return;
+  if(!val){ trig.style.background = ''; trig.style.borderColor = ''; trig.style.color = ''; return; }
+  const col = coloreCollaboratore(val);
+  trig.style.background = col;
+  trig.style.borderColor = col;
+  trig.style.color = '#fff';
 }
 function initStatoBtns(){
   const sel = document.getElementById('f-stato');
