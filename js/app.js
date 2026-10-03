@@ -1202,7 +1202,12 @@ function render(){
       if(!(chi in perOperatore)) perOperatore[chi] = 0;
       if(p.stato === 'lavorata') perOperatore[chi] += (p.congCognome || p.congNome) ? 2 : 1;
     });
-    lavorateEl.innerHTML = Object.keys(perOperatore).sort().map(function(chi){
+    const pesoP = function(p){ return (p.congCognome || p.congNome) ? 2 : 1; };
+    const totPeso = pratAnno.reduce(function(t,p){ return t+pesoP(p); }, 0);
+    const lavPeso = pratAnno.filter(function(p){ return p.stato === 'lavorata'; }).reduce(function(t,p){ return t+pesoP(p); }, 0);
+    const daFare = totPeso - lavPeso;
+    const badgeDaFare = '<span title="Pratiche del '+annoSel+' non ancora lavorate (tutti gli altri stati), le congiunte valgono 2" style="display:inline-flex; align-items:center; gap:8px; background:'+(daFare?'#c0392b':'#2f9e5f')+'; color:#fff; font-size:16px; font-weight:700; padding:9px 16px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2)">DA LAVORARE <span style="background:#fff; color:'+(daFare?'#c0392b':'#2f9e5f')+'; font-size:20px; font-weight:800; min-width:34px; text-align:center; padding:2px 10px; border-radius:999px">'+daFare+'</span><span style="font-size:12px; font-weight:600; opacity:.9">su '+totPeso+'</span></span>';
+    lavorateEl.innerHTML = badgeDaFare + Object.keys(perOperatore).sort().map(function(chi){
       return '<span title="Pratiche lavorate nel '+annoSel+'" style="display:inline-flex; align-items:center; gap:8px; background:#1d4f91; color:#fff; font-size:16px; font-weight:700; padding:9px 16px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2)">'+esc(chi)+' <span style="background:#fff; color:#1d4f91; font-size:20px; font-weight:800; min-width:34px; text-align:center; padding:2px 10px; border-radius:999px">'+perOperatore[chi]+'</span></span>';
     }).join('');
   }
