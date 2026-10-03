@@ -189,7 +189,29 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .scanner-vista{position:relative}
 #scanner-video{display:block; width:100%; max-height:55vh; background:#000; border-radius:10px; object-fit:cover}
 .scanner-guida{position:absolute; left:6%; right:6%; top:35%; bottom:35%; border:3px dashed rgba(255,255,255,.9); border-radius:8px; box-shadow:0 0 0 999px rgba(0,0,0,.25); pointer-events:none}
-.qr-app{margin-left:auto; align-self:flex-end; flex:none; width:76px; height:76px; padding:4px; border:none; border-radius:10px; background:#fff; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.25); position:relative; z-index:6}
+.avvisi-scadenze{align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:#fff4e0; color:#6b4a10; border:1px solid #f0d199; border-radius:12px; padding:10px 14px; margin-bottom:12px; font-size:13px}
+.avvisi-scadenze button{background:#d4881c; color:#fff; padding:7px 12px; font-size:12.5px}
+.nav-conta{background:#c0392b; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; margin-left:4px}
+.cal-testa{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; font-size:15px}
+.cal-testa button{background:var(--line); color:var(--ink); padding:6px 14px; font-size:16px}
+.cal-griglia{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px}
+.cal-gs{font-size:11px; color:var(--sub); text-align:center; font-weight:600; padding:2px 0}
+.cal-cella{min-height:74px; border:1px solid var(--line); border-radius:8px; padding:4px; cursor:pointer; background:var(--card); overflow:hidden}
+.cal-cella:hover{border-color:var(--accent)}
+.cal-cella.vuota{border:none; background:transparent; cursor:default}
+.cal-cella.oggi{border:2px solid var(--accent)}
+.cal-num{font-size:12px; font-weight:700; margin-bottom:2px}
+.cal-ev{color:#fff; font-size:10.5px; border-radius:4px; padding:1px 4px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cal-piu{font-size:10.5px; color:var(--sub)}
+.cal-legenda{display:flex; gap:6px 12px; flex-wrap:wrap; align-items:center; font-size:11.5px; color:var(--sub); margin-top:10px}
+.cal-legenda span{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:-6px}
+@media (max-width:560px){.cal-cella{min-height:52px} .cal-ev{font-size:0; height:6px; padding:0}}
+.sc-riga{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px}
+.sc-riga:last-child{border-bottom:none}
+.sc-elimina{background:none; color:#c0392b; font-weight:700; padding:4px 8px}
+body.sola-lettura .sc-fatta, body.sola-lettura .sc-elimina{display:none}
+.btn-wa{background:#25d366 !important; color:#fff !important}
+.qr-app{margin-left:auto; margin-top:26px; align-self:flex-end; flex:none; width:76px; height:76px; padding:4px; border:none; border-radius:10px; background:#fff; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.25); position:relative; z-index:6}
 .qr-app svg, #qr-grande svg{display:block; width:100%; height:100%}
 @media (max-width:560px){.qr-app{display:none}}
 .qr-overlay{display:none; position:fixed; inset:0; z-index:200; background:rgba(10,20,36,.6); align-items:center; justify-content:center; padding:16px}
@@ -267,6 +289,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 
 <div id="db-avviso" style="display:none; background:#f5c9c9; color:#7a1f1f; padding:8px 12px; border-radius:8px; font-size:12.5px; margin-bottom:10px">⚠️ Archivio condiviso non disponibile in questa sessione: le modifiche resteranno solo su questo dispositivo.</div>
 <div class="userbar" id="userbar"></div>
+<div id="avvisi-scadenze" class="avvisi-scadenze" style="display:none"></div>
 
 <div class="grid" style="margin-bottom:14px"><div><label>Anno di protocollo (bloccato al 31/12)</label><select id="anno-attivo" onchange="cambiaAnnoAttivo(this.value)"></select></div></div>
 <div class="navmenu" id="navmenu">
@@ -275,6 +298,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <button type="button" data-tab="contabilita" onclick="showTab(this)">CONTABILITA'</button>
   <button type="button" data-tab="caf" onclick="showTab(this)">VERSAMENTI CAF</button>
   <button type="button" data-tab="collaboratori" onclick="showTab(this)">COLLABORATORI</button>
+  <button type="button" data-tab="scadenze" onclick="showTab(this)">SCADENZE</button>
   <button type="button" data-tab="permessi" id="nav-permessi" onclick="showTab(this)" style="display:none">UTENTI&nbsp;E&nbsp;PERMESSI</button>
 </div>
 
@@ -390,6 +414,34 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <div class="card" id="storico-cliente" style="display:none"></div>
 </section>
 
+<section class="tabsec" id="tab-scadenze">
+<div class="card">
+  <div class="raff-title">Nuova scadenza</div>
+  <div class="grid">
+    <div class="full"><label>Descrizione</label><input id="sc-titolo" placeholder="Es. Invio 730 precompilato, IMU acconto, rinnovo ISEE..."></div>
+    <div><label>Data</label><input id="sc-data" type="date"></div>
+    <div><label>Avvisami</label>
+      <select id="sc-avviso">
+        <option value="0">Il giorno stesso</option>
+        <option value="1">1 giorno prima</option>
+        <option value="3">3 giorni prima</option>
+        <option value="7" selected>7 giorni prima</option>
+        <option value="15">15 giorni prima</option>
+        <option value="30">30 giorni prima</option>
+      </select>
+    </div>
+    <div><label>Cliente (facoltativo)</label><input id="sc-cliente" placeholder="Cognome e nome" style="text-transform:uppercase"></div>
+    <div><label>Note</label><input id="sc-note" placeholder="Facoltativo"></div>
+  </div>
+  <div style="text-align:left"><button type="button" class="btn-add" onclick="aggiungiScadenzaForm()">+ Aggiungi scadenza</button></div>
+</div>
+<div class="card"><div id="cal-scadenze"></div></div>
+<div class="card">
+  <div class="raff-title">Scadenze in programma</div>
+  <div id="lista-scadenze"></div>
+</div>
+</section>
+
 <section class="tabsec" id="tab-collaboratori">
 <div class="card">
   <div class="raff-title">Collaboratori / Tipi di pratica</div>
@@ -488,14 +540,15 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/qrcode.js?v=1"></script>
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=1"></script>
-<script src="js/config.js?v=202610045"></script>
-<script src="js/auth.js?v=202610045"></script>
+<script src="js/scadenze.js?v=1"></script>
+<script src="js/config.js?v=202610046"></script>
+<script src="js/auth.js?v=202610046"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610045"></script>
-<script src="js/import-clienti.js?v=202610045"></script>
-<script src="js/app.js?v=202610045"></script>
+<script src="js/data.js?v=202610046"></script>
+<script src="js/import-clienti.js?v=202610046"></script>
+<script src="js/app.js?v=202610046"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

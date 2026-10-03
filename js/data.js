@@ -133,6 +133,17 @@ const schemas = {
     dataNascita: 'data_nascita',
     codiceFiscale: 'codice_fiscale',
   },
+  scadenza: {
+    id: 'id',
+    titolo: 'titolo',
+    data: 'data',
+    avvisoGiorni: 'avviso_giorni',
+    cliente: 'cliente',
+    note: 'note',
+    completata: 'completata',
+    creatoDa: 'creato_da',
+    creatoIl: 'creato_il',
+  },
   collaboratore: {
     nome: 'nome',
     ordine: 'ordine',
@@ -209,6 +220,14 @@ async function caricaTutto() {
     if (errCo) throw new Error('Errore collaboratori: ' + errCo.message);
     // app.js usa i collaboratori come semplici nomi (stringhe)
     state.collaboratori = collaboratori.map(c => c.nome);
+
+    // Scadenze: se la tabella non e' leggibile il resto dell'app funziona lo stesso
+    const { data: scadenze, error: errS } = await sb
+      .from('scadenze')
+      .select('*')
+      .order('data');
+    if (errS) console.error('Errore scadenze:', errS.message);
+    state.scadenze = errS ? [] : scadenze.map(x => mapFromDb(x, schemas.scadenza));
 
     // Il client REST non ha il realtime: avvisa l'interfaccia che i dati sono cambiati
     if (typeof window.onDatiAggiornati === 'function') window.onDatiAggiornati();
@@ -520,6 +539,44 @@ async function aggiungiListaClienti(clienti) {
 }
 
 /**
+ * Scadenze - Aggiungi, aggiorna, elimina
+ */
+async function aggiungiScadenza(scadenza) {
+  try {
+    const { error } = await supabase.from('scadenze').insert([mapToDb(scadenza, schemas.scadenza)]);
+    if (error) throw new Error(error.message);
+    await caricaTutto();
+    return {};
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+async function aggiornaScadenza(id, campi) {
+  try {
+    const { data: righe, error } = await supabase.from('scadenze').update(mapToDb(campi, schemas.scadenza)).eq('id', id).select('id');
+    if (error) throw new Error(error.message);
+    if (!righe || !righe.length) throw new Error('Permesso negato');
+    await caricaTutto();
+    return {};
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+async function eliminaScadenza(id) {
+  try {
+    const { data: righe, error } = await supabase.from('scadenze').delete().eq('id', id).select('id');
+    if (error) throw new Error(error.message);
+    if (!righe || !righe.length) throw new Error('Permesso negato');
+    await caricaTutto();
+    return {};
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+/**
  * Collaboratori - Salva l'elenco (chiama RPC salva_collaboratori)
  */
 async function salvaCollaboratori(lista) {
@@ -616,6 +673,11 @@ window.data = {
   },
   collaboratori: {
     salva: salvaCollaboratori,
+  },
+  scadenze: {
+    aggiungi: aggiungiScadenza,
+    aggiorna: aggiornaScadenza,
+    elimina: eliminaScadenza,
   },
   admin: {
     svuota: svuotaRegistro,

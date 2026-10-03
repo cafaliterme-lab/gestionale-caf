@@ -323,7 +323,8 @@ const TAB_LABELS = {
   registro: 'REGISTRO DI PROTOCOLLO',
   contabilita: "CONTABILITA'",
   caf: 'VERSAMENTI CAF',
-  collaboratori: 'COLLABORATORI'
+  collaboratori: 'COLLABORATORI',
+  scadenze: 'SCADENZE'
 };
 let currentUser = null;
 let loginSelezionato = null;
@@ -1000,6 +1001,8 @@ function onDatiAggiornati(){
   }
   initSelettoreAnno();
   render();
+  renderScadenze();
+  aggiornaAvvisiScadenze();
 }
 function syncDataFromSupabase(){
   // data.js scrive direttamente nel `state` globale; qui serve solo l'archivio clienti
@@ -1032,6 +1035,7 @@ function showTab(btn){
   if(sec) sec.classList.add('active');
   btn.classList.add('active');
   if(tab === 'collaboratori') renderCollaboratori();
+  if(tab === 'scadenze') renderScadenze();
   if(tab === 'permessi') renderPermessi(); // async, but fires in background
 }
 function renderCollaboratori(){
@@ -1259,7 +1263,7 @@ function render(){
               <td>${p.tipo||'-'}</td>
               <td><select class="stato-tab-sel" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select></td>
               <td>${formattaInserimento(p)}</td>
-              <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button></td>
+              <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer')}</td>
             </tr>`).join('') : '<tr><td colspan="7" class="empty">'+(pratAnno.length ? 'Nessun risultato' : 'Nessuna registrazione per l\'anno '+annoSel)+'</td></tr>'}
         </tbody>
       </table>
@@ -1311,6 +1315,7 @@ function render(){
       ` : `
       <div class="row-actions">
         <select class="stato-tab-sel" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select>
+        ${bottoneWhatsApp(p)}
         <button onclick="modifica('${p.id}')">Modifica</button>
         <button onclick="rimuovi('${p.id}')" style="${p._confirmDelete?'background:#c0392b;color:#fff':''}">${p._confirmDelete?'Conferma eliminazione?':'Elimina'}</button>
       </div>
@@ -1446,6 +1451,41 @@ function avviso(testo, errore){
   clearTimeout(el._t);
   el._t = setTimeout(function(){ el.style.opacity = '0'; }, errore ? 5000 : 2000);
 }
+// ---- WhatsApp: avviso di ritiro per le pratiche lavorate ----
+function numeroWhatsApp(tel){
+  let n = String(tel||'').replace(/[^\d+]/g, '');
+  if(n.startsWith('+')) n = n.slice(1);
+  else if(n.startsWith('00')) n = n.slice(2);
+  else if(n) n = '39' + n;
+  return /^\d{10,15}$/.test(n) ? n : '';
+}
+function nomeProprio(s){ return String(s||'').toLowerCase().replace(/(^|[\s'-])\S/g, function(c){ return c.toUpperCase(); }); }
+function messaggioRitiro(p){
+  const cosa = /^730/.test(p.tipo||'') ? 'dichiarazione 730' : 'pratica';
+  return 'Gentile ' + nomeProprio(p.nome) + ', la informiamo che la Sua ' + cosa + ' (protocollo n. ' + formattaProtocollo(p) + ') è pronta. '
+    + 'Può passare a ritirarla presso il CAF CISL di Alì Terme. Cordiali saluti.';
+}
+function inviaWhatsApp(id){
+  const p = state.pratiche.find(function(x){ return x.id === id; });
+  if(!p) return;
+  let num = numeroWhatsApp(p.telefono);
+  let nuovoTel = '';
+  if(!num){
+    const t = prompt('Numero di cellulare di ' + p.nome + ' (verra\' salvato nella pratica):', p.telefono || '');
+    if(!t) return;
+    num = numeroWhatsApp(t);
+    if(!num){ avviso('❌ Numero di telefono non valido', true); return; }
+    nuovoTel = t.trim();
+  }
+  // Apertura immediata: dopo un'attesa il browser bloccherebbe la nuova finestra
+  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(messaggioRitiro(p)), '_blank');
+  if(nuovoTel) data.pratiche.aggiorna(id, { telefono: nuovoTel });
+}
+function bottoneWhatsApp(p, stile){
+  if(p.stato !== 'lavorata') return '';
+  return '<button type="button" class="btn-wa" style="' + (stile||'') + '" onclick="inviaWhatsApp(\'' + p.id + '\')" title="' + (p.telefono ? 'Invia a ' + esc(p.telefono) : 'Telefono mancante: verra\' chiesto') + '">💬 WhatsApp</button>';
+}
+
 async function cambiaStato(id, stato){
   const result = await data.pratiche.aggiorna(id, { stato: stato });
   if(result && result.error){ avviso('❌ Stato non salvato: ' + result.error, true); return; }
