@@ -26,6 +26,7 @@ const STATI = {
   rinuncia_compilazione:{l:'Rinuncia alla compilazione', c:'#374151', e:'⚫'}
 };
 const TIPI_DEFAULT = ["730 SEDE","730 BRIGUGLIO ANTONIO","730 CAMINITI ANTONIO","730 CAMINITI LUIGI","730 RICCA AGATINO","730 FILCA","730 CRISAFULLI ROBERTO","730 FARAONE ARTURO","730 DECEDUTI","730 INTEGRATIVI/RETTIFICATIVI","730 TRIOLO CARMELA","730 DI BELLA SANTINO","CONTRATTI DI AFFITTO","CONTRATTI COLF E BADANTI","ISEE A PAGAMENTO","IMU"];
+let NOMI_OPERATORI = [];
 function getTipiList(){ return (state.collaboratori && state.collaboratori.length) ? state.collaboratori : TIPI_DEFAULT; }
 Object.defineProperty(window, 'TIPI', { get: function(){ return getTipiList(); } });
 function statoLabel(s){ return (STATI[s]||{}).l || s; }
@@ -1194,6 +1195,7 @@ function render(){
     const perOperatore = {};
     const io = ((auth.profilo && auth.profilo.nome) || '').toUpperCase();
     if(io) perOperatore[io] = 0;
+    NOMI_OPERATORI.forEach(function(n){ perOperatore[String(n).toUpperCase()] = 0; });
     pratAnno.forEach(function(p){
       const chi = (p.inseritoDa||'').toUpperCase();
       if(!chi) return;
@@ -1201,7 +1203,7 @@ function render(){
       if(p.stato === 'lavorata') perOperatore[chi] += (p.congCognome || p.congNome) ? 2 : 1;
     });
     lavorateEl.innerHTML = Object.keys(perOperatore).sort().map(function(chi){
-      return '<span title="Pratiche lavorate nel '+annoSel+'" style="background:rgba(0,0,0,.25); color:#fff; font-size:11.5px; font-weight:700; padding:5px 10px; border-radius:999px">🔵 '+esc(chi)+': '+perOperatore[chi]+'</span>';
+      return '<span title="Pratiche lavorate nel '+annoSel+'" style="display:inline-flex; align-items:center; gap:8px; background:#1d4f91; color:#fff; font-size:16px; font-weight:700; padding:9px 16px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2)">'+esc(chi)+' <span style="background:#fff; color:#1d4f91; font-size:20px; font-weight:800; min-width:34px; text-align:center; padding:2px 10px; border-radius:999px">'+perOperatore[chi]+'</span></span>';
     }).join('');
   }
   const contEl = document.getElementById('conteggio-operatori');
@@ -1612,6 +1614,7 @@ document.addEventListener('DOMContentLoaded', async function(){
 
   // Carica i dati da Supabase e sottoscrivi ai cambiamenti realtime
   await initSupabase();
+  caricaNomiOperatori();
 
   // Aggiorna l'interfaccia con il tipo di pratica dell'ultima pratica
   const ultima = state.pratiche.slice().sort(function(a,b){ return b.numero - a.numero; })[0];
@@ -1640,4 +1643,13 @@ function riepilogoPerTipo(pratiche){
       return '<tr><td>'+esc(t)+'</td><td>'+r.n+'</td><td>'+fmtEuro(r.fatt)+'</td><td>'+fmtEuro(r.inc)+'</td><td>'+fmtEuro(r.fatt-r.inc)+'</td></tr>';
     }).join('')
     + '</tbody></table></div>';
+}
+
+async function caricaNomiOperatori(){
+  try{
+    const { data: righe, error } = await supabase.rpc('nomi_operatori', {});
+    if(error || !Array.isArray(righe)) return;
+    NOMI_OPERATORI = righe.map(function(r){ return r.nome; }).filter(Boolean);
+    render();
+  }catch(e){ console.error('nomi operatori', e); }
 }
