@@ -160,7 +160,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .chip-dd-trigger .arrow{transition:transform .15s; color:var(--sub); flex:none}
 .chip-dd.open .chip-dd-trigger .arrow{transform:rotate(180deg)}
 .chip-dd-panel{display:none; flex-wrap:wrap; gap:6px; margin-top:6px; padding:8px; border:1px solid var(--line); border-radius:10px; background:var(--bg); max-height:220px; overflow-y:auto}
-.cli-wrap{position:relative}
+.cli-wrap{position:relative; max-width:480px}
+.search-box{max-width:520px}
 .cli-results{display:none; position:absolute; z-index:20; left:0; right:0; top:calc(100% + 4px); background:var(--card); border:1px solid var(--line); border-radius:10px; max-height:240px; overflow-y:auto; box-shadow:0 8px 24px rgba(15,27,45,.15)}
 .cli-results.open{display:block}
 .cli-row{padding:8px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid var(--line)}
@@ -448,7 +449,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       </div>
       <div style="grid-column:1/-1; font-size:11.5px; color:var(--sub); margin-top:-4px">* Obbligatorio almeno uno dei due</div>
     </div>
-    <div>
+    <div class="full">
       <label>Note</label>
       <input id="f-note" placeholder="Facoltativo">
     </div>
