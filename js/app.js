@@ -301,10 +301,10 @@ function formattaInserimento(p){
   if(p.inseritoIl){
     const d = new Date(p.inseritoIl);
     if(!isNaN(d.getTime())){
-      quando = String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      quando = String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
     }
   }
-  return '<span style="font-size:10.5px; color:var(--sub); line-height:1.2">' + esc(p.inseritoDa||'-') + (quando ? '<br>'+quando : '') + '</span>';
+  return '<span style="font-size:9.5px; color:var(--sub); line-height:1.15">' + esc(p.inseritoDa||'-') + (quando ? '<br>'+quando : '') + '</span>';
 }
 function formattaProtocollo(p){
   const anno = annoPratica(p);
@@ -1319,19 +1319,19 @@ function render(){
   tab.innerHTML = `
     <div class="raff-title">Registro di protocollo</div>
     <div class="tab-wrap">
-      <table class="tab-proto">
-        <thead><tr><th>N. protocollo</th><th>Data apertura</th><th>Fine lavorazione</th><th>Mittente</th><th>Tipo di pratica</th><th>Stato</th><th>Inserito da</th><th></th></tr></thead>
+      <table class="tab-proto tab-registro">
+        <thead><tr><th>N.</th><th>Apertura</th><th>Fine lav.</th><th>Mittente</th><th>Tipo</th><th>Stato</th><th>Inserito da</th><th></th></tr></thead>
         <tbody>
           ${ordinate.length ? ordinate.map(p => `
             <tr>
               <td class="n">${formattaProtocollo(p)}</td>
               <td>${p.data||'-'}</td>
               <td>${esc(p.dataFine)||'-'}</td>
-              <td>${(p.nome||'-').toUpperCase()}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}</td>
-              <td>${p.tipo||'-'}</td>
+              <td class="wrap">${(p.nome||'-').toUpperCase()}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}</td>
+              <td class="wrap">${p.tipo||'-'}</td>
               <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select></td>
               <td>${formattaInserimento(p)}</td>
-              <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer')}</td>
+              <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)}</td>
             </tr>`).join('') : '<tr><td colspan="8" class="empty">'+(pratAnno.length ? 'Nessun risultato' : 'Nessuna registrazione per l\'anno '+annoSel)+'</td></tr>'}
         </tbody>
       </table>
@@ -1565,9 +1565,9 @@ function inviaWhatsApp(id){
   window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(messaggioRitiro(p)), '_blank');
   if(nuovoTel) data.pratiche.aggiorna(id, { telefono: nuovoTel });
 }
-function bottoneWhatsApp(p, stile){
+function bottoneWhatsApp(p, stile, soloIcona){
   if(p.stato !== 'lavorata') return '';
-  return '<button type="button" class="btn-wa" style="' + (stile||'') + '" onclick="inviaWhatsApp(\'' + p.id + '\')" title="' + (p.telefono ? 'Invia a ' + esc(p.telefono) : 'Telefono mancante: verra\' chiesto') + '">💬 WhatsApp</button>';
+  return '<button type="button" class="btn-wa" style="' + (stile||'') + '" onclick="inviaWhatsApp(\'' + p.id + '\')" title="' + (p.telefono ? 'Invia a ' + esc(p.telefono) : 'Telefono mancante: verra\' chiesto') + '">' + (soloIcona ? '💬' : '💬 WhatsApp') + '</button>';
 }
 
 const STATI_IN_LAVORAZIONE = ['arrivo','lavorazione','da_lavorare_scansionata'];
