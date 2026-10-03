@@ -91,8 +91,6 @@ function controllaCoerenzaCF(cf, cognome, nome, dataNascita) {
 
 /* ---------- Lettura del codice a barre (Code 39) della tessera sanitaria ---------- */
 
-let scannerCF = { stream: null, timer: null, detector: null, onTrovato: null };
-
 async function creaLettoreCodiciBarre() {
   const formati = ['code_39', 'code_128'];
   if ('BarcodeDetector' in window) {
@@ -114,82 +112,4 @@ function cfDaCodiciLetti(codici) {
     if (cfValido(cf)) return cf;
   }
   return null;
-}
-
-function messaggioScanner(testo, errore) {
-  const el = document.getElementById('scanner-msg');
-  if (!el) return;
-  el.textContent = testo;
-  el.style.color = errore ? '#c0392b' : 'var(--sub)';
-}
-
-async function apriScannerCF(onTrovato) {
-  scannerCF.onTrovato = onTrovato;
-  document.getElementById('scanner-overlay').classList.add('open');
-  messaggioScanner('Avvio della fotocamera...');
-  try {
-    scannerCF.detector = scannerCF.detector || await creaLettoreCodiciBarre();
-  } catch (e) {
-    messaggioScanner('❌ ' + e.message, true);
-    return;
-  }
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    messaggioScanner('Fotocamera non disponibile su questo dispositivo: usa "Scatta una foto".', true);
-    return;
-  }
-  try {
-    scannerCF.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: false,
-    });
-  } catch (e) {
-    messaggioScanner('Accesso alla fotocamera negato o non disponibile: usa "Scatta una foto".', true);
-    return;
-  }
-  const video = document.getElementById('scanner-video');
-  video.srcObject = scannerCF.stream;
-  await video.play().catch(function () {});
-  messaggioScanner('Avvicina la tessera sanitaria: il codice a barre deve riempire il riquadro, dritto e ben illuminato.');
-  const cerca = async function () {
-    if (!scannerCF.stream) return;
-    try {
-      if (video.readyState >= 2) {
-        const cf = cfDaCodiciLetti(await scannerCF.detector.detect(video));
-        if (cf) return trovatoCF(cf);
-      }
-    } catch (e) { /* fotogramma non leggibile, si riprova */ }
-    scannerCF.timer = setTimeout(cerca, 250);
-  };
-  cerca();
-}
-
-async function leggiCFDaFoto(input) {
-  const file = input.files && input.files[0];
-  input.value = '';
-  if (!file) return;
-  messaggioScanner('Lettura della foto...');
-  try {
-    scannerCF.detector = scannerCF.detector || await creaLettoreCodiciBarre();
-    const immagine = await createImageBitmap(file);
-    const cf = cfDaCodiciLetti(await scannerCF.detector.detect(immagine));
-    if (cf) return trovatoCF(cf);
-    messaggioScanner('Codice fiscale non trovato nella foto: scatta piu\' da vicino, con il codice a barre dritto e che riempie la foto.', true);
-  } catch (e) {
-    messaggioScanner('❌ ' + e.message, true);
-  }
-}
-
-function trovatoCF(cf) {
-  const cb = scannerCF.onTrovato;
-  chiudiScannerCF();
-  if (cb) cb(cf);
-}
-
-function chiudiScannerCF() {
-  clearTimeout(scannerCF.timer);
-  if (scannerCF.stream) scannerCF.stream.getTracks().forEach(function (t) { t.stop(); });
-  scannerCF.stream = null;
-  const video = document.getElementById('scanner-video');
-  if (video) video.srcObject = null;
-  document.getElementById('scanner-overlay').classList.remove('open');
 }

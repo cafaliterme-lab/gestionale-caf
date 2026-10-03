@@ -187,8 +187,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .scanner-overlay.open{display:flex}
 .scanner-box{background:var(--card); color:var(--ink); border-radius:16px; padding:16px; text-align:center; width:100%; max-width:520px}
 .scanner-vista{position:relative}
-#scanner-video{display:block; width:100%; max-height:55vh; background:#000; border-radius:10px; object-fit:cover}
-.scanner-guida{position:absolute; left:6%; right:6%; top:35%; bottom:35%; border:3px dashed rgba(255,255,255,.9); border-radius:8px; box-shadow:0 0 0 999px rgba(0,0,0,.25); pointer-events:none}
+#scanner-video, #doc-video{display:block; width:100%; max-height:55vh; background:#000; border-radius:10px; object-fit:cover}
+.doc-guida{position:absolute; left:8%; right:8%; top:50%; aspect-ratio:1.586; transform:translateY(-50%); max-height:92%; border:3px dashed rgba(255,255,255,.9); border-radius:12px; box-shadow:0 0 0 999px rgba(0,0,0,.25); pointer-events:none}
 .avvisi-scadenze{align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:#fff4e0; color:#6b4a10; border:1px solid #f0d199; border-radius:12px; padding:10px 14px; margin-bottom:12px; font-size:13px}
 .avvisi-scadenze button{background:#d4881c; color:#fff; padding:7px 12px; font-size:12.5px}
 .nav-conta{background:#c0392b; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; margin-left:4px}
@@ -263,19 +263,40 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   </div>
   <button type="button" id="qr-app" class="qr-app" onclick="apriQrApp()" title="Inquadra con la fotocamera del telefono per aprire l'app"></button>
 </header>
-<div id="scanner-overlay" class="scanner-overlay">
+<div id="doc-overlay" class="scanner-overlay">
   <div class="scanner-box">
-    <div style="font-weight:700; margin-bottom:8px">📷 Leggi tessera sanitaria</div>
-    <div class="scanner-vista">
-      <video id="scanner-video" playsinline muted autoplay></video>
-      <div class="scanner-guida"></div>
+    <div style="font-weight:700; margin-bottom:8px">📄 Leggi documento</div>
+    <div id="doc-cattura">
+      <div class="scanner-vista">
+        <video id="doc-video" playsinline muted autoplay></video>
+        <div class="doc-guida"></div>
+      </div>
+      <div id="doc-msg" style="font-size:12.5px; margin-top:8px"></div>
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap">
+        <button type="button" class="btn-add" style="margin:0" onclick="scattaDocumento()">📸 Scatta</button>
+        <label class="btn-add" style="margin:0; cursor:pointer; background:var(--line); color:var(--ink)">🖼️ Carica foto<input type="file" accept="image/*" style="display:none" onchange="caricaFotoDocumento(this)"></label>
+        <button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="chiudiLetturaDocumento()">Annulla</button>
+      </div>
+      <div style="font-size:11px; color:var(--sub); margin-top:10px">Carta d'identita', tessera sanitaria o patente. L'immagine resta sul dispositivo: non viene salvata ne' inviata.</div>
     </div>
-    <div id="scanner-msg" style="font-size:12.5px; margin-top:8px"></div>
-    <div style="display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap">
-      <label class="btn-add" style="margin:0; cursor:pointer">📸 Scatta una foto<input type="file" accept="image/*" capture="environment" style="display:none" onchange="leggiCFDaFoto(this)"></label>
-      <button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="chiudiScannerCF()">Annulla</button>
+    <div id="doc-revisione" style="display:none; text-align:left">
+      <div id="doc-tipo" class="sub2" style="margin-bottom:8px"></div>
+      <div class="grid">
+        <div><label>Cognome</label><input id="doc-cognome" style="text-transform:uppercase" oninput="verificaRevisioneDocumento()"></div>
+        <div><label>Nome</label><input id="doc-nome" style="text-transform:uppercase" oninput="verificaRevisioneDocumento()"></div>
+        <div><label>Data di nascita</label><input id="doc-nascita" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this); verificaRevisioneDocumento()"></div>
+        <div><label>Sesso</label><select id="doc-sesso"><option value=""></option><option value="M">M</option><option value="F">F</option></select></div>
+        <div class="full"><label>Luogo di nascita</label><input id="doc-luogo" style="text-transform:uppercase"></div>
+        <div class="full"><label>Codice fiscale</label><input id="doc-cf" maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); verificaRevisioneDocumento()"></div>
+      </div>
+      <div id="doc-verifica" style="font-size:12.5px; margin-top:8px"></div>
+      <details style="margin-top:8px; font-size:12px"><summary style="cursor:pointer; color:var(--sub)">Testo letto dal documento</summary><pre id="doc-testo" style="white-space:pre-wrap; max-height:160px; overflow:auto; background:var(--bg); padding:8px; border-radius:8px"></pre></details>
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap">
+        <button type="button" class="btn-add" style="margin:0" onclick="usaDatiDocumento()">✓ Usa questi dati</button>
+        <button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="apriLetturaDocumento()">↺ Riprova</button>
+        <button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="chiudiLetturaDocumento()">Annulla</button>
+      </div>
     </div>
-    <div style="font-size:11px; color:var(--sub); margin-top:10px">L'immagine resta sul dispositivo: non viene salvata ne' inviata.</div>
   </div>
 </div>
 <div id="qr-overlay" class="qr-overlay" onclick="this.classList.remove('open')">
@@ -354,7 +375,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <label>Codice fiscale</label>
       <div style="display:flex; gap:6px">
         <input id="f-codfisc" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace; letter-spacing:.04em" oninput="this.value=normalizzaCF(this.value); controllaCampoCF(); aggiornaStoricoForm()">
-        <button type="button" class="btn-scan-cf" onclick="apriScannerCF(onCFLetto)" title="Leggi il codice a barre della tessera sanitaria">📷 Tessera</button>
+        <button type="button" class="btn-scan-cf" onclick="apriLetturaDocumento()" title="Leggi i dati da carta d'identita', tessera sanitaria o patente">📄 Leggi documento</button>
       </div>
       <div id="f-codfisc-msg" style="font-size:12px; margin-top:4px; display:none"></div>
     </div>
@@ -539,16 +560,17 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/qrcode.js?v=1"></script>
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
-<script src="js/codice-fiscale.js?v=1"></script>
+<script src="js/codice-fiscale.js?v=2"></script>
+<script src="js/ocr-documento.js?v=1"></script>
 <script src="js/scadenze.js?v=1"></script>
-<script src="js/config.js?v=202610046"></script>
-<script src="js/auth.js?v=202610046"></script>
+<script src="js/config.js?v=202610047"></script>
+<script src="js/auth.js?v=202610047"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610046"></script>
-<script src="js/import-clienti.js?v=202610046"></script>
-<script src="js/app.js?v=202610046"></script>
+<script src="js/data.js?v=202610047"></script>
+<script src="js/import-clienti.js?v=202610047"></script>
+<script src="js/app.js?v=202610047"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->
