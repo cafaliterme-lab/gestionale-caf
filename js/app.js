@@ -192,13 +192,32 @@ function storicoClienteHTML(p){
   if(!p.nome) return '';
   const altre = (state.pratiche||[]).filter(function(x){ return x.nome === p.nome; });
   if(altre.length <= 1) return '';
-  const totFatt = altre.reduce(function(a,x){ return a+Number(x.compenso||0); }, 0);
-  const totPag = altre.reduce(function(a,x){ return a+Number(x.pagato||0); }, 0);
-  const anni = Array.from(new Set(altre.map(annoPratica))).sort();
+  const somma = function(l, k){ return l.reduce(function(a,x){ return a+Number(x[k]||0); }, 0); };
+  const perAnno = {};
+  altre.forEach(function(x){ (perAnno[annoPratica(x)] = perAnno[annoPratica(x)] || []).push(x); });
+  const anni = Object.keys(perAnno).sort(function(a,b){ return b-a; });
+  const cella = 'padding:3px 6px; border-bottom:1px solid var(--line)';
+  const num = cella + '; text-align:right; white-space:nowrap';
   return '<div class="meta" style="margin-top:6px; padding-top:6px; border-top:1px dashed var(--line)">'
-    + '<b>Storico cliente (tutti gli anni: ' + anni.join(', ') + ')</b><br>'
-    + altre.length + ' pratiche · Fatturato totale: ' + fmtEuro(totFatt) + ' · Pagato totale: ' + fmtEuro(totPag)
-    + '</div>';
+    + '<b>Storico cliente</b> · ' + altre.length + ' pratiche · Fatturato totale: <b>' + fmtEuro(somma(altre,'compenso')) + '</b> · Incassato totale: <b>' + fmtEuro(somma(altre,'pagato')) + '</b>'
+    + '<div style="overflow-x:auto; margin-top:6px"><table style="width:100%; border-collapse:collapse; font-size:12px">'
+    + '<thead><tr><th style="'+cella+'; text-align:left">N.</th><th style="'+cella+'; text-align:left">Tipo di pratica</th><th style="'+num+'">Fattura</th><th style="'+num+'">Incasso</th></tr></thead><tbody>'
+    + anni.map(function(anno){
+      const lista = perAnno[anno].slice().sort(function(a,b){ return a.numero - b.numero; });
+      return '<tr><td colspan="2" style="'+cella+'; font-weight:700; background:var(--bg)">Anno ' + esc(anno) + '</td>'
+        + '<td style="'+num+'; font-weight:700; background:var(--bg)">' + fmtEuro(somma(lista,'compenso')) + '</td>'
+        + '<td style="'+num+'; font-weight:700; background:var(--bg)">' + fmtEuro(somma(lista,'pagato')) + '</td></tr>'
+        + lista.map(function(x){
+          const col = coloreCollaboratore(x.tipo || 'SENZA TIPO');
+          const questa = x.id === p.id;
+          return '<tr' + (questa ? ' style="font-weight:700"' : '') + '>'
+            + '<td style="'+cella+'">' + esc(formattaProtocollo(x)) + (questa ? ' (questa)' : '') + '</td>'
+            + '<td style="'+cella+'"><span style="display:inline-block; background:'+col+'; color:#fff; font-weight:600; border-radius:999px; padding:1px 8px">' + esc(x.tipo || 'SENZA TIPO') + '</span></td>'
+            + '<td style="'+num+'">' + fmtEuro(Number(x.compenso||0)) + '</td>'
+            + '<td style="'+num+'">' + fmtEuro(Number(x.pagato||0)) + '</td></tr>';
+        }).join('');
+    }).join('')
+    + '</tbody></table></div></div>';
 }
 // Storico del cliente nel modulo di inserimento: tutte le pratiche passate (anche come congiunto).
 // Se la data di nascita e' nota da entrambe le parti deve coincidere, per non confondere gli omonimi.
