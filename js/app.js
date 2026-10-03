@@ -25,7 +25,7 @@ const STATI = {
   pagato_da_ritirare:{l:'Pagato da ritirare', c:'#2f9e5f', e:'🟢'},
   rinuncia_compilazione:{l:'Rinuncia alla compilazione', c:'#374151', e:'⚫'}
 };
-const TIPI_DEFAULT = ["730 SEDE","730 BRIGUGLIO ANTONIO","730 CAMINITI ANTONIO","730 CAMINITI LUIGI","730 RICCA AGATINO","730 FILCA","730 CRISAFULLI ROBERTO","730 FARAONE ARTURO","730 DECEDUTI","730 INTEGRATIVI/RETTIFICATIVI","730 TRIOLO CARMELA","730 DI BELLA SANTINO","CONTRATTI DI AFFITTO","CONTRATTI COLF E BADANTI"];
+const TIPI_DEFAULT = ["730 SEDE","730 BRIGUGLIO ANTONIO","730 CAMINITI ANTONIO","730 CAMINITI LUIGI","730 RICCA AGATINO","730 FILCA","730 CRISAFULLI ROBERTO","730 FARAONE ARTURO","730 DECEDUTI","730 INTEGRATIVI/RETTIFICATIVI","730 TRIOLO CARMELA","730 DI BELLA SANTINO","CONTRATTI DI AFFITTO","CONTRATTI COLF E BADANTI","ISEE A PAGAMENTO","IMU"];
 function getTipiList(){ return (state.collaboratori && state.collaboratori.length) ? state.collaboratori : TIPI_DEFAULT; }
 Object.defineProperty(window, 'TIPI', { get: function(){ return getTipiList(); } });
 function statoLabel(s){ return (STATI[s]||{}).l || s; }
@@ -1242,10 +1242,12 @@ function render(){
         <div><div class="chart-cap">Pratiche per stato</div><div class="chart-wrap"><canvas id="ch-stati"></canvas></div></div>
         <div><div class="chart-cap">Fatture emesse e Incasso</div><div class="chart-wrap"><canvas id="ch-eur"></canvas></div></div>
       </div>
-      <div class="raff-diff" id="raff-diff"></div>`;
+      <div class="raff-diff" id="raff-diff"></div>
+      <div id="raff-tipi" style="margin-top:14px"></div>`;
   }
   document.getElementById('raff-diff').textContent = 'Ancora da incassare (fatture emesse − incasso): ' + fmtEuro(fattureEmesse - incasso);
   aggiornaGrafici(fattureEmesse, incasso);
+  document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno);
 
   const tab = document.getElementById('tabella');
   const ordinate = filtra([...pratAnno].sort((a,b)=> a.numero - b.numero));
@@ -1598,3 +1600,26 @@ document.addEventListener('DOMContentLoaded', async function(){
   if(ultima && ultima.tipo){ document.getElementById('f-tipo').value = ultima.tipo; pickChip('f-tipo-btns','f-tipo', ultima.tipo); }
 });
 
+function riepilogoPerTipo(pratiche){
+  const righe = {};
+  pratiche.forEach(function(p){
+    const k = p.tipo || 'SENZA TIPO';
+    const r = righe[k] || (righe[k] = { n:0, fatt:0, inc:0 });
+    r.n++;
+    r.fatt += Number(p.compenso||0);
+    r.inc += Number(p.pagato||0);
+  });
+  const ordine = getTipiList();
+  const tipi = Object.keys(righe).sort(function(a,b){
+    const ia = ordine.indexOf(a), ib = ordine.indexOf(b);
+    return (ia<0?999:ia) - (ib<0?999:ib);
+  });
+  if(!tipi.length) return '';
+  return '<div class="raff-title">Dettaglio per tipo di pratica</div>'
+    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Tipo di pratica</th><th>Pratiche</th><th>Fatture emesse</th><th>Incasso</th><th>Da incassare</th></tr></thead><tbody>'
+    + tipi.map(function(t){
+      const r = righe[t];
+      return '<tr><td>'+esc(t)+'</td><td>'+r.n+'</td><td>'+fmtEuro(r.fatt)+'</td><td>'+fmtEuro(r.inc)+'</td><td>'+fmtEuro(r.fatt-r.inc)+'</td></tr>';
+    }).join('')
+    + '</tbody></table></div>';
+}
