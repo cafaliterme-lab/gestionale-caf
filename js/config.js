@@ -112,8 +112,11 @@ const fromTable = (table) => ({
     async execute() { return { data: [], error: null }; },
     eq: (col, val) => ({
       single: async () => {
-        const { data, ok } = await fetchSupabase(`/rest/v1/${table}?${col}=eq.${val}`);
-        return { data: data?.[0] || null, error: ok ? null : { message: 'Errore' } };
+        const { data, ok } = await fetchSupabase(`/rest/v1/${table}?${col}=eq.${val}&select=${columns}`);
+        if (!ok || !Array.isArray(data)) {
+          return { data: null, error: { message: data?.message || 'Errore caricamento profilo' } };
+        }
+        return { data: data[0] || null, error: data.length === 0 ? { message: 'Non trovato' } : null };
       },
     }),
   }),
@@ -122,7 +125,10 @@ const fromTable = (table) => ({
     eq: (col, val) => ({
       async execute() {
         const { data, ok } = await fetchSupabase(`/rest/v1/${table}?${col}=eq.${val}`, 'PATCH', updates);
-        return { error: ok ? null : { message: data?.error || 'Errore' } };
+        if (!ok) {
+          return { error: { message: data?.message || data?.error || 'Errore aggiornamento' } };
+        }
+        return { error: null };
       },
     }),
   }),
@@ -131,7 +137,10 @@ const fromTable = (table) => ({
     select: () => ({
       async execute() {
         const { data, ok } = await fetchSupabase(`/rest/v1/${table}`, 'POST', Array.isArray(records) ? records : [records]);
-        return { data, error: ok ? null : { message: 'Errore' } };
+        if (!ok) {
+          return { data: null, error: { message: data?.message || 'Errore inserimento' } };
+        }
+        return { data, error: null };
       },
     }),
   }),

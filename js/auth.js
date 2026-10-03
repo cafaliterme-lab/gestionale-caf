@@ -96,6 +96,21 @@ async function logout() {
 }
 
 /**
+ * Decodifica JWT token per estrarre l'ID dell'utente
+ */
+function parseJwt(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.error('Errore decodifica JWT:', e);
+    return null;
+  }
+}
+
+/**
  * Carica il profilo dell'utente loggato dal database
  * @returns {Promise<object|null>} il profilo, o null se non loggato
  */
@@ -107,10 +122,17 @@ async function caricaProfilo() {
     return null;
   }
 
+  const payload = parseJwt(token);
+  if (!payload || !payload.sub) {
+    console.error('Token non valido');
+    auth.profilo = null;
+    return null;
+  }
+
   const { data, error } = await sb
     .from('profili')
     .select('*')
-    .eq('id', token)
+    .eq('id', payload.sub)
     .single();
 
   if (error) {
