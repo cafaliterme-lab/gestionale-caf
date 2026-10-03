@@ -1048,7 +1048,7 @@ function pickChip(containerId, selectId, val){
     dd.classList.remove('open');
   }
   if(containerId === 'f-tipo-btns') coloraTriggerTipo();
-  if(containerId === 'f-stato-btns'){ const df = document.getElementById('f-data-fine'); if(df) df.value = val === 'lavorata' ? todayIT() : ''; }
+  if(containerId === 'f-stato-btns'){ coloraTriggerStato(); const df = document.getElementById('f-data-fine'); if(df) df.value = val === 'lavorata' ? todayIT() : ''; }
 }
 function showTab(btn){
   const tab = btn.dataset.tab;
@@ -1113,9 +1113,25 @@ function initStatoBtns(){
   const sel = document.getElementById('f-stato');
   sel.innerHTML = statoOptions('arrivo');
   renderChips('f-stato-btns','f-stato', Object.keys(STATI), function(k){ return STATI[k].l; }, function(k){ return k; }, null, function(k){ return STATI[k].c; });
+  Array.from(document.getElementById('f-stato-btns').children).forEach(function(b, i){
+    const col = STATI[Object.keys(STATI)[i]].c;
+    b.classList.add('chip-tipo');
+    b.style.background = col;
+    b.style.borderColor = col;
+    b.style.color = '#fff';
+  });
   const chip = document.getElementById('f-stato-btns').querySelector('.active');
   const lbl = document.getElementById('f-stato-dd-label');
   if(lbl && chip){ lbl.innerHTML = chip.innerHTML; }
+  coloraTriggerStato();
+}
+function coloraTriggerStato(){
+  const trig = document.querySelector('#f-stato-dd .chip-dd-trigger');
+  const st = STATI[document.getElementById('f-stato').value];
+  if(!trig || !st) return;
+  trig.style.background = st.c;
+  trig.style.borderColor = st.c;
+  trig.style.color = '#fff';
 }
 document.addEventListener('click', function(e){
   document.querySelectorAll('.chip-dd.open').forEach(function(dd){

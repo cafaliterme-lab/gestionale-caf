@@ -168,7 +168,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .form-anagrafica{position:relative; isolation:isolate; overflow:hidden; background:radial-gradient(circle at 50% 45%, color-mix(in srgb, #2f9e5f 9%, transparent), transparent 65%), var(--card)}
 .form-anagrafica::before{content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background-image:var(--logo-cisl); background-repeat:no-repeat; background-position:center 45%; background-size:min(420px, 65%); opacity:.09; filter:blur(.5px) saturate(1.2)}
 .chip.chip-tipo.active{box-shadow:0 0 0 2px var(--card), 0 0 0 4px var(--ink)}
-#f-tipo-dd .chip-dd-trigger[style*="color"] .arrow{color:inherit}
+#f-tipo-dd .chip-dd-trigger[style*="color"] .arrow, #f-stato-dd .chip-dd-trigger[style*="color"] .arrow{color:inherit}
 .stat.gray{background:#374151; border-color:#374151; color:#fff}
 .stat.gray span{color:rgba(255,255,255,.9); font-weight:600}
 .caf-row{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px}
@@ -587,7 +587,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610061"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610061"></script>
+<script src="js/app.js?v=202610062"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->
