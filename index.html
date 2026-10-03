@@ -182,6 +182,13 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .coll-row:last-child{border-bottom:none}
 .coll-row button{background:none; border:none; color:#c0392b; font-weight:700; cursor:pointer; padding:4px 8px}
 
+.btn-scan-cf{flex:none; background:var(--accent); color:var(--accent-ink); padding:8px 12px; font-size:13px; white-space:nowrap}
+.scanner-overlay{display:none; position:fixed; inset:0; z-index:250; background:rgba(10,20,36,.75); align-items:center; justify-content:center; padding:16px}
+.scanner-overlay.open{display:flex}
+.scanner-box{background:var(--card); color:var(--ink); border-radius:16px; padding:16px; text-align:center; width:100%; max-width:520px}
+.scanner-vista{position:relative}
+#scanner-video{display:block; width:100%; max-height:55vh; background:#000; border-radius:10px; object-fit:cover}
+.scanner-guida{position:absolute; left:6%; right:6%; top:35%; bottom:35%; border:3px dashed rgba(255,255,255,.9); border-radius:8px; box-shadow:0 0 0 999px rgba(0,0,0,.25); pointer-events:none}
 .qr-app{margin-left:auto; align-self:flex-end; flex:none; width:76px; height:76px; padding:4px; border:none; border-radius:10px; background:#fff; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.25); position:relative; z-index:6}
 .qr-app svg, #qr-grande svg{display:block; width:100%; height:100%}
 @media (max-width:560px){.qr-app{display:none}}
@@ -234,6 +241,21 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   </div>
   <button type="button" id="qr-app" class="qr-app" onclick="apriQrApp()" title="Inquadra con la fotocamera del telefono per aprire l'app"></button>
 </header>
+<div id="scanner-overlay" class="scanner-overlay">
+  <div class="scanner-box">
+    <div style="font-weight:700; margin-bottom:8px">📷 Leggi tessera sanitaria</div>
+    <div class="scanner-vista">
+      <video id="scanner-video" playsinline muted autoplay></video>
+      <div class="scanner-guida"></div>
+    </div>
+    <div id="scanner-msg" style="font-size:12.5px; margin-top:8px"></div>
+    <div style="display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap">
+      <label class="btn-add" style="margin:0; cursor:pointer">📸 Scatta una foto<input type="file" accept="image/*" capture="environment" style="display:none" onchange="leggiCFDaFoto(this)"></label>
+      <button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="chiudiScannerCF()">Annulla</button>
+    </div>
+    <div style="font-size:11px; color:var(--sub); margin-top:10px">L'immagine resta sul dispositivo: non viene salvata ne' inviata.</div>
+  </div>
+</div>
 <div id="qr-overlay" class="qr-overlay" onclick="this.classList.remove('open')">
   <div class="qr-box">
     <div id="qr-grande"></div>
@@ -294,15 +316,23 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
     </div>
     <div>
       <label>Cognome</label>
-      <input id="f-cognome" placeholder="Es. Rossi" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); aggiornaStoricoForm()">
+      <input id="f-cognome" placeholder="Es. Rossi" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); controllaCampoCF(); aggiornaStoricoForm()">
     </div>
     <div>
       <label>Nome</label>
-      <input id="f-nome" placeholder="Es. Mario" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); aggiornaStoricoForm()">
+      <input id="f-nome" placeholder="Es. Mario" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); controllaCampoCF(); aggiornaStoricoForm()">
     </div>
     <div>
       <label>Data di nascita</label>
-      <input id="f-cf" type="text" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this); aggiornaStoricoForm()">
+      <input id="f-cf" type="text" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this); controllaCampoCF(); aggiornaStoricoForm()">
+    </div>
+    <div>
+      <label>Codice fiscale</label>
+      <div style="display:flex; gap:6px">
+        <input id="f-codfisc" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace; letter-spacing:.04em" oninput="this.value=normalizzaCF(this.value); controllaCampoCF(); aggiornaStoricoForm()">
+        <button type="button" class="btn-scan-cf" onclick="apriScannerCF(onCFLetto)" title="Leggi il codice a barre della tessera sanitaria">📷 Tessera</button>
+      </div>
+      <div id="f-codfisc-msg" style="font-size:12px; margin-top:4px; display:none"></div>
     </div>
     <div class="full">
       <label class="chk"><input type="checkbox" id="f-congiunta-on" onchange="toggleCongBox()"> Congiunta</label>
@@ -456,14 +486,16 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/qrcode.js?v=1"></script>
-<script src="js/config.js?v=202610044"></script>
-<script src="js/auth.js?v=202610044"></script>
+<script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
+<script src="js/codice-fiscale.js?v=1"></script>
+<script src="js/config.js?v=202610045"></script>
+<script src="js/auth.js?v=202610045"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610044"></script>
-<script src="js/import-clienti.js?v=202610044"></script>
-<script src="js/app.js?v=202610044"></script>
+<script src="js/data.js?v=202610045"></script>
+<script src="js/import-clienti.js?v=202610045"></script>
+<script src="js/app.js?v=202610045"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

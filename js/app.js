@@ -100,10 +100,19 @@ function clienteEsiste(cognome, nome, dataNascita){
   const nc = (cognome+' '+nome).trim().toUpperCase();
   return ARCHIVIO_CLIENTI.some(function(c){ return c.nomeCompleto.toUpperCase() === nc && (c.dataNascita||'') === (dataNascita||''); });
 }
-function registraClienteSeNuovo(cognome, nome, dataNascita){
+function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale){
   cognome = (cognome||'').trim().toUpperCase();
   nome = (nome||'').trim().toUpperCase();
   if(!cognome && !nome) return;
+  if(codiceFiscale){
+    if(ARCHIVIO_CLIENTI.some(function(c){ return c.codiceFiscale === codiceFiscale; })) return;
+    const nc = (cognome+' '+nome).trim();
+    const esistente = ARCHIVIO_CLIENTI.find(function(c){ return c.nomeCompleto.toUpperCase() === nc && (c.dataNascita||'') === (dataNascita||'') && !c.codiceFiscale; });
+    if(esistente) esistente.codiceFiscale = codiceFiscale;
+    else ARCHIVIO_CLIENTI.push({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: (dataNascita||'').trim(), codiceFiscale: codiceFiscale });
+    data.clienti.salvaCF({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: (dataNascita||'').trim(), codiceFiscale: codiceFiscale });
+    return;
+  }
   if(clienteEsiste(cognome, nome, dataNascita)) return;
   const nuovo = { nomeCompleto: (cognome+' '+nome).trim(), cognome: cognome, nome: nome, dataNascita: (dataNascita||'').trim() };
   ARCHIVIO_CLIENTI.push(nuovo);
@@ -122,10 +131,10 @@ function cercaClienti(q, ctx){
   const box = document.getElementById(ctx==='cong' ? 'cli-results-cong' : 'cli-results');
   q = (q||'').trim().toLowerCase();
   if(!q){ box.classList.remove('open'); box.innerHTML=''; return; }
-  const match = ARCHIVIO_CLIENTI.filter(function(c){ return c.nomeCompleto.toLowerCase().indexOf(q) >= 0; }).slice(0,8);
+  const match = ARCHIVIO_CLIENTI.filter(function(c){ return c.nomeCompleto.toLowerCase().indexOf(q) >= 0 || (c.codiceFiscale||'').toLowerCase().indexOf(q) >= 0; }).slice(0,8);
   if(!match.length){ box.innerHTML = '<div class="cli-row" style="cursor:default">Nessun cliente trovato</div>'; box.classList.add('open'); return; }
   box.innerHTML = match.map(function(c,i){
-    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'"><b>'+esc(c.nomeCompleto)+'</b><span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+'</span></div>';
+    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'"><b>'+esc(c.nomeCompleto)+'</b><span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+'</span></div>';
   }).join('');
   box.dataset.match = JSON.stringify(match);
   box.classList.add('open');
@@ -146,6 +155,8 @@ function scegliCliente(i, ctx){
     document.getElementById('f-nome').value = c.nome.toUpperCase();
     document.getElementById('f-cf').value = c.dataNascita;
     document.getElementById('cli-cerca').value = c.nomeCompleto;
+    document.getElementById('f-codfisc').value = c.codiceFiscale || '';
+    controllaCampoCF();
     aggiornaStoricoForm();
   }
   box.classList.remove('open');
@@ -190,9 +201,10 @@ function storicoClienteHTML(p){
 }
 // Storico del cliente nel modulo di inserimento: tutte le pratiche passate (anche come congiunto).
 // Se la data di nascita e' nota da entrambe le parti deve coincidere, per non confondere gli omonimi.
-function praticheDelCliente(nomeCompleto, dataNascita){
+function praticheDelCliente(nomeCompleto, dataNascita, codiceFiscale){
   const stessaData = function(d){ return !dataNascita || !d || d === dataNascita; };
   return (state.pratiche||[]).filter(function(p){
+    if(codiceFiscale && p.codiceFiscale) return p.codiceFiscale === codiceFiscale;
     const comeTitolare = (p.nome||'').toUpperCase() === nomeCompleto && stessaData(p.cf);
     const comeCongiunto = ((p.congCognome||'')+' '+(p.congNome||'')).trim().toUpperCase() === nomeCompleto && stessaData(p.congData);
     return comeTitolare || comeCongiunto;
@@ -205,7 +217,8 @@ function aggiornaStoricoForm(){
   const nome = document.getElementById('f-nome').value.trim().toUpperCase();
   const nomeCompleto = (cognome+' '+nome).trim();
   const dataNascita = document.getElementById('f-cf').value.trim();
-  const lista = cognome ? praticheDelCliente(nomeCompleto, /^\d{2}\/\d{2}\/\d{4}$/.test(dataNascita) ? dataNascita : '') : [];
+  const cfForm = document.getElementById('f-codfisc').value;
+  const lista = cognome ? praticheDelCliente(nomeCompleto, /^\d{2}\/\d{2}\/\d{4}$/.test(dataNascita) ? dataNascita : '', cfValido(cfForm) ? cfForm : '') : [];
   if(!cognome){ box.style.display = 'none'; box.innerHTML = ''; return; }
   box.style.display = 'block';
   if(!lista.length){
@@ -223,6 +236,41 @@ function aggiornaStoricoForm(){
           + '<td>'+esc(statoLabel(p.stato))+'</td><td>'+(p.compenso!=null && p.compenso!=='' ? fmtEuro(p.compenso) : '-')+'</td><td>'+(p.pagato!=null && p.pagato!=='' ? fmtEuro(p.pagato) : '-')+'</td><td>'+esc(p.inseritoDa||'-')+'</td></tr>';
       }).join('')
     + '</tbody></table></div>';
+}
+// Messaggio sotto il campo codice fiscale: validita', dati ricavati e coerenza con il modulo
+function controllaCampoCF(){
+  const el = document.getElementById('f-codfisc-msg');
+  const cf = document.getElementById('f-codfisc').value;
+  if(!cf){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  if(cf.length < 16){ el.style.color = 'var(--sub)'; el.textContent = cf.length + '/16 caratteri'; return; }
+  if(!cfValido(cf)){ el.style.color = '#c0392b'; el.textContent = '❌ Codice fiscale non valido (controlla i caratteri)'; return; }
+  const dati = datiDaCF(cf);
+  const avvisi = controllaCoerenzaCF(cf, document.getElementById('f-cognome').value, document.getElementById('f-nome').value, document.getElementById('f-cf').value);
+  if(avvisi.length){ el.style.color = '#b5842a'; el.textContent = '⚠️ Attenzione: ' + avvisi.join('; ') + '.'; return; }
+  el.style.color = 'var(--accent)';
+  el.textContent = '✓ Codice valido · ' + (dati.sesso === 'F' ? 'Donna nata il ' : 'Uomo nato il ') + dati.dataNascita;
+}
+// Codice letto dalla tessera: compila i campi vuoti, usando l'archivio se il cliente c'e' gia'
+function onCFLetto(cf){
+  document.getElementById('f-codfisc').value = cf;
+  let archiviato = ARCHIVIO_CLIENTI.find(function(c){ return c.codiceFiscale === cf; });
+  if(!archiviato){
+    // Clienti importati senza CF: riconoscibili se cognome, nome e data di nascita corrispondono al codice
+    const candidati = ARCHIVIO_CLIENTI.filter(function(c){ return !c.codiceFiscale && c.dataNascita && controllaCoerenzaCF(cf, c.cognome, c.nome, c.dataNascita).length === 0; });
+    if(candidati.length === 1) archiviato = candidati[0];
+  }
+  const campo = function(id, valore){ const el = document.getElementById(id); if(!el.value.trim() && valore) el.value = valore; };
+  if(archiviato){
+    campo('f-cognome', (archiviato.cognome||'').toUpperCase());
+    campo('f-nome', (archiviato.nome||'').toUpperCase());
+    campo('f-cf', archiviato.dataNascita);
+    document.getElementById('cli-cerca').value = archiviato.nomeCompleto;
+  }
+  campo('f-cf', datiDaCF(cf).dataNascita);
+  controllaCampoCF();
+  aggiornaStoricoForm();
+  avviso(archiviato ? '✓ Cliente gia\' in archivio: ' + archiviato.nomeCompleto : '✓ Codice fiscale letto: ' + cf);
 }
 function formattaInserimento(p){
   if(!p.inseritoDa && !p.inseritoIl) return '-';
@@ -1331,15 +1379,21 @@ async function addPraticaInterna(){
     msg.style.display = 'block';
     return;
   }
+  const codiceFiscale = document.getElementById('f-codfisc').value.trim();
+  if(codiceFiscale && !cfValido(codiceFiscale)){
+    msg.textContent = '⚠️ Il codice fiscale non e\' valido: correggilo o lascia il campo vuoto.';
+    msg.style.display = 'block';
+    return;
+  }
 
   const annoPr = annoDiData(dataPratica);
-  registraClienteSeNuovo(cognome, nomeProprio, cf);
+  registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale);
   if(congCognome || congNome){ registraClienteSeNuovo(congCognome, congNome, congData); }
 
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, telefono, cf, tipo, compenso, pagato, data: dataPratica, note,
+    nome, congiunta, congCognome, congNome, congData, telefono, cf, codiceFiscale, tipo, compenso, pagato, data: dataPratica, note,
     stato: document.getElementById('f-stato').value || 'arrivo',
     fatt: 'dafatturare',
     numFattura: '',
@@ -1359,6 +1413,8 @@ async function addPraticaInterna(){
   document.getElementById('f-cognome').value='';
   document.getElementById('f-nome').value='';
   document.getElementById('f-cf').value='';
+  document.getElementById('f-codfisc').value='';
+  controllaCampoCF();
   pickChip('f-tipo-btns','f-tipo', document.getElementById('f-tipo').value);
   document.getElementById('f-compenso').value='';
   document.getElementById('f-pagato').value='';

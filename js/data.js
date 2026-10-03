@@ -106,6 +106,7 @@ const schemas = {
     inseritoDa: 'inserito_da',
     inseritoIl: 'inserito_il',
     aggiornatoIl: 'aggiornato_il',
+    codiceFiscale: 'codice_fiscale',
   },
   versamento: {
     id: 'id',
@@ -130,6 +131,7 @@ const schemas = {
     cognome: 'cognome',
     nome: 'nome',
     dataNascita: 'data_nascita',
+    codiceFiscale: 'codice_fiscale',
   },
   collaboratore: {
     nome: 'nome',
@@ -467,6 +469,26 @@ async function aggiungiCliente(cliente) {
 }
 
 /**
+ * Clienti - Salva il codice fiscale (aggiorna il cliente archiviato o lo crea)
+ */
+async function salvaClienteCF(cliente) {
+  try {
+    const { error } = await supabase.rpc('salva_cliente_cf', {
+      p_nome_completo: cliente.nomeCompleto,
+      p_cognome: cliente.cognome,
+      p_nome: cliente.nome,
+      p_data_nascita: cliente.dataNascita || '',
+      p_codice_fiscale: cliente.codiceFiscale,
+    });
+    if (error) throw new Error(error.message);
+    return {};
+  } catch (err) {
+    mostraErrore('Errore salvataggio codice fiscale: ' + err.message);
+    return { error: err.message };
+  }
+}
+
+/**
  * Clienti - Importa una lista di clienti in batch
  */
 async function aggiungiListaClienti(clienti) {
@@ -589,6 +611,7 @@ window.data = {
   },
   clienti: {
     aggiungi: aggiungiCliente,
+    salvaCF: salvaClienteCF,
     aggiungiLista: aggiungiListaClienti,
   },
   collaboratori: {
