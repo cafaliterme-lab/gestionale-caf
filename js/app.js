@@ -323,14 +323,13 @@ const TAB_LABELS = {
   registro: 'REGISTRO DI PROTOCOLLO',
   contabilita: "CONTABILITA'",
   caf: 'VERSAMENTI CAF',
-  isee: 'ISEE A PAGAMENTO',
   collaboratori: 'COLLABORATORI',
   scadenze: 'SCADENZE'
 };
 let currentUser = null;
 let loginSelezionato = null;
 function permessiDefault(){
-  return { tabs: { anagrafica:true, registro:true, contabilita:false, caf:false, isee:false, collaboratori:false }, soloLettura: true };
+  return { tabs: { anagrafica:true, registro:true, contabilita:false, caf:false, collaboratori:false }, soloLettura: true };
 }
 function utentiDefault(){
   return [
@@ -1037,7 +1036,6 @@ function showTab(btn){
   btn.classList.add('active');
   if(tab === 'collaboratori') renderCollaboratori();
   if(tab === 'scadenze') renderScadenze();
-  if(tab === 'isee') renderIsee();
   if(tab === 'permessi') renderPermessi(); // async, but fires in background
 }
 function renderCollaboratori(){
@@ -1160,7 +1158,6 @@ function filtra(lista){
 }
 
 function render(){
-  renderIsee();
   const list = document.getElementById('gruppi'); const oldList = document.getElementById('list'); if(oldList) oldList.innerHTML = '';
   const summary = document.getElementById('summary');
   initSelettoreAnno();
@@ -1601,52 +1598,3 @@ document.addEventListener('DOMContentLoaded', async function(){
   if(ultima && ultima.tipo){ document.getElementById('f-tipo').value = ultima.tipo; pickChip('f-tipo-btns','f-tipo', ultima.tipo); }
 });
 
-
-function fmtDataIsee(d){
-  if(!d) return '-';
-  const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return m ? m[3]+'/'+m[2]+'/'+m[1] : String(d);
-}
-
-function renderIsee(){
-  const card = document.getElementById('isee-card');
-  if(!card) return;
-  const lista = state.isee || [];
-  if(!lista.length){
-    card.innerHTML = '<div class="empty">Nessun ISEE registrato</div>';
-    return;
-  }
-  const tot = lista.reduce(function(a,i){ return a+Number(i.importo||0); }, 0);
-  const incassato = lista.filter(function(i){ return i.pagato; }).reduce(function(a,i){ return a+Number(i.importo||0); }, 0);
-  const scrivibile = typeof puo !== 'function' || puo('isee', true);
-  card.innerHTML =
-    '<div class="meta" style="margin-bottom:8px">Totale: <b>'+fmtEuro(tot)+'</b> · Incassato: <b>'+fmtEuro(incassato)+'</b> · Da incassare: <b>'+fmtEuro(tot-incassato)+'</b></div>'
-    + lista.map(function(i){
-      const id = esc(String(i.id));
-      return '<div class="isee-row">'
-        + '<span class="nome"><b>'+esc(i.nome||'')+'</b><br><span style="color:var(--sub)">'+fmtDataIsee(i.data)+'</span></span>'
-        + '<span>'+fmtEuro(Number(i.importo||0))+'</span>'
-        + '<label class="chk" style="margin:0"><input type="checkbox" '+(i.pagato?'checked':'')+(scrivibile?'':' disabled')+' onchange="toggleIseePagato(&quot;'+id+'&quot;, this.checked)"> Pagato</label>'
-        + (scrivibile ? '<button type="button" style="background:none; color:#c0392b; padding:4px 8px" onclick="if(confirm(&quot;Eliminare questo ISEE?&quot;)) rimuoviIsee(&quot;'+id+'&quot;)">✕</button>' : '')
-        + '</div>';
-    }).join('');
-}
-
-function esportaIseeExcel(){
-  const lista = state.isee || [];
-  if(!lista.length){
-    alert('Nessun ISEE da esportare');
-    return;
-  }
-  const ws = XLSX.utils.json_to_sheet(lista.map(function(i){
-    return {
-      Nominativo: i.nome || '',
-      Data: fmtDataIsee(i.data),
-      Importo: Number(i.importo || 0),
-      Stato: i.pagato ? 'Pagato' : 'Da incassare'
-    };
-  }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'ISEE');
-  XLSX.writeFile(wb, 'isee_' + dataOraFile() + '.xlsx');
-}
