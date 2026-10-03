@@ -447,6 +447,37 @@ async function aggiungiCliente(cliente) {
 }
 
 /**
+ * Clienti - Importa una lista di clienti in batch
+ */
+async function aggiungiListaClienti(clienti) {
+  try {
+    if (!clienti || !Array.isArray(clienti) || clienti.length === 0) {
+      return { error: 'Lista clienti vuota o non valida' };
+    }
+
+    const dbClienti = clienti.map(c => mapToDb(c, schemas.cliente));
+
+    // Clienti gia' presenti (stesso nome_completo + data_nascita) vengono saltati
+    const BLOCCO = 500;
+    for (let i = 0; i < dbClienti.length; i += BLOCCO) {
+      const { data, ok } = await fetchSupabase(
+        '/rest/v1/clienti?on_conflict=nome_completo,data_nascita',
+        'POST',
+        dbClienti.slice(i, i + BLOCCO),
+        { 'Prefer': 'resolution=ignore-duplicates,return=minimal' }
+      );
+      if (!ok) throw new Error(data?.message || 'Errore inserimento clienti');
+    }
+
+    await caricaTutto();
+    return { success: true, count: clienti.length };
+  } catch (err) {
+    console.error('Errore importazione clienti:', err);
+    return { error: err.message };
+  }
+}
+
+/**
  * Collaboratori - Salva l'elenco (chiama RPC salva_collaboratori)
  */
 async function salvaCollaboratori(lista) {
@@ -538,6 +569,7 @@ window.data = {
   },
   clienti: {
     aggiungi: aggiungiCliente,
+    aggiungiLista: aggiungiListaClienti,
   },
   collaboratori: {
     salva: salvaCollaboratori,

@@ -7,11 +7,12 @@
 const SUPABASE_URL = 'https://mmaqmprukghyazlibphv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tYXFtcHJ1a2doeWF6bGlicGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NDUyMTUsImV4cCI6MjEwNjUyMTIxNX0.ByRES--bYHZG6o_BX8Ha0YzqfcQIIr-D08Q-AbR8bhs';
 
-async function fetchSupabase(endpoint, method = 'GET', body = null) {
+async function fetchSupabase(endpoint, method = 'GET', body = null, extraHeaders = {}) {
   const token = localStorage.getItem('auth_token');
   const headers = {
     'apikey': SUPABASE_ANON_KEY,
     'Content-Type': 'application/json',
+    ...extraHeaders,
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -21,7 +22,8 @@ async function fetchSupabase(endpoint, method = 'GET', body = null) {
   if (body) options.body = JSON.stringify(body);
 
   const res = await fetch(`${SUPABASE_URL}${endpoint}`, options);
-  const data = await res.json();
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
 
   return { data, status: res.status, ok: res.ok };
 }

@@ -705,7 +705,11 @@ async function importaBackup(){
   const msg = document.getElementById('import-msg');
   msg.style.display = 'none';
   if(!inp.files || !inp.files.length){
-    msg.textContent = '⚠️ Scegli prima un file .json da importare.'; msg.style.display='block'; return;
+    msg.textContent = '⚠️ Scegli prima un file .json o .csv da importare.'; msg.style.display='block'; return;
+  }
+  if(/\.csv$/i.test(inp.files[0].name)){
+    await elaboraImportazione(inp.files[0], msg, document.getElementById('btn-importa'));
+    return;
   }
   if(!confirm('Importando questo file, tutti i dati attuali (pratiche, versamenti, collaboratori, utenti) verranno sostituiti. Continuare?')) return;
   const btn = document.getElementById('btn-importa');
