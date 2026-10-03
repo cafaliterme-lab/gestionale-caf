@@ -230,6 +230,9 @@ async function sottoscrivi(tabella, callback) {
   // Se già sottoscritto, non creare un altro canale
   if (subscriptions[tabella]) return;
 
+  // Il client REST in config.js non supporta il realtime
+  if (typeof supabase.channel !== 'function') return;
+
   // Sottoscrivi ai cambiamenti realtime
   subscriptions[tabella] = supabase
     .channel(`${tabella}-changes`)

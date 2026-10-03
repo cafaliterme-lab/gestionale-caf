@@ -867,6 +867,10 @@ async function initSupabase(){
 
     // Sincronizza i dati dal modulo data.js al state locale di app.js
     syncDataFromSupabase();
+    initSelettoreAnno();
+    initTipoBtns();
+    renderCollaboratori();
+    render();
 
     // Sottoscrivi ai cambiamenti realtime
     data.sottoscrivi('pratiche', () => {
