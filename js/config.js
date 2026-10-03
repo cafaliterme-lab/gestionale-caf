@@ -104,6 +104,18 @@ const authMethods = {
       return { error: { message: err.message } };
     }
   },
+
+  getUser: async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return { data: { user: null }, error: null };
+      const { data, ok } = await fetchSupabase('/auth/v1/user', 'GET');
+      if (!ok) return { data: { user: null }, error: { message: data.error?.message || 'Errore' } };
+      return { data: { user: data }, error: null };
+    } catch (err) {
+      return { data: { user: null }, error: { message: err.message } };
+    }
+  },
 };
 
 const fromTable = (table) => ({
