@@ -51,7 +51,7 @@ function aggiornaGrafici(fe, inc){
   if(chStati && chStati.canvas !== cvS){ chStati.destroy(); chStati = null; }
   if(chEur && chEur.canvas !== cvE){ chEur.destroy(); chEur = null; }
   const keys = Object.keys(STATI).filter(function(k){ return state.pratiche.some(function(p){ return p.stato===k; }); });
-  const dati = keys.map(function(k){ return state.pratiche.filter(function(p){ return p.stato===k; }).length; });
+  const dati = keys.map(function(k){ return sommaPeso(state.pratiche.filter(function(p){ return p.stato===k; })); });
   const labs = keys.map(function(k){ return STATI[k].l; });
   const cols = keys.map(function(k){ return STATI[k].c; });
   if(!chStati){
@@ -179,6 +179,9 @@ function annoDiData(s){
   const d = parseDataIT(s);
   return d ? d.a : (new Date()).getFullYear();
 }
+// Una pratica congiunta vale 2, una singola 1
+function pesoPratica(p){ return (p.congCognome || p.congNome) ? 2 : 1; }
+function sommaPeso(lista){ return lista.reduce(function(t,p){ return t + pesoPratica(p); }, 0); }
 function annoPratica(p){ return p.anno || annoDiData(p.data); }
 // DEPRECATED: La numerazione è gestita dal trigger del database.
 // Questa funzione è usata solo per il fallback offline.
@@ -760,13 +763,13 @@ async function esportaRegistroExcel(){
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
   const incasso = incassoLordo - versatoCaf;
   const DA_LAVORARE = ['arrivo','lavorazione','da_lavorare_scansionata'];
-  const daLavorare = tutte.filter(function(p){ return DA_LAVORARE.indexOf(p.stato)>=0; }).length;
-  const rinunce = tutte.filter(function(p){ return p.stato==='rinuncia_compilazione'; }).length;
-  const lavorate = tutte.length - daLavorare - rinunce;
+  const daLavorare = sommaPeso(tutte.filter(function(p){ return DA_LAVORARE.indexOf(p.stato)>=0; }));
+  const rinunce = sommaPeso(tutte.filter(function(p){ return p.stato==='rinuncia_compilazione'; }));
+  const lavorate = sommaPeso(tutte) - daLavorare - rinunce;
 
   const contabRighe = [
     { 'Voce':'Anno di protocollo', 'Valore': anno },
-    { 'Voce':'Pratiche totali', 'Valore': tutte.length },
+    { 'Voce':'Pratiche totali (congiunte valgono 2)', 'Valore': sommaPeso(tutte) },
     { 'Voce':'Lavorate', 'Valore': lavorate },
     { 'Voce':'Da lavorare', 'Valore': daLavorare },
     { 'Voce':'Rinuncia alla compilazione', 'Valore': rinunce },
@@ -1250,10 +1253,10 @@ function render(){
   }
   const versAnno = (state.versamenti||[]).filter(function(v){ return annoDiData(v.data) === annoSel; });
 
-  const tot = pratAnno.length;
+  const tot = sommaPeso(pratAnno);
   const DA_LAVORARE = ['arrivo','lavorazione','da_lavorare_scansionata'];
-  const daLavorare = pratAnno.filter(p=>DA_LAVORARE.indexOf(p.stato)>=0).length;
-  const rinunce = pratAnno.filter(p=>p.stato==='rinuncia_compilazione').length;
+  const daLavorare = sommaPeso(pratAnno.filter(p=>DA_LAVORARE.indexOf(p.stato)>=0));
+  const rinunce = sommaPeso(pratAnno.filter(p=>p.stato==='rinuncia_compilazione'));
   const lavorate = tot - daLavorare - rinunce;
   const fattureEmesse = pratAnno.reduce((a,p)=>a+Number(p.compenso||0),0);
   const incassoLordo = pratAnno.reduce((a,p)=>a+Number(p.pagato||0),0);
@@ -1697,7 +1700,7 @@ function datiPerTipo(pratiche){
   pratiche.forEach(function(p){
     const k = p.tipo || 'SENZA TIPO';
     const r = righe[k] || (righe[k] = { n:0, fatt:0, inc:0 });
-    r.n++;
+    r.n += pesoPratica(p);
     r.fatt += Number(p.compenso||0);
     r.inc += Number(p.pagato||0);
   });
