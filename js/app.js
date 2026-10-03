@@ -482,6 +482,10 @@ async function aggiungiUtente(){
     alert('⚠️ Inserisci nome e email');
     return;
   }
+  if(!pwd || pwd.length < 6){
+    alert('⚠️ Inserisci una password di almeno 6 caratteri: servira\' al nuovo utente per accedere.');
+    return;
+  }
 
   if(!auth.session){
     alert('❌ Non autenticato');
@@ -497,7 +501,7 @@ async function aggiungiUtente(){
       },
       body: JSON.stringify({
         email,
-        password: pwd || Math.random().toString(36).slice(-8), // password temporanea
+        password: pwd,
         nome,
       }),
     });
@@ -624,9 +628,8 @@ async function esportaBackupJSON(){
     esportatoIl: new Date().toISOString(),
     pratiche: pulisciArray(state.pratiche),
     versamenti: pulisciArray(state.versamenti),
-    collaboratori: state.collaboratori || TIPI_DEFAULT.slice(),
-    permessi: state.permessi || permessiDefault(),
-    utenti: pulisciArray(getUtenti())
+    isee: pulisciArray(state.isee),
+    collaboratori: state.collaboratori || TIPI_DEFAULT.slice()
   };
   try{
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -894,6 +897,10 @@ async function initSupabase(){
 
     // Se non autenticato, non fare nulla (la pagina di login lo gestisce)
     if (!auth.session) return;
+    // Sessione salvata ancora valida: salta la schermata di accesso
+    if (!auth.profilo) return;
+    document.getElementById('login-overlay').style.display = 'none';
+    applicaPermessi();
 
     // Carica tutti i dati
     const ok = await data.caricaTutto();
@@ -903,11 +910,7 @@ async function initSupabase(){
     }
 
     // Sincronizza i dati dal modulo data.js al state locale di app.js
-    syncDataFromSupabase();
-    initSelettoreAnno();
-    initTipoBtns();
-    renderCollaboratori();
-    render();
+    onDatiAggiornati();
 
     // Sottoscrivi ai cambiamenti realtime
     data.sottoscrivi('pratiche', () => {
@@ -935,6 +938,21 @@ async function initSupabase(){
 }
 
 // Sincronizza i dati dal modulo data.js al state locale di app.js
+let ultimiTipi = '';
+// Chiamata da data.js dopo ogni caricamento dei dati (anche dopo ogni salvataggio)
+function onDatiAggiornati(){
+  syncDataFromSupabase();
+  const tipi = JSON.stringify(getTipiList());
+  if(tipi !== ultimiTipi){
+    ultimiTipi = tipi;
+    const scelto = document.getElementById('f-tipo').value;
+    initTipoBtns();
+    if(scelto && getTipiList().indexOf(scelto) >= 0) pickChip('f-tipo-btns','f-tipo', scelto);
+    renderCollaboratori();
+  }
+  initSelettoreAnno();
+  render();
+}
 function syncDataFromSupabase(){
   // data.js scrive direttamente nel `state` globale; qui serve solo l'archivio clienti
   ARCHIVIO_CLIENTI = state.clienti || [];
@@ -1244,7 +1262,7 @@ function render(){
         </div>
       ` : `
       <div class="row-actions">
-        <select onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select>
+        <select class="stato-tab-sel" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select>
         <button onclick="modifica('${p.id}')">Modifica</button>
         <button onclick="rimuovi('${p.id}')" style="${p._confirmDelete?'background:#c0392b;color:#fff':''}">${p._confirmDelete?'Conferma eliminazione?':'Elimina'}</button>
       </div>

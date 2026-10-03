@@ -208,6 +208,9 @@ async function caricaTutto() {
     // app.js usa i collaboratori come semplici nomi (stringhe)
     state.collaboratori = collaboratori.map(c => c.nome);
 
+    // Il client REST non ha il realtime: avvisa l'interfaccia che i dati sono cambiati
+    if (typeof window.onDatiAggiornati === 'function') window.onDatiAggiornati();
+
     return true;
   } catch (err) {
     mostraErrore(err.message);
@@ -299,12 +302,14 @@ async function aggiornaPratica(id, aggiornamenti) {
   try {
     const db = praticaToDb(aggiornamenti);
 
-    const { error } = await supabase
+    const { data: righe, error } = await supabase
       .from('pratiche')
       .update(db)
-      .eq('id', id);
+      .eq('id', id)
+      .select('id');
 
     if (error) throw new Error(error.message);
+    if (!righe || !righe.length) throw new Error('Permesso negato: modifica non salvata');
 
     await caricaTutto();
     return {};
@@ -321,12 +326,14 @@ async function aggiornaPratica(id, aggiornamenti) {
  */
 async function eliminaPratica(id) {
   try {
-    const { error } = await supabase
+    const { data: righe, error } = await supabase
       .from('pratiche')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .select('id');
 
     if (error) throw new Error(error.message);
+    if (!righe || !righe.length) throw new Error('Permesso negato: pratica non eliminata');
 
     await caricaTutto();
     return {};

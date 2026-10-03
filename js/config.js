@@ -7,6 +7,25 @@
 const SUPABASE_URL = 'https://mmaqmprukghyazlibphv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tYXFtcHJ1a2doeWF6bGlicGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NDUyMTUsImV4cCI6MjEwNjUyMTIxNX0.ByRES--bYHZG6o_BX8Ha0YzqfcQIIr-D08Q-AbR8bhs';
 
+async function rinnovaToken() {
+  const refresh = localStorage.getItem('auth_refresh');
+  if (!refresh) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    localStorage.setItem('auth_token', data.access_token);
+    localStorage.setItem('auth_refresh', data.refresh_token);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function fetchSupabase(endpoint, method = 'GET', body = null, extraHeaders = {}) {
   const token = localStorage.getItem('auth_token');
   const headers = {
@@ -21,7 +40,12 @@ async function fetchSupabase(endpoint, method = 'GET', body = null, extraHeaders
   const options = { method, headers };
   if (body) options.body = JSON.stringify(body);
 
-  const res = await fetch(`${SUPABASE_URL}${endpoint}`, options);
+  let res = await fetch(`${SUPABASE_URL}${endpoint}`, options);
+  // Token scaduto (dura ~1 ora): rinnova con il refresh token e riprova una volta
+  if (res.status === 401 && token && !endpoint.startsWith('/auth/v1/token') && await rinnovaToken()) {
+    headers['Authorization'] = `Bearer ${localStorage.getItem('auth_token')}`;
+    res = await fetch(`${SUPABASE_URL}${endpoint}`, options);
+  }
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
 
@@ -35,7 +59,7 @@ const authMethods = {
       const { data, ok } = await fetchSupabase('/auth/v1/signup', 'POST', {
         email: credentials.email,
         password: credentials.password,
-        data: credentials.user_metadata || {},
+        data: credentials.options?.data || credentials.user_metadata || {},
       });
 
       if (!ok || data.error) {
@@ -204,7 +228,7 @@ const fromTable = (table) => {
 
 const rpcCall = async (name, params) => {
   const { data, ok } = await fetchSupabase(`/rest/v1/rpc/${name}`, 'POST', params);
-  return { data, error: ok ? null : { message: data?.error || 'RPC error' } };
+  return { data, error: ok ? null : { message: data?.message || data?.error || 'RPC error' } };
 };
 
 window.supabase = {
