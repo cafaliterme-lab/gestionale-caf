@@ -774,9 +774,10 @@ async function esportaRegistroExcel(){
     { 'Voce':'Da lavorare', 'Valore': daLavorare },
     { 'Voce':'Rinuncia alla compilazione', 'Valore': rinunce },
     { 'Voce':'Fatture emesse (€)', 'Valore': fattureEmesse },
-    { 'Voce':'Incasso (€)', 'Valore': incasso },
+    { 'Voce':'Incasso totale (€)', 'Valore': incassoLordo },
     { 'Voce':'Pagamenti CAF (€)', 'Valore': versatoCaf },
-    { 'Voce':'Incasso − Fatture (€)', 'Valore': incasso - fattureEmesse },
+    { 'Voce':'Netto: incasso − pagamenti CAF (€)', 'Valore': incasso },
+    { 'Voce':'Netto − Fatture (€)', 'Valore': incasso - fattureEmesse },
     { 'Voce':'', 'Valore':'' },
     { 'Voce':'Dettaglio per collaboratore / tipo pratica', 'Valore':'' }
   ];
@@ -1268,10 +1269,11 @@ function render(){
     <div class="stat c3"><b>${tot}</b><span>Pratiche totali</span></div>
     <div class="stat c3"><b>${lavorate}</b><span>Lavorate</span></div>
     <div class="stat c3"><b>${daLavorare}</b><span>Da lavorare</span></div>
-    <div class="stat c4 verde"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE</span></div>
-    <div class="stat c4 viola"><b>${fmtEuro(incasso)}</b><span>INCASSO TOTALE (meno pagamenti CAF)</span></div>
-    <div class="stat c4 blu"><b>${fmtEuro(versatoCaf)}</b><span>PAGAMENTI CAF</span></div>
-    <div class="stat c4 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>INCASSO − FATTURE</span></div>
+    <div class="stat c5 verde"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE</span></div>
+    <div class="stat c5 viola"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
+    <div class="stat c5 blu"><b>${fmtEuro(versatoCaf)}</b><span>PAGAMENTI CAF</span></div>
+    <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">NETTO (incasso − pagamenti CAF)</span></div>
+    <div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>NETTO − FATTURE</span></div>
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730))}
     ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }))}
   `;
@@ -1307,8 +1309,8 @@ function render(){
       <div id="box-ch-tipi" style="margin-top:14px"><div class="chart-cap">Fatture emesse, incasso e provento per tipo di pratica</div><div class="chart-wrap"><canvas id="ch-tipi"></canvas></div></div>
       <div id="raff-tipi" style="margin-top:14px"></div>`;
   }
-  document.getElementById('raff-diff').textContent = 'Provento (incasso − fatture emesse): ' + fmtEuro(incasso - fattureEmesse);
-  aggiornaGrafici(fattureEmesse, incasso);
+  document.getElementById('raff-diff').textContent = 'Netto (incasso − pagamenti CAF) − fatture emesse: ' + fmtEuro(incasso - fattureEmesse);
+  aggiornaGrafici(fattureEmesse, incassoLordo);
   aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno);
 
