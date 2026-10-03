@@ -735,7 +735,6 @@ function rigaPratica(p){
     'Fattura (€)': Number(p.compenso)||0,
     'Pagato (€)': Number(p.pagato)||0,
     'N. Fattura': p.numFattura||'',
-    'Data Fattura': p.dataFattura||'',
     'Inserito da': p.inseritoDa||'',
     'Note': p.note||''
   };
@@ -1048,6 +1047,7 @@ function pickChip(containerId, selectId, val){
     dd.classList.remove('open');
   }
   if(containerId === 'f-tipo-btns') coloraTriggerTipo();
+  if(containerId === 'f-stato-btns'){ const df = document.getElementById('f-data-fine'); if(df) df.value = val === 'lavorata' ? todayIT() : ''; }
 }
 function showTab(btn){
   const tab = btn.dataset.tab;
@@ -1281,10 +1281,12 @@ function render(){
         <div><div class="chart-cap">Fatture emesse e Incasso</div><div class="chart-wrap"><canvas id="ch-eur"></canvas></div></div>
       </div>
       <div class="raff-diff" id="raff-diff"></div>
+      <div id="box-ch-tipi" style="margin-top:14px"><div class="chart-cap">Fatture emesse, incasso e provento per tipo di pratica</div><div class="chart-wrap"><canvas id="ch-tipi"></canvas></div></div>
       <div id="raff-tipi" style="margin-top:14px"></div>`;
   }
-  document.getElementById('raff-diff').textContent = 'Ancora da incassare (fatture emesse − incasso): ' + fmtEuro(fattureEmesse - incasso);
+  document.getElementById('raff-diff').textContent = 'Provento (incasso − fatture emesse): ' + fmtEuro(incasso - fattureEmesse);
   aggiornaGrafici(fattureEmesse, incasso);
+  aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno);
 
   const tab = document.getElementById('tabella');
@@ -1329,7 +1331,7 @@ function render(){
       <div class="meta">Aperta il ${p.data||'-'}${p.dataFine ? ' · <b>Fine lavorazione il '+esc(p.dataFine)+'</b>' : ''} ${p.note ? '· '+esc(p.note) : ''}</div>
       <div class="meta compenso">Fattura: ${fmtEuro(p.compenso)} · Pagato effettivo: ${fmtEuro(p.pagato)}</div>
       ${storicoClienteHTML(p)}
-      ${p.numFattura ? `<div class="meta">Fattura n. ${esc(p.numFattura)} del ${esc(p.dataFattura)||'-'}</div>` : ''}
+      ${p.numFattura ? `<div class="meta">Fattura n. ${esc(p.numFattura)}</div>` : ''}
       ${p._editing ? `
         <div class="grid" style="margin-top:8px">
           <div class="full"><label>Cognome e Nome</label><input id="e-nome-${p.id}" value="${esc(p.nome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
@@ -1346,8 +1348,6 @@ function render(){
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" value="${esc(p.compenso)}"></div>
           <div><label>Pagato effettivo (€)</label><input id="e-pag-${p.id}" type="text" inputmode="decimal" value="${esc(p.pagato)}"></div>
           <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}"></div>
-          <div><label>Data fattura</label><input id="e-df-${p.id}" value="${esc(p.dataFattura)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
-          <div><label>Data fine lavorazione</label><input id="e-dfine-${p.id}" value="${esc(p.dataFine)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div class="full"><label>Note</label><input id="e-note-${p.id}" value="${esc(p.note)}"></div>
         </div>
         <div class="row-actions">
@@ -1442,7 +1442,7 @@ async function addPraticaInterna(){
     anno: annoPr,
     nome, congiunta, congCognome, congNome, congData, telefono, cf, codiceFiscale, tipo, compenso, pagato, data: dataPratica, note,
     stato: document.getElementById('f-stato').value || 'arrivo',
-    dataFine: STATI_IN_LAVORAZIONE.indexOf(document.getElementById('f-stato').value || 'arrivo') >= 0 ? '' : todayIT(),
+    dataFine: document.getElementById('f-stato').value === 'lavorata' ? todayIT() : '',
     fatt: 'dafatturare',
     numFattura: '',
     dataFattura: '',
@@ -1534,7 +1534,7 @@ async function cambiaStato(id, stato){
   const p = (state.pratiche||[]).find(function(x){ return x.id===id; });
   const campi = { stato: stato };
   if(STATI_IN_LAVORAZIONE.indexOf(stato) >= 0) campi.dataFine = '';
-  else if(!(p && p.dataFine)) campi.dataFine = todayIT();
+  else if(stato === 'lavorata' && !(p && p.dataFine)) campi.dataFine = todayIT();
   const result = await data.pratiche.aggiorna(id, campi);
   if(result && result.error){ avviso('❌ Stato non salvato: ' + result.error, true); return; }
   avviso('✓ Stato salvato: ' + statoLabel(stato));
@@ -1570,7 +1570,6 @@ function salvaModifica(id){
   var cc = g('e-congcognome').trim().toUpperCase();
   var cn = g('e-congnome').trim().toUpperCase();
   const numFattura = g('e-nf').trim();
-  const dataFattura = g('e-df').trim();
   const campi = {
     nome: g('e-nome').trim().toUpperCase(),
     congCognome: cc, congNome: cn,
@@ -1582,10 +1581,8 @@ function salvaModifica(id){
     compenso: parseImporto(g('e-comp')) || '',
     pagato: parseImporto(g('e-pag')) || '',
     numFattura: numFattura,
-    dataFattura: dataFattura,
-    dataFine: g('e-dfine').trim(),
     note: g('e-note').trim(),
-    fatt: (numFattura || dataFattura) ? 'fatturata' : 'dafatturare'
+    fatt: (numFattura || p.dataFattura) ? 'fatturata' : 'dafatturare'
   };
   delete p._editing;
   // Usa la nuova API data.js
@@ -1650,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', async function(){
   if(ultima && ultima.tipo){ document.getElementById('f-tipo').value = ultima.tipo; pickChip('f-tipo-btns','f-tipo', ultima.tipo); }
 });
 
-function riepilogoPerTipo(pratiche){
+function datiPerTipo(pratiche){
   const righe = {};
   pratiche.forEach(function(p){
     const k = p.tipo || 'SENZA TIPO';
@@ -1664,14 +1661,51 @@ function riepilogoPerTipo(pratiche){
     const ia = ordine.indexOf(a), ib = ordine.indexOf(b);
     return (ia<0?999:ia) - (ib<0?999:ib);
   });
-  if(!tipi.length) return '';
+  return { tipi: tipi, righe: righe };
+}
+
+function riepilogoPerTipo(pratiche){
+  const d = datiPerTipo(pratiche);
+  if(!d.tipi.length) return '';
   return '<div class="raff-title">Dettaglio per tipo di pratica</div>'
-    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Tipo di pratica</th><th>Pratiche</th><th>Fatture emesse</th><th>Incasso</th><th>Da incassare</th></tr></thead><tbody>'
-    + tipi.map(function(t){
-      const r = righe[t];
-      return '<tr><td>'+esc(t)+'</td><td>'+r.n+'</td><td>'+fmtEuro(r.fatt)+'</td><td>'+fmtEuro(r.inc)+'</td><td>'+fmtEuro(r.fatt-r.inc)+'</td></tr>';
+    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Tipo di pratica</th><th>Pratiche</th><th>Fatture emesse</th><th>Incasso</th><th>Provento (incasso − fatture)</th></tr></thead><tbody>'
+    + d.tipi.map(function(t){
+      const r = d.righe[t];
+      return '<tr><td>'+esc(t)+'</td><td>'+r.n+'</td><td>'+fmtEuro(r.fatt)+'</td><td>'+fmtEuro(r.inc)+'</td><td><b>'+fmtEuro(r.inc-r.fatt)+'</b></td></tr>';
     }).join('')
     + '</tbody></table></div>';
+}
+
+let chTipi = null;
+function aggiornaGraficoTipi(pratiche){
+  const cv = document.getElementById('ch-tipi');
+  const box = document.getElementById('box-ch-tipi');
+  if(!window.Chart || !cv) return;
+  const d = datiPerTipo(pratiche);
+  if(box) box.style.display = d.tipi.length ? '' : 'none';
+  if(chTipi && chTipi.canvas !== cv){ chTipi.destroy(); chTipi = null; }
+  const fatt = d.tipi.map(function(t){ return d.righe[t].fatt; });
+  const inc = d.tipi.map(function(t){ return d.righe[t].inc; });
+  const prov = d.tipi.map(function(t){ return d.righe[t].inc - d.righe[t].fatt; });
+  const wrap = cv.parentNode;
+  if(wrap) wrap.style.height = Math.max(220, 70 + d.tipi.length * 46) + 'px';
+  if(!chTipi){
+    const cs = getComputedStyle(document.documentElement);
+    const ink = cs.getPropertyValue('--ink').trim() || '#0f1b2d';
+    const sub = cs.getPropertyValue('--sub').trim() || '#5b6b82';
+    chTipi = new Chart(cv, {type:'bar',
+      data:{labels:d.tipi, datasets:[
+        {label:'Fatture emesse', data:fatt, backgroundColor:'#2f9e5f', borderRadius:6, maxBarThickness:18},
+        {label:'Incasso', data:inc, backgroundColor:'#8e5bd6', borderRadius:6, maxBarThickness:18},
+        {label:'Provento', data:prov, backgroundColor:'#374151', borderRadius:6, maxBarThickness:18}]},
+      options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom', labels:{boxWidth:10, color:ink, font:{size:11}}}, tooltip:{callbacks:{label:function(c){ return c.dataset.label+': '+fmtEuro(c.parsed.x); }}}},
+        scales:{y:{ticks:{color:ink, font:{size:11}}, grid:{display:false}}, x:{beginAtZero:true, ticks:{color:sub, callback:function(v){ return '€ '+Number(v).toLocaleString('it-IT'); }}, grid:{color:'rgba(128,140,160,.18)'}}}}});
+  } else {
+    chTipi.data.labels = d.tipi;
+    chTipi.data.datasets[0].data = fatt; chTipi.data.datasets[1].data = inc; chTipi.data.datasets[2].data = prov;
+    chTipi.update();
+  }
 }
 
 async function caricaNomiOperatori(){
