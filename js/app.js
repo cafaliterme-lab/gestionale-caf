@@ -1358,9 +1358,25 @@ async function addPraticaInterna(){
   render();
 }
 
-function cambiaStato(id, stato){
-  // Usa la nuova API data.js
-  data.pratiche.aggiorna(id, { stato: stato });
+function avviso(testo, errore){
+  let el = document.getElementById('avviso-toast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'avviso-toast';
+    el.style.cssText = 'position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:300; padding:10px 18px; border-radius:999px; font-size:13.5px; font-weight:600; color:#fff; box-shadow:0 6px 20px rgba(0,0,0,.25); transition:opacity .3s';
+    document.body.appendChild(el);
+  }
+  el.textContent = testo;
+  el.style.background = errore ? '#c0392b' : '#2f9e5f';
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.style.opacity = '0'; }, errore ? 5000 : 2000);
+}
+async function cambiaStato(id, stato){
+  const result = await data.pratiche.aggiorna(id, { stato: stato });
+  if(result && result.error){ avviso('❌ Stato non salvato: ' + result.error, true); return; }
+  avviso('✓ Stato salvato: ' + statoLabel(stato));
+  render();
 }
 
 function apriPraticaDaTabella(id){
