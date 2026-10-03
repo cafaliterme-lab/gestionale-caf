@@ -293,6 +293,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <details style="margin-top:8px; font-size:12px"><summary style="cursor:pointer; color:var(--sub)">Testo letto dal documento</summary><pre id="doc-testo" style="white-space:pre-wrap; max-height:160px; overflow:auto; background:var(--bg); padding:8px; border-radius:8px"></pre></details>
       <div style="display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap">
         <button type="button" class="btn-add" style="margin:0" onclick="usaDatiDocumento()">✓ Usa questi dati</button>
+        <button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="leggiAltroLato()">+ Leggi l'altro lato</button>
         <button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="apriLetturaDocumento()">↺ Riprova</button>
         <button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="chiudiLetturaDocumento()">Annulla</button>
       </div>
@@ -561,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/qrcode.js?v=1"></script>
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
-<script src="js/ocr-documento.js?v=1"></script>
+<script src="js/ocr-documento.js?v=2"></script>
 <script src="js/scadenze.js?v=1"></script>
 <script src="js/config.js?v=202610047"></script>
 <script src="js/auth.js?v=202610047"></script>
