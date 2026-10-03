@@ -726,6 +726,7 @@ function rigaPratica(p){
   return {
     'N. Protocollo': formattaProtocolloTesto(p),
     'Data': p.data||'',
+    'Fine lavorazione': p.dataFine||'',
     'Cognome e Nome': p.nome||'',
     'Congiunta': p.congiunta||'',
     'Data nascita': p.cf||'',
@@ -1292,18 +1293,19 @@ function render(){
     <div class="raff-title">Registro di protocollo</div>
     <div class="tab-wrap">
       <table class="tab-proto">
-        <thead><tr><th>N. protocollo</th><th>Data</th><th>Mittente</th><th>Tipo di pratica</th></tr></thead>
+        <thead><tr><th>N. protocollo</th><th>Data apertura</th><th>Fine lavorazione</th><th>Mittente</th><th>Tipo di pratica</th></tr></thead>
         <tbody>
           ${ordinate.length ? ordinate.map(p => `
             <tr>
               <td class="n">${formattaProtocollo(p)}</td>
               <td>${p.data||'-'}</td>
+              <td>${esc(p.dataFine)||'-'}</td>
               <td>${(p.nome||'-').toUpperCase()}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}</td>
               <td>${p.tipo||'-'}</td>
               <td><select class="stato-tab-sel" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select></td>
               <td>${formattaInserimento(p)}</td>
               <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer')}</td>
-            </tr>`).join('') : '<tr><td colspan="7" class="empty">'+(pratAnno.length ? 'Nessun risultato' : 'Nessuna registrazione per l\'anno '+annoSel)+'</td></tr>'}
+            </tr>`).join('') : '<tr><td colspan="8" class="empty">'+(pratAnno.length ? 'Nessun risultato' : 'Nessuna registrazione per l\'anno '+annoSel)+'</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -1324,7 +1326,7 @@ function render(){
           <span class="badge stato">${pallino(p.stato)}${statoLabel(p.stato)}</span>
         </div>
       </div>
-      <div class="meta">Aperta il ${p.data||'-'} ${p.note ? '· '+p.note : ''}</div>
+      <div class="meta">Aperta il ${p.data||'-'}${p.dataFine ? ' · <b>Fine lavorazione il '+esc(p.dataFine)+'</b>' : ''} ${p.note ? '· '+esc(p.note) : ''}</div>
       <div class="meta compenso">Fattura: ${fmtEuro(p.compenso)} · Pagato effettivo: ${fmtEuro(p.pagato)}</div>
       ${storicoClienteHTML(p)}
       ${p.numFattura ? `<div class="meta">Fattura n. ${esc(p.numFattura)} del ${esc(p.dataFattura)||'-'}</div>` : ''}
@@ -1345,6 +1347,7 @@ function render(){
           <div><label>Pagato effettivo (€)</label><input id="e-pag-${p.id}" type="text" inputmode="decimal" value="${esc(p.pagato)}"></div>
           <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}"></div>
           <div><label>Data fattura</label><input id="e-df-${p.id}" value="${esc(p.dataFattura)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
+          <div><label>Data fine lavorazione</label><input id="e-dfine-${p.id}" value="${esc(p.dataFine)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div class="full"><label>Note</label><input id="e-note-${p.id}" value="${esc(p.note)}"></div>
         </div>
         <div class="row-actions">
@@ -1439,6 +1442,7 @@ async function addPraticaInterna(){
     anno: annoPr,
     nome, congiunta, congCognome, congNome, congData, telefono, cf, codiceFiscale, tipo, compenso, pagato, data: dataPratica, note,
     stato: document.getElementById('f-stato').value || 'arrivo',
+    dataFine: STATI_IN_LAVORAZIONE.indexOf(document.getElementById('f-stato').value || 'arrivo') >= 0 ? '' : todayIT(),
     fatt: 'dafatturare',
     numFattura: '',
     dataFattura: '',
@@ -1525,8 +1529,13 @@ function bottoneWhatsApp(p, stile){
   return '<button type="button" class="btn-wa" style="' + (stile||'') + '" onclick="inviaWhatsApp(\'' + p.id + '\')" title="' + (p.telefono ? 'Invia a ' + esc(p.telefono) : 'Telefono mancante: verra\' chiesto') + '">💬 WhatsApp</button>';
 }
 
+const STATI_IN_LAVORAZIONE = ['arrivo','lavorazione','da_lavorare_scansionata'];
 async function cambiaStato(id, stato){
-  const result = await data.pratiche.aggiorna(id, { stato: stato });
+  const p = (state.pratiche||[]).find(function(x){ return x.id===id; });
+  const campi = { stato: stato };
+  if(STATI_IN_LAVORAZIONE.indexOf(stato) >= 0) campi.dataFine = '';
+  else if(!(p && p.dataFine)) campi.dataFine = todayIT();
+  const result = await data.pratiche.aggiorna(id, campi);
   if(result && result.error){ avviso('❌ Stato non salvato: ' + result.error, true); return; }
   avviso('✓ Stato salvato: ' + statoLabel(stato));
   render();
@@ -1574,6 +1583,7 @@ function salvaModifica(id){
     pagato: parseImporto(g('e-pag')) || '',
     numFattura: numFattura,
     dataFattura: dataFattura,
+    dataFine: g('e-dfine').trim(),
     note: g('e-note').trim(),
     fatt: (numFattura || dataFattura) ? 'fatturata' : 'dafatturare'
   };

@@ -102,6 +102,7 @@ const schemas = {
     stato: 'stato',
     fatt: 'fatt',
     numFattura: 'num_fattura',
+    dataFine: 'data_fine',
     dataFattura: 'data_fattura',
     inseritoDa: 'inserito_da',
     inseritoIl: 'inserito_il',
