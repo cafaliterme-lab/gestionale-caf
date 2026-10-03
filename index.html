@@ -388,8 +388,8 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
     <button type="button" class="btn-add" onclick="esportaRegistroExcel()">⬇️ Esporta Registro (Excel)</button>
   </div>
   <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--line)">
-    <label>Importa Backup (file .json esportato da qui)</label>
-    <input type="file" id="import-file" accept=".json">
+    <label>Importa Backup (file .json, .csv, .xlsx)</label>
+    <input type="file" id="import-file" accept=".json,.csv,.xlsx">
     <div style="text-align:left"><button type="button" id="btn-importa" class="btn-add" style="background:var(--line); color:var(--ink)" onclick="importaBackup()">Importa Backup</button></div>
     <div id="import-msg" style="font-size:12px; margin-top:6px; display:none"></div>
   </div>
