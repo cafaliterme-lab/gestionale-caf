@@ -52,6 +52,14 @@ async function fetchSupabase(endpoint, method = 'GET', body = null, extraHeaders
   return { data, status: res.status, ok: res.ok };
 }
 
+function messaggioErroreAccesso(data) {
+  const testo = String((data && (data.error_description || data.msg || data.message || (data.error && data.error.message) || data.error)) || '');
+  if (/invalid login credentials|invalid_grant/i.test(testo)) return 'Email o password errati';
+  if (/email not confirmed/i.test(testo)) return 'Email non ancora confermata: apri il link ricevuto via email';
+  if (/rate limit|too many/i.test(testo)) return 'Troppi tentativi: riprova tra qualche minuto';
+  return testo ? 'Accesso non riuscito: ' + testo : 'Accesso non riuscito';
+}
+
 const authMethods = {
   signUp: async (credentials) => {
     try {
@@ -90,7 +98,7 @@ const authMethods = {
 
       if (!ok || data.error) {
         console.error('SignIn error:', data.error || data);
-        return { data: null, error: { message: data.error?.message || 'Login fallito' } };
+        return { data: null, error: { message: messaggioErroreAccesso(data) } };
       }
 
       localStorage.setItem('auth_token', data.access_token);

@@ -1800,3 +1800,40 @@ function bloccoIntroito(titolo, colore, lista, conMedia){
     + tile('#374151', fmtEuro(inc-fatt), 'PROVENTO (INCASSO − FATTURE)')
     + (conMedia ? tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'PREZZO MEDIO (FATTURE ÷ PRATICHE)') : '');
 }
+
+// Pulsante 👁 per mostrare/nascondere ogni campo password, anche quelli creati dopo
+function aggiungiOcchioPassword(input){
+  if(input.dataset.occhio) return;
+  input.dataset.occhio = '1';
+  const wrap = document.createElement('span');
+  const larghezza = input.style.width && input.style.width !== '100%' ? input.style.width : '';
+  wrap.style.cssText = 'position:relative; display:' + (larghezza ? 'inline-block; width:'+larghezza : 'block') + '; margin-bottom:' + (input.style.marginBottom || '0');
+  input.style.marginBottom = '0';
+  input.style.paddingRight = '38px';
+  if(larghezza) input.style.width = '100%';
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '👁';
+  btn.title = 'Mostra password';
+  btn.setAttribute('aria-label', 'Mostra password');
+  btn.style.cssText = 'position:absolute; right:4px; top:50%; transform:translateY(-50%); background:none; border:none; padding:4px 6px; font-size:16px; line-height:1; cursor:pointer; opacity:.55';
+  btn.addEventListener('click', function(){
+    const nascosta = input.type === 'password';
+    input.type = nascosta ? 'text' : 'password';
+    btn.textContent = nascosta ? '🙈' : '👁';
+    btn.title = nascosta ? 'Nascondi password' : 'Mostra password';
+    btn.setAttribute('aria-label', btn.title);
+    btn.style.opacity = nascosta ? '.9' : '.55';
+    input.focus();
+  });
+  wrap.appendChild(btn);
+}
+function aggiungiOcchiPassword(root){
+  (root || document).querySelectorAll('input[type="password"]').forEach(aggiungiOcchioPassword);
+}
+document.addEventListener('DOMContentLoaded', function(){
+  aggiungiOcchiPassword();
+  new MutationObserver(function(){ aggiungiOcchiPassword(); }).observe(document.body, { childList:true, subtree:true });
+});
