@@ -135,7 +135,7 @@ function cercaClienti(q, ctx){
   const match = ARCHIVIO_CLIENTI.filter(function(c){ return c.nomeCompleto.toLowerCase().indexOf(q) >= 0 || (c.codiceFiscale||'').toLowerCase().indexOf(q) >= 0; }).slice(0,8);
   if(!match.length){ box.innerHTML = '<div class="cli-row" style="cursor:default">Nessun cliente trovato</div>'; box.classList.add('open'); return; }
   box.innerHTML = match.map(function(c,i){
-    const cestino = (isAdmin() && c.id) ? '<button type="button" title="Elimina definitivamente dall\'archivio" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); eliminaClienteArchivio(&quot;'+esc(String(c.id))+'&quot;, &quot;'+ctx+'&quot;)">🗑</button>' : '';
+    const cestino = (puoEliminareClienti() && c.id) ? '<button type="button" title="Elimina definitivamente dall\'archivio" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); eliminaClienteArchivio(&quot;'+esc(String(c.id))+'&quot;, &quot;'+ctx+'&quot;)">🗑</button>' : '';
     return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+'<b>'+esc(c.nomeCompleto)+'</b><span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+'</span></div>';
   }).join('');
   box.dataset.match = JSON.stringify(match);
@@ -1886,8 +1886,9 @@ async function aggiornaArchivioCliente(vecchio, nuovo){
   if(rec.id) await data.clienti.aggiorna(rec.id, campi);
 }
 
+function puoEliminareClienti(){ return puo('anagrafica', true) || puo('registro', true); }
 async function eliminaClienteArchivio(id, ctx){
-  if(!isAdmin()) return;
+  if(!puoEliminareClienti()) return;
   const c = ARCHIVIO_CLIENTI.find(function(x){ return String(x.id) === String(id); });
   if(!c) return;
   const pratiche = (state.pratiche||[]).filter(function(p){ return (p.nome||'').toUpperCase() === (c.nomeCompleto||'').toUpperCase(); }).length;
