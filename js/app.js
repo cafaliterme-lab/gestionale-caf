@@ -1593,6 +1593,8 @@ function apriQrApp(){
 }
 
 document.addEventListener('DOMContentLoaded', async function(){
+  const logoCisl = document.querySelector('.hero-logo');
+  if(logoCisl) document.documentElement.style.setProperty('--logo-cisl', 'url("'+logoCisl.src+'")');
   disegnaQrApp();
   caricaArchivioClienti();
   initSelettoreAnno();
