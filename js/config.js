@@ -119,24 +119,22 @@ const authMethods = {
 };
 
 const fromTable = (table) => ({
-  select: (columns = '*') => ({
-    order: (col, dir = 'asc') => ({
-      async execute() {
-        const { data, ok } = await fetchSupabase(`/rest/v1/${table}?select=${columns}&order=${col}.${dir}`);
+  select: (columns = '*') => {
+    const selectBuilder = {
+      order: (col, dir = 'asc') => fetchSupabase(`/rest/v1/${table}?select=${columns}&order=${col}.${dir}`).then(({ data, ok }) => ({ data: ok ? data : [], error: ok ? null : { message: 'Errore' } })),
+      execute: async () => {
+        const { data, ok } = await fetchSupabase(`/rest/v1/${table}?select=${columns}`);
         return { data: ok ? data : [], error: ok ? null : { message: 'Errore' } };
-      }
-    }),
-    async execute() {
-      const { data, ok } = await fetchSupabase(`/rest/v1/${table}?select=${columns}`);
-      return { data: ok ? data : [], error: ok ? null : { message: 'Errore' } };
-    },
-    eq: (col, val) => ({
-      single: async () => {
-        const { data, ok } = await fetchSupabase(`/rest/v1/${table}?${col}=eq.${val}`);
-        return { data: data?.[0] || null, error: ok ? null : { message: 'Errore' } };
       },
-    }),
-  }),
+      eq: (col, val) => ({
+        single: async () => {
+          const { data, ok } = await fetchSupabase(`/rest/v1/${table}?${col}=eq.${val}`);
+          return { data: data?.[0] || null, error: ok ? null : { message: 'Errore' } };
+        },
+      }),
+    };
+    return selectBuilder;
+  },
 
   update: (updates) => ({
     eq: (col, val) => ({
