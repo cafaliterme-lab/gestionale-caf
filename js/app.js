@@ -135,7 +135,8 @@ function cercaClienti(q, ctx){
   const match = ARCHIVIO_CLIENTI.filter(function(c){ return c.nomeCompleto.toLowerCase().indexOf(q) >= 0 || (c.codiceFiscale||'').toLowerCase().indexOf(q) >= 0; }).slice(0,8);
   if(!match.length){ box.innerHTML = '<div class="cli-row" style="cursor:default">Nessun cliente trovato</div>'; box.classList.add('open'); return; }
   box.innerHTML = match.map(function(c,i){
-    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'"><b>'+esc(c.nomeCompleto)+'</b><span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+'</span></div>';
+    const cestino = (isAdmin() && c.id) ? '<button type="button" title="Elimina definitivamente dall\'archivio" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); eliminaClienteArchivio(&quot;'+esc(String(c.id))+'&quot;, &quot;'+ctx+'&quot;)">🗑</button>' : '';
+    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+'<b>'+esc(c.nomeCompleto)+'</b><span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+'</span></div>';
   }).join('');
   box.dataset.match = JSON.stringify(match);
   box.classList.add('open');
@@ -1883,4 +1884,21 @@ async function aggiornaArchivioCliente(vecchio, nuovo){
   const campi = { nomeCompleto: nomeCompleto, cognome: cognome, nome: nome, dataNascita: dataNascita || rec.dataNascita || '' };
   Object.assign(rec, campi);
   if(rec.id) await data.clienti.aggiorna(rec.id, campi);
+}
+
+async function eliminaClienteArchivio(id, ctx){
+  if(!isAdmin()) return;
+  const c = ARCHIVIO_CLIENTI.find(function(x){ return String(x.id) === String(id); });
+  if(!c) return;
+  const pratiche = (state.pratiche||[]).filter(function(p){ return (p.nome||'').toUpperCase() === (c.nomeCompleto||'').toUpperCase(); }).length;
+  const testo = 'Eliminare definitivamente ' + c.nomeCompleto + ' dall\'archivio clienti?'
+    + (pratiche ? '\n\nLe sue ' + pratiche + ' pratiche restano nel Registro.' : '')
+    + '\n\nL\'operazione non si puo\' annullare.';
+  if(!confirm(testo)) return;
+  const esito = await data.clienti.elimina(id);
+  if(esito && esito.error){ avviso('❌ Cliente non eliminato: ' + esito.error, true); return; }
+  ARCHIVIO_CLIENTI = ARCHIVIO_CLIENTI.filter(function(x){ return String(x.id) !== String(id); });
+  avviso('✓ ' + c.nomeCompleto + ' eliminato dall\'archivio');
+  const inp = document.getElementById(ctx==='cong' ? 'cli-cerca-cong' : 'cli-cerca');
+  if(inp) cercaClienti(inp.value, ctx);
 }

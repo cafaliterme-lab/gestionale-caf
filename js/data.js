@@ -512,6 +512,28 @@ async function aggiornaCliente(id, campi) {
 }
 
 /**
+ * Clienti - Elimina definitivamente un cliente dall'archivio (solo admin, per RLS)
+ */
+async function eliminaCliente(id) {
+  try {
+    const { data: righe, error } = await supabase
+      .from('clienti')
+      .delete()
+      .eq('id', id)
+      .select('id');
+
+    if (error) throw new Error(error.message);
+    if (!righe || !righe.length) throw new Error('Permesso negato: cliente non eliminato');
+
+    await caricaTutto();
+    return {};
+  } catch (err) {
+    mostraErrore('Errore eliminazione cliente: ' + err.message);
+    return { error: err.message };
+  }
+}
+
+/**
  * Clienti - Salva il codice fiscale (aggiorna il cliente archiviato o lo crea)
  */
 async function salvaClienteCF(cliente) {
@@ -693,6 +715,7 @@ window.data = {
   clienti: {
     aggiungi: aggiungiCliente,
     aggiorna: aggiornaCliente,
+    elimina: eliminaCliente,
     salvaCF: salvaClienteCF,
     aggiungiLista: aggiungiListaClienti,
   },
