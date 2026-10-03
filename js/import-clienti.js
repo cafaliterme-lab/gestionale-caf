@@ -14,9 +14,30 @@ async function importaClientiDaCSV(csvText) {
     const parti = riga.split(',');
     if (parti.length < 4) return;
 
-    // Parse: COGNOME NOME | Data | Tipo | Sede | Importo | Data
-    const nomeCompleto = parti[0].trim();
-    const dataNascita = parti[1].trim();
+    // Parse: "COGNOME NOME DATA_NASCITA",Tipo,Sede,Importo,Data
+    // The first field contains full name + birth date separated by space
+    const nomeDatiStr = parti[0].trim();
+
+    // Extract last word as birthdate (DD/MM/YYYY format)
+    // Names can have multiple parts, so work backwards
+    const tokens = nomeDatiStr.split(' ');
+    let dataNascita = '';
+    let nomeCompleto = '';
+
+    if (tokens.length >= 3) {
+      // Last token should be date if it matches DD/MM/YYYY pattern
+      const ultimoToken = tokens[tokens.length - 1];
+      if (/\d{2}\/\d{2}\/\d{4}/.test(ultimoToken)) {
+        dataNascita = ultimoToken;
+        nomeCompleto = tokens.slice(0, -1).join(' ');
+      } else {
+        nomeCompleto = nomeDatiStr;
+      }
+    } else {
+      nomeCompleto = nomeDatiStr;
+    }
+
+    if (!nomeCompleto || !dataNascita) return;
 
     // Evita duplicati (stesso nome + data nascita)
     const key = `${nomeCompleto}|${dataNascita}`;
