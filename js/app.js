@@ -1258,7 +1258,7 @@ async function addPraticaInterna(){
   const congData = document.getElementById('f-cong-data').value.trim();
   const congiunta = [congCognome, congNome].filter(Boolean).join(' ');
   const telefono = document.getElementById('f-tel').value.trim();
-  const data = todayIT();
+  const dataPratica = todayIT();
   const note = document.getElementById('f-note').value.trim();
 
   if(!nome){
@@ -1267,14 +1267,14 @@ async function addPraticaInterna(){
     return;
   }
 
-  const annoPr = annoDiData(data);
+  const annoPr = annoDiData(dataPratica);
   registraClienteSeNuovo(cognome, nomeProprio, cf);
   if(congCognome || congNome){ registraClienteSeNuovo(congCognome, congNome, congData); }
 
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, telefono, cf, tipo, compenso, pagato, data, note,
+    nome, congiunta, congCognome, congNome, congData, telefono, cf, tipo, compenso, pagato, data: dataPratica, note,
     stato: document.getElementById('f-stato').value || 'arrivo',
     fatt: 'dafatturare',
     numFattura: '',

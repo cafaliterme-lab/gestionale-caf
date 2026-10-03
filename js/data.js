@@ -72,6 +72,15 @@ function mapToDb(obj, schema) {
   return result;
 }
 
+// compenso/pagato sono numeric: un campo lasciato vuoto va salvato come null
+function praticaToDb(pratica) {
+  const db = mapToDb(pratica, schemas.pratica);
+  for (const k of ['compenso', 'pagato']) {
+    if (db[k] === '') db[k] = null;
+  }
+  return db;
+}
+
 // Schemi di mapping
 const schemas = {
   pratica: {
@@ -254,7 +263,7 @@ async function sottoscrivi(tabella, callback) {
  */
 async function aggiungiPratica(pratica) {
   try {
-    const db = mapToDb(pratica, schemas.pratica);
+    const db = praticaToDb(pratica);
 
     // Il numero è auto-assegnato dal trigger se non fornito
     if (!db.numero) delete db.numero;
@@ -284,7 +293,7 @@ async function aggiungiPratica(pratica) {
  */
 async function aggiornaPratica(id, aggiornamenti) {
   try {
-    const db = mapToDb(aggiornamenti, schemas.pratica);
+    const db = praticaToDb(aggiornamenti);
 
     const { error } = await supabase
       .from('pratiche')
