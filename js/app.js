@@ -1360,7 +1360,8 @@ function render(){
       ${p.numFattura ? `<div class="meta">Fattura n. ${esc(p.numFattura)}</div>` : ''}
       ${p._editing ? `
         <div class="grid" style="margin-top:8px">
-          <div class="full"><label>Cognome e Nome</label><input id="e-nome-${p.id}" value="${esc(p.nome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+          <div><label>Cognome</label><input id="e-cognome-${p.id}" value="${esc(dividiNominativo(p).cognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+          <div><label>Nome</label><input id="e-nomeproprio-${p.id}" value="${esc(dividiNominativo(p).nome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
           <div class="full"><label class="chk"><input type="checkbox" id="e-congon-${p.id}" ${p.congiunta ? 'checked' : ''} onchange="(function(){var on=document.getElementById('e-congon-${p.id}').checked; document.getElementById('e-congbox-${p.id}').style.display = on?'':'none';})()"> Congiunta</label>
             <div id="e-congbox-${p.id}" class="grid" style="${p.congiunta ? '' : 'display:none; '}margin-top:6px">
               <div><label>Cognome</label><input id="e-congcognome-${p.id}" value="${esc(p.congCognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
@@ -1611,8 +1612,11 @@ async function salvaModifica(id){
   var cc = g('e-congcognome').trim().toUpperCase();
   var cn = g('e-congnome').trim().toUpperCase();
   const numFattura = g('e-nf').trim();
+  const cognomeTit = g('e-cognome').trim().toUpperCase();
+  const nomeTit = g('e-nomeproprio').trim().toUpperCase();
+  if(!cognomeTit && !nomeTit){ avviso('❌ Inserisci il cognome del contribuente.', true); return; }
   const campi = {
-    nome: g('e-nome').trim().toUpperCase(),
+    nome: (cognomeTit + ' ' + nomeTit).trim(),
     congCognome: cc, congNome: cn,
     congData: g('e-congdata').trim(),
     congiunta: [cc, cn].filter(Boolean).join(' '),
@@ -1637,8 +1641,12 @@ async function salvaModifica(id){
     return;
   }
   delete p._editing;
-  // Usa la nuova API data.js
-  data.pratiche.aggiorna(id, campi);
+  const vecchiTit = { nomeCompleto: p.nome, dataNascita: p.cf, codiceFiscale: p.codiceFiscale };
+  const vecchiCong = { nomeCompleto: ((p.congCognome||'')+' '+(p.congNome||'')).trim(), dataNascita: p.congData };
+  const esito = await data.pratiche.aggiorna(id, campi);
+  if(esito && esito.error) return;
+  await aggiornaArchivioCliente(vecchiTit, { cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf, codiceFiscale: p.codiceFiscale });
+  if(cc || cn) await aggiornaArchivioCliente(vecchiCong, { cognome: cc, nome: cn, dataNascita: campi.congData });
 }
 
 function rimuovi(id){
@@ -1837,3 +1845,42 @@ document.addEventListener('DOMContentLoaded', function(){
   aggiungiOcchiPassword();
   new MutationObserver(function(){ aggiungiOcchiPassword(); }).observe(document.body, { childList:true, subtree:true });
 });
+
+function trovaInArchivio(nomeCompleto, dataNascita, codiceFiscale){
+  const nc = String(nomeCompleto||'').trim().toUpperCase();
+  if(codiceFiscale){
+    const perCF = ARCHIVIO_CLIENTI.find(function(c){ return c.codiceFiscale === codiceFiscale; });
+    if(perCF) return perCF;
+  }
+  if(!nc) return null;
+  return ARCHIVIO_CLIENTI.find(function(c){
+    return (c.nomeCompleto||'').toUpperCase() === nc && (!dataNascita || !c.dataNascita || c.dataNascita === dataNascita);
+  }) || null;
+}
+
+// Cognome e nome separati: dall'archivio se il cliente c'e', altrimenti l'ultima parola e' il nome
+function dividiNominativo(p){
+  const rec = trovaInArchivio(p.nome, p.cf, p.codiceFiscale);
+  if(rec && (rec.cognome || rec.nome)) return { cognome: rec.cognome || '', nome: rec.nome || '' };
+  const parole = String(p.nome||'').trim().split(/\s+/).filter(Boolean);
+  if(parole.length < 2) return { cognome: parole.join(' '), nome: '' };
+  return { cognome: parole.slice(0, -1).join(' '), nome: parole[parole.length-1] };
+}
+
+// Dopo una "Modifica": corregge la scheda del cliente in archivio, o lo aggiunge se non c'era
+async function aggiornaArchivioCliente(vecchio, nuovo){
+  const cognome = (nuovo.cognome||'').trim().toUpperCase();
+  const nome = (nuovo.nome||'').trim().toUpperCase();
+  const nomeCompleto = (cognome + ' ' + nome).trim();
+  if(!nomeCompleto) return;
+  const dataNascita = (nuovo.dataNascita||'').trim();
+  const rec = trovaInArchivio(vecchio.nomeCompleto, vecchio.dataNascita, vecchio.codiceFiscale);
+  if(!rec){ registraClienteSeNuovo(cognome, nome, dataNascita, nuovo.codiceFiscale); return; }
+  const giaUguale = (rec.nomeCompleto||'').toUpperCase() === nomeCompleto && (rec.cognome||'') === cognome && (rec.nome||'') === nome && (!dataNascita || rec.dataNascita === dataNascita);
+  if(giaUguale) return;
+  const altro = trovaInArchivio(nomeCompleto, dataNascita, null);
+  if(altro && altro !== rec) return;
+  const campi = { nomeCompleto: nomeCompleto, cognome: cognome, nome: nome, dataNascita: dataNascita || rec.dataNascita || '' };
+  Object.assign(rec, campi);
+  if(rec.id) await data.clienti.aggiorna(rec.id, campi);
+}

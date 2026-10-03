@@ -490,6 +490,28 @@ async function aggiungiCliente(cliente) {
 }
 
 /**
+ * Clienti - Corregge i dati di un cliente gia' archiviato
+ */
+async function aggiornaCliente(id, campi) {
+  try {
+    const { data: righe, error } = await supabase
+      .from('clienti')
+      .update(mapToDb(campi, schemas.cliente))
+      .eq('id', id)
+      .select('id');
+
+    if (error) throw new Error(error.message);
+    if (!righe || !righe.length) throw new Error('Permesso negato: archivio non aggiornato');
+
+    await caricaTutto();
+    return {};
+  } catch (err) {
+    mostraErrore('Errore aggiornamento archivio clienti: ' + err.message);
+    return { error: err.message };
+  }
+}
+
+/**
  * Clienti - Salva il codice fiscale (aggiorna il cliente archiviato o lo crea)
  */
 async function salvaClienteCF(cliente) {
@@ -670,6 +692,7 @@ window.data = {
   },
   clienti: {
     aggiungi: aggiungiCliente,
+    aggiorna: aggiornaCliente,
     salvaCF: salvaClienteCF,
     aggiungiLista: aggiungiListaClienti,
   },
