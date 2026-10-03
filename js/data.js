@@ -205,7 +205,8 @@ async function caricaTutto() {
       .order('ordine');
 
     if (errCo) throw new Error('Errore collaboratori: ' + errCo.message);
-    state.collaboratori = collaboratori.map(c => mapFromDb(c, schemas.collaboratore));
+    // app.js usa i collaboratori come semplici nomi (stringhe)
+    state.collaboratori = collaboratori.map(c => c.nome);
 
     return true;
   } catch (err) {

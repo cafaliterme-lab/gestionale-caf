@@ -1279,7 +1279,7 @@ async function addPraticaInterna(){
     fatt: 'dafatturare',
     numFattura: '',
     dataFattura: '',
-    inseritoDa: (currentUser||'').toUpperCase(),
+    inseritoDa: ((auth.profilo && auth.profilo.nome) || currentUser || '').toUpperCase(),
     inseritoIl: new Date().toISOString()
   };
 
