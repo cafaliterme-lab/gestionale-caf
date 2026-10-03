@@ -120,42 +120,87 @@ const authMethods = {
   },
 };
 
-const fromTable = (table) => ({
-  select: (columns = '*') => {
-    const selectBuilder = {
-      order: (col, dir = 'asc') => fetchSupabase(`/rest/v1/${table}?select=${columns}&order=${col}.${dir}`).then(({ data, ok }) => ({ data: ok ? data : [], error: ok ? null : { message: 'Errore' } })),
-      execute: async () => {
-        const { data, ok } = await fetchSupabase(`/rest/v1/${table}?select=${columns}`);
-        return { data: ok ? data : [], error: ok ? null : { message: 'Errore' } };
-      },
-      eq: (col, val) => ({
-        single: async () => {
-          const { data, ok } = await fetchSupabase(`/rest/v1/${table}?${col}=eq.${val}`);
-          return { data: data?.[0] || null, error: ok ? null : { message: 'Errore' } };
-        },
-      }),
-    };
-    return selectBuilder;
-  },
+// Query builder minimale stile supabase-js: la query parte quando viene awaited.
+const fromTable = (table) => {
+  let metodo = 'GET';
+  let corpo = null;
+  let colonne = '*';
+  let restituisci = false;
+  let singolo = false;
+  const filtri = [];
+  const ordini = [];
 
-  update: (updates) => ({
-    eq: (col, val) => ({
-      async execute() {
-        const { data, ok } = await fetchSupabase(`/rest/v1/${table}?${col}=eq.${val}`, 'PATCH', updates);
-        return { error: ok ? null : { message: data?.error || 'Errore' } };
-      },
-    }),
-  }),
+  const errore = (data) => ({ message: data?.message || data?.error || 'Errore' });
 
-  insert: (records) => ({
-    select: () => ({
-      async execute() {
-        const { data, ok } = await fetchSupabase(`/rest/v1/${table}`, 'POST', Array.isArray(records) ? records : [records]);
-        return { data, error: ok ? null : { message: 'Errore' } };
-      },
-    }),
-  }),
-});
+  async function esegui() {
+    const parti = [];
+    if (metodo === 'GET' || restituisci) parti.push(`select=${colonne}`);
+    parti.push(...filtri);
+    if (ordini.length) parti.push(`order=${ordini.join(',')}`);
+    const url = `/rest/v1/${table}?${parti.join('&')}`;
+
+    if (metodo === 'GET') {
+      // PostgREST restituisce al massimo ~1000 righe per richiesta: si legge a pagine
+      const PAGINA = 1000;
+      let righe = [];
+      for (let offset = 0; ; offset += PAGINA) {
+        const { data, ok } = await fetchSupabase(`${url}&limit=${PAGINA}&offset=${offset}`);
+        if (!ok) return { data: null, error: errore(data) };
+        righe = righe.concat(data);
+        if (singolo || data.length < PAGINA) break;
+      }
+      if (singolo) {
+        return righe.length ? { data: righe[0], error: null } : { data: null, error: { message: 'Non trovato' } };
+      }
+      return { data: righe, error: null };
+    }
+
+    const prefer = restituisci ? 'return=representation' : 'return=minimal';
+    const { data, ok } = await fetchSupabase(url, metodo, corpo, { Prefer: prefer });
+    if (!ok) return { data: null, error: errore(data) };
+    return { data: restituisci ? data : null, error: null };
+  }
+
+  const builder = {
+    select(cols = '*') {
+      colonne = cols;
+      if (metodo !== 'GET') restituisci = true;
+      return builder;
+    },
+    insert(records) {
+      metodo = 'POST';
+      corpo = Array.isArray(records) ? records : [records];
+      return builder;
+    },
+    update(valori) {
+      metodo = 'PATCH';
+      corpo = valori;
+      return builder;
+    },
+    delete() {
+      metodo = 'DELETE';
+      return builder;
+    },
+    eq(col, val) {
+      filtri.push(`${col}=eq.${encodeURIComponent(val)}`);
+      return builder;
+    },
+    order(col, opts) {
+      const asc = typeof opts === 'string' ? opts !== 'desc' : (opts?.ascending ?? true);
+      ordini.push(`${col}.${asc ? 'asc' : 'desc'}`);
+      return builder;
+    },
+    single() {
+      singolo = true;
+      return builder;
+    },
+    execute: esegui,
+    then(onOk, onErr) {
+      return esegui().then(onOk, onErr);
+    },
+  };
+  return builder;
+};
 
 const rpcCall = async (name, params) => {
   const { data, ok } = await fetchSupabase(`/rest/v1/rpc/${name}`, 'POST', params);

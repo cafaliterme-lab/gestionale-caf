@@ -109,6 +109,7 @@ async function elaboraImportazione(file, msg = document.getElementById('import-c
       msg.textContent = '❌ Errore: ' + result.error;
       msg.style.color = '#c0392b';
     } else {
+      syncDataFromSupabase();
       msg.textContent = `✅ ${result.count} clienti importati con successo!`;
       msg.style.color = 'var(--accent)';
     }

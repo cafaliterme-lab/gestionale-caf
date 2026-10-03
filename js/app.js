@@ -895,13 +895,8 @@ async function initSupabase(){
 
 // Sincronizza i dati dal modulo data.js al state locale di app.js
 function syncDataFromSupabase(){
-  if (data && data.state) {
-    state.pratiche = data.state.pratiche || [];
-    state.versamenti = data.state.versamenti || [];
-    state.isee = data.state.isee || [];
-    state.collaboratori = data.state.collaboratori || [];
-    ARCHIVIO_CLIENTI = data.state.clienti || [];
-  }
+  // data.js scrive direttamente nel `state` globale; qui serve solo l'archivio clienti
+  ARCHIVIO_CLIENTI = state.clienti || [];
 }
 // Queste funzioni sono sostituite da data.js e dalla sottoscrizione realtime di Supabase
 
