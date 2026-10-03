@@ -397,14 +397,36 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 
 <div class="card">
   <div class="raff-title">Importa Clienti da CSV</div>
-  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Importa una lista di clienti da un file CSV (e.g. esportato da Money). Il formato atteso è: COGNOME NOME, Data Nascita, Tipo, Sede, Importo, Data</p>
+  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Importa una lista di clienti da un file CSV (e.g. esportato da Money). Il formato atteso è: COGNOME NOME DATA_NASCITA, Tipo, Sede, Importo, Data</p>
   <div>
     <label>Seleziona file CSV</label>
     <input type="file" id="file-importa-clienti" accept=".csv">
-    <div style="text-align:left"><button type="button" id="btn-importa-clienti" class="btn-add" style="background:var(--line); color:var(--ink)" onclick="elaboraImportazione(document.getElementById('file-importa-clienti').files[0])">Importa Clienti</button></div>
+    <div style="text-align:left"><button type="button" id="btn-importa-clienti" class="btn-add" style="background:var(--line); color:var(--ink)">Importa Clienti</button></div>
     <div id="import-clienti-msg" style="font-size:12px; margin-top:6px; display:none"></div>
   </div>
 </div>
+
+<script>
+// Event handler per import clienti
+document.addEventListener('DOMContentLoaded', function() {
+  const btnImporta = document.getElementById('btn-importa-clienti');
+  if (btnImporta) {
+    btnImporta.addEventListener('click', function() {
+      const fileInput = document.getElementById('file-importa-clienti');
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        const msg = document.getElementById('import-clienti-msg');
+        if (msg) {
+          msg.textContent = '⚠️ Seleziona un file CSV prima di importare.';
+          msg.style.color = '#c0392b';
+          msg.style.display = 'block';
+        }
+        return;
+      }
+      elaboraImportazione(fileInput.files[0]);
+    });
+  }
+});
+</script>
 
 <div class="card">
   <div class="raff-title" style="color:#c0392b">Zona pericolosa</div>
