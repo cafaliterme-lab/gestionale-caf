@@ -1183,12 +1183,6 @@ function render(){
   const annoSel = annoAttivo();
   const pratAnno = state.pratiche.filter(function(p){ return annoPratica(p) === annoSel; });
 
-  const contaOperatori = {};
-  pratAnno.forEach(function(p){
-    const chi = p.inseritoDa || 'NON INDICATO';
-    const peso = (p.congCognome || p.congNome) ? 2 : 1;
-    contaOperatori[chi] = (contaOperatori[chi]||0) + peso;
-  });
   const lavorateEl = document.getElementById('badge-lavorate');
   if(lavorateEl){
     // Pratiche lavorate per operatore: un badge per ogni operatore che ha inserito pratiche nell'anno, piu' l'utente collegato
@@ -1215,12 +1209,6 @@ function render(){
     lavorateEl.innerHTML = colonna + badgeDaFare + badgeTotLav + '</div>' + colonna + Object.keys(perOperatore).sort().map(function(chi){
       return '<span title="Pratiche lavorate nel '+annoSel+'" style="display:inline-flex; align-items:center; justify-content:space-between; gap:8px; background:#1d4f91; color:#fff; font-size:16px; font-weight:700; padding:9px 16px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2)">'+esc(chi)+' <span style="background:#fff; color:#1d4f91; font-size:20px; font-weight:800; min-width:34px; text-align:center; padding:2px 10px; border-radius:999px">'+perOperatore[chi]+'</span></span>';
     }).join('') + '</div>';
-  }
-  const contEl = document.getElementById('conteggio-operatori');
-  if(contEl){
-    contEl.textContent = Object.keys(contaOperatori).length
-      ? Object.keys(contaOperatori).sort().map(function(k){ return k+': '+contaOperatori[k]; }).join('  ·  ') + '  (anno '+annoSel+', le congiunte valgono 2)'
-      : '';
   }
   const versAnno = (state.versamenti||[]).filter(function(v){ return annoDiData(v.data) === annoSel; });
 
