@@ -578,9 +578,6 @@ async function cambiaPasswordUtente(id, pwd){
 // DEPRECATED: salvaUtenti non più usato
 function salvaUtenti(lista){}
 
-// DEPRECATED: getUtenti, trovaUtente sostituiti da Supabase
-function getUtenti(){ return []; }
-function trovaUtente(id){ return null; }
 function dataOraFile(){
   const d = new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
