@@ -23,6 +23,36 @@ async function waitForSupabase() {
 }
 
 /**
+ * Registrazione nuovo utente
+ * @param {string} nome
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<{user, session, error}>}
+ */
+async function signup(nome, email, password) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { nome },
+    },
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  // Il trigger on_auth_user_created crea automaticamente il profilo nel database
+  // Attendiamo un attimo che il trigger si esegua
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  auth.session = data.session;
+  await caricaProfilo();
+
+  return { user: data.user, session: data.session };
+}
+
+/**
  * Login con email e password
  * @param {string} email
  * @param {string} password
@@ -62,8 +92,11 @@ async function logout() {
  */
 async function caricaProfilo() {
   const sb = await waitForSupabase();
-  const token = localStorage.getItem('auth_token');
-  if (!token) {
+
+  // Ottieni l'ID dell'utente dalla sessione attuale
+  const { data: { user }, error: userError } = await sb.auth.getUser();
+
+  if (userError || !user) {
     auth.profilo = null;
     return null;
   }
@@ -71,7 +104,7 @@ async function caricaProfilo() {
   const { data, error } = await sb
     .from('profili')
     .select('*')
-    .eq('id', token)
+    .eq('id', user.id)
     .single();
 
   if (error) {
