@@ -1789,10 +1789,12 @@ function e730(p){ return /^730\b/.test(String(p.tipo||'').toUpperCase()); }
 function bloccoIntroito(titolo, colore, lista){
   const fatt = lista.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const inc = lista.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
-  const box = 'style="background:var(--card); border:2px solid '+colore+'"';
-  return '<div style="flex-basis:100%; margin-top:6px; font-size:13px; font-weight:800; letter-spacing:.03em; color:'+colore+'">'+esc(titolo)+'</div>'
-    + '<div class="stat c4" '+box+'><b>'+sommaPeso(lista)+'</b><span>Pratiche</span></div>'
-    + '<div class="stat c4" '+box+'><b style="color:#2f9e5f">'+fmtEuro(fatt)+'</b><span>Fatture emesse</span></div>'
-    + '<div class="stat c4" '+box+'><b style="color:#8e5bd6">'+fmtEuro(inc)+'</b><span>Incasso</span></div>'
-    + '<div class="stat c4" '+box+'><b>'+fmtEuro(inc-fatt)+'</b><span>Provento (incasso − fatture)</span></div>';
+  const tile = function(bg, valore, etichetta){
+    return '<div class="stat c4" style="background:'+bg+'; border-color:'+bg+'; color:#fff"><b>'+valore+'</b><span style="color:rgba(255,255,255,.92); font-weight:600; letter-spacing:.03em">'+etichetta+'</span></div>';
+  };
+  return '<div style="flex-basis:100%; margin-top:10px; padding:8px 14px; border-radius:10px; background:'+colore+'; color:#fff; font-size:15px; font-weight:800; letter-spacing:.04em">'+esc(titolo)+'</div>'
+    + tile(colore, sommaPeso(lista), 'PRATICHE')
+    + tile('#2f9e5f', fmtEuro(fatt), 'FATTURE EMESSE')
+    + tile('#8e5bd6', fmtEuro(inc), 'INCASSO')
+    + tile('#374151', fmtEuro(inc-fatt), 'PROVENTO (INCASSO − FATTURE)');
 }
