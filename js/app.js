@@ -1065,13 +1065,19 @@ function render(){
   });
   const lavorateEl = document.getElementById('badge-lavorate');
   if(lavorateEl){
-    const lavorataPratiche = pratAnno.filter(function(p){ return p.stato === 'lavorata'; });
-    const pesoCong = function(p){ return (p.congCognome || p.congNome) ? 2 : 1; };
-    const lavAngelo = lavorataPratiche.filter(function(p){ return (p.inseritoDa||'').toUpperCase() === 'ANGELO'; }).reduce(function(a,p){ return a+pesoCong(p); }, 0);
-    const lavFederica = lavorataPratiche.filter(function(p){ return (p.inseritoDa||'').toUpperCase() === 'FEDERICA'; }).reduce(function(a,p){ return a+pesoCong(p); }, 0);
-    lavorateEl.innerHTML =
-      '<span style="background:rgba(0,0,0,.25); color:#fff; font-size:11.5px; font-weight:700; padding:5px 10px; border-radius:999px">🔵 Angelo: '+lavAngelo+'</span>'
-      + '<span style="background:rgba(0,0,0,.25); color:#fff; font-size:11.5px; font-weight:700; padding:5px 10px; border-radius:999px">🔵 Federica: '+lavFederica+'</span>';
+    // Pratiche lavorate per operatore: un badge per ogni operatore che ha inserito pratiche nell'anno, piu' l'utente collegato
+    const perOperatore = {};
+    const io = ((auth.profilo && auth.profilo.nome) || '').toUpperCase();
+    if(io) perOperatore[io] = 0;
+    pratAnno.forEach(function(p){
+      const chi = (p.inseritoDa||'').toUpperCase();
+      if(!chi) return;
+      if(!(chi in perOperatore)) perOperatore[chi] = 0;
+      if(p.stato === 'lavorata') perOperatore[chi] += (p.congCognome || p.congNome) ? 2 : 1;
+    });
+    lavorateEl.innerHTML = Object.keys(perOperatore).sort().map(function(chi){
+      return '<span title="Pratiche lavorate nel '+annoSel+'" style="background:rgba(0,0,0,.25); color:#fff; font-size:11.5px; font-weight:700; padding:5px 10px; border-radius:999px">🔵 '+esc(chi)+': '+perOperatore[chi]+'</span>';
+    }).join('');
   }
   const contEl = document.getElementById('conteggio-operatori');
   if(contEl){
@@ -1380,7 +1386,26 @@ function rimuovi(id){
 // DEPRECATED: embedState e loadEmbeddedState non sono più necessari con Supabase
 // Lo stato è gestito direttamente da data.js e Supabase realtime
 
+function indirizzoApp(){ return location.origin + location.pathname.replace(/index\.html$/, ''); }
+function qrSvg(testo){
+  const qr = qrcode(0, 'M');
+  qr.addData(testo);
+  qr.make();
+  return qr.createSvgTag({ cellSize: 4, margin: 1, scalable: true });
+}
+function disegnaQrApp(){
+  const box = document.getElementById('qr-app');
+  if(!box || typeof qrcode !== 'function') return;
+  box.innerHTML = qrSvg(indirizzoApp());
+}
+function apriQrApp(){
+  document.getElementById('qr-grande').innerHTML = qrSvg(indirizzoApp());
+  document.getElementById('qr-url').textContent = indirizzoApp();
+  document.getElementById('qr-overlay').classList.add('open');
+}
+
 document.addEventListener('DOMContentLoaded', async function(){
+  disegnaQrApp();
   caricaArchivioClienti();
   initSelettoreAnno();
   renderLogin();
