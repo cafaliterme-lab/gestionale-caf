@@ -730,7 +730,8 @@ function rigaPratica(p){
     'Cognome e Nome': p.nome||'',
     'Congiunta': p.congiunta||'',
     'Data nascita': p.cf||'',
-    'Telefono': p.telefono||'',
+    'Cellulare': p.telefono||'',
+    'Telefono fisso': p.telefonoFisso||'',
     'Stato': statoLabel(p.stato),
     'Fattura (€)': Number(p.compenso)||0,
     'Pagato (€)': Number(p.pagato)||0,
@@ -1192,7 +1193,7 @@ function filtra(lista){
   const q = ((document.getElementById('cerca')||{}).value||'').trim().toLowerCase();
   if(!q) return lista;
   return lista.filter(function(p){
-    return [String(p.numero).padStart(4,'0'), p.nome, p.congiunta, p.congData, p.telefono, p.tipo, p.cf, p.data, p.note, statoLabel(p.stato), p.numFattura, p.inseritoDa].join(' ').toLowerCase().indexOf(q) >= 0;
+    return [String(p.numero).padStart(4,'0'), p.nome, p.congiunta, p.congData, p.telefono, p.telefonoFisso, p.tipo, p.cf, p.data, p.note, statoLabel(p.stato), p.numFattura, p.inseritoDa].join(' ').toLowerCase().indexOf(q) >= 0;
   });
 }
 
@@ -1322,7 +1323,8 @@ function render(){
           <div class="num">#${formattaProtocollo(p)} — ${(p.nome||'(senza nome)').toUpperCase()}</div>
           <div class="name">${p.tipo||''} ${p.cf ? '· nato il '+p.cf : ''}</div>
           ${p.congiunta ? `<div class="name">Congiunta con <b>${esc(p.congiunta)}</b>${p.congData ? ' (nato il '+esc(p.congData)+')' : ''}</div>` : ''}
-          ${p.telefono ? `<div class="name">Tel. <a href="tel:${esc(p.telefono)}" style="color:inherit">${esc(p.telefono)}</a></div>` : ''}
+          ${p.telefono ? `<div class="name">Cell. <a href="tel:${esc(p.telefono)}" style="color:inherit">${esc(p.telefono)}</a></div>` : ''}
+          ${p.telefonoFisso ? `<div class="name">Tel. fisso <a href="tel:${esc(p.telefonoFisso)}" style="color:inherit">${esc(p.telefonoFisso)}</a></div>` : ''}
         </div>
         <div class="badges">
           <span class="badge stato">${pallino(p.stato)}${statoLabel(p.stato)}</span>
@@ -1342,7 +1344,8 @@ function render(){
               <div><label>Data di nascita</label><input id="e-congdata-${p.id}" value="${esc(p.congData)}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
             </div>
           </div>
-          <div><label>Telefono</label><input id="e-tel-${p.id}" type="tel" inputmode="tel" value="${esc(p.telefono)}"></div>
+          <div><label>Cellulare *</label><input id="e-tel-${p.id}" type="tel" inputmode="tel" value="${esc(p.telefono)}"></div>
+          <div><label>Telefono fisso *</label><input id="e-telfisso-${p.id}" type="tel" inputmode="tel" value="${esc(p.telefonoFisso)}"></div>
           <div><label>Data di nascita</label><input id="e-cf-${p.id}" value="${esc(p.cf)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Tipo pratica</label><select id="e-tipo-${p.id}">${tipoOptions(p.tipo)}</select></div>
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" value="${esc(p.compenso)}"></div>
@@ -1418,12 +1421,19 @@ async function addPraticaInterna(){
   const congData = document.getElementById('f-cong-data').value.trim();
   const congiunta = [congCognome, congNome].filter(Boolean).join(' ');
   const telefono = document.getElementById('f-tel').value.trim();
+  const telefonoFisso = document.getElementById('f-tel-fisso').value.trim();
   const dataPratica = todayIT();
   const note = document.getElementById('f-note').value.trim();
 
   if(!nome){
     msg.textContent = '⚠️ Inserisci almeno il cognome del contribuente prima di salvare.';
     msg.style.display = 'block';
+    return;
+  }
+  if(!telefono && !telefonoFisso){
+    msg.textContent = '⚠️ Inserisci almeno un numero di telefono: cellulare o telefono fisso.';
+    msg.style.display = 'block';
+    document.getElementById('f-tel').focus();
     return;
   }
   const codiceFiscale = document.getElementById('f-codfisc').value.trim();
@@ -1440,7 +1450,7 @@ async function addPraticaInterna(){
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, telefono, cf, codiceFiscale, tipo, compenso, pagato, data: dataPratica, note,
+    nome, congiunta, congCognome, congNome, congData, telefono, telefonoFisso, cf, codiceFiscale, tipo, compenso, pagato, data: dataPratica, note,
     stato: document.getElementById('f-stato').value || 'arrivo',
     dataFine: document.getElementById('f-stato').value === 'lavorata' ? todayIT() : '',
     fatt: 'dafatturare',
@@ -1472,6 +1482,7 @@ async function addPraticaInterna(){
   toggleCongBox();
   pickChip('f-stato-btns','f-stato','arrivo');
   document.getElementById('f-tel').value='';
+  document.getElementById('f-tel-fisso').value='';
   document.getElementById('f-stato').value='arrivo';
   document.getElementById('f-note').value='';
   document.getElementById('f-data').value=todayIT();
@@ -1576,6 +1587,7 @@ function salvaModifica(id){
     congData: g('e-congdata').trim(),
     congiunta: [cc, cn].filter(Boolean).join(' '),
     telefono: g('e-tel').trim(),
+    telefonoFisso: g('e-telfisso').trim(),
     cf: g('e-cf').trim(),
     tipo: g('e-tipo'),
     compenso: parseImporto(g('e-comp')) || '',
@@ -1584,6 +1596,10 @@ function salvaModifica(id){
     note: g('e-note').trim(),
     fatt: (numFattura || p.dataFattura) ? 'fatturata' : 'dafatturare'
   };
+  if(!campi.telefono && !campi.telefonoFisso){
+    avviso('❌ Inserisci almeno un numero di telefono: cellulare o telefono fisso.', true);
+    return;
+  }
   delete p._editing;
   // Usa la nuova API data.js
   data.pratiche.aggiorna(id, campi);

@@ -93,6 +93,7 @@ const schemas = {
     congNome: 'cong_nome',
     congData: 'cong_data',
     telefono: 'telefono',
+    telefonoFisso: 'telefono_fisso',
     cf: 'cf',
     tipo: 'tipo',
     compenso: 'compenso',
