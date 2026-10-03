@@ -889,7 +889,8 @@ async function renderPermessi(){
     return '<div class="card" style="margin-bottom:12px">'
       + '<div class="raff-title">'+esc(u.nome)+'</div>'
       + righeTab
-      + '<div class="perm-row" style="margin-top:6px; border-top:2px solid var(--line); padding-top:12px"><span>Sola lettura</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-type="sola_lettura" '+(u.sola_lettura?'checked':'')+' id="perm-'+u.id+'-solo"> Attiva</label></div>'
+      + '<div class="perm-row" style="margin-top:6px; border-top:2px solid var(--line); padding-top:12px"><span>🗑 Elimina clienti dall\'archivio</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="elimina_clienti" '+(tabs.elimina_clienti?'checked':'')+' id="perm-'+u.id+'-elimcli"> Consentito</label></div>'
+      + '<div class="perm-row"><span>Sola lettura</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-type="sola_lettura" '+(u.sola_lettura?'checked':'')+' id="perm-'+u.id+'-solo"> Attiva</label></div>'
       + '<div class="perm-row"><span>Nuova password</span><span style="display:flex; gap:6px"><input type="password" id="pwd-'+u.id+'" placeholder="Lascia vuoto per non cambiarla" style="width:160px; padding:6px 8px; font-size:12.5px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink)"><button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer" onclick="cambiaPasswordUtente(&quot;'+u.id+'&quot;, document.getElementById(&quot;pwd-'+u.id+'&quot;).value); document.getElementById(&quot;pwd-'+u.id+'&quot;).value=&quot;&quot;">Salva</button></span></div>'
       + '<div class="perm-row"><span></span><button type="button" style="background:none; border:none; color:#c0392b; font-weight:700; cursor:pointer" onclick="rimuoviUtente(&quot;'+u.id+'&quot;)">Elimina utente</button></div>'
       + '</div>';
@@ -1886,7 +1887,7 @@ async function aggiornaArchivioCliente(vecchio, nuovo){
   if(rec.id) await data.clienti.aggiorna(rec.id, campi);
 }
 
-function puoEliminareClienti(){ return puo('anagrafica', true) || puo('registro', true); }
+function puoEliminareClienti(){ return puo('elimina_clienti'); }
 async function eliminaClienteArchivio(id, ctx){
   if(!puoEliminareClienti()) return;
   const c = ARCHIVIO_CLIENTI.find(function(x){ return String(x.id) === String(id); });
