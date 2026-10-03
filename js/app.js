@@ -1798,5 +1798,5 @@ function bloccoIntroito(titolo, colore, lista, conMedia){
     + tile('#2f9e5f', fmtEuro(fatt), 'FATTURE EMESSE')
     + tile('#8e5bd6', fmtEuro(inc), 'INCASSO')
     + tile('#374151', fmtEuro(inc-fatt), 'PROVENTO (INCASSO − FATTURE)')
-    + (conMedia ? tile('#d98b1e', n ? fmtEuro(inc / n) : '—', 'PREZZO MEDIO (INCASSO ÷ PRATICHE)') : '');
+    + (conMedia ? tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'PREZZO MEDIO (FATTURE ÷ PRATICHE)') : '');
 }
