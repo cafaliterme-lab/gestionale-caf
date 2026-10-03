@@ -146,6 +146,7 @@ function scegliCliente(i, ctx){
     document.getElementById('f-nome').value = c.nome.toUpperCase();
     document.getElementById('f-cf').value = c.dataNascita;
     document.getElementById('cli-cerca').value = c.nomeCompleto;
+    aggiornaStoricoForm();
   }
   box.classList.remove('open');
 }
@@ -186,6 +187,42 @@ function storicoClienteHTML(p){
     + '<b>Storico cliente (tutti gli anni: ' + anni.join(', ') + ')</b><br>'
     + altre.length + ' pratiche · Fatturato totale: ' + fmtEuro(totFatt) + ' · Pagato totale: ' + fmtEuro(totPag)
     + '</div>';
+}
+// Storico del cliente nel modulo di inserimento: tutte le pratiche passate (anche come congiunto).
+// Se la data di nascita e' nota da entrambe le parti deve coincidere, per non confondere gli omonimi.
+function praticheDelCliente(nomeCompleto, dataNascita){
+  const stessaData = function(d){ return !dataNascita || !d || d === dataNascita; };
+  return (state.pratiche||[]).filter(function(p){
+    const comeTitolare = (p.nome||'').toUpperCase() === nomeCompleto && stessaData(p.cf);
+    const comeCongiunto = ((p.congCognome||'')+' '+(p.congNome||'')).trim().toUpperCase() === nomeCompleto && stessaData(p.congData);
+    return comeTitolare || comeCongiunto;
+  }).sort(function(a,b){ return (annoPratica(b)-annoPratica(a)) || (b.numero-a.numero); });
+}
+function aggiornaStoricoForm(){
+  const box = document.getElementById('storico-cliente');
+  if(!box) return;
+  const cognome = document.getElementById('f-cognome').value.trim().toUpperCase();
+  const nome = document.getElementById('f-nome').value.trim().toUpperCase();
+  const nomeCompleto = (cognome+' '+nome).trim();
+  const dataNascita = document.getElementById('f-cf').value.trim();
+  const lista = cognome ? praticheDelCliente(nomeCompleto, /^\d{2}\/\d{2}\/\d{4}$/.test(dataNascita) ? dataNascita : '') : [];
+  if(!cognome){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = 'block';
+  if(!lista.length){
+    box.innerHTML = '<div class="raff-title">Storico pratiche di '+esc(nomeCompleto)+'</div><div class="empty">Nessuna pratica precedente per questo cliente.</div>';
+    return;
+  }
+  const totFatt = lista.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
+  const totPag = lista.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+  box.innerHTML = '<div class="raff-title">Storico pratiche di '+esc(nomeCompleto)+(dataNascita ? ' <span class="sub2">nato/a il '+esc(dataNascita)+'</span>' : '')+'</div>'
+    + '<div class="meta" style="margin:0 0 8px">'+lista.length+' pratiche · Fatturato: '+fmtEuro(totFatt)+' · Pagato: '+fmtEuro(totPag)+'</div>'
+    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>N. protocollo</th><th>Data</th><th>Tipo</th><th>Stato</th><th>Fattura</th><th>Pagato</th><th>Inserita da</th></tr></thead><tbody>'
+    + lista.map(function(p){
+        const congiunto = (p.nome||'').toUpperCase() !== nomeCompleto;
+        return '<tr><td class="n">'+formattaProtocollo(p)+'</td><td>'+esc(p.data)+'</td><td>'+esc(p.tipo)+(congiunto ? ' <span class="sub2">(congiunto di '+esc(p.nome)+')</span>' : '')+'</td>'
+          + '<td>'+esc(statoLabel(p.stato))+'</td><td>'+(p.compenso!=null && p.compenso!=='' ? fmtEuro(p.compenso) : '-')+'</td><td>'+(p.pagato!=null && p.pagato!=='' ? fmtEuro(p.pagato) : '-')+'</td><td>'+esc(p.inseritoDa||'-')+'</td></tr>';
+      }).join('')
+    + '</tbody></table></div>';
 }
 function formattaInserimento(p){
   if(!p.inseritoDa && !p.inseritoIl) return '-';
@@ -1316,6 +1353,7 @@ async function addPraticaInterna(){
   document.getElementById('f-stato').value='arrivo';
   document.getElementById('f-note').value='';
   document.getElementById('f-data').value=todayIT();
+  aggiornaStoricoForm();
 
   render();
 }

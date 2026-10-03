@@ -294,15 +294,15 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
     </div>
     <div>
       <label>Cognome</label>
-      <input id="f-cognome" placeholder="Es. Rossi" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+      <input id="f-cognome" placeholder="Es. Rossi" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); aggiornaStoricoForm()">
     </div>
     <div>
       <label>Nome</label>
-      <input id="f-nome" placeholder="Es. Mario" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+      <input id="f-nome" placeholder="Es. Mario" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); aggiornaStoricoForm()">
     </div>
     <div>
       <label>Data di nascita</label>
-      <input id="f-cf" type="text" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)">
+      <input id="f-cf" type="text" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this); aggiornaStoricoForm()">
     </div>
     <div class="full">
       <label class="chk"><input type="checkbox" id="f-congiunta-on" onchange="toggleCongBox()"> Congiunta</label>
@@ -357,6 +357,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <div style="text-align:left"><button class="btn-add btn-salva-pratica" onclick="addPratica()">💾 Salva pratica</button></div>
   <div id="form-msg" style="color:#c0392b; font-size:12px; margin-top:6px; display:none"></div>
 </div>
+<div class="card" id="storico-cliente" style="display:none"></div>
 </section>
 
 <section class="tabsec" id="tab-collaboratori">
@@ -455,14 +456,14 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/qrcode.js?v=1"></script>
-<script src="js/config.js?v=202610041"></script>
-<script src="js/auth.js?v=202610041"></script>
+<script src="js/config.js?v=202610042"></script>
+<script src="js/auth.js?v=202610042"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610041"></script>
-<script src="js/import-clienti.js?v=202610041"></script>
-<script src="js/app.js?v=202610041"></script>
+<script src="js/data.js?v=202610042"></script>
+<script src="js/import-clienti.js?v=202610042"></script>
+<script src="js/app.js?v=202610042"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->
