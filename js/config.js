@@ -120,8 +120,16 @@ const authMethods = {
 
 const fromTable = (table) => ({
   select: (columns = '*') => ({
-    order: () => ({ async execute() { return { data: [], error: null }; } }),
-    async execute() { return { data: [], error: null }; },
+    order: (col, dir = 'asc') => ({
+      async execute() {
+        const { data, ok } = await fetchSupabase(`/rest/v1/${table}?select=${columns}&order=${col}.${dir}`);
+        return { data: ok ? data : [], error: ok ? null : { message: 'Errore' } };
+      }
+    }),
+    async execute() {
+      const { data, ok } = await fetchSupabase(`/rest/v1/${table}?select=${columns}`);
+      return { data: ok ? data : [], error: ok ? null : { message: 'Errore' } };
+    },
     eq: (col, val) => ({
       single: async () => {
         const { data, ok } = await fetchSupabase(`/rest/v1/${table}?${col}=eq.${val}`);
