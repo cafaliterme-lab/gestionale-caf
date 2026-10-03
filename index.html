@@ -319,6 +319,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <button type="button" data-tab="registro" onclick="showTab(this)">REGISTRO DI PROTOCOLLO</button>
   <button type="button" data-tab="contabilita" onclick="showTab(this)">CONTABILITA'</button>
   <button type="button" data-tab="caf" onclick="showTab(this)">VERSAMENTI CAF</button>
+  <button type="button" data-tab="isee" onclick="showTab(this)">ISEE A PAGAMENTO</button>
   <button type="button" data-tab="collaboratori" onclick="showTab(this)">COLLABORATORI</button>
   <button type="button" data-tab="scadenze" onclick="showTab(this)">SCADENZE</button>
   <button type="button" data-tab="permessi" id="nav-permessi" onclick="showTab(this)" style="display:none">UTENTI&nbsp;E&nbsp;PERMESSI</button>
@@ -342,6 +343,23 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <div class="card" id="caf-card"></div>
 <div id="list" style="display:none"></div>
 
+</section>
+
+<section class="tabsec" id="tab-isee">
+<div class="card">
+  <div class="raff-title">Nuovo ISEE a pagamento</div>
+  <div class="grid">
+    <div class="full"><label>Nominativo</label><input id="is-nome" placeholder="Cognome e nome"></div>
+    <div><label>Importo (€)</label><input id="is-importo" inputmode="decimal" placeholder="0,00"></div>
+    <div><label>Data</label><input id="is-data" type="date"></div>
+  </div>
+  <div id="isee-msg" style="display:none; color:#c0392b; font-size:13px; margin-top:8px"></div>
+  <button type="button" class="btn-add" onclick="aggiungiIsee()">+ Aggiungi ISEE</button>
+</div>
+<div style="margin-bottom:14px">
+  <button type="button" onclick="esportaIseeExcel()" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border:none; border-radius:999px; background:var(--accent); color:var(--accent-ink); font-size:12.5px; font-weight:600; cursor:pointer">🖨️ Stampa ISEE (Excel)</button>
+</div>
+<div class="card" id="isee-card"></div>
 </section>
 
 <section class="tabsec" id="tab-contabilita">
@@ -564,14 +582,14 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/codice-fiscale.js?v=2"></script>
 <script src="js/ocr-documento.js?v=2"></script>
 <script src="js/scadenze.js?v=1"></script>
-<script src="js/config.js?v=202610047"></script>
-<script src="js/auth.js?v=202610047"></script>
+<script src="js/config.js?v=202610048"></script>
+<script src="js/auth.js?v=202610048"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610047"></script>
-<script src="js/import-clienti.js?v=202610047"></script>
-<script src="js/app.js?v=202610047"></script>
+<script src="js/data.js?v=202610048"></script>
+<script src="js/import-clienti.js?v=202610048"></script>
+<script src="js/app.js?v=202610048"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->
