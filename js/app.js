@@ -762,16 +762,51 @@ async function renderPermessi(){
   wrap.innerHTML = operatori.length ? operatori.map(function(u){
     const tabs = u.tabs || {};
     const righeTab = Object.keys(TAB_LABELS).map(function(tab){
-      return '<div class="perm-row"><span>'+TAB_LABELS[tab]+'</span><label class="chk"><input type="checkbox" '+(tabs[tab]?'checked':'')+' onchange="togglePermTab(&quot;'+u.id+'&quot;,&quot;'+tab+'&quot;,this.checked)"> Visibile</label></div>';
+      return '<div class="perm-row"><span>'+TAB_LABELS[tab]+'</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="'+tab+'" '+(tabs[tab]?'checked':'')+' id="perm-'+u.id+'-'+tab+'"> Visibile</label></div>';
     }).join('');
     return '<div class="card" style="margin-bottom:12px">'
       + '<div class="raff-title">'+esc(u.nome)+'</div>'
       + righeTab
-      + '<div class="perm-row" style="margin-top:6px; border-top:2px solid var(--line); padding-top:12px"><span>Sola lettura</span><label class="chk"><input type="checkbox" '+(u.sola_lettura?'checked':'')+' onchange="togglePermSoloLettura(&quot;'+u.id+'&quot;,this.checked)"> Attiva</label></div>'
+      + '<div class="perm-row" style="margin-top:6px; border-top:2px solid var(--line); padding-top:12px"><span>Sola lettura</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-type="sola_lettura" '+(u.sola_lettura?'checked':'')+' id="perm-'+u.id+'-solo"> Attiva</label></div>'
       + '<div class="perm-row"><span>Nuova password</span><span style="display:flex; gap:6px"><input type="password" id="pwd-'+u.id+'" placeholder="Lascia vuoto per non cambiarla" style="width:160px; padding:6px 8px; font-size:12.5px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink)"><button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer" onclick="cambiaPasswordUtente(&quot;'+u.id+'&quot;, document.getElementById(&quot;pwd-'+u.id+'&quot;).value); document.getElementById(&quot;pwd-'+u.id+'&quot;).value=&quot;&quot;">Salva</button></span></div>'
       + '<div class="perm-row"><span></span><button type="button" style="background:none; border:none; color:#c0392b; font-weight:700; cursor:pointer" onclick="rimuoviUtente(&quot;'+u.id+'&quot;)">Elimina utente</button></div>'
       + '</div>';
-  }).join('') : '<div class="empty">Nessun operatore oltre all\'amministratore</div>';
+  }).join('') + '<div style="margin-top:12px; text-align:left"><button type="button" class="btn-add" onclick="salvaPermessi()">💾 Salva permessi</button></div>'
+    : '<div class="empty">Nessun operatore oltre all\'amministratore</div>';
+}
+
+async function salvaPermessi(){
+  try {
+    const checks = document.querySelectorAll('.perm-check');
+    const changes = {};
+
+    checks.forEach(function(check){
+      const userId = check.dataset.userId;
+      const tab = check.dataset.tab;
+      const type = check.dataset.type;
+
+      if(!changes[userId]) changes[userId] = { tabs: {} };
+
+      if(tab) {
+        changes[userId].tabs[tab] = check.checked;
+      } else if(type === 'sola_lettura') {
+        changes[userId].sola_lettura = check.checked;
+      }
+    });
+
+    for(const userId in changes) {
+      const result = await aggiornaProfilo(userId, changes[userId]);
+      if(result.error) {
+        alert('❌ Errore: ' + result.error);
+        return;
+      }
+    }
+
+    alert('✅ Permessi salvati con successo!');
+    await renderPermessi();
+  } catch(e){
+    alert('❌ Errore: ' + e.message);
+  }
 }
 
 async function togglePermTab(id, tab, val){
