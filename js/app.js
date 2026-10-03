@@ -1320,7 +1320,7 @@ function render(){
     <div class="raff-title">Registro di protocollo</div>
     <div class="tab-wrap">
       <table class="tab-proto">
-        <thead><tr><th>N. protocollo</th><th>Data apertura</th><th>Fine lavorazione</th><th>Mittente</th><th>Tipo di pratica</th></tr></thead>
+        <thead><tr><th>N. protocollo</th><th>Data apertura</th><th>Fine lavorazione</th><th>Mittente</th><th>Tipo di pratica</th><th>Stato</th><th>Inserito da</th><th></th></tr></thead>
         <tbody>
           ${ordinate.length ? ordinate.map(p => `
             <tr>
@@ -1329,7 +1329,7 @@ function render(){
               <td>${esc(p.dataFine)||'-'}</td>
               <td>${(p.nome||'-').toUpperCase()}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}</td>
               <td>${p.tipo||'-'}</td>
-              <td><select class="stato-tab-sel" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select></td>
+              <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select></td>
               <td>${formattaInserimento(p)}</td>
               <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer')}</td>
             </tr>`).join('') : '<tr><td colspan="8" class="empty">'+(pratAnno.length ? 'Nessun risultato' : 'Nessuna registrazione per l\'anno '+annoSel)+'</td></tr>'}
