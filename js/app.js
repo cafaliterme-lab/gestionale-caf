@@ -889,7 +889,13 @@ async function renderPermessi(){
   const cardsHtml = operatori.map(function(u){
     const tabs = u.tabs || {};
     const righeTab = Object.keys(TAB_LABELS).map(function(tab){
-      return '<div class="perm-row"><span>'+TAB_LABELS[tab]+'</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="'+tab+'" '+(tabs[tab]?'checked':'')+' id="perm-'+u.id+'-'+tab+'"> Visibile</label></div>';
+      let riga = '<div class="perm-row"><span>'+TAB_LABELS[tab]+'</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="'+tab+'" '+(tabs[tab]?'checked':'')+' id="perm-'+u.id+'-'+tab+'"> Visibile</label></div>';
+      if(tab === 'contabilita'){
+        riga += Object.keys(SEZIONI_CONTABILITA).map(function(k){
+          return '<div class="perm-row" style="padding-left:22px; font-size:12.5px"><span style="color:var(--sub)">↳ '+SEZIONI_CONTABILITA[k]+'</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="'+k+'" '+(tabs[k]!==false?'checked':'')+' id="perm-'+u.id+'-'+k+'"> Visibile</label></div>';
+        }).join('');
+      }
+      return riga;
     }).join('');
     return '<div class="card" style="margin-bottom:12px">'
       + '<div class="raff-title">'+esc(u.nome)+'</div>'
@@ -1275,19 +1281,22 @@ function render(){
   const incasso = incassoLordo - versatoCaf;
   const differenzaIncFatt = incasso - fattureEmesse;
 
-  summary.innerHTML = `
+  const vPrat = vedeSezioneContabilita('cont_pratiche'), vEco = vedeSezioneContabilita('cont_economici'), vBlocchi = vedeSezioneContabilita('cont_blocchi'), vGrafici = vedeSezioneContabilita('cont_grafici');
+  const contExcel = document.getElementById('cont-excel');
+  if(contExcel) contExcel.style.display = (vPrat && vEco && vBlocchi && vGrafici) ? '' : 'none';
+  const raffBox = document.getElementById('raffronto');
+  if(raffBox) raffBox.style.display = vGrafici ? '' : 'none';
+  summary.innerHTML = (vPrat ? `
     <div class="stat c3"><b>${tot}</b><span>Pratiche totali</span></div>
     <div class="stat c3"><b>${lavorate}</b><span>Lavorate</span></div>
-    <div class="stat c3"><b>${daLavorare}</b><span>Da lavorare</span></div>
+    <div class="stat c3"><b>${daLavorare}</b><span>Da lavorare</span></div>` : '') + (vEco ? `
     <div class="stat c5 verde"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE</span></div>
     <div class="stat c5 viola"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
     <div class="stat c5 blu"><b>${fmtEuro(versatoCaf)}</b><span>PAGAMENTI CAF</span></div>
     <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">NETTO (incasso − pagamenti CAF)</span></div>
-    <div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO</span></div>
+    <div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO</span></div>` : '') + (vBlocchi ? `
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true)}
-    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }))}
-    ${riepilogoGuadagno(pratAnno, versatoCaf)}
-  `;
+    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }))}` : '') + (vEco && vBlocchi ? riepilogoGuadagno(pratAnno, versatoCaf) : '');
 
   const caf = document.getElementById('caf-card');
   const vlist = versAnno;
@@ -1963,4 +1972,17 @@ function riepilogoGuadagno(pratiche, pagamentiCaf){
     + voce('Pagamenti CAF', pagamentiCaf, '#2f7de1') + '<b>=</b>'
     + '<span style="white-space:nowrap; background:#374151; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre - pagamentiCaf) + '</span>'
     + '</div>';
+}
+
+// Parti della Contabilita' che si possono nascondere a un operatore (se non impostate restano visibili)
+const SEZIONI_CONTABILITA = {
+  cont_pratiche: 'Numero pratiche',
+  cont_economici: 'Riquadri economici e guadagno netto',
+  cont_blocchi: 'Blocchi SOLO 730 / ALTRE PRATICHE',
+  cont_grafici: 'Grafici e tabella per tipo'
+};
+function vedeSezioneContabilita(k){
+  const u = auth.profilo;
+  if(!u || u.ruolo === 'admin') return true;
+  return !(u.tabs && u.tabs[k] === false);
 }
