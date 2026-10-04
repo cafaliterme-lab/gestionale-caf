@@ -103,15 +103,18 @@ function renderScadenze() {
 }
 
 async function aggiungiScadenzaForm() {
-  const titolo = document.getElementById('sc-titolo').value.trim();
+  const cliente = document.getElementById('sc-cliente').value.trim().toUpperCase();
+  const note = document.getElementById('sc-note').value.trim();
+  const titolo = document.getElementById('sc-titolo').value.trim() || note || (cliente ? 'Appuntamento ' + cliente : '');
   const dataIso = document.getElementById('sc-data').value;
-  if (!titolo || !dataIso) { avviso('⚠️ Inserisci descrizione e data della scadenza', true); return; }
+  if (!dataIso) { avviso('⚠️ Scegli la data della scadenza', true); return; }
+  if (!titolo) { avviso('⚠️ Scrivi una descrizione, una nota o il cliente', true); return; }
   const r = await data.scadenze.aggiungi({
     titolo: titolo,
     data: dataIso,
     avvisoGiorni: parseInt(document.getElementById('sc-avviso').value, 10) || 0,
-    cliente: document.getElementById('sc-cliente').value.trim().toUpperCase(),
-    note: document.getElementById('sc-note').value.trim(),
+    cliente: cliente,
+    note: note,
   });
   if (r.error) { avviso('❌ Scadenza non salvata: ' + r.error, true); return; }
   ['sc-titolo', 'sc-cliente', 'sc-note'].forEach(function (id) { document.getElementById(id).value = ''; });
@@ -142,8 +145,35 @@ function aggiornaAvvisiScadenze() {
   box.style.display = 'flex';
   box.innerHTML = '<span>🔔 <b>' + urgenti.length + (urgenti.length === 1 ? ' scadenza' : ' scadenze') + ' da gestire:</b> '
     + urgenti.slice(0, 4).map(function (s) {
-        return '<span style="color:' + COLORI_SCADENZA[statoScadenza(s)] + '; font-weight:600">' + esc(s.titolo) + '</span> (' + quandoScadenza(s) + ')';
+        return '<span style="color:' + COLORI_SCADENZA[statoScadenza(s)] + '; font-weight:600">' + esc(s.titolo) + '</span>' + (s.cliente ? ' – ' + esc(s.cliente) : '') + ' (' + quandoScadenza(s) + ')';
       }).join(' · ')
     + (urgenti.length > 4 ? ' e altre ' + (urgenti.length - 4) : '') + '</span>'
     + '<button type="button" onclick="showTab(document.querySelector(\'.navmenu button[data-tab=&quot;scadenze&quot;]\'))">Apri calendario</button>';
+  if (!popupScadenzeMostrato) { popupScadenzeMostrato = true; mostraPopupScadenze(urgenti); }
+}
+
+// Finestra di avviso, una volta per ogni apertura del programma
+let popupScadenzeMostrato = false;
+function mostraPopupScadenze(urgenti) {
+  const ordinate = urgenti.slice().sort(function (a, b) { return a.data < b.data ? -1 : a.data > b.data ? 1 : 0; });
+  const ov = document.createElement('div');
+  ov.id = 'popup-scadenze';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:200; background:rgba(15,27,45,.45); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; max-width:520px; width:100%; max-height:80vh; overflow:auto; padding:20px; box-shadow:0 20px 50px rgba(0,0,0,.3)">'
+    + '<div style="font-size:18px; font-weight:800; margin-bottom:4px">🔔 Scadenze da gestire</div>'
+    + '<div style="font-size:13px; color:var(--sub); margin-bottom:12px">' + ordinate.length + (ordinate.length === 1 ? ' scadenza scaduta o in arrivo' : ' scadenze scadute o in arrivo') + '</div>'
+    + ordinate.map(function (s) {
+        return '<div style="display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--line)">'
+          + '<span style="flex:none; width:10px; height:10px; border-radius:50%; margin-top:5px; background:' + COLORI_SCADENZA[statoScadenza(s)] + '"></span>'
+          + '<div style="flex:1; min-width:0"><b>' + esc(s.titolo) + '</b>' + (s.cliente ? ' – ' + esc(s.cliente) : '')
+          + '<div style="font-size:12.5px; color:var(--sub)">' + dataIT(s.data) + ' · <b style="color:' + COLORI_SCADENZA[statoScadenza(s)] + '">' + quandoScadenza(s) + '</b>' + (s.note ? ' · ' + esc(s.note) : '') + '</div></div></div>';
+      }).join('')
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:14px">'
+    + '<button type="button" id="popup-sc-chiudi" style="background:var(--line); color:var(--ink)">Chiudi</button>'
+    + '<button type="button" id="popup-sc-apri" style="background:#d4881c; color:#fff">Apri calendario</button></div></div>';
+  document.body.appendChild(ov);
+  const chiudi = function () { ov.remove(); };
+  ov.addEventListener('click', function (e) { if (e.target === ov) chiudi(); });
+  document.getElementById('popup-sc-chiudi').onclick = chiudi;
+  document.getElementById('popup-sc-apri').onclick = function () { chiudi(); showTab(document.querySelector('.navmenu button[data-tab="scadenze"]')); };
 }
