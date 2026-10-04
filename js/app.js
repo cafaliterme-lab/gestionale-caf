@@ -1075,6 +1075,7 @@ function onDatiAggiornati(){
 // Aggiornamento automatico: le pratiche inserite da un altro dispositivo (es. il telefono)
 // compaiono da sole, senza ricaricare la pagina. Si salta mentre si sta scrivendo o modificando.
 let AGGIORNAMENTO_IN_CORSO = false;
+let ULTIMA_FIRMA_SERVER = '';
 function firmaDati(){
   return JSON.stringify([state.pratiche, state.versamenti, state.isee, state.clienti, state.collaboratori, state.scadenze], function(k, v){ return k.charAt(0) === '_' ? undefined : v; });
 }
@@ -1088,6 +1089,12 @@ async function aggiornaDaServer(){
   if(AGGIORNAMENTO_IN_CORSO || document.hidden || !auth.profilo || !localStorage.getItem('auth_token') || staModificando()) return;
   AGGIORNAMENTO_IN_CORSO = true;
   try{
+    // Prima si chiede al server solo una "impronta" dei dati (pochi byte): si ricarica tutto solo se e' cambiata
+    const { data: firma, error } = await supabase.rpc('firma_dati', {});
+    if(!error && firma){
+      if(firma === ULTIMA_FIRMA_SERVER) return;
+      ULTIMA_FIRMA_SERVER = firma;
+    }
     const prima = firmaDati();
     const ok = await data.caricaTutto({ silenzioso: true });
     if(ok && firmaDati() !== prima && !staModificando()) onDatiAggiornati();
