@@ -126,6 +126,11 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .hero-caf span{display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.28); color:#fff; backdrop-filter:blur(2px)}
 .hero-caf span.orari{background:rgba(227,6,19,.55); border-color:rgba(255,255,255,.35)}
 .hero-caf a{color:#fff; text-decoration:none}
+.hero-orologio{margin-left:24px; flex:none; align-self:center; text-align:center; padding:8px 16px; border-radius:14px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3); position:relative; z-index:6}
+.hero-orologio .ora{font-size:30px; font-weight:800; line-height:1.05; letter-spacing:.02em; font-variant-numeric:tabular-nums}
+.hero-orologio .giorno{font-size:13px; font-weight:700; margin-top:3px; text-transform:capitalize; white-space:nowrap}
+.hero-orologio + .qr-app{margin-left:auto}
+@media (max-width:560px){.hero{flex-wrap:wrap} .hero-orologio{margin-left:0; order:3; width:100%; display:flex; align-items:baseline; justify-content:center; gap:10px; padding:6px 12px} .hero-orologio .ora{font-size:24px} .hero-orologio .giorno{margin-top:0}}
 .card,.stat,.item{border-radius:14px; box-shadow:0 1px 2px rgba(15,27,45,.06),0 8px 24px rgba(15,27,45,.06)}
 .charts{display:grid; grid-template-columns:1fr 1fr; gap:14px}
 .tab-orari td, .tab-orari th{padding:4px 6px}
@@ -301,6 +306,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
     <h1>PROTOCOLLO CAF CISL SEDE DI ALI' TERME</h1>
     <div id="hero-caf" class="hero-caf"></div>
   </div>
+  <div id="hero-orologio" class="hero-orologio"><div class="ora"></div><div class="giorno"></div></div>
   <button type="button" id="qr-app" class="qr-app" onclick="apriQrApp()" title="Inquadra con la fotocamera del telefono per aprire l'app"></button>
 </header>
 <div id="doc-overlay" class="scanner-overlay">
@@ -670,7 +676,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610107"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610117"></script>
+<script src="js/app.js?v=202610118"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

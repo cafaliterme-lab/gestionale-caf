@@ -2224,6 +2224,17 @@ async function caricaImpostazioni(){
 }
 let MODELLI_IN_MODIFICA = null;
 let PREDEFINITO_IN_MODIFICA = 0;
+// Intestazione: giorno e ora sempre aggiornati
+function aggiornaOrologio(){
+  const box = document.getElementById('hero-orologio');
+  if(!box) return;
+  const d = new Date();
+  box.querySelector('.ora').textContent = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  box.querySelector('.giorno').textContent = d.toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+}
+aggiornaOrologio();
+setInterval(aggiornaOrologio, 1000);
+
 // Intestazione: dati del CAF presi da Messaggi > Dati del CAF
 function aggiornaIntestazioneCaf(){
   const box = document.getElementById('hero-caf');
