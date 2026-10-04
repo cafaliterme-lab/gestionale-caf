@@ -1059,6 +1059,32 @@ function onDatiAggiornati(){
   renderScadenze();
   aggiornaAvvisiScadenze();
 }
+// Aggiornamento automatico: le pratiche inserite da un altro dispositivo (es. il telefono)
+// compaiono da sole, senza ricaricare la pagina. Si salta mentre si sta scrivendo o modificando.
+let AGGIORNAMENTO_IN_CORSO = false;
+function firmaDati(){
+  return JSON.stringify([state.pratiche, state.versamenti, state.isee, state.clienti, state.collaboratori, state.scadenze], function(k, v){ return k.charAt(0) === '_' ? undefined : v; });
+}
+function staModificando(){
+  const a = document.activeElement;
+  if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'checkbox' && a.type !== 'button') return true;
+  if(document.querySelector('.scanner-overlay.open, #invio-multiplo, #finestra-stampa')) return true;
+  return [state.pratiche, state.versamenti, state.isee].some(function(l){ return (l||[]).some(function(x){ return x._editing || x._confirmDelete || x._editingFattura; }); });
+}
+async function aggiornaDaServer(){
+  if(AGGIORNAMENTO_IN_CORSO || document.hidden || !auth.profilo || !localStorage.getItem('auth_token') || staModificando()) return;
+  AGGIORNAMENTO_IN_CORSO = true;
+  try{
+    const prima = firmaDati();
+    const ok = await data.caricaTutto({ silenzioso: true });
+    if(ok && firmaDati() !== prima && !staModificando()) onDatiAggiornati();
+  }catch(e){ console.error('aggiornamento automatico', e); }
+  finally{ AGGIORNAMENTO_IN_CORSO = false; }
+}
+setInterval(aggiornaDaServer, 15000);
+window.addEventListener('focus', aggiornaDaServer);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) aggiornaDaServer(); });
+
 function syncDataFromSupabase(){
   // data.js scrive direttamente nel `state` globale; qui serve solo l'archivio clienti
   ARCHIVIO_CLIENTI = state.clienti || [];

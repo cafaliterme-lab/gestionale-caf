@@ -172,7 +172,7 @@ function mostraErrore(messaggio) {
 /**
  * Carica tutti i dati dal database
  */
-async function caricaTutto() {
+async function caricaTutto(opzioni) {
   try {
     // Aspetta che state e supabase siano disponibili
     await waitForState();
@@ -234,11 +234,11 @@ async function caricaTutto() {
     state.scadenze = errS ? [] : scadenze.map(x => mapFromDb(x, schemas.scadenza));
 
     // Il client REST non ha il realtime: avvisa l'interfaccia che i dati sono cambiati
-    if (typeof window.onDatiAggiornati === 'function') window.onDatiAggiornati();
+    if (!(opzioni && opzioni.silenzioso) && typeof window.onDatiAggiornati === 'function') window.onDatiAggiornati();
 
     return true;
   } catch (err) {
-    mostraErrore(err.message);
+    if (!(opzioni && opzioni.silenzioso)) mostraErrore(err.message);
     return false;
   }
 }
