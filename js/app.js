@@ -1403,6 +1403,7 @@ function render(){
       <div class="meta compenso">Fattura: ${fmtEuro(p.compenso)} · Pagato effettivo: ${fmtEuro(p.pagato)}</div>
       ${storicoClienteHTML(p)}
       ${p.numFattura ? `<div class="meta">Fattura n. ${esc(p.numFattura)}</div>` : ''}
+      ${p.whatsappInviato ? `<div class="meta" style="color:#1a9e4b">💬 Avvisato su WhatsApp il ${esc(p.whatsappInviato)}</div>` : ''}
       ${p._editing ? `
         <div class="grid" style="margin-top:8px">
           <div><label>Cognome</label><input id="e-cognome-${p.id}" value="${esc(dividiNominativo(p).cognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
@@ -1646,11 +1647,12 @@ function inviaWhatsApp(id){
   if(nuovoTel) data.pratiche.aggiorna(id, { telefono: nuovoTel });
   const modelli = modelliWhatsApp();
   // Apertura immediata dal clic: dopo un'attesa il browser bloccherebbe la nuova finestra
-  if(modelli.length < 2){ apriWhatsApp(num, messaggioRitiro(p)); return; }
+  if(modelli.length < 2){ apriWhatsApp(num, messaggioRitiro(p), p); return; }
   scegliMessaggioWhatsApp(p, num);
 }
-function apriWhatsApp(num, testo){
+function apriWhatsApp(num, testo, p){
   window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(testo), '_blank');
+  if(p && p.id){ p.whatsappInviato = todayIT(); data.pratiche.aggiorna(p.id, { whatsappInviato: p.whatsappInviato }); }
 }
 function scegliMessaggioWhatsApp(p, num){
   const modelli = modelliWhatsApp();
@@ -1670,7 +1672,7 @@ function scegliMessaggioWhatsApp(p, num){
   ov.addEventListener('click', function(e){
     const b = e.target.closest('button');
     if(e.target === ov || (b && b.dataset.annulla)){ ov.remove(); return; }
-    if(b && b.dataset.i != null){ apriWhatsApp(num, messaggioRitiro(p, parseInt(b.dataset.i, 10))); ov.remove(); }
+    if(b && b.dataset.i != null){ apriWhatsApp(num, messaggioRitiro(p, parseInt(b.dataset.i, 10)), p); ov.remove(); }
   });
 }
 function bottoneWhatsApp(p, stile, soloIcona){
@@ -2272,4 +2274,96 @@ function aggiornaTestoOrari(){
   const el = document.getElementById('caf-orari-testo');
   if(el) el.textContent = testoOrari(tabellaOrariDalModulo()) || '(nessun orario: la frase non compare)';
   anteprimaMessaggioCaf();
+}
+
+// ---- Invio WhatsApp multiplo guidato: un clic per cliente (il browser non permette di aprire piu' chat insieme) ----
+let INVIO_MULTIPLO = null;
+function apriInvioMultiplo(){
+  const anno = annoAttivo();
+  const lista = (state.pratiche||[]).filter(function(p){ return p.stato === 'lavorata' && annoPratica(p) === anno; })
+    .sort(function(a,b){ return a.numero - b.numero; });
+  if(!lista.length){ avviso('Nessuna pratica in stato Lavorata nel ' + anno, true); return; }
+  INVIO_MULTIPLO = {
+    fase: 'scelta',
+    lista: lista,
+    scelti: {},
+    modello: indiceModelloPredefinito(),
+    coda: [], pos: 0, inviati: {}
+  };
+  lista.forEach(function(p){ if(numeroWhatsApp(p.telefono) && !p.whatsappInviato) INVIO_MULTIPLO.scelti[p.id] = true; });
+  let ov = document.getElementById('invio-multiplo');
+  if(ov) ov.remove();
+  ov = document.createElement('div');
+  ov.id = 'invio-multiplo';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:400; background:rgba(15,27,45,.45); display:flex; align-items:center; justify-content:center; padding:16px';
+  document.body.appendChild(ov);
+  disegnaInvioMultiplo();
+}
+function chiudiInvioMultiplo(){ const ov = document.getElementById('invio-multiplo'); if(ov) ov.remove(); INVIO_MULTIPLO = null; }
+function disegnaInvioMultiplo(){
+  const ov = document.getElementById('invio-multiplo');
+  const st = INVIO_MULTIPLO;
+  if(!ov || !st) return;
+  const modelli = modelliWhatsApp();
+  let corpo = '';
+  if(st.fase === 'scelta'){
+    const n = st.lista.filter(function(p){ return st.scelti[p.id]; }).length;
+    corpo = '<div style="font-size:18px; font-weight:800; margin-bottom:2px">💬 WhatsApp multiplo</div>'
+      + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">Pratiche in stato Lavorata del ' + annoAttivo() + '. Sono già selezionate quelle con un cellulare valido non ancora avvisate.</div>'
+      + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">'
+      + '<button type="button" style="background:var(--line); color:var(--ink); padding:6px 10px; font-size:12.5px" onclick="selezionaInvioMultiplo(true)">Seleziona tutti</button>'
+      + '<button type="button" style="background:var(--line); color:var(--ink); padding:6px 10px; font-size:12.5px" onclick="selezionaInvioMultiplo(false)">Nessuno</button></div>'
+      + '<div style="max-height:45vh; overflow-y:auto; border:1px solid var(--line); border-radius:10px">'
+      + st.lista.map(function(p){
+          const num = numeroWhatsApp(p.telefono);
+          return '<label style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); margin:0; font-size:13px; color:var(--ink); cursor:' + (num ? 'pointer' : 'not-allowed') + '; opacity:' + (num ? '1' : '.5') + '">'
+            + '<input type="checkbox" style="width:auto" ' + (st.scelti[p.id] ? 'checked' : '') + (num ? '' : ' disabled') + ' onchange="INVIO_MULTIPLO.scelti[\'' + p.id + '\']=this.checked; disegnaInvioMultiplo()">'
+            + '<span style="flex:1; min-width:0"><b>' + esc(formattaProtocollo(p)) + '</b> · ' + esc(p.nome||'') + ' <span style="color:var(--sub)">(' + esc(p.tipo||'') + ')</span><br>'
+            + '<span style="font-size:12px; color:var(--sub)">' + (num ? '📱 ' + esc(p.telefono) : '⚠️ cellulare mancante o non valido') + '</span>'
+            + (p.whatsappInviato ? ' <span style="font-size:12px; color:#1a9e4b; font-weight:600">· già avvisato il ' + esc(p.whatsappInviato) + '</span>' : '') + '</span></label>';
+        }).join('') + '</div>'
+      + (modelli.length > 1 ? '<div style="margin-top:10px"><label>Messaggio da inviare</label><select onchange="INVIO_MULTIPLO.modello=parseInt(this.value,10)">'
+          + modelli.map(function(m, i){ return '<option value="' + i + '"' + (i === st.modello ? ' selected' : '') + '>' + (i + 1) + (i === indiceModelloPredefinito() ? ' ⭐' : '') + ' – ' + esc(m.slice(0, 70)) + '…</option>'; }).join('') + '</select></div>' : '')
+      + '<div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px">'
+      + '<button type="button" style="background:var(--line); color:var(--ink)" onclick="chiudiInvioMultiplo()">Annulla</button>'
+      + '<button type="button" style="background:#25d366; color:#fff"' + (n ? '' : ' disabled') + ' onclick="avviaInvioMultiplo()">Avanti: ' + n + (n === 1 ? ' messaggio' : ' messaggi') + ' ›</button></div>';
+  } else {
+    const tot = st.coda.length;
+    const prossimo = st.coda[st.pos];
+    corpo = '<div style="font-size:18px; font-weight:800; margin-bottom:2px">💬 Invio in corso: ' + Math.min(st.pos, tot) + ' di ' + tot + '</div>'
+      + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">Per ogni cliente si apre WhatsApp con il messaggio già scritto: premi Invio in WhatsApp, poi torna qui e clicca il cliente successivo.</div>'
+      + (prossimo
+          ? '<button type="button" style="display:block; width:100%; background:#25d366; color:#fff; font-size:16px; padding:14px" onclick="inviaProssimoMultiplo()">💬 Apri WhatsApp per ' + esc(nomeProprio(prossimo.nome)) + ' (' + (st.pos + 1) + '/' + tot + ')</button>'
+            + '<div style="text-align:right; margin-top:6px"><button type="button" style="background:none; color:var(--sub); font-size:12.5px; padding:4px 0" onclick="INVIO_MULTIPLO.pos++; disegnaInvioMultiplo()">Salta questo cliente ›</button></div>'
+          : '<div style="padding:14px; border-radius:10px; background:color-mix(in srgb, #25d366 15%, var(--card)); font-weight:700; text-align:center">✅ Finito: aperte ' + Object.keys(st.inviati).length + ' chat su ' + tot + '</div>')
+      + '<div style="max-height:40vh; overflow-y:auto; margin-top:10px; border:1px solid var(--line); border-radius:10px">'
+      + st.coda.map(function(p, i){
+          const fatto = st.inviati[p.id];
+          const stato = fatto ? '<span style="color:#1a9e4b; font-weight:700">✓ aperto</span>' : (i < st.pos ? '<span style="color:var(--sub)">saltato</span>' : (i === st.pos ? '<span style="color:#d4881c; font-weight:700">● prossimo</span>' : '<span style="color:var(--sub)">in attesa</span>'));
+          return '<div style="display:flex; justify-content:space-between; gap:8px; padding:7px 10px; border-bottom:1px solid var(--line); font-size:13px"><span>' + (i + 1) + '. ' + esc(p.nome||'') + '</span>' + stato + '</div>';
+        }).join('') + '</div>'
+      + '<div style="display:flex; justify-content:flex-end; margin-top:12px"><button type="button" style="background:var(--line); color:var(--ink)" onclick="chiudiInvioMultiplo()">' + (prossimo ? 'Interrompi' : 'Chiudi') + '</button></div>';
+  }
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; max-width:600px; width:100%; max-height:90vh; overflow:auto; padding:18px 20px; box-shadow:0 20px 50px rgba(0,0,0,.3)">' + corpo + '</div>';
+}
+function selezionaInvioMultiplo(tutti){
+  const st = INVIO_MULTIPLO;
+  st.lista.forEach(function(p){ st.scelti[p.id] = tutti && !!numeroWhatsApp(p.telefono); });
+  disegnaInvioMultiplo();
+}
+function avviaInvioMultiplo(){
+  const st = INVIO_MULTIPLO;
+  st.coda = st.lista.filter(function(p){ return st.scelti[p.id] && numeroWhatsApp(p.telefono); });
+  st.pos = 0;
+  st.fase = 'invio';
+  disegnaInvioMultiplo();
+}
+function inviaProssimoMultiplo(){
+  const st = INVIO_MULTIPLO;
+  const p = st && st.coda[st.pos];
+  if(!p) return;
+  apriWhatsApp(numeroWhatsApp(p.telefono), messaggioRitiro(p, st.modello), p);
+  st.inviati[p.id] = true;
+  st.pos++;
+  disegnaInvioMultiplo();
 }

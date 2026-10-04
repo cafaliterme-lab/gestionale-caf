@@ -94,6 +94,7 @@ const schemas = {
     congData: 'cong_data',
     telefono: 'telefono',
     telefonoFisso: 'telefono_fisso',
+    whatsappInviato: 'whatsapp_inviato',
     cf: 'cf',
     tipo: 'tipo',
     compenso: 'compenso',
