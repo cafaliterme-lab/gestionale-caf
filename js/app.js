@@ -1876,21 +1876,21 @@ function aggiornaGraficoTipi(pratiche){
   const inc = d.tipi.map(function(t){ return d.righe[t].inc; });
   const prov = d.tipi.map(function(t){ return d.righe[t].inc - d.righe[t].fatt; });
   const wrap = cv.parentNode;
-  if(wrap) wrap.style.height = Math.max(220, 70 + d.tipi.length * 46) + 'px';
+  if(wrap) wrap.style.height = '320px';
   if(!chTipi){
     const cs = getComputedStyle(document.documentElement);
     const ink = cs.getPropertyValue('--ink').trim() || '#0f1b2d';
     const sub = cs.getPropertyValue('--sub').trim() || '#5b6b82';
     chTipi = new Chart(cv, {type:'bar',
-      data:{labels:d.tipi, datasets:[
+      data:{labels:d.tipi.map(etichettaSuPiuRighe), datasets:[
         {label:'Fatture emesse', data:fatt, backgroundColor:'#2f9e5f', borderRadius:6, maxBarThickness:18},
         {label:'Incasso', data:inc, backgroundColor:'#8e5bd6', borderRadius:6, maxBarThickness:18},
         {label:'Provento', data:prov, backgroundColor:'#374151', borderRadius:6, maxBarThickness:18}]},
-      options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{position:'bottom', labels:{boxWidth:10, color:ink, font:{size:11}}}, tooltip:{callbacks:{label:function(c){ return c.dataset.label+': '+fmtEuro(c.parsed.x); }}}},
-        scales:{y:{ticks:{color:ink, font:{size:11}}, grid:{display:false}}, x:{beginAtZero:true, ticks:{color:sub, callback:function(v){ return '€ '+Number(v).toLocaleString('it-IT'); }}, grid:{color:'rgba(128,140,160,.18)'}}}}});
+      options:{responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom', labels:{boxWidth:10, color:ink, font:{size:11}}}, tooltip:{callbacks:{label:function(c){ return c.dataset.label+': '+fmtEuro(c.parsed.y); }}}},
+        scales:{x:{ticks:{color:ink, font:{size:11}}, grid:{display:false}}, y:{beginAtZero:true, ticks:{color:sub, callback:function(v){ return '€ '+Number(v).toLocaleString('it-IT'); }}, grid:{color:'rgba(128,140,160,.18)'}}}}});
   } else {
-    chTipi.data.labels = d.tipi;
+    chTipi.data.labels = d.tipi.map(etichettaSuPiuRighe);
     chTipi.data.datasets[0].data = fatt; chTipi.data.datasets[1].data = inc; chTipi.data.datasets[2].data = prov;
   }
   chTipi.setDatasetVisibility(2, vedeGuadagni());

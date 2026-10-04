@@ -100,24 +100,24 @@ function renderGrafici() {
   const d = datiPerTipo(pratAnno);
   const contaTipo = {};
   pratAnno.forEach(function (p) { const k = p.tipo || 'SENZA TIPO'; contaTipo[k] = (contaTipo[k] || 0) + pesoPratica(p); });
-  const altezza = Math.max(220, 60 + d.tipi.length * 34);
-  document.getElementById('gr-tipi-wrap').style.height = altezza + 'px';
-  document.getElementById('gr-tipi-euro-wrap').style.height = Math.max(240, 70 + d.tipi.length * 46) + 'px';
+  document.getElementById('gr-tipi-wrap').style.height = '300px';
+  document.getElementById('gr-tipi-euro-wrap').style.height = '340px';
+  const etichette = d.tipi.map(etichettaSuPiuRighe);
   disegna('gr-tipi', {
     type: 'bar',
-    data: { labels: d.tipi, datasets: [{ label: 'Pratiche', data: d.tipi.map(function (t) { return contaTipo[t]; }), backgroundColor: d.tipi.map(function (t) { return coloreCollaboratore(t); }), borderRadius: 6, maxBarThickness: 22 }] },
-    options: opzioniBase(false, true, false),
+    data: { labels: etichette, datasets: [{ label: 'Pratiche', data: d.tipi.map(function (t) { return contaTipo[t]; }), backgroundColor: d.tipi.map(function (t) { return coloreCollaboratore(t); }), borderRadius: 6, maxBarThickness: 22 }] },
+    options: opzioniBase(false, false, false),
   });
   disegna('gr-tipi-euro', {
     type: 'bar',
     data: {
-      labels: d.tipi,
+      labels: etichette,
       datasets: [
         { label: 'Fatture emesse', data: d.tipi.map(function (t) { return d.righe[t].fatt; }), backgroundColor: COL_FATTURE, borderRadius: 6, maxBarThickness: 16 },
         { label: 'Incasso', data: d.tipi.map(function (t) { return d.righe[t].inc; }), backgroundColor: COL_INCASSO, borderRadius: 6, maxBarThickness: 16 },
       ].concat(vedeGuadagni() ? [{ label: 'Provento', data: d.tipi.map(function (t) { return d.righe[t].inc - d.righe[t].fatt; }), backgroundColor: COL_GUADAGNO, borderRadius: 6, maxBarThickness: 16 }] : []),
     },
-    options: opzioniBase(true, true, true),
+    options: opzioniBase(true, false, true),
   });
 
   // 5 e 6. Per mese (data di apertura)
@@ -194,4 +194,16 @@ function renderGrafici() {
     },
     options: opzioniBase(true, false, true),
   });
+}
+
+// Nomi lunghi dei tipi pratica su piu' righe sotto le colonne
+function etichettaSuPiuRighe(t) {
+  const parole = String(t || '').split(/\s+/);
+  const righe = [];
+  parole.forEach(function (w) {
+    const ultima = righe[righe.length - 1];
+    if (ultima && (ultima + ' ' + w).length <= 14) righe[righe.length - 1] = ultima + ' ' + w;
+    else righe.push(w);
+  });
+  return righe;
 }
