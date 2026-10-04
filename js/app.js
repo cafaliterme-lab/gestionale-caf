@@ -2011,3 +2011,23 @@ function vedeGuadagni(){
   if(!u || u.ruolo === 'admin') return true;
   return !!(u.tabs && u.tabs.cont_guadagni === true);
 }
+
+// Inserimento anagrafica: ogni campo diventa verde quando e' compilato correttamente
+function campoCompilatoBene(el){
+  const v = (el.value||'').trim();
+  if(!v) return false;
+  if(el.id === 'f-codfisc') return typeof cfValido !== 'function' || cfValido(v);
+  if(el.id === 'f-cf' || el.id === 'f-cong-data' || el.id === 'f-data' || el.id === 'f-data-fine') return !!parseDataIT(v);
+  if(el.id === 'f-compenso' || el.id === 'f-pagato') return !isNaN(parseImporto(v));
+  return true;
+}
+function aggiornaColoriModulo(){
+  document.querySelectorAll('.form-anagrafica input[id^="f-"]').forEach(function(el){
+    if(el.type === 'checkbox' || el.type === 'hidden') return;
+    el.classList.toggle('compilato', campoCompilatoBene(el));
+  });
+}
+document.addEventListener('input', function(e){ if(e.target.closest && e.target.closest('.form-anagrafica')) aggiornaColoriModulo(); });
+document.addEventListener('change', function(e){ if(e.target.closest && e.target.closest('.form-anagrafica')) aggiornaColoriModulo(); });
+// i campi riempiti dal programma (archivio, lettura documento, azzeramento dopo il salvataggio) non generano eventi
+setInterval(aggiornaColoriModulo, 700);

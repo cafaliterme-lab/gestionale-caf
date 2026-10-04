@@ -43,6 +43,7 @@ input,select{
 }
 .full{grid-column:1/-1}
 .form-anagrafica input, .form-anagrafica select{background:color-mix(in srgb, var(--accent) 10%, var(--card)); border-color:color-mix(in srgb, var(--accent) 30%, var(--line))}
+.form-anagrafica input.compilato{background:color-mix(in srgb, #2f9e5f 18%, var(--card)); border-color:#2f9e5f; transition:background .2s, border-color .2s}
 button{
   border:none; border-radius:8px; padding:10px 14px; font-size:14px; font-weight:600;
   cursor:pointer;
@@ -619,7 +620,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610084"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610093"></script>
+<script src="js/app.js?v=202610094"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->
