@@ -1618,9 +1618,10 @@ function compilaMessaggio(modello, p){
     tipo: p.tipo || '',
     protocollo: formattaProtocollo(p),
     indirizzo: IMPOSTAZIONI.caf_indirizzo || '',
-    telefono: IMPOSTAZIONI.caf_telefono || ''
+    telefono: IMPOSTAZIONI.caf_telefono || '',
+    email: IMPOSTAZIONI.caf_email || ''
   };
-  return String(modello).replace(/\{(nome|pratica|tipo|protocollo|indirizzo|telefono)\}/gi, function(_, k){ return valori[k.toLowerCase()]; })
+  return String(modello).replace(/\{(nome|pratica|tipo|protocollo|indirizzo|telefono|email)\}/gi, function(_, k){ return valori[k.toLowerCase()]; })
     .replace(/[ \t]+([.,;:])/g, '$1').replace(/,\s*in\s*\./g, '.').replace(/[ \t]{2,}/g, ' ').trim();
 }
 function messaggioRitiro(p, indice){
@@ -2137,6 +2138,8 @@ function mostraDatiCaf(){
   if(!ind || !tel) return;
   if(document.activeElement !== ind) ind.value = IMPOSTAZIONI.caf_indirizzo || '';
   if(document.activeElement !== tel) tel.value = IMPOSTAZIONI.caf_telefono || '';
+  const mail = document.getElementById('caf-email');
+  if(mail && document.activeElement !== mail) mail.value = IMPOSTAZIONI.caf_email || '';
   const box = document.getElementById('wa-modelli');
   if(box && !(document.activeElement && box.contains(document.activeElement))){
     MODELLI_IN_MODIFICA = modelliWhatsApp().slice();
@@ -2181,7 +2184,7 @@ function anteprimaMessaggioCaf(){
   if(!box) return;
   const salvate = IMPOSTAZIONI;
   const modelli = MODELLI_IN_MODIFICA || modelliWhatsApp();
-  IMPOSTAZIONI = Object.assign({}, salvate, { caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(), caf_telefono: document.getElementById('caf-telefono').value.trim() });
+  IMPOSTAZIONI = Object.assign({}, salvate, { caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(), caf_telefono: document.getElementById('caf-telefono').value.trim(), caf_email: document.getElementById('caf-email').value.trim() });
   box.textContent = compilaMessaggio(modelli[PREDEFINITO_IN_MODIFICA] || modelli[0] || '', { nome: 'ROSSI MARIO', tipo: '730 SEDE', numero: 6, anno: annoAttivo() });
   IMPOSTAZIONI = salvate;
 }
@@ -2192,6 +2195,7 @@ async function salvaDatiCaf(){
   const valori = {
     caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(),
     caf_telefono: document.getElementById('caf-telefono').value.trim(),
+    caf_email: document.getElementById('caf-email').value.trim(),
     whatsapp_modelli: JSON.stringify(modelli),
     whatsapp_predefinito: String(pred)
   };
