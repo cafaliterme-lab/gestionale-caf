@@ -871,6 +871,7 @@ async function svuotaRegistro(){
   render();
 }
 async function renderPermessi(){
+  mostraDatiCaf();
   const wrap = document.getElementById('perm-lista');
   const allProfili = await caricaTuttiProfili();
 
@@ -1601,7 +1602,10 @@ function nomeProprio(s){ return String(s||'').toLowerCase().replace(/(^|[\s'-])\
 function messaggioRitiro(p){
   const cosa = /^730/.test(p.tipo||'') ? 'dichiarazione 730' : 'pratica';
   return 'Gentile ' + nomeProprio(p.nome) + ', la informiamo che la Sua ' + cosa + ' (protocollo n. ' + formattaProtocollo(p) + ') è pronta. '
-    + 'Può passare a ritirarla presso il CAF CISL di Alì Terme. Cordiali saluti.';
+    + 'Può passare a ritirarla presso il CAF CISL di Alì Terme'
+    + (IMPOSTAZIONI.caf_indirizzo ? ', in ' + IMPOSTAZIONI.caf_indirizzo : '') + '.'
+    + (IMPOSTAZIONI.caf_telefono ? ' Per informazioni può chiamare il ' + IMPOSTAZIONI.caf_telefono + '.' : '')
+    + ' Cordiali saluti.';
 }
 function inviaWhatsApp(id){
   const p = state.pratiche.find(function(x){ return x.id === id; });
@@ -1760,6 +1764,7 @@ document.addEventListener('DOMContentLoaded', async function(){
   // Carica i dati da Supabase e sottoscrivi ai cambiamenti realtime
   await initSupabase();
   caricaNomiOperatori();
+  caricaImpostazioni();
 
   // Aggiorna l'interfaccia con il tipo di pratica dell'ultima pratica
   impostaTipoPredefinito();
@@ -2065,4 +2070,42 @@ function confermaPraticaSalvata(id, nome, tipo){
   const chiudi = function(){ clearTimeout(t); ov.remove(); };
   const t = setTimeout(chiudi, 4000);
   ov.addEventListener('click', chiudi);
+}
+
+// Impostazioni condivise (dati del CAF per i messaggi): le legge chiunque, le modifica solo l'amministratore
+let IMPOSTAZIONI = {};
+async function caricaImpostazioni(){
+  try{
+    const { data: righe, error } = await supabase.from('impostazioni').select('chiave,valore');
+    if(error || !Array.isArray(righe)) return;
+    IMPOSTAZIONI = {};
+    righe.forEach(function(r){ IMPOSTAZIONI[r.chiave] = r.valore || ''; });
+    mostraDatiCaf();
+  }catch(e){ console.error('impostazioni', e); }
+}
+function mostraDatiCaf(){
+  const ind = document.getElementById('caf-indirizzo');
+  const tel = document.getElementById('caf-telefono');
+  if(!ind || !tel) return;
+  if(document.activeElement !== ind) ind.value = IMPOSTAZIONI.caf_indirizzo || '';
+  if(document.activeElement !== tel) tel.value = IMPOSTAZIONI.caf_telefono || '';
+  anteprimaMessaggioCaf();
+}
+function anteprimaMessaggioCaf(){
+  const box = document.getElementById('caf-anteprima');
+  if(!box) return;
+  const salvate = IMPOSTAZIONI;
+  IMPOSTAZIONI = Object.assign({}, salvate, { caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(), caf_telefono: document.getElementById('caf-telefono').value.trim() });
+  box.textContent = messaggioRitiro({ nome: 'ROSSI MARIO', tipo: '730 SEDE', numero: 6, anno: annoAttivo() });
+  IMPOSTAZIONI = salvate;
+}
+async function salvaDatiCaf(){
+  const valori = { caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(), caf_telefono: document.getElementById('caf-telefono').value.trim() };
+  for(const chiave in valori){
+    const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valori[chiave], aggiornato_il: new Date().toISOString() }).eq('chiave', chiave).select('chiave');
+    if(error || !righe || !righe.length){ avviso('❌ Dati del CAF non salvati' + (error ? ': ' + error.message : ''), true); return; }
+  }
+  Object.assign(IMPOSTAZIONI, valori);
+  avviso('✓ Dati del CAF salvati');
+  anteprimaMessaggioCaf();
 }

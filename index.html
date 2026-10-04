@@ -528,6 +528,16 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 
 <section class="tabsec" id="tab-permessi">
 <div class="card">
+  <div class="raff-title">Dati del CAF (compaiono nei messaggi WhatsApp)</div>
+  <div class="grid">
+    <div class="full"><label>Indirizzo</label><input id="caf-indirizzo" placeholder="Es. Via Roma 10, Alì Terme (ME)" oninput="anteprimaMessaggioCaf()"></div>
+    <div class="full"><label>Telefono</label><input id="caf-telefono" type="tel" inputmode="tel" placeholder="Es. 0942 123456" oninput="anteprimaMessaggioCaf()"></div>
+  </div>
+  <div style="font-size:12px; color:var(--sub); margin-top:8px">Anteprima del messaggio:</div>
+  <div id="caf-anteprima" style="font-size:13px; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:4px"></div>
+  <div style="text-align:left"><button type="button" class="btn-add" onclick="salvaDatiCaf()">💾 Salva dati del CAF</button></div>
+</div>
+<div class="card">
   <div class="raff-title">La mia password</div>
   <div class="grid">
     <div class="full">
@@ -623,7 +633,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610084"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610098"></script>
+<script src="js/app.js?v=202610099"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->
