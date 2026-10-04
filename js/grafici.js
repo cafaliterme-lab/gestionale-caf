@@ -79,8 +79,8 @@ function renderGrafici() {
   disegna('gr-economico', {
     type: 'bar',
     data: {
-      labels: ['Fatture emesse', 'Incasso totale', 'Pagamenti CAF', 'Netto', 'Guadagno netto'],
-      datasets: [{ data: [fatture, incasso, caf, incasso - caf, incasso - caf - fatture], backgroundColor: [COL_FATTURE, COL_INCASSO, COL_CAF, COL_NETTO, COL_GUADAGNO], borderRadius: 6, maxBarThickness: 56 }],
+      labels: ['Fatture emesse', 'Incasso totale', 'Pagamenti CAF', 'Netto'].concat(vedeGuadagni() ? ['Guadagno netto'] : []),
+      datasets: [{ data: [fatture, incasso, caf, incasso - caf].concat(vedeGuadagni() ? [incasso - caf - fatture] : []), backgroundColor: [COL_FATTURE, COL_INCASSO, COL_CAF, COL_NETTO, COL_GUADAGNO], borderRadius: 6, maxBarThickness: 56 }],
     },
     options: opzioniBase(true, false, false),
   });
@@ -115,8 +115,7 @@ function renderGrafici() {
       datasets: [
         { label: 'Fatture emesse', data: d.tipi.map(function (t) { return d.righe[t].fatt; }), backgroundColor: COL_FATTURE, borderRadius: 6, maxBarThickness: 16 },
         { label: 'Incasso', data: d.tipi.map(function (t) { return d.righe[t].inc; }), backgroundColor: COL_INCASSO, borderRadius: 6, maxBarThickness: 16 },
-        { label: 'Provento', data: d.tipi.map(function (t) { return d.righe[t].inc - d.righe[t].fatt; }), backgroundColor: COL_GUADAGNO, borderRadius: 6, maxBarThickness: 16 },
-      ],
+      ].concat(vedeGuadagni() ? [{ label: 'Provento', data: d.tipi.map(function (t) { return d.righe[t].inc - d.righe[t].fatt; }), backgroundColor: COL_GUADAGNO, borderRadius: 6, maxBarThickness: 16 }] : []),
     },
     options: opzioniBase(true, true, true),
   });

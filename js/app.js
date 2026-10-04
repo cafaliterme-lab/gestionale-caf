@@ -893,7 +893,8 @@ async function renderPermessi(){
       if(tab === 'contabilita'){
         riga += Object.keys(SEZIONI_CONTABILITA).map(function(k){
           return '<div class="perm-row" style="padding-left:22px; font-size:12.5px"><span style="color:var(--sub)">↳ '+SEZIONI_CONTABILITA[k]+'</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="'+k+'" '+(tabs[k]!==false?'checked':'')+' id="perm-'+u.id+'-'+k+'"> Visibile</label></div>';
-        }).join('');
+        }).join('')
+        + '<div class="perm-row" style="padding-left:22px; font-size:12.5px"><span style="color:#c0392b; font-weight:600">↳ 🔒 Guadagno netto e proventi (solo se autorizzato)</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="cont_guadagni" '+(tabs.cont_guadagni===true?'checked':'')+' id="perm-'+u.id+'-cont_guadagni"> Autorizzato</label></div>';
       }
       return riga;
     }).join('');
@@ -1294,9 +1295,9 @@ function render(){
     <div class="stat c5 viola"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
     <div class="stat c5 blu"><b>${fmtEuro(versatoCaf)}</b><span>PAGAMENTI CAF</span></div>
     <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">NETTO (incasso − pagamenti CAF)</span></div>
-    <div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO</span></div>` : '') + (vBlocchi ? `
+    ${vedeGuadagni() ? `<div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO</span></div>` : ''}` : '') + (vBlocchi ? `
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true)}
-    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }))}` : '') + (vEco && vBlocchi ? riepilogoGuadagno(pratAnno, versatoCaf) : '');
+    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }))}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf) : '');
 
   const caf = document.getElementById('caf-card');
   const vlist = versAnno;
@@ -1329,7 +1330,7 @@ function render(){
       <div id="box-ch-tipi" style="margin-top:14px"><div class="chart-cap">Fatture emesse, incasso e provento per tipo di pratica</div><div class="chart-wrap"><canvas id="ch-tipi"></canvas></div></div>
       <div id="raff-tipi" style="margin-top:14px"></div>`;
   }
-  document.getElementById('raff-diff').textContent = 'Guadagno netto (incasso − pagamenti CAF − fatture emesse): ' + fmtEuro(incasso - fattureEmesse);
+  document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso − pagamenti CAF − fatture emesse): ' + fmtEuro(incasso - fattureEmesse) : '';
   aggiornaGrafici(fattureEmesse, incassoLordo);
   aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno);
@@ -1763,10 +1764,10 @@ function riepilogoPerTipo(pratiche){
   const d = datiPerTipo(pratiche);
   if(!d.tipi.length) return '';
   return '<div class="raff-title">Dettaglio per tipo di pratica</div>'
-    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Tipo di pratica</th><th>Pratiche</th><th>Fatture emesse</th><th>Incasso</th><th>Provento (incasso − fatture)</th></tr></thead><tbody>'
+    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Tipo di pratica</th><th>Pratiche</th><th>Fatture emesse</th><th>Incasso</th>'+(vedeGuadagni()?'<th>Provento (incasso − fatture)</th>':'')+'</tr></thead><tbody>'
     + d.tipi.map(function(t){
       const r = d.righe[t];
-      return '<tr><td>'+esc(t)+'</td><td>'+r.n+'</td><td>'+fmtEuro(r.fatt)+'</td><td>'+fmtEuro(r.inc)+'</td><td><b>'+fmtEuro(r.inc-r.fatt)+'</b></td></tr>';
+      return '<tr><td>'+esc(t)+'</td><td>'+r.n+'</td><td>'+fmtEuro(r.fatt)+'</td><td>'+fmtEuro(r.inc)+'</td>'+(vedeGuadagni()?'<td><b>'+fmtEuro(r.inc-r.fatt)+'</b></td>':'')+'</tr>';
     }).join('')
     + '</tbody></table></div>';
 }
@@ -1799,8 +1800,9 @@ function aggiornaGraficoTipi(pratiche){
   } else {
     chTipi.data.labels = d.tipi;
     chTipi.data.datasets[0].data = fatt; chTipi.data.datasets[1].data = inc; chTipi.data.datasets[2].data = prov;
-    chTipi.update();
   }
+  chTipi.setDatasetVisibility(2, vedeGuadagni());
+  chTipi.update();
 }
 
 async function caricaNomiOperatori(){
@@ -1840,7 +1842,7 @@ function bloccoIntroito(titolo, colore, lista, conMedia){
     + tile(colore, n, 'PRATICHE')
     + tile('#2f9e5f', fmtEuro(fatt), 'FATTURE EMESSE')
     + tile('#8e5bd6', fmtEuro(inc), 'INCASSO')
-    + tile('#374151', fmtEuro(inc-fatt), 'PROVENTO (INCASSO − FATTURE)')
+    + (vedeGuadagni() ? tile('#374151', fmtEuro(inc-fatt), 'PROVENTO (INCASSO − FATTURE)') : '')
     + (conMedia ? tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'PREZZO MEDIO (FATTURE ÷ PRATICHE)') : '');
 }
 
@@ -1985,4 +1987,10 @@ function vedeSezioneContabilita(k){
   const u = auth.profilo;
   if(!u || u.ruolo === 'admin') return true;
   return !(u.tabs && u.tabs[k] === false);
+}
+// Guadagno netto e proventi: per gli operatori solo se autorizzati esplicitamente
+function vedeGuadagni(){
+  const u = auth.profilo;
+  if(!u || u.ruolo === 'admin') return true;
+  return !!(u.tabs && u.tabs.cont_guadagni === true);
 }
