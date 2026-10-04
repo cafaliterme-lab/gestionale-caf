@@ -1000,6 +1000,8 @@ async function initSupabase(){
 
     // Sincronizza i dati dal modulo data.js al state locale di app.js
     onDatiAggiornati();
+    caricaNomiOperatori();
+    caricaImpostazioni();
 
     // Sottoscrivi ai cambiamenti realtime
     data.sottoscrivi('pratiche', () => {
@@ -1815,8 +1817,6 @@ document.addEventListener('DOMContentLoaded', async function(){
 
   // Carica i dati da Supabase e sottoscrivi ai cambiamenti realtime
   await initSupabase();
-  caricaNomiOperatori();
-  caricaImpostazioni();
 
   // Aggiorna l'interfaccia con il tipo di pratica dell'ultima pratica
   impostaTipoPredefinito();
