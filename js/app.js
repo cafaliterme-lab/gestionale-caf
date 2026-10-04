@@ -25,7 +25,7 @@ const STATI = {
   pagato_da_ritirare:{l:'Pagato da ritirare', c:'#2f9e5f', e:'🟢'},
   rinuncia_compilazione:{l:'Rinuncia alla compilazione', c:'#374151', e:'⚫'}
 };
-const TIPI_DEFAULT = ["730 SEDE","730 BRIGUGLIO ANTONIO","730 CAMINITI ANTONIO","730 CAMINITI LUIGI","730 RICCA AGATINO","730 FILCA","730 CRISAFULLI ROBERTO","730 FARAONE ARTURO","730 DECEDUTI","730 INTEGRATIVI/RETTIFICATIVI","730 TRIOLO CARMELA","730 DI BELLA SANTINO","CONTRATTI DI AFFITTO","CONTRATTI COLF E BADANTI","ISEE A PAGAMENTO","IMU","SUCCESSIONI","ISEE","SEND","MODELLI UNICO PF","RED ED INVCIV"];
+const TIPI_DEFAULT = ["730 SEDE","730 BRIGUGLIO ANTONIO","730 CAMINITI ANTONIO","730 CAMINITI LUIGI","730 RICCA AGATINO","730 FILCA","730 CRISAFULLI ROBERTO","730 FARAONE ARTURO","730 DECEDUTI","730 INTEGRATIVI/RETTIFICATIVI","730 TRIOLO CARMELA","730 DI BELLA SANTINO","CONTRATTI DI AFFITTO","CONTRATTI COLF E BADANTI","ISEE A PAGAMENTO","IMU","SUCCESSIONI","ISEE","SEND","MODELLI UNICO PF","RED","INVCIV"];
 let NOMI_OPERATORI = [];
 function getTipiList(){ return (state.collaboratori && state.collaboratori.length) ? state.collaboratori : TIPI_DEFAULT; }
 Object.defineProperty(window, 'TIPI', { get: function(){ return getTipiList(); } });
@@ -1293,7 +1293,7 @@ function render(){
       if(p.stato === 'lavorata' && e730(p)) perOperatore[chi] += (p.congCognome || p.congNome) ? 2 : 1;
     });
     const pesoP = function(p){ return (p.congCognome || p.congNome) ? 2 : 1; };
-    const ESCLUSI_DA_LAVORARE = ['CONTRATTI DI AFFITTO','CONTRATTI COLF E BADANTI','ISEE A PAGAMENTO','IMU','SUCCESSIONI','ISEE','SEND','MODELLI UNICO PF','RED ED INVCIV'];
+    const ESCLUSI_DA_LAVORARE = ['CONTRATTI DI AFFITTO','CONTRATTI COLF E BADANTI','ISEE A PAGAMENTO','IMU','SUCCESSIONI','ISEE','SEND','MODELLI UNICO PF','RED','INVCIV'];
     const pratConteggio = pratAnno.filter(function(p){ return ESCLUSI_DA_LAVORARE.indexOf(String(p.tipo||'').toUpperCase()) < 0; });
     const totPeso = pratConteggio.reduce(function(t,p){ return t+pesoP(p); }, 0);
     const lavPeso = pratConteggio.filter(function(p){ return p.stato === 'lavorata'; }).reduce(function(t,p){ return t+pesoP(p); }, 0);
