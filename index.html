@@ -197,8 +197,18 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .isee-row .nome{flex:1; min-width:0}
 
 .navmenu{display:flex; gap:6px; overflow-x:auto; margin-bottom:14px; padding-bottom:2px}
-.navmenu button{flex:none; background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:999px; padding:9px 16px; font-size:12.5px; font-weight:600; cursor:pointer; white-space:nowrap}
-.navmenu button.active{background:linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #7db8e8) 100%); border-color:transparent; color:var(--accent-ink)}
+.navmenu button{--tc:#1d4f91; flex:none; background:color-mix(in srgb, var(--tc) 13%, var(--card)); color:color-mix(in srgb, var(--tc) 85%, var(--ink)); border:1.5px solid color-mix(in srgb, var(--tc) 35%, var(--line)); border-radius:999px; padding:9px 16px; font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap; transition:background .15s, color .15s, box-shadow .15s}
+.navmenu button:hover{background:color-mix(in srgb, var(--tc) 24%, var(--card))}
+.navmenu button[data-tab="anagrafica"]{--tc:#1d4f91}
+.navmenu button[data-tab="registro"]{--tc:#2f9e5f}
+.navmenu button[data-tab="contabilita"]{--tc:#8e5bd6}
+.navmenu button[data-tab="grafici"]{--tc:#d98b1e}
+.navmenu button[data-tab="caf"]{--tc:#2f7de1}
+.navmenu button[data-tab="collaboratori"]{--tc:#2f9e9e}
+.navmenu button[data-tab="scadenze"]{--tc:#c0392b}
+.navmenu button[data-tab="messaggi"]{--tc:#128c7e}
+.navmenu button[data-tab="permessi"]{--tc:#4b5563}
+.navmenu button.active{background:var(--tc); border-color:var(--tc); color:#fff; box-shadow:0 4px 12px color-mix(in srgb, var(--tc) 45%, transparent)}
 .tabsec{display:none}
 .tabsec.active{display:block}
 .coll-row{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); font-size:13.5px}
@@ -651,7 +661,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610105"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610106"></script>
+<script src="js/app.js?v=202610107"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

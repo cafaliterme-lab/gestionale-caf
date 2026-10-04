@@ -337,10 +337,23 @@ function initSelettoreAnno(){
   if(!sel) return;
   const anni = elencoAnniDisponibili();
   const cur = annoAttivo();
-  sel.innerHTML = anni.map(function(a){ return '<option value="'+a+'"'+(a===cur?' selected':'')+'>'+a+(a<ANNO_INIZIO_PROTOCOLLO?' (storico)':'')+'</option>'; }).join('');
+  sel.innerHTML = anni.map(function(a){ const c = coloreAnno(a); return '<option value="'+a+'"'+(a===cur?' selected':'')+' style="background:'+c+'; color:#fff; font-weight:700">'+a+(a<ANNO_INIZIO_PROTOCOLLO?' (storico)':'')+'</option>'; }).join('');
+  coloraSelettoreAnno();
+}
+const COLORI_ANNI = ['#1d4f91','#2f9e5f','#8e5bd6','#d98b1e','#c0392b','#2f9e9e','#b5486b','#5a6b3b','#3b6fa0','#a0522d'];
+function coloreAnno(a){ return COLORI_ANNI[((Number(a) % COLORI_ANNI.length) + COLORI_ANNI.length) % COLORI_ANNI.length]; }
+function coloraSelettoreAnno(){
+  const sel = document.getElementById('anno-attivo');
+  if(!sel) return;
+  const c = coloreAnno(annoAttivo());
+  sel.style.background = c;
+  sel.style.borderColor = c;
+  sel.style.color = '#fff';
+  sel.style.fontWeight = '700';
 }
 function cambiaAnnoAttivo(v){
   annoAttivoLocale = parseInt(v,10);
+  coloraSelettoreAnno();
   try{ localStorage.setItem('protocollo-anno', v); }catch(e){}
   render();
 }
