@@ -2049,11 +2049,20 @@ function impostaTipoPredefinito(){
 function confermaPraticaSalvata(id, nome, tipo){
   const p = (state.pratiche||[]).find(function(x){ return x.id === id; });
   const numero = p ? formattaProtocollo(p) : '';
-  const testo = '✅ Pratica salvata' + (numero ? ' – n. ' + numero : '') + ' – ' + nome + ' (' + tipo + ')';
-  const box = document.getElementById('form-ok');
-  if(!box){ avviso(testo); return; }
-  box.textContent = testo;
-  box.style.display = 'block';
-  clearTimeout(box._t);
-  box._t = setTimeout(function(){ box.style.display = 'none'; }, 6000);
+  const vecchio = document.getElementById('popup-salvata');
+  if(vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-salvata';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:400; background:rgba(15,27,45,.35); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #2f9e5f; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:26px 30px; max-width:420px; width:100%; text-align:center">'
+    + '<div style="width:64px; height:64px; margin:0 auto 10px; border-radius:50%; background:#2f9e5f; color:#fff; font-size:38px; line-height:64px; font-weight:800">✓</div>'
+    + '<div style="font-size:22px; font-weight:800; color:#2f9e5f; margin-bottom:6px">Pratica salvata</div>'
+    + (numero ? '<div style="font-size:16px; font-weight:700; margin-bottom:2px">Protocollo n. ' + esc(numero) + '</div>' : '')
+    + '<div style="font-size:15px">' + esc(nome) + '</div>'
+    + '<div style="font-size:13px; color:var(--sub); margin-bottom:16px">' + esc(tipo) + '</div>'
+    + '<button type="button" style="background:#2f9e5f; color:#fff; min-width:120px; font-size:15px">OK</button></div>';
+  document.body.appendChild(ov);
+  const chiudi = function(){ clearTimeout(t); ov.remove(); };
+  const t = setTimeout(chiudi, 4000);
+  ov.addEventListener('click', chiudi);
 }
