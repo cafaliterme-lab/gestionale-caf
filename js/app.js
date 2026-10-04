@@ -1549,13 +1549,14 @@ async function addPraticaInterna(){
     msg.style.display = 'block';
     return;
   }
+  confermaPraticaSalvata(result.id, nome, tipo);
 
   document.getElementById('f-cognome').value='';
   document.getElementById('f-nome').value='';
   document.getElementById('f-cf').value='';
   document.getElementById('f-codfisc').value='';
   controllaCampoCF();
-  pickChip('f-tipo-btns','f-tipo', document.getElementById('f-tipo').value);
+  impostaTipoPredefinito();
   document.getElementById('f-compenso').value='';
   document.getElementById('f-pagato').value='';
   document.getElementById('cli-cerca').value='';
@@ -1761,8 +1762,7 @@ document.addEventListener('DOMContentLoaded', async function(){
   caricaNomiOperatori();
 
   // Aggiorna l'interfaccia con il tipo di pratica dell'ultima pratica
-  const ultima = state.pratiche.slice().sort(function(a,b){ return b.numero - a.numero; })[0];
-  if(ultima && ultima.tipo){ document.getElementById('f-tipo').value = ultima.tipo; pickChip('f-tipo-btns','f-tipo', ultima.tipo); }
+  impostaTipoPredefinito();
 });
 
 function datiPerTipo(pratiche){
@@ -2036,3 +2036,24 @@ document.addEventListener('input', function(e){ if(e.target.closest && e.target.
 document.addEventListener('change', function(e){ if(e.target.closest && e.target.closest('.form-anagrafica')) aggiornaColoriModulo(); });
 // i campi riempiti dal programma (archivio, lettura documento, azzeramento dopo il salvataggio) non generano eventi
 setInterval(aggiornaColoriModulo, 700);
+
+const TIPO_PREDEFINITO = '730 SEDE';
+function impostaTipoPredefinito(){
+  const sel = document.getElementById('f-tipo');
+  if(!sel) return;
+  const t = getTipiList().indexOf(TIPO_PREDEFINITO) >= 0 ? TIPO_PREDEFINITO : (getTipiList()[0] || '');
+  sel.value = t;
+  pickChip('f-tipo-btns','f-tipo', t);
+}
+
+function confermaPraticaSalvata(id, nome, tipo){
+  const p = (state.pratiche||[]).find(function(x){ return x.id === id; });
+  const numero = p ? formattaProtocollo(p) : '';
+  const testo = '✅ Pratica salvata' + (numero ? ' – n. ' + numero : '') + ' – ' + nome + ' (' + tipo + ')';
+  const box = document.getElementById('form-ok');
+  if(!box){ avviso(testo); return; }
+  box.textContent = testo;
+  box.style.display = 'block';
+  clearTimeout(box._t);
+  box._t = setTimeout(function(){ box.style.display = 'none'; }, 6000);
+}
