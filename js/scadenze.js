@@ -132,48 +132,46 @@ async function rimuoviScadenza(id) {
   avviso(r.error ? '❌ ' + r.error : '✓ Scadenza eliminata', !!r.error);
 }
 
-// Avviso in alto e contatore sulla scheda per le scadenze scadute o entro il preavviso
+// Riquadro fisso a destra con le scadenze scadute o entro il preavviso: resta finche' non sono segnate come fatte
+let pannelloScadenzeRidotto = false;
 function aggiornaAvvisiScadenze() {
-  const box = document.getElementById('avvisi-scadenze');
   const btn = document.querySelector('.navmenu button[data-tab="scadenze"]');
-  if (!box) return;
+  const vecchioBanner = document.getElementById('avvisi-scadenze');
+  if (vecchioBanner) vecchioBanner.style.display = 'none';
   const urgenti = puoVedereScadenze()
     ? (state.scadenze || []).filter(function (s) { const st = statoScadenza(s); return st === 'scaduta' || st === 'avviso'; })
+        .sort(function (a, b) { return a.data < b.data ? -1 : a.data > b.data ? 1 : 0; })
     : [];
   if (btn) btn.innerHTML = 'SCADENZE' + (urgenti.length ? ' <span class="nav-conta">' + urgenti.length + '</span>' : '');
-  if (!urgenti.length) { box.style.display = 'none'; return; }
-  box.style.display = 'flex';
-  box.innerHTML = '<span>🔔 <b>' + urgenti.length + (urgenti.length === 1 ? ' scadenza' : ' scadenze') + ' da gestire:</b> '
-    + urgenti.slice(0, 4).map(function (s) {
-        return '<span style="color:' + COLORI_SCADENZA[statoScadenza(s)] + '; font-weight:600">' + esc(s.titolo) + '</span>' + (s.cliente ? ' – ' + esc(s.cliente) : '') + ' (' + quandoScadenza(s) + ')';
-      }).join(' · ')
-    + (urgenti.length > 4 ? ' e altre ' + (urgenti.length - 4) : '') + '</span>'
-    + '<button type="button" onclick="showTab(document.querySelector(\'.navmenu button[data-tab=&quot;scadenze&quot;]\'))">Apri calendario</button>';
-  if (!popupScadenzeMostrato) { popupScadenzeMostrato = true; mostraPopupScadenze(urgenti); }
-}
-
-// Finestra di avviso, una volta per ogni apertura del programma
-let popupScadenzeMostrato = false;
-function mostraPopupScadenze(urgenti) {
-  const ordinate = urgenti.slice().sort(function (a, b) { return a.data < b.data ? -1 : a.data > b.data ? 1 : 0; });
-  const ov = document.createElement('div');
-  ov.id = 'popup-scadenze';
-  ov.style.cssText = 'position:fixed; inset:0; z-index:200; background:rgba(15,27,45,.45); display:flex; align-items:center; justify-content:center; padding:16px';
-  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; max-width:520px; width:100%; max-height:80vh; overflow:auto; padding:20px; box-shadow:0 20px 50px rgba(0,0,0,.3)">'
-    + '<div style="font-size:18px; font-weight:800; margin-bottom:4px">🔔 Scadenze da gestire</div>'
-    + '<div style="font-size:13px; color:var(--sub); margin-bottom:12px">' + ordinate.length + (ordinate.length === 1 ? ' scadenza scaduta o in arrivo' : ' scadenze scadute o in arrivo') + '</div>'
-    + ordinate.map(function (s) {
-        return '<div style="display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--line)">'
-          + '<span style="flex:none; width:10px; height:10px; border-radius:50%; margin-top:5px; background:' + COLORI_SCADENZA[statoScadenza(s)] + '"></span>'
-          + '<div style="flex:1; min-width:0"><b>' + esc(s.titolo) + '</b>' + (s.cliente ? ' – ' + esc(s.cliente) : '')
-          + '<div style="font-size:12.5px; color:var(--sub)">' + dataIT(s.data) + ' · <b style="color:' + COLORI_SCADENZA[statoScadenza(s)] + '">' + quandoScadenza(s) + '</b>' + (s.note ? ' · ' + esc(s.note) : '') + '</div></div></div>';
+  let pan = document.getElementById('pannello-scadenze');
+  if (!urgenti.length) { if (pan) pan.remove(); return; }
+  if (!pan) {
+    pan = document.createElement('div');
+    pan.id = 'pannello-scadenze';
+    document.body.appendChild(pan);
+  }
+  pan.style.cssText = 'position:fixed; right:10px; z-index:45; width:min(320px, calc(100vw - 20px)); background:var(--card); color:var(--ink); border:2px solid #d4881c; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.18); font-size:13px; overflow:hidden';
+  const testa = '<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; background:#d4881c; color:#fff; padding:8px 12px; font-weight:800; cursor:pointer" onclick="pannelloScadenzeRidotto=!pannelloScadenzeRidotto; aggiornaAvvisiScadenze()">'
+    + '<span>🔔 ' + urgenti.length + (urgenti.length === 1 ? ' scadenza da gestire' : ' scadenze da gestire') + '</span>'
+    + '<span title="' + (pannelloScadenzeRidotto ? 'Espandi' : 'Riduci') + '">' + (pannelloScadenzeRidotto ? '▾' : '▴') + '</span></div>';
+  pan.innerHTML = testa + (pannelloScadenzeRidotto ? '' : '<div style="max-height:min(50vh, 420px); overflow-y:auto; padding:4px 12px">'
+    + urgenti.map(function (s) {
+        const col = COLORI_SCADENZA[statoScadenza(s)];
+        return '<div style="display:flex; gap:8px; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--line)">'
+          + '<span style="flex:none; width:10px; height:10px; border-radius:50%; margin-top:4px; background:' + col + '"></span>'
+          + '<div style="flex:1; min-width:0"><b>' + esc(s.titolo) + '</b>' + (s.cliente ? '<br>' + esc(s.cliente) : '')
+          + '<div style="font-size:12px; color:var(--sub)">' + dataIT(s.data) + ' · <b style="color:' + col + '">' + quandoScadenza(s) + '</b>' + (s.note ? ' · ' + esc(s.note) : '') + '</div></div>'
+          + '<label style="flex:none; display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:#2f9e5f; cursor:pointer; margin:0"><input type="checkbox" style="width:auto" onchange="this.disabled=true; segnaScadenza(\'' + s.id + '\', true)"> Fatta</label>'
+          + '</div>';
       }).join('')
-    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:14px">'
-    + '<button type="button" id="popup-sc-chiudi" style="background:var(--line); color:var(--ink)">Chiudi</button>'
-    + '<button type="button" id="popup-sc-apri" style="background:#d4881c; color:#fff">Apri calendario</button></div></div>';
-  document.body.appendChild(ov);
-  const chiudi = function () { ov.remove(); };
-  ov.addEventListener('click', function (e) { if (e.target === ov) chiudi(); });
-  document.getElementById('popup-sc-chiudi').onclick = chiudi;
-  document.getElementById('popup-sc-apri').onclick = function () { chiudi(); showTab(document.querySelector('.navmenu button[data-tab="scadenze"]')); };
+    + '<div style="padding:8px 0; text-align:right"><button type="button" style="background:none; border:none; color:#d4881c; font-weight:700; font-size:12px; cursor:pointer; padding:0" onclick="showTab(document.querySelector(\'.navmenu button[data-tab=&quot;scadenze&quot;]\'))">Apri calendario ›</button></div></div>');
+  posizionaPannelloScadenze();
 }
+function posizionaPannelloScadenze() {
+  const pan = document.getElementById('pannello-scadenze');
+  if (!pan) return;
+  const badge = document.getElementById('badge-lavorate');
+  const sotto = badge ? badge.getBoundingClientRect().bottom : 0;
+  pan.style.top = Math.max(10, Math.round(sotto) + 10) + 'px';
+}
+window.addEventListener('resize', posizionaPannelloScadenze);
