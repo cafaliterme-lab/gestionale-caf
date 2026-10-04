@@ -1290,7 +1290,7 @@ function render(){
       const chi = (p.inseritoDa||'').toUpperCase();
       if(!chi) return;
       if(!(chi in perOperatore)) perOperatore[chi] = 0;
-      if(p.stato === 'lavorata') perOperatore[chi] += (p.congCognome || p.congNome) ? 2 : 1;
+      if(p.stato === 'lavorata' && e730(p)) perOperatore[chi] += (p.congCognome || p.congNome) ? 2 : 1;
     });
     const pesoP = function(p){ return (p.congCognome || p.congNome) ? 2 : 1; };
     const ESCLUSI_DA_LAVORARE = ['CONTRATTI DI AFFITTO','CONTRATTI COLF E BADANTI','ISEE A PAGAMENTO','IMU','SUCCESSIONI','ISEE','SEND','MODELLI UNICO PF','RED ED INVCIV'];
@@ -1304,7 +1304,7 @@ function render(){
     const colonna = '<div style="display:flex; flex-direction:column; align-items:stretch; gap:8px">';
     const badgeTotPrat = '<span title="Tutte le pratiche del '+annoSel+' in qualsiasi stato, le congiunte valgono 2. Esclusi contratti di affitto, colf e badanti, ISEE a pagamento, IMU, successioni, ISEE, SEND, modelli Unico PF, RED e INVCIV" style="display:inline-flex; align-items:center; justify-content:space-between; gap:8px; background:#374151; color:#fff; font-size:16px; font-weight:700; padding:9px 16px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2)">TOTALE PRATICHE <span style="background:#fff; color:#374151; font-size:20px; font-weight:800; min-width:34px; text-align:center; padding:2px 10px; border-radius:999px">'+totPeso+'</span></span>';
     lavorateEl.innerHTML = colonna + badgeTotPrat + badgeDaFare + badgeTotLav + '</div>' + colonna + Object.keys(perOperatore).sort().map(function(chi){
-      return '<span title="Pratiche lavorate nel '+annoSel+'" style="display:inline-flex; align-items:center; justify-content:space-between; gap:8px; background:#1d4f91; color:#fff; font-size:16px; font-weight:700; padding:9px 16px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2)">'+esc(chi)+' <span style="background:#fff; color:#1d4f91; font-size:20px; font-weight:800; min-width:34px; text-align:center; padding:2px 10px; border-radius:999px">'+perOperatore[chi]+'</span></span>';
+      return '<span title="Pratiche 730 lavorate nel '+annoSel+' (tutti i tipi 730), le congiunte valgono 2" style="display:inline-flex; align-items:center; justify-content:space-between; gap:8px; background:#1d4f91; color:#fff; font-size:16px; font-weight:700; padding:9px 16px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2)">'+esc(chi)+' <span style="background:#fff; color:#1d4f91; font-size:20px; font-weight:800; min-width:34px; text-align:center; padding:2px 10px; border-radius:999px">'+perOperatore[chi]+'</span></span>';
     }).join('') + '</div>';
     if(typeof posizionaPannelloScadenze === 'function') posizionaPannelloScadenze();
   }
