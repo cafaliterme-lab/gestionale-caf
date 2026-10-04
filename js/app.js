@@ -2150,7 +2150,22 @@ async function caricaImpostazioni(){
 }
 let MODELLI_IN_MODIFICA = null;
 let PREDEFINITO_IN_MODIFICA = 0;
+// Intestazione: dati del CAF presi da Messaggi > Dati del CAF
+function aggiornaIntestazioneCaf(){
+  const box = document.getElementById('hero-caf');
+  if(!box) return;
+  const tel = IMPOSTAZIONI.caf_telefono || '';
+  const mail = IMPOSTAZIONI.caf_email || '';
+  const orari = testoOrari(leggiTabellaOrari()) || IMPOSTAZIONI.caf_orari || '';
+  box.innerHTML = [
+    IMPOSTAZIONI.caf_indirizzo ? '<span>📍 ' + esc(IMPOSTAZIONI.caf_indirizzo) + '</span>' : '',
+    tel ? '<span>📞 <a href="tel:' + esc(tel.replace(/[^\d+]/g, '')) + '">' + esc(tel) + '</a></span>' : '',
+    mail ? '<span>✉️ <a href="mailto:' + esc(mail) + '">' + esc(mail) + '</a></span>' : '',
+    orari ? '<span class="orari">🕘 ' + esc(orari) + '</span>' : ''
+  ].join('');
+}
 function mostraDatiCaf(){
+  aggiornaIntestazioneCaf();
   const ind = document.getElementById('caf-indirizzo');
   const tel = document.getElementById('caf-telefono');
   if(!ind || !tel) return;
@@ -2228,6 +2243,7 @@ async function salvaDatiCaf(){
     if(error || !righe || !righe.length){ avviso('❌ Impostazioni non salvate' + (error ? ': ' + error.message : ''), true); return; }
   }
   Object.assign(IMPOSTAZIONI, valori);
+  aggiornaIntestazioneCaf();
   MODELLI_IN_MODIFICA = modelli.slice();
   PREDEFINITO_IN_MODIFICA = pred;
   disegnaModelliWhatsApp();
