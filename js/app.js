@@ -1937,7 +1937,7 @@ function aggiornaCampoFineForm(){
     inp.readOnly = false;
     inp.style.opacity = '1';
     inp.placeholder = 'GG/MM/AAAA';
-    inp.title = 'Data di scadenza dell\'assistenza: viene messa nel calendario con avviso 30 giorni prima';
+    inp.title = 'Data di scadenza dell\'assistenza: viene messa nel calendario con avviso 15 giorni prima';
   } else {
     lbl.textContent = 'Fine lavorazione (automatica)';
     inp.readOnly = true;
