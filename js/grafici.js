@@ -166,7 +166,7 @@ function renderGrafici() {
     if (!chi) return;
     const r = perOp[chi] || (perOp[chi] = { tot: 0, lav: 0 });
     r.tot += pesoPratica(p);
-    if (p.stato === 'lavorata') r.lav += pesoPratica(p);
+    if (eLavorata(p)) r.lav += pesoPratica(p);
   });
   const operatori = Object.keys(perOp).sort();
   disegna('gr-operatori', {

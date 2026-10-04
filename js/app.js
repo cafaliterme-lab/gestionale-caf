@@ -79,7 +79,7 @@ function toggleCong(cbId, inId){
 function toggleCongBox(){
   const on = document.getElementById('f-congiunta-on').checked;
   document.getElementById('f-cong-box').style.display = on ? '' : 'none';
-  if(!on){ ['f-cong-cognome','f-cong-nome','f-cong-data'].forEach(function(id){ document.getElementById(id).value=''; }); document.getElementById('cli-cerca-cong').value=''; }
+  if(!on){ ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel'].forEach(function(id){ document.getElementById(id).value=''; }); document.getElementById('cli-cerca-cong').value=''; }
 }
 
 function renderChips(containerId, selectId, items, getLabel, getVal, getDot, getColor){
@@ -164,6 +164,8 @@ function scegliCliente(i, ctx){
     document.getElementById('f-cong-nome').value = c.nome.toUpperCase();
     document.getElementById('f-cong-data').value = c.dataNascita;
     document.getElementById('cli-cerca-cong').value = c.nomeCompleto;
+    document.getElementById('f-cong-cf').value = c.codiceFiscale || '';
+    document.getElementById('f-cong-tel').value = c.telefono || '';
   } else {
     document.getElementById('f-cognome').value = c.cognome.toUpperCase();
     document.getElementById('f-nome').value = c.nome.toUpperCase();
@@ -733,6 +735,8 @@ async function esportaBackupJSON(){
     pratiche: pulisciArray(state.pratiche),
     versamenti: pulisciArray(state.versamenti),
     isee: pulisciArray(state.isee),
+    clienti: pulisciArray(state.clienti),
+    scadenze: pulisciArray(state.scadenze),
     collaboratori: state.collaboratori || TIPI_DEFAULT.slice()
   };
   try{
@@ -858,7 +862,7 @@ async function importaBackup(){
     await elaboraImportazione(inp.files[0], msg, document.getElementById('btn-importa'));
     return;
   }
-  if(!confirm('Importando questo file, tutti i dati attuali (pratiche, versamenti, collaboratori, utenti) verranno sostituiti. Continuare?')) return;
+  if(!confirm('Importando questo file, tutti i dati attuali (pratiche, versamenti, collaboratori, utenti) verranno sostituiti. Prima il programma salva una copia di sicurezza in "Backup automatici". Continuare?')) return;
   const btn = document.getElementById('btn-importa');
   btn.disabled = true; btn.textContent = 'Importazione in corso...';
   try{
@@ -880,22 +884,17 @@ async function importaBackup(){
   btn.disabled = false; btn.textContent = 'Importa Backup';
 }
 
-let confermaSvuota = false;
 async function svuotaRegistro(){
   const btn = document.getElementById('btn-svuota');
-  if(!confermaSvuota){
-    confermaSvuota = true;
-    if(btn){ btn.textContent = 'Sei sicuro? Clicca di nuovo per confermare'; btn.style.background = '#c0392b'; btn.style.color = '#fff'; }
-    setTimeout(function(){ confermaSvuota = false; if(btn){ btn.textContent = 'Svuota registro (elimina tutte le pratiche)'; btn.style.background=''; btn.style.color=''; } }, 6000);
-    return;
-  }
-  confermaSvuota = false;
-  if(btn){ btn.disabled = true; btn.textContent = 'Eliminazione in corso...'; }
-  // Usa la nuova API data.js
+  const ok = await chiediConfermaScritta('Svuota registro', 'Verranno eliminate DEFINITIVAMENTE tutte le pratiche di tutti gli anni. Prima di cancellare il programma salva da solo una copia di sicurezza (la trovi in "Backup automatici").', 'SVUOTA');
+  if(!ok) return;
+  if(btn){ btn.disabled = true; btn.textContent = 'Backup e eliminazione in corso...'; }
   const result = await data.admin.svuota();
   if(result.error){ console.error('svuotamento registro', result.error); }
+  else avviso('✓ Registro svuotato. La copia di sicurezza e\' in "Backup automatici".');
   if(btn){ btn.disabled = false; btn.textContent = 'Svuota registro (elimina tutte le pratiche)'; }
   render();
+  if(typeof renderBackupEStorico === 'function') renderBackupEStorico();
 }
 async function renderPermessi(){
   const wrap = document.getElementById('perm-lista');
@@ -1141,7 +1140,7 @@ function showTab(btn){
   if(tab === 'scadenze') renderScadenze();
   if(tab === 'messaggi') mostraDatiCaf();
   if(tab === 'grafici') renderGrafici();
-  if(tab === 'permessi') renderPermessi(); // async, but fires in background
+  if(tab === 'permessi'){ renderPermessi(); if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
 }
 function renderCollaboratori(){
   const wrap = document.getElementById('coll-lista');
@@ -1327,7 +1326,8 @@ function render(){
 
   const lavorateEl = document.getElementById('badge-lavorate');
   if(lavorateEl){
-    // Pratiche lavorate per operatore: un badge per ogni operatore che ha inserito pratiche nell'anno, piu' l'utente collegato
+    // Contatori in alto: solo le pratiche 730 (e tutti i loro tipi), congiunte valgono 2
+    const c = conteggi730(pratAnno);
     const perOperatore = {};
     const io = ((auth.profilo && auth.profilo.nome) || '').toUpperCase();
     if(io) perOperatore[io] = 0;
@@ -1336,31 +1336,25 @@ function render(){
       const chi = (p.inseritoDa||'').toUpperCase();
       if(!chi) return;
       if(!(chi in perOperatore)) perOperatore[chi] = 0;
-      if(p.stato === 'lavorata' && e730(p)) perOperatore[chi] += (p.congCognome || p.congNome) ? 2 : 1;
+      if(e730(p) && eLavorata(p)) perOperatore[chi] += pesoPratica(p);
     });
-    const pesoP = function(p){ return (p.congCognome || p.congNome) ? 2 : 1; };
-    const ESCLUSI_DA_LAVORARE = ['CONTRATTI DI AFFITTO','CONTRATTI COLF E BADANTI','ISEE A PAGAMENTO','IMU','SUCCESSIONI','ISEE','SEND','MODELLI UNICO PF','RED','INVCIV','ADI','F24'];
-    const pratConteggio = pratAnno.filter(function(p){ return ESCLUSI_DA_LAVORARE.indexOf(String(p.tipo||'').toUpperCase()) < 0; });
-    const totPeso = pratConteggio.reduce(function(t,p){ return t+pesoP(p); }, 0);
-    const lavPeso = pratConteggio.filter(function(p){ return p.stato === 'lavorata'; }).reduce(function(t,p){ return t+pesoP(p); }, 0);
-    const daFare = totPeso - lavPeso;
-    const badgeDaFare = '<span title="Pratiche del '+annoSel+' non ancora lavorate (tutti gli altri stati), le congiunte valgono 2. Esclusi contratti di affitto, colf e badanti, ISEE a pagamento, IMU, successioni, ISEE, SEND, modelli Unico PF, RED, INVCIV, ADI e F24" style="display:inline-flex; align-items:center; justify-content:space-between; gap:8px; background:'+(daFare?'#c0392b':'#2f9e5f')+'; color:#fff; font-size:16px; font-weight:700; padding:9px 16px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2)">DA LAVORARE <span style="background:#fff; color:'+(daFare?'#c0392b':'#2f9e5f')+'; font-size:20px; font-weight:800; min-width:34px; text-align:center; padding:2px 10px; border-radius:999px">'+daFare+'</span></span>';
-    const totLavorate = pratConteggio.filter(function(p){ return p.stato === 'lavorata' && (p.inseritoDa||'').trim(); }).reduce(function(t,p){ return t+pesoP(p); }, 0);
-    const badgeTotLav = '<span title="Somma delle pratiche lavorate da tutti gli operatori nel '+annoSel+', le congiunte valgono 2. Esclusi contratti di affitto, colf e badanti, ISEE a pagamento, IMU, successioni, ISEE, SEND, modelli Unico PF, RED, INVCIV, ADI e F24" style="display:inline-flex; align-items:center; justify-content:space-between; gap:8px; background:#2f9e5f; color:#fff; font-size:16px; font-weight:700; padding:9px 16px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2)">TOTALE LAVORATE <span style="background:#fff; color:#2f9e5f; font-size:20px; font-weight:800; min-width:34px; text-align:center; padding:2px 10px; border-radius:999px">'+totLavorate+'</span></span>';
-    const colonna = '<div style="display:flex; flex-direction:column; align-items:stretch; gap:8px">';
-    const badgeTotPrat = '<span title="Tutte le pratiche del '+annoSel+' in qualsiasi stato, le congiunte valgono 2. Esclusi contratti di affitto, colf e badanti, ISEE a pagamento, IMU, successioni, ISEE, SEND, modelli Unico PF, RED, INVCIV, ADI e F24" style="display:inline-flex; align-items:center; justify-content:space-between; gap:8px; background:#374151; color:#fff; font-size:16px; font-weight:700; padding:9px 16px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2)">TOTALE PRATICHE <span style="background:#fff; color:#374151; font-size:20px; font-weight:800; min-width:34px; text-align:center; padding:2px 10px; border-radius:999px">'+totPeso+'</span></span>';
-    lavorateEl.innerHTML = colonna + badgeTotPrat + badgeDaFare + badgeTotLav + '</div>' + colonna + Object.keys(perOperatore).sort().map(function(chi){
-      return '<span title="Pratiche 730 lavorate nel '+annoSel+' (tutti i tipi 730), le congiunte valgono 2" style="display:inline-flex; align-items:center; justify-content:space-between; gap:8px; background:#1d4f91; color:#fff; font-size:16px; font-weight:700; padding:9px 16px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2)">'+esc(chi)+' <span style="background:#fff; color:#1d4f91; font-size:20px; font-weight:800; min-width:34px; text-align:center; padding:2px 10px; border-radius:999px">'+perOperatore[chi]+'</span></span>';
-    }).join('') + '</div>';
+    const badge = function(testo, numero, colore, titolo){
+      return '<span title="' + esc(titolo) + '" style="display:flex; align-items:center; justify-content:space-between; gap:8px; background:' + colore + '; color:#fff; font-size:13.5px; font-weight:700; padding:5px 6px 5px 12px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2); white-space:nowrap">' + testo
+        + ' <span style="background:#fff; color:' + colore + '; font-size:16px; font-weight:800; min-width:30px; text-align:center; padding:1px 8px; border-radius:999px">' + numero + '</span></span>';
+    };
+    const nota = ' del ' + annoSel + ': solo 730, le congiunte valgono 2.';
+    lavorateEl.innerHTML = '<div style="display:flex; flex-direction:column; align-items:stretch; gap:5px; min-width:210px">'
+      + badge('TOTALE PRATICHE', c.tot, '#374151', 'Tutte le pratiche' + nota + (c.rinunce ? ' Comprese ' + c.rinunce + ' rinunce alla compilazione.' : ''))
+      + badge('DA LAVORARE', c.daFare, c.daFare ? '#c0392b' : '#2f9e5f', 'In arrivo, in lavorazione o da lavorare scansionata' + nota)
+      + badge('TOTALE LAVORATE', c.lav, '#2f9e5f', 'Lavorate, da fatturare, da pagare, pagate o non pagate' + nota)
+      + Object.keys(perOperatore).sort().map(function(chi){ return badge(esc(chi), perOperatore[chi], '#1d4f91', 'Pratiche 730 lavorate da ' + chi + nota); }).join('')
+      + '</div>';
     if(typeof posizionaPannelloScadenze === 'function') posizionaPannelloScadenze();
   }
   const versAnno = (state.versamenti||[]).filter(function(v){ return annoDiData(v.data) === annoSel; });
 
-  const tot = sommaPeso(pratAnno);
-  const DA_LAVORARE = ['arrivo','lavorazione','da_lavorare_scansionata'];
-  const daLavorare = sommaPeso(pratAnno.filter(p=>DA_LAVORARE.indexOf(p.stato)>=0));
-  const rinunce = sommaPeso(pratAnno.filter(p=>p.stato==='rinuncia_compilazione'));
-  const lavorate = tot - daLavorare - rinunce;
+  const conti = conteggi730(pratAnno);
+  const tot = conti.tot, daLavorare = conti.daFare, lavorate = conti.lav;
   const fattureEmesse = pratAnno.reduce((a,p)=>a+Number(p.compenso||0),0);
   const incassoLordo = pratAnno.reduce((a,p)=>a+Number(p.pagato||0),0);
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
@@ -1373,9 +1367,9 @@ function render(){
   const raffBox = document.getElementById('raffronto');
   if(raffBox) raffBox.style.display = vGrafici ? '' : 'none';
   summary.innerHTML = (vPrat ? `
-    <div class="stat c3" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${tot}</b><span style="color:rgba(255,255,255,.92); font-weight:600">PRATICHE TOTALI</span></div>
-    <div class="stat c3" style="background:#2f9e5f; border-color:#2f9e5f; color:#fff"><b>${lavorate}</b><span style="color:rgba(255,255,255,.92); font-weight:600">LAVORATE</span></div>
-    <div class="stat c3" style="background:#e57373; border-color:#e57373; color:#fff"><b>${daLavorare}</b><span style="color:rgba(255,255,255,.95); font-weight:600">DA LAVORARE</span></div>` : '') + (vEco ? `
+    <div class="stat c3" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${tot}</b><span style="color:rgba(255,255,255,.92); font-weight:600">PRATICHE 730 TOTALI</span></div>
+    <div class="stat c3" style="background:#2f9e5f; border-color:#2f9e5f; color:#fff"><b>${lavorate}</b><span style="color:rgba(255,255,255,.92); font-weight:600">730 LAVORATE</span></div>
+    <div class="stat c3" style="background:#e57373; border-color:#e57373; color:#fff"><b>${daLavorare}</b><span style="color:rgba(255,255,255,.95); font-weight:600">730 DA LAVORARE</span></div>` : '') + (vEco ? `
     <div class="stat c5 verde"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE</span></div>
     <div class="stat c5 viola"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
     <div class="stat c5 blu"><b>${fmtEuro(versatoCaf)}</b><span>PAGAMENTI CAF</span></div>
@@ -1422,7 +1416,7 @@ function render(){
 
   const tab = document.getElementById('tabella');
   const ordinate = filtra([...pratAnno].sort((a,b)=> a.numero - b.numero));
-  tab.innerHTML = `
+  tab.innerHTML = (typeof avvisoRitiriHTML === 'function' ? avvisoRitiriHTML(pratAnno) : '') + `
     <div class="raff-title">Registro di protocollo</div>
     <div class="tab-wrap">
       <table class="tab-proto tab-registro">
@@ -1437,7 +1431,7 @@ function render(){
               <td class="wrap">${p.tipo||'-'}</td>
               <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select></td>
               <td>${formattaInserimento(p)}</td>
-              <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)}</td>
+              <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)} <button type="button" title="Ricevuta da consegnare al cliente" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer" onclick="stampaRicevuta('${p.id}')">🧾</button></td>
             </tr>`).join('') : '<tr><td colspan="8" class="empty">'+(pratAnno.length ? 'Nessun risultato' : 'Nessuna registrazione per l\'anno '+annoSel)+'</td></tr>'}
         </tbody>
       </table>
@@ -1452,7 +1446,7 @@ function render(){
         <div>
           <div class="num">#${formattaProtocollo(p)} — ${(p.nome||'(senza nome)').toUpperCase()}</div>
           <div class="name">${p.tipo||''} ${p.cf ? '· nato il '+p.cf : ''}</div>
-          ${p.congiunta ? `<div class="name">Congiunta con <b>${esc(p.congiunta)}</b>${p.congData ? ' (nato il '+esc(p.congData)+')' : ''}</div>` : ''}
+          ${p.congiunta ? `<div class="name">Congiunta con <b>${esc(p.congiunta)}</b>${p.congData ? ' (nato il '+esc(p.congData)+')' : ''}${p.congCodiceFiscale ? ' · CF '+esc(p.congCodiceFiscale) : ''}${p.congTelefono ? ' · Cell. <a href="tel:'+esc(p.congTelefono)+'" style="color:inherit">'+esc(p.congTelefono)+'</a>' : ''}</div>` : ''}
           ${p.telefono ? `<div class="name">Cell. <a href="tel:${esc(p.telefono)}" style="color:inherit">${esc(p.telefono)}</a></div>` : ''}
           ${p.telefonoFisso ? `<div class="name">Tel. fisso <a href="tel:${esc(p.telefonoFisso)}" style="color:inherit">${esc(p.telefonoFisso)}</a></div>` : ''}
         </div>
@@ -1474,6 +1468,8 @@ function render(){
               <div><label>Cognome</label><input id="e-congcognome-${p.id}" value="${esc(p.congCognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
               <div><label>Nome</label><input id="e-congnome-${p.id}" value="${esc(p.congNome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
               <div><label>Data di nascita</label><input id="e-congdata-${p.id}" value="${esc(p.congData)}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
+              <div><label>Codice fiscale coniuge</label><input id="e-congcf-${p.id}" value="${esc(p.congCodiceFiscale)}" maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"></div>
+              <div><label>Cellulare coniuge</label><input id="e-congtel-${p.id}" type="tel" inputmode="tel" value="${esc(p.congTelefono)}"></div>
             </div>
           </div>
           <div><label>Cellulare *</label><input id="e-tel-${p.id}" type="tel" inputmode="tel" value="${esc(p.telefono)}"></div>
@@ -1495,8 +1491,11 @@ function render(){
         <select class="stato-tab-sel" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select>
         ${bottoneWhatsApp(p)}
         <button onclick="modifica('${p.id}')">Modifica</button>
+        <button onclick="stampaRicevuta('${p.id}')" title="Ricevuta da consegnare al cliente">🧾 Ricevuta</button>
+        <button onclick="mostraStoricoPratica('${p.id}')" title="Chi ha modificato questa pratica e quando">📜 Storico</button>
         <button onclick="rimuovi('${p.id}')" style="${p._confirmDelete?'background:#c0392b;color:#fff':''}">${p._confirmDelete?'Conferma eliminazione?':'Elimina'}</button>
       </div>
+      <div id="storico-${p.id}"></div>
       `}
     </div>
   `;
@@ -1552,6 +1551,8 @@ async function addPraticaInterna(){
   const congCognome = document.getElementById('f-cong-cognome').value.trim().toUpperCase();
   const congNome = document.getElementById('f-cong-nome').value.trim().toUpperCase();
   const congData = document.getElementById('f-cong-data').value.trim();
+  const congCodiceFiscale = (congCognome || congNome) ? normalizzaCF(document.getElementById('f-cong-cf').value) : '';
+  const congTelefono = (congCognome || congNome) ? document.getElementById('f-cong-tel').value.trim() : '';
   const congiunta = [congCognome, congNome].filter(Boolean).join(' ');
   const telefono = document.getElementById('f-tel').value.trim();
   const telefonoFisso = document.getElementById('f-tel-fisso').value.trim();
@@ -1581,6 +1582,11 @@ async function addPraticaInterna(){
     msg.style.display = 'block';
     return;
   }
+  if(congCodiceFiscale && !cfValido(congCodiceFiscale)){
+    msg.textContent = '⚠️ Il codice fiscale del coniuge non e\' valido: correggilo o lascia il campo vuoto.';
+    msg.style.display = 'block';
+    return;
+  }
 
   const annoPr = annoDiData(dataPratica);
   const doppione = await cercaDoppione(annoPr, nome, tipo, codiceFiscale, null);
@@ -1595,12 +1601,12 @@ async function addPraticaInterna(){
     if(!conferma) return;
   }
   registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso);
-  if(congCognome || congNome){ registraClienteSeNuovo(congCognome, congNome, congData); }
+  if(congCognome || congNome){ registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono); }
 
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, telefono, telefonoFisso, cf, codiceFiscale, tipo, compenso, pagato, data: dataPratica, note,
+    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, cf, codiceFiscale, tipo, compenso, pagato, data: dataPratica, note,
     stato: document.getElementById('f-stato').value || 'arrivo',
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
@@ -1795,6 +1801,8 @@ async function salvaModifica(id){
     nome: (cognomeTit + ' ' + nomeTit).trim(),
     congCognome: cc, congNome: cn,
     congData: g('e-congdata').trim(),
+    congCodiceFiscale: (cc || cn) ? normalizzaCF(g('e-congcf')) : '',
+    congTelefono: (cc || cn) ? g('e-congtel').trim() : '',
     congiunta: [cc, cn].filter(Boolean).join(' '),
     telefono: g('e-tel').trim(),
     telefonoFisso: g('e-telfisso').trim(),
@@ -1809,6 +1817,10 @@ async function salvaModifica(id){
   };
   if(!campi.telefono && !campi.telefonoFisso){
     avviso('❌ Inserisci almeno un numero di telefono: cellulare o telefono fisso.', true);
+    return;
+  }
+  if(campi.congCodiceFiscale && !cfValido(campi.congCodiceFiscale)){
+    avviso('❌ Il codice fiscale del coniuge non e\' valido: correggilo o lascia il campo vuoto.', true);
     return;
   }
   if(campi.scadenzaAssistenza && !parseDataIT(campi.scadenzaAssistenza)){
@@ -1829,6 +1841,7 @@ async function salvaModifica(id){
   await aggiornaArchivioCliente(vecchiTit, { cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf, codiceFiscale: p.codiceFiscale });
   if(campi.telefono || campi.telefonoFisso) data.clienti.salvaTelefono({ nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf || '', codiceFiscale: p.codiceFiscale || '', telefono: campi.telefono, telefonoFisso: campi.telefonoFisso });
   if(cc || cn) await aggiornaArchivioCliente(vecchiCong, { cognome: cc, nome: cn, dataNascita: campi.congData });
+  if((cc || cn) && (campi.congCodiceFiscale || campi.congTelefono)) registraClienteSeNuovo(cc, cn, campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', campi.congTelefono);
 }
 
 function rimuovi(id){
@@ -1975,6 +1988,15 @@ async function cercaDoppione(anno, nome, tipo, codiceFiscale, escludiId){
 }
 
 function e730(p){ return /^730\b/.test(String(p.tipo||'').toUpperCase()); }
+// Stati: "da lavorare" finche' la pratica non e' stata lavorata; dopo (anche pagata o da pagare) conta come lavorata
+const STATI_DA_LAVORARE = ['arrivo','lavorazione','da_lavorare_scansionata'];
+function eDaLavorare(p){ return STATI_DA_LAVORARE.indexOf(p.stato) >= 0; }
+function eLavorata(p){ return !eDaLavorare(p) && p.stato !== 'rinuncia_compilazione'; }
+function conteggi730(pratiche){
+  const l = (pratiche||[]).filter(e730);
+  const daFare = sommaPeso(l.filter(eDaLavorare)), lav = sommaPeso(l.filter(eLavorata));
+  return { tot: sommaPeso(l), daFare: daFare, lav: lav, rinunce: sommaPeso(l) - daFare - lav };
+}
 function bloccoIntroito(titolo, colore, lista, conMedia){
   const fatt = lista.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const inc = lista.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
@@ -2211,11 +2233,15 @@ function confermaPraticaSalvata(id, nome, tipo){
     + (numero ? '<div style="font-size:16px; font-weight:700; margin-bottom:2px">Protocollo n. ' + esc(numero) + '</div>' : '')
     + '<div style="font-size:15px">' + esc(nome) + '</div>'
     + '<div style="font-size:13px; color:var(--sub); margin-bottom:16px">' + esc(tipo) + '</div>'
-    + '<button type="button" style="background:#2f9e5f; color:#fff; min-width:120px; font-size:15px">OK</button></div>';
+    + '<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap"><button type="button" data-ricevuta="1" style="background:var(--line); color:var(--ink); font-size:15px">🧾 Stampa ricevuta</button>'
+    + '<button type="button" style="background:#2f9e5f; color:#fff; min-width:120px; font-size:15px">OK</button></div></div>';
   document.body.appendChild(ov);
   const chiudi = function(){ clearTimeout(t); ov.remove(); };
-  const t = setTimeout(chiudi, 4000);
-  ov.addEventListener('click', chiudi);
+  const t = setTimeout(chiudi, 6000);
+  ov.addEventListener('click', function(e){
+    if(e.target.closest('[data-ricevuta]')){ chiudi(); stampaRicevuta(id); return; }
+    chiudi();
+  });
 }
 
 // Impostazioni condivise (dati del CAF per i messaggi): le legge chiunque, le modifica solo l'amministratore

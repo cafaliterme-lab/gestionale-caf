@@ -457,6 +457,8 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <div><label>Cognome</label><input id="f-cong-cognome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
         <div><label>Nome</label><input id="f-cong-nome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
         <div><label>Data di nascita</label><input id="f-cong-data" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
+        <div><label>Codice fiscale coniuge</label><input id="f-cong-cf" placeholder="16 caratteri (facoltativo)" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"></div>
+        <div><label>Cellulare coniuge</label><input id="f-cong-tel" type="tel" inputmode="tel" placeholder="Facoltativo"></div>
         <div style="display:flex; align-items:flex-end"><button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('coniuge')" title="Leggi i dati del coniuge da carta d'identita', tessera sanitaria o patente">📄 Leggi documento coniuge</button></div>
       </div>
     </div>
@@ -654,6 +656,19 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <div class="card">
+  <div class="raff-title">🛟 Backup automatici</div>
+  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Ogni lunedì notte il programma salva da solo una copia completa di tutti i dati (pratiche, clienti, versamenti, scadenze, impostazioni). Una copia viene fatta anche prima di svuotare il registro o di importare un backup. Si tengono le ultime 12 settimane. Con "Scarica" ottieni il file da conservare o da ricaricare con "Importa Backup".</p>
+  <button type="button" class="btn-add" onclick="creaBackupOra()">💾 Crea un backup adesso</button>
+  <div id="backup-lista" style="margin-top:10px"></div>
+</div>
+
+<div class="card">
+  <div class="raff-title">📜 Registro delle modifiche</div>
+  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Le ultime modifiche fatte alle pratiche: chi, quando e cosa ha cambiato.</p>
+  <div id="storico-globale"></div>
+</div>
+
+<div class="card">
   <div class="raff-title" style="color:#c0392b">Zona pericolosa</div>
   <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Elimina definitivamente tutte le pratiche dal registro di protocollo, per tutti gli anni. Non si può annullare.</p>
   <button type="button" id="btn-svuota" class="btn-add" style="background:var(--line); color:#c0392b" onclick="svuotaRegistro()">Svuota registro (elimina tutte le pratiche)</button>
@@ -665,18 +680,19 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/qrcode.js?v=1"></script>
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
-<script src="js/ocr-documento.js?v=4"></script>
-<script src="js/grafici.js?v=3"></script>
+<script src="js/ocr-documento.js?v=5"></script>
+<script src="js/grafici.js?v=4"></script>
 <script src="js/stampe.js?v=3"></script>
+<script src="js/extra.js?v=1"></script>
 <script src="js/scadenze.js?v=202610083"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610107"></script>
+<script src="js/data.js?v=202610108"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610119"></script>
+<script src="js/app.js?v=202610120"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

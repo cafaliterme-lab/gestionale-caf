@@ -111,6 +111,8 @@ const schemas = {
     inseritoIl: 'inserito_il',
     aggiornatoIl: 'aggiornato_il',
     codiceFiscale: 'codice_fiscale',
+    congCodiceFiscale: 'cong_codice_fiscale',
+    congTelefono: 'cong_telefono',
   },
   versamento: {
     id: 'id',
@@ -674,6 +676,9 @@ async function salvaCollaboratori(lista) {
 async function svuotaRegistro() {
   try {
     const sb = await waitForSupabase();
+    // Prima di cancellare si salva sempre una copia completa sul server
+    const { error: errBackup } = await sb.rpc('crea_backup', { p_tipo: 'prima_di_svuotare' });
+    if (errBackup) throw new Error('backup di sicurezza non riuscito, registro NON svuotato (' + errBackup.message + ')');
     const { error } = await sb.rpc('svuota_registro');
 
     if (error) throw new Error(error.message);
@@ -692,11 +697,16 @@ async function svuotaRegistro() {
 async function importaBackup(dati) {
   try {
     const sb = await waitForSupabase();
+    // Copia di sicurezza dei dati attuali prima di sostituirli
+    await sb.rpc('crea_backup', { p_tipo: 'prima_di_importare' });
     const { error } = await sb.rpc('importa_backup', {
       dati: dati,
     });
 
     if (error) throw new Error(error.message);
+    // Campi aggiunti nelle versioni successive (CF, fine lavorazione, telefoni...), clienti e scadenze
+    const { error: errCompleta } = await sb.rpc('completa_import_backup', { dati: dati });
+    if (errCompleta) console.error('Completamento backup:', errCompleta.message);
 
     await caricaTutto();
     return {};
@@ -758,5 +768,7 @@ window.data = {
     svuota: svuotaRegistro,
     importa: importaBackup,
   },
+  mappa: mapFromDb,
+  schemi: schemas,
   scaricaFile,
 };

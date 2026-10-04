@@ -800,6 +800,7 @@ function usaDatiDocumento() {
     document.getElementById('f-cong-cognome').value = v('doc-cognome').toUpperCase();
     document.getElementById('f-cong-nome').value = v('doc-nome').toUpperCase();
     document.getElementById('f-cong-data').value = v('doc-nascita');
+    if (cf) document.getElementById('f-cong-cf').value = cf;
     document.getElementById('cli-cerca-cong').value = (v('doc-cognome') + ' ' + v('doc-nome')).trim().toUpperCase();
     chiudiLetturaDocumento();
     avviso('✓ Dati del coniuge inseriti nel modulo');
