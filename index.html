@@ -125,6 +125,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .tab-orari td, .tab-orari th{padding:4px 6px}
 .tab-orari input[type=time]{width:auto; padding:4px 6px; font-size:13px}
 .tab-orari tr.chiuso td{opacity:.45}
+.sola-lettura-msg input, .sola-lettura-msg textarea, .sola-lettura-msg button{pointer-events:none; opacity:.6}
 .grafici-griglia{display:grid; grid-template-columns:1fr 1fr; gap:14px}
 .grafici-griglia .card{margin-bottom:0}
 @media (max-width:760px){.grafici-griglia{grid-template-columns:1fr}}
@@ -344,6 +345,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <button type="button" data-tab="caf" onclick="showTab(this)">VERSAMENTI CAF</button>
   <button type="button" data-tab="collaboratori" onclick="showTab(this)">COLLABORATORI</button>
   <button type="button" data-tab="scadenze" onclick="showTab(this)">SCADENZE</button>
+  <button type="button" data-tab="messaggi" onclick="showTab(this)">MESSAGGI</button>
   <button type="button" data-tab="permessi" id="nav-permessi" onclick="showTab(this)" style="display:none">UTENTI&nbsp;E&nbsp;PERMESSI</button>
 </div>
 
@@ -529,7 +531,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 </div>
 </section>
 
-<section class="tabsec" id="tab-permessi">
+<section class="tabsec" id="tab-messaggi">
 <div class="card">
   <div class="raff-title">Dati del CAF (compaiono nei messaggi WhatsApp)</div>
   <div class="grid">
@@ -548,6 +550,9 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <div style="font-size:12px; color:var(--sub); margin-top:10px">Anteprima del messaggio predefinito:</div>
   <div id="caf-anteprima" style="font-size:13px; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:4px; white-space:pre-wrap"></div>
   <div style="text-align:left"><button type="button" class="btn-add" onclick="salvaDatiCaf()">💾 Salva dati del CAF e messaggi</button></div>
+</section>
+
+<section class="tabsec" id="tab-permessi">
 </div>
 <div class="card">
   <div class="raff-title">La mia password</div>
@@ -645,7 +650,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610084"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610103"></script>
+<script src="js/app.js?v=202610104"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

@@ -352,7 +352,8 @@ const TAB_LABELS = {
   grafici: 'GRAFICI',
   caf: 'VERSAMENTI CAF',
   collaboratori: 'COLLABORATORI',
-  scadenze: 'SCADENZE'
+  scadenze: 'SCADENZE',
+  messaggi: 'MESSAGGI WHATSAPP'
 };
 let currentUser = null;
 let loginSelezionato = null;
@@ -871,7 +872,6 @@ async function svuotaRegistro(){
   render();
 }
 async function renderPermessi(){
-  mostraDatiCaf();
   const wrap = document.getElementById('perm-lista');
   const allProfili = await caricaTuttiProfili();
 
@@ -1078,6 +1078,7 @@ function showTab(btn){
   btn.classList.add('active');
   if(tab === 'collaboratori') renderCollaboratori();
   if(tab === 'scadenze') renderScadenze();
+  if(tab === 'messaggi') mostraDatiCaf();
   if(tab === 'grafici') renderGrafici();
   if(tab === 'permessi') renderPermessi(); // async, but fires in background
 }
@@ -2138,6 +2139,9 @@ function mostraDatiCaf(){
   const ind = document.getElementById('caf-indirizzo');
   const tel = document.getElementById('caf-telefono');
   if(!ind || !tel) return;
+  const scrivibile = puo('messaggi', true);
+  const sez = document.getElementById('tab-messaggi');
+  if(sez) sez.classList.toggle('sola-lettura-msg', !scrivibile);
   if(document.activeElement !== ind) ind.value = IMPOSTAZIONI.caf_indirizzo || '';
   if(document.activeElement !== tel) tel.value = IMPOSTAZIONI.caf_telefono || '';
   const mail = document.getElementById('caf-email');
