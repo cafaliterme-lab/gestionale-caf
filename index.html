@@ -213,6 +213,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .cal-cella:hover{border-color:var(--accent)}
 .cal-cella.vuota{border:none; background:transparent; cursor:default}
 .cal-cella.oggi{border:2px solid var(--accent)}
+.cal-cella.weekend{background:color-mix(in srgb, #c0392b 9%, var(--card)); border-color:color-mix(in srgb, #c0392b 18%, var(--line))}
+.cal-gs.weekend{color:#c0392b}
 .cal-num{font-size:12px; font-weight:700; margin-bottom:2px}
 .cal-ev{color:#fff; font-size:10.5px; border-radius:4px; padding:1px 4px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .cal-piu{font-size:10.5px; color:var(--sub)}
@@ -476,7 +478,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <option value="30">30 giorni prima</option>
       </select>
     </div>
-    <div><label>Cliente (facoltativo)</label><input id="sc-cliente" placeholder="Cognome e nome" style="text-transform:uppercase"></div>
+    <div class="cli-wrap"><label>Cliente (facoltativo, cerca nell'archivio)</label><input id="sc-cliente" placeholder="Scrivi cognome o nome..." style="text-transform:uppercase" autocomplete="off" oninput="this.value=this.value.toUpperCase(); cercaClienti(this.value, 'sc')" onfocus="cercaClienti(this.value, 'sc')"><div class="cli-results" id="cli-results-sc"></div></div>
     <div><label>Note</label><input id="sc-note" placeholder="Facoltativo"></div>
   </div>
   <div style="text-align:left"><button type="button" class="btn-add" onclick="aggiungiScadenzaForm()">+ Aggiungi scadenza</button></div>
@@ -587,7 +589,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
 <script src="js/ocr-documento.js?v=2"></script>
-<script src="js/scadenze.js?v=1"></script>
+<script src="js/scadenze.js?v=202610081"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
@@ -595,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610078"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610080"></script>
+<script src="js/app.js?v=202610081"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

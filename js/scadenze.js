@@ -69,7 +69,8 @@ function renderScadenze() {
   for (let g = 1; g <= giorniMese; g++) {
     const iso = isoLocale(new Date(anno, mese, g));
     const lista = perGiorno[iso] || [];
-    celle += '<div class="cal-cella' + (iso === oggi ? ' oggi' : '') + '" onclick="scegliGiornoCalendario(\'' + iso + '\')">'
+    const dow = new Date(anno, mese, g).getDay();
+    celle += '<div class="cal-cella' + (dow === 0 || dow === 6 ? ' weekend' : '') + (iso === oggi ? ' oggi' : '') + '" onclick="scegliGiornoCalendario(\'' + iso + '\')">'
       + '<div class="cal-num">' + g + '</div>'
       + lista.slice(0, 3).map(function (s) {
           return '<div class="cal-ev" style="background:' + COLORI_SCADENZA[statoScadenza(s)] + '" title="' + esc(s.titolo) + '">' + esc(s.titolo) + '</div>';
@@ -81,7 +82,7 @@ function renderScadenze() {
     + '<button type="button" onclick="cambiaMeseCalendario(-1)">‹</button>'
     + '<b>' + MESI_IT[mese] + ' ' + anno + '</b>'
     + '<button type="button" onclick="cambiaMeseCalendario(1)">›</button></div>'
-    + '<div class="cal-griglia">' + ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'].map(function (d) { return '<div class="cal-gs">' + d + '</div>'; }).join('') + celle + '</div>'
+    + '<div class="cal-griglia">' + ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'].map(function (d) { return '<div class="cal-gs' + (d === 'Sab' || d === 'Dom' ? ' weekend' : '') + '">' + d + '</div>'; }).join('') + celle + '</div>'
     + '<div class="cal-legenda"><span style="background:#c0392b"></span>Scaduta <span style="background:#d4881c"></span>Da avvisare <span style="background:#2f7de1"></span>In programma <span style="background:#8a96a8"></span>Fatta</div>';
 
   const daFare = scadenze.filter(function (s) { return !s.completata; });

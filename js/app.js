@@ -127,9 +127,10 @@ function caricaArchivioClienti(){
   // Inizialmente vuoto, verrà popolato dopo il login
   ARCHIVIO_CLIENTI = [];
 }
+function boxRisultatiClienti(ctx){ return document.getElementById(ctx==='cong' ? 'cli-results-cong' : ctx==='sc' ? 'cli-results-sc' : 'cli-results'); }
 function cercaClienti(q, ctx){
   ctx = ctx || 'main';
-  const box = document.getElementById(ctx==='cong' ? 'cli-results-cong' : 'cli-results');
+  const box = boxRisultatiClienti(ctx);
   q = (q||'').trim().toLowerCase();
   if(!q){ box.classList.remove('open'); box.innerHTML=''; return; }
   const match = ARCHIVIO_CLIENTI.filter(function(c){ return c.nomeCompleto.toLowerCase().indexOf(q) >= 0 || (c.codiceFiscale||'').toLowerCase().indexOf(q) >= 0; }).slice(0,8);
@@ -143,11 +144,13 @@ function cercaClienti(q, ctx){
 }
 function scegliCliente(i, ctx){
   ctx = ctx || 'main';
-  const box = document.getElementById(ctx==='cong' ? 'cli-results-cong' : 'cli-results');
+  const box = boxRisultatiClienti(ctx);
   const match = JSON.parse(box.dataset.match || '[]');
   const c = match[i];
   if(!c) return;
-  if(ctx==='cong'){
+  if(ctx==='sc'){
+    document.getElementById('sc-cliente').value = c.nomeCompleto.toUpperCase();
+  } else if(ctx==='cong'){
     document.getElementById('f-cong-cognome').value = c.cognome.toUpperCase();
     document.getElementById('f-cong-nome').value = c.nome.toUpperCase();
     document.getElementById('f-cong-data').value = c.dataNascita;
@@ -164,7 +167,7 @@ function scegliCliente(i, ctx){
   box.classList.remove('open');
 }
 document.addEventListener('click', function(e){
-  [['cli-cerca','cli-results'], ['cli-cerca-cong','cli-results-cong']].forEach(function(pair){
+  [['cli-cerca','cli-results'], ['cli-cerca-cong','cli-results-cong'], ['sc-cliente','cli-results-sc']].forEach(function(pair){
     const wrap = document.getElementById(pair[0]);
     const box = document.getElementById(pair[1]);
     if(wrap && box && !wrap.contains(e.target) && !box.contains(e.target)) box.classList.remove('open');
@@ -1901,6 +1904,6 @@ async function eliminaClienteArchivio(id, ctx){
   if(esito && esito.error){ avviso('❌ Cliente non eliminato: ' + esito.error, true); return; }
   ARCHIVIO_CLIENTI = ARCHIVIO_CLIENTI.filter(function(x){ return String(x.id) !== String(id); });
   avviso('✓ ' + c.nomeCompleto + ' eliminato dall\'archivio');
-  const inp = document.getElementById(ctx==='cong' ? 'cli-cerca-cong' : 'cli-cerca');
+  const inp = document.getElementById(ctx==='cong' ? 'cli-cerca-cong' : ctx==='sc' ? 'sc-cliente' : 'cli-cerca');
   if(inp) cercaClienti(inp.value, ctx);
 }
