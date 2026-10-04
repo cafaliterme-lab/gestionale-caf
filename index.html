@@ -305,7 +305,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 </header>
 <div id="doc-overlay" class="scanner-overlay">
   <div class="scanner-box">
-    <div style="font-weight:700; margin-bottom:8px">📄 Leggi documento</div>
+    <div id="doc-titolo" style="font-weight:700; margin-bottom:8px">📄 Leggi documento</div>
     <div id="doc-cattura">
       <div class="scanner-vista">
         <video id="doc-video" playsinline muted autoplay></video>
@@ -436,7 +436,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <label>Codice fiscale</label>
       <div style="display:flex; gap:6px">
         <input id="f-codfisc" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace; letter-spacing:.04em" oninput="this.value=normalizzaCF(this.value); controllaCampoCF(); aggiornaStoricoForm()">
-        <button type="button" class="btn-scan-cf" onclick="apriLetturaDocumento()" title="Leggi i dati da carta d'identita', tessera sanitaria o patente">📄 Leggi documento</button>
+        <button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('titolare')" title="Leggi i dati da carta d'identita', tessera sanitaria o patente">📄 Leggi documento</button>
       </div>
       <div id="f-codfisc-msg" style="font-size:12px; margin-top:4px; display:none"></div>
     </div>
@@ -451,6 +451,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <div><label>Cognome</label><input id="f-cong-cognome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
         <div><label>Nome</label><input id="f-cong-nome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
         <div><label>Data di nascita</label><input id="f-cong-data" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
+        <div style="display:flex; align-items:flex-end"><button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('coniuge')" title="Leggi i dati del coniuge da carta d'identita', tessera sanitaria o patente">📄 Leggi documento coniuge</button></div>
       </div>
     </div>
     <div>
@@ -658,7 +659,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/qrcode.js?v=1"></script>
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
-<script src="js/ocr-documento.js?v=3"></script>
+<script src="js/ocr-documento.js?v=4"></script>
 <script src="js/grafici.js?v=3"></script>
 <script src="js/stampe.js?v=3"></script>
 <script src="js/scadenze.js?v=202610083"></script>

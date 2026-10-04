@@ -6,7 +6,7 @@
 
 const OCR_BASE = 'js/vendor/tesseract/';
 let ocrWorker = null;
-let docLettura = { stream: null, dati: null, unisci: false };
+let docLettura = { stream: null, dati: null, unisci: false, destinazione: 'titolare' };
 
 /* ---------------- Motore OCR ---------------- */
 
@@ -523,6 +523,13 @@ function datiRevisione() {
     luogoNascita: v('doc-luogo'), codiceFiscale: cfValido(v('doc-cf')) ? normalizzaCF(v('doc-cf')) : '', cfGrezzo: v('doc-cf'), testo: (docLettura.dati || {}).testo || '' };
 }
 
+// Documento del titolare o del coniuge (dichiarazione congiunta)
+function apriLetturaDocumentoPer(chi) {
+  docLettura.destinazione = chi === 'coniuge' ? 'coniuge' : 'titolare';
+  document.getElementById('doc-titolo').textContent = chi === 'coniuge' ? '📄 Leggi documento del coniuge' : '📄 Leggi documento';
+  apriLetturaDocumento();
+}
+
 async function apriLetturaDocumento(altroLato) {
   if (altroLato !== true) docLettura.unisci = false;
   document.getElementById('doc-overlay').classList.add('open');
@@ -789,6 +796,15 @@ function usaDatiDocumento() {
   const v = function (id) { return document.getElementById(id).value.trim(); };
   const cf = normalizzaCF(v('doc-cf'));
   if (cf && !cfValido(cf)) { verificaRevisioneDocumento(); return; }
+  if (docLettura.destinazione === 'coniuge') {
+    document.getElementById('f-cong-cognome').value = v('doc-cognome').toUpperCase();
+    document.getElementById('f-cong-nome').value = v('doc-nome').toUpperCase();
+    document.getElementById('f-cong-data').value = v('doc-nascita');
+    document.getElementById('cli-cerca-cong').value = (v('doc-cognome') + ' ' + v('doc-nome')).trim().toUpperCase();
+    chiudiLetturaDocumento();
+    avviso('✓ Dati del coniuge inseriti nel modulo');
+    return;
+  }
   document.getElementById('f-cognome').value = v('doc-cognome').toUpperCase();
   document.getElementById('f-nome').value = v('doc-nome').toUpperCase();
   document.getElementById('f-cf').value = v('doc-nascita');
