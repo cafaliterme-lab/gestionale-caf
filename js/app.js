@@ -1172,6 +1172,11 @@ function importoInCampo(n){
   if(n === '' || n == null || isNaN(Number(n))) return '';
   return Number(n).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2, useGrouping:false });
 }
+// Come un registratore di cassa: si scrivono solo cifre e le ultime due sono i centesimi (3550 -> 35,50)
+function importoCassa(el){
+  const cifre = el.value.replace(/\D/g, '').replace(/^0+/, '');
+  el.value = cifre ? importoInCampo(Number(cifre) / 100) : '';
+}
 function filtraImporto(el){
   const pulito = el.value.replace(/[^0-9,.]/g, '');
   if(pulito !== el.value) el.value = pulito;
@@ -1412,8 +1417,8 @@ function render(){
           <div><label>Data di nascita</label><input id="e-cf-${p.id}" value="${esc(p.cf)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'">${tipoOptions(p.tipo)}</select></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
-          <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
-          <div><label>Pagato effettivo (€)</label><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
+          <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="importoCassa(this)" onblur="formattaCampoImporto(this)"></div>
+          <div><label>Pagato effettivo (€)</label><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="importoCassa(this)" onblur="formattaCampoImporto(this)"></div>
           <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}"></div>
           <div class="full"><label>Note</label><input id="e-note-${p.id}" value="${esc(p.note)}"></div>
         </div>
