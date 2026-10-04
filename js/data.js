@@ -136,6 +136,8 @@ const schemas = {
     nome: 'nome',
     dataNascita: 'data_nascita',
     codiceFiscale: 'codice_fiscale',
+    telefono: 'telefono',
+    telefonoFisso: 'telefono_fisso',
   },
   scadenza: {
     id: 'id',
@@ -556,6 +558,28 @@ async function salvaClienteCF(cliente) {
 }
 
 /**
+ * Clienti - Salva cellulare e telefono fisso nell'archivio (aggiorna il cliente o lo crea)
+ */
+async function salvaTelefonoCliente(cliente) {
+  try {
+    const { error } = await supabase.rpc('salva_telefono_cliente', {
+      p_nome_completo: cliente.nomeCompleto,
+      p_cognome: cliente.cognome || '',
+      p_nome: cliente.nome || '',
+      p_data_nascita: cliente.dataNascita || '',
+      p_codice_fiscale: cliente.codiceFiscale || '',
+      p_telefono: cliente.telefono || '',
+      p_telefono_fisso: cliente.telefonoFisso || '',
+    });
+    if (error) throw new Error(error.message);
+    return {};
+  } catch (err) {
+    console.error('Errore salvataggio telefono cliente:', err.message);
+    return { error: err.message };
+  }
+}
+
+/**
  * Clienti - Importa una lista di clienti in batch
  */
 async function aggiungiListaClienti(clienti) {
@@ -719,6 +743,7 @@ window.data = {
     aggiorna: aggiornaCliente,
     elimina: eliminaCliente,
     salvaCF: salvaClienteCF,
+    salvaTelefono: salvaTelefonoCliente,
     aggiungiLista: aggiungiListaClienti,
   },
   collaboratori: {

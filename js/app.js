@@ -101,24 +101,33 @@ function clienteEsiste(cognome, nome, dataNascita){
   const nc = (cognome+' '+nome).trim().toUpperCase();
   return ARCHIVIO_CLIENTI.some(function(c){ return c.nomeCompleto.toUpperCase() === nc && (c.dataNascita||'') === (dataNascita||''); });
 }
-function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale){
+function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale, telefono, telefonoFisso){
   cognome = (cognome||'').trim().toUpperCase();
   nome = (nome||'').trim().toUpperCase();
-  if(!cognome && !nome) return;
+  if(!cognome && !nome) return Promise.resolve();
+  const nc = (cognome+' '+nome).trim();
+  dataNascita = (dataNascita||'').trim();
+  telefono = (telefono||'').trim(); telefonoFisso = (telefonoFisso||'').trim();
+  // Il telefono resta nell'archivio clienti anche se la pratica viene poi cancellata
+  const salvaTelefono = function(){
+    if(!telefono && !telefonoFisso) return;
+    const rec = trovaInArchivio(nc, dataNascita, codiceFiscale);
+    if(rec){ if(telefono) rec.telefono = telefono; if(telefonoFisso) rec.telefonoFisso = telefonoFisso; }
+    return data.clienti.salvaTelefono({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: dataNascita, codiceFiscale: codiceFiscale || '', telefono: telefono, telefonoFisso: telefonoFisso });
+  };
   if(codiceFiscale){
-    if(ARCHIVIO_CLIENTI.some(function(c){ return c.codiceFiscale === codiceFiscale; })) return;
-    const nc = (cognome+' '+nome).trim();
-    const esistente = ARCHIVIO_CLIENTI.find(function(c){ return c.nomeCompleto.toUpperCase() === nc && (c.dataNascita||'') === (dataNascita||'') && !c.codiceFiscale; });
+    if(ARCHIVIO_CLIENTI.some(function(c){ return c.codiceFiscale === codiceFiscale; })) return Promise.resolve(salvaTelefono());
+    const esistente = ARCHIVIO_CLIENTI.find(function(c){ return c.nomeCompleto.toUpperCase() === nc && (c.dataNascita||'') === dataNascita && !c.codiceFiscale; });
     if(esistente) esistente.codiceFiscale = codiceFiscale;
-    else ARCHIVIO_CLIENTI.push({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: (dataNascita||'').trim(), codiceFiscale: codiceFiscale });
-    data.clienti.salvaCF({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: (dataNascita||'').trim(), codiceFiscale: codiceFiscale });
-    return;
+    else ARCHIVIO_CLIENTI.push({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: dataNascita, codiceFiscale: codiceFiscale });
+    return data.clienti.salvaCF({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: dataNascita, codiceFiscale: codiceFiscale }).then(salvaTelefono);
   }
-  if(clienteEsiste(cognome, nome, dataNascita)) return;
-  const nuovo = { nomeCompleto: (cognome+' '+nome).trim(), cognome: cognome, nome: nome, dataNascita: (dataNascita||'').trim() };
+  if(clienteEsiste(cognome, nome, dataNascita)) return Promise.resolve(salvaTelefono());
+  const nuovo = { nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: dataNascita };
+  if(telefono) nuovo.telefono = telefono;
+  if(telefonoFisso) nuovo.telefonoFisso = telefonoFisso;
   ARCHIVIO_CLIENTI.push(nuovo);
-  // Usa la nuova API data.js
-  data.clienti.aggiungi(nuovo);
+  return data.clienti.aggiungi(nuovo);
 }
 // DEPRECATED: subscribeClientiExtra è sostituito dalla sottoscrizione realtime di data.js
 // MODIFICATO: caricaArchivioClienti ora usa i dati da Supabase
@@ -137,7 +146,7 @@ function cercaClienti(q, ctx){
   if(!match.length){ box.innerHTML = '<div class="cli-row" style="cursor:default">Nessun cliente trovato</div>'; box.classList.add('open'); return; }
   box.innerHTML = match.map(function(c,i){
     const cestino = (puoEliminareClienti() && c.id) ? '<button type="button" title="Elimina definitivamente dall\'archivio" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); eliminaClienteArchivio(&quot;'+esc(String(c.id))+'&quot;, &quot;'+ctx+'&quot;)">🗑</button>' : '';
-    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+'<b>'+esc(c.nomeCompleto)+'</b><span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+'</span></div>';
+    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+'<b>'+esc(c.nomeCompleto)+'</b><span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+(c.telefono || c.telefonoFisso ? ' · 📞 '+esc(c.telefono || c.telefonoFisso) : '')+'</span></div>';
   }).join('');
   box.dataset.match = JSON.stringify(match);
   box.classList.add('open');
@@ -161,6 +170,8 @@ function scegliCliente(i, ctx){
     document.getElementById('f-cf').value = c.dataNascita;
     document.getElementById('cli-cerca').value = c.nomeCompleto;
     document.getElementById('f-codfisc').value = c.codiceFiscale || '';
+    if(c.telefono) document.getElementById('f-tel').value = c.telefono;
+    if(c.telefonoFisso) document.getElementById('f-tel-fisso').value = c.telefonoFisso;
     controllaCampoCF();
     aggiornaStoricoForm();
   }
@@ -292,6 +303,8 @@ function onCFLetto(cf){
     campo('f-cognome', (archiviato.cognome||'').toUpperCase());
     campo('f-nome', (archiviato.nome||'').toUpperCase());
     campo('f-cf', archiviato.dataNascita);
+    campo('f-tel', archiviato.telefono);
+    campo('f-tel-fisso', archiviato.telefonoFisso);
     document.getElementById('cli-cerca').value = archiviato.nomeCompleto;
   }
   campo('f-cf', datiDaCF(cf).dataNascita);
@@ -1569,7 +1582,7 @@ async function addPraticaInterna(){
     msg.style.display = 'block';
     return;
   }
-  registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale);
+  registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso);
   if(congCognome || congNome){ registraClienteSeNuovo(congCognome, congNome, congData); }
 
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
@@ -1802,6 +1815,7 @@ async function salvaModifica(id){
   const esito = await data.pratiche.aggiorna(id, campi);
   if(esito && esito.error) return;
   await aggiornaArchivioCliente(vecchiTit, { cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf, codiceFiscale: p.codiceFiscale });
+  if(campi.telefono || campi.telefonoFisso) data.clienti.salvaTelefono({ nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf || '', codiceFiscale: p.codiceFiscale || '', telefono: campi.telefono, telefonoFisso: campi.telefonoFisso });
   if(cc || cn) await aggiornaArchivioCliente(vecchiCong, { cognome: cc, nome: cn, dataNascita: campi.congData });
 }
 
