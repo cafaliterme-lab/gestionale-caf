@@ -1599,13 +1599,33 @@ function numeroWhatsApp(tel){
   return /^\d{10,15}$/.test(n) ? n : '';
 }
 function nomeProprio(s){ return String(s||'').toLowerCase().replace(/(^|[\s'-])\S/g, function(c){ return c.toUpperCase(); }); }
-function messaggioRitiro(p){
-  const cosa = /^730/.test(p.tipo||'') ? 'dichiarazione 730' : 'pratica';
-  return 'Gentile ' + nomeProprio(p.nome) + ', la informiamo che la Sua ' + cosa + ' (protocollo n. ' + formattaProtocollo(p) + ') è pronta. '
-    + 'Può passare a ritirarla presso il CAF CISL di Alì Terme'
-    + (IMPOSTAZIONI.caf_indirizzo ? ', in ' + IMPOSTAZIONI.caf_indirizzo : '') + '.'
-    + (IMPOSTAZIONI.caf_telefono ? ' Per informazioni può chiamare il ' + IMPOSTAZIONI.caf_telefono + '.' : '')
-    + ' Cordiali saluti.';
+const MODELLO_WHATSAPP_BASE = 'Gentile {nome}, la informiamo che la Sua {pratica} (protocollo n. {protocollo}) è pronta. Può passare a ritirarla presso il CAF CISL di Alì Terme, in {indirizzo}. Per informazioni può chiamare il {telefono}. Cordiali saluti.';
+function modelliWhatsApp(){
+  try{
+    const l = JSON.parse(IMPOSTAZIONI.whatsapp_modelli || '[]');
+    if(Array.isArray(l) && l.length) return l.map(String);
+  }catch(e){}
+  return [MODELLO_WHATSAPP_BASE];
+}
+function indiceModelloPredefinito(){
+  const i = parseInt(IMPOSTAZIONI.whatsapp_predefinito, 10);
+  return (i >= 0 && i < modelliWhatsApp().length) ? i : 0;
+}
+function compilaMessaggio(modello, p){
+  const valori = {
+    nome: nomeProprio(p.nome),
+    pratica: /^730/.test(p.tipo||'') ? 'dichiarazione 730' : 'pratica',
+    tipo: p.tipo || '',
+    protocollo: formattaProtocollo(p),
+    indirizzo: IMPOSTAZIONI.caf_indirizzo || '',
+    telefono: IMPOSTAZIONI.caf_telefono || ''
+  };
+  return String(modello).replace(/\{(nome|pratica|tipo|protocollo|indirizzo|telefono)\}/gi, function(_, k){ return valori[k.toLowerCase()]; })
+    .replace(/[ \t]+([.,;:])/g, '$1').replace(/,\s*in\s*\./g, '.').replace(/[ \t]{2,}/g, ' ').trim();
+}
+function messaggioRitiro(p, indice){
+  const l = modelliWhatsApp();
+  return compilaMessaggio(l[indice == null ? indiceModelloPredefinito() : indice] || l[0], p);
 }
 function inviaWhatsApp(id){
   const p = state.pratiche.find(function(x){ return x.id === id; });
@@ -1619,9 +1639,35 @@ function inviaWhatsApp(id){
     if(!num){ avviso('❌ Numero di telefono non valido', true); return; }
     nuovoTel = t.trim();
   }
-  // Apertura immediata: dopo un'attesa il browser bloccherebbe la nuova finestra
-  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(messaggioRitiro(p)), '_blank');
   if(nuovoTel) data.pratiche.aggiorna(id, { telefono: nuovoTel });
+  const modelli = modelliWhatsApp();
+  // Apertura immediata dal clic: dopo un'attesa il browser bloccherebbe la nuova finestra
+  if(modelli.length < 2){ apriWhatsApp(num, messaggioRitiro(p)); return; }
+  scegliMessaggioWhatsApp(p, num);
+}
+function apriWhatsApp(num, testo){
+  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(testo), '_blank');
+}
+function scegliMessaggioWhatsApp(p, num){
+  const modelli = modelliWhatsApp();
+  const pred = indiceModelloPredefinito();
+  const ordine = [pred].concat(modelli.map(function(_, i){ return i; }).filter(function(i){ return i !== pred; }));
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed; inset:0; z-index:400; background:rgba(15,27,45,.4); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; max-width:560px; width:100%; max-height:85vh; overflow:auto; padding:18px 20px; box-shadow:0 20px 50px rgba(0,0,0,.3)">'
+    + '<div style="font-size:17px; font-weight:800; margin-bottom:4px">💬 Quale messaggio invio a ' + esc(nomeProprio(p.nome)) + '?</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">Clicca sul messaggio da inviare.</div>'
+    + ordine.map(function(i){
+        return '<button type="button" data-i="' + i + '" style="display:block; width:100%; text-align:left; margin-bottom:8px; padding:10px 12px; border-radius:10px; border:2px solid ' + (i === pred ? '#25d366' : 'var(--line)') + '; background:var(--bg); color:var(--ink); font-weight:400; font-size:13px; white-space:pre-wrap">'
+          + '<b>' + (i + 1) + '.' + (i === pred ? ' ⭐ Predefinito' : '') + '</b><br>' + esc(messaggioRitiro(p, i)) + '</button>';
+      }).join('')
+    + '<div style="text-align:right"><button type="button" data-annulla="1" style="background:var(--line); color:var(--ink)">Annulla</button></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function(e){
+    const b = e.target.closest('button');
+    if(e.target === ov || (b && b.dataset.annulla)){ ov.remove(); return; }
+    if(b && b.dataset.i != null){ apriWhatsApp(num, messaggioRitiro(p, parseInt(b.dataset.i, 10))); ov.remove(); }
+  });
 }
 function bottoneWhatsApp(p, stile, soloIcona){
   if(p.stato !== 'lavorata') return '';
@@ -2083,29 +2129,80 @@ async function caricaImpostazioni(){
     mostraDatiCaf();
   }catch(e){ console.error('impostazioni', e); }
 }
+let MODELLI_IN_MODIFICA = null;
+let PREDEFINITO_IN_MODIFICA = 0;
 function mostraDatiCaf(){
   const ind = document.getElementById('caf-indirizzo');
   const tel = document.getElementById('caf-telefono');
   if(!ind || !tel) return;
   if(document.activeElement !== ind) ind.value = IMPOSTAZIONI.caf_indirizzo || '';
   if(document.activeElement !== tel) tel.value = IMPOSTAZIONI.caf_telefono || '';
+  const box = document.getElementById('wa-modelli');
+  if(box && !(document.activeElement && box.contains(document.activeElement))){
+    MODELLI_IN_MODIFICA = modelliWhatsApp().slice();
+    PREDEFINITO_IN_MODIFICA = indiceModelloPredefinito();
+    disegnaModelliWhatsApp();
+  }
+  anteprimaMessaggioCaf();
+}
+function disegnaModelliWhatsApp(){
+  const box = document.getElementById('wa-modelli');
+  if(!box || !MODELLI_IN_MODIFICA) return;
+  box.innerHTML = MODELLI_IN_MODIFICA.map(function(t, i){
+    const pred = i === PREDEFINITO_IN_MODIFICA;
+    return '<div style="border:2px solid ' + (pred ? '#25d366' : 'var(--line)') + '; border-radius:10px; padding:8px 10px; margin-bottom:8px">'
+      + '<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px">'
+      + '<b>Messaggio ' + (i + 1) + (pred ? ' ⭐ predefinito' : '') + '</b>'
+      + '<span style="display:flex; gap:6px">'
+      + (pred ? '' : '<button type="button" style="background:#25d366; color:#fff; padding:4px 10px; font-size:12px" onclick="PREDEFINITO_IN_MODIFICA=' + i + '; disegnaModelliWhatsApp(); anteprimaMessaggioCaf()">⭐ Rendi predefinito</button>')
+      + (MODELLI_IN_MODIFICA.length > 1 ? '<button type="button" style="background:none; color:#c0392b; padding:4px 8px; font-size:12px" onclick="eliminaModelloWhatsApp(' + i + ')">✕ Elimina</button>' : '')
+      + '</span></div>'
+      + '<textarea rows="3" style="width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); font:inherit; font-size:13px; resize:vertical" oninput="MODELLI_IN_MODIFICA[' + i + ']=this.value; anteprimaMessaggioCaf()">' + esc(t).replace(/>/g,'&gt;') + '</textarea></div>';
+  }).join('');
+}
+function aggiungiModelloWhatsApp(){
+  if(!MODELLI_IN_MODIFICA) MODELLI_IN_MODIFICA = modelliWhatsApp().slice();
+  MODELLI_IN_MODIFICA.push('Gentile {nome}, ');
+  disegnaModelliWhatsApp();
+  const aree = document.querySelectorAll('#wa-modelli textarea');
+  if(aree.length) aree[aree.length - 1].focus();
+}
+function eliminaModelloWhatsApp(i){
+  if(!MODELLI_IN_MODIFICA || MODELLI_IN_MODIFICA.length < 2) return;
+  if(!confirm('Eliminare il messaggio ' + (i + 1) + '?')) return;
+  MODELLI_IN_MODIFICA.splice(i, 1);
+  if(PREDEFINITO_IN_MODIFICA === i) PREDEFINITO_IN_MODIFICA = 0;
+  else if(PREDEFINITO_IN_MODIFICA > i) PREDEFINITO_IN_MODIFICA--;
+  disegnaModelliWhatsApp();
   anteprimaMessaggioCaf();
 }
 function anteprimaMessaggioCaf(){
   const box = document.getElementById('caf-anteprima');
   if(!box) return;
   const salvate = IMPOSTAZIONI;
+  const modelli = MODELLI_IN_MODIFICA || modelliWhatsApp();
   IMPOSTAZIONI = Object.assign({}, salvate, { caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(), caf_telefono: document.getElementById('caf-telefono').value.trim() });
-  box.textContent = messaggioRitiro({ nome: 'ROSSI MARIO', tipo: '730 SEDE', numero: 6, anno: annoAttivo() });
+  box.textContent = compilaMessaggio(modelli[PREDEFINITO_IN_MODIFICA] || modelli[0] || '', { nome: 'ROSSI MARIO', tipo: '730 SEDE', numero: 6, anno: annoAttivo() });
   IMPOSTAZIONI = salvate;
 }
 async function salvaDatiCaf(){
-  const valori = { caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(), caf_telefono: document.getElementById('caf-telefono').value.trim() };
+  const modelli = (MODELLI_IN_MODIFICA || modelliWhatsApp()).map(function(t){ return String(t).trim(); }).filter(Boolean);
+  if(!modelli.length){ avviso('❌ Serve almeno un messaggio WhatsApp', true); return; }
+  const pred = Math.min(PREDEFINITO_IN_MODIFICA, modelli.length - 1);
+  const valori = {
+    caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(),
+    caf_telefono: document.getElementById('caf-telefono').value.trim(),
+    whatsapp_modelli: JSON.stringify(modelli),
+    whatsapp_predefinito: String(pred)
+  };
   for(const chiave in valori){
     const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valori[chiave], aggiornato_il: new Date().toISOString() }).eq('chiave', chiave).select('chiave');
-    if(error || !righe || !righe.length){ avviso('❌ Dati del CAF non salvati' + (error ? ': ' + error.message : ''), true); return; }
+    if(error || !righe || !righe.length){ avviso('❌ Impostazioni non salvate' + (error ? ': ' + error.message : ''), true); return; }
   }
   Object.assign(IMPOSTAZIONI, valori);
-  avviso('✓ Dati del CAF salvati');
+  MODELLI_IN_MODIFICA = modelli.slice();
+  PREDEFINITO_IN_MODIFICA = pred;
+  disegnaModelliWhatsApp();
+  avviso('✓ Dati del CAF e messaggi salvati');
   anteprimaMessaggioCaf();
 }
