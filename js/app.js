@@ -1599,7 +1599,7 @@ function numeroWhatsApp(tel){
   return /^\d{10,15}$/.test(n) ? n : '';
 }
 function nomeProprio(s){ return String(s||'').toLowerCase().replace(/(^|[\s'-])\S/g, function(c){ return c.toUpperCase(); }); }
-const MODELLO_WHATSAPP_BASE = 'Gentile {nome}, la informiamo che la Sua {pratica} (protocollo n. {protocollo}) è pronta. Può passare a ritirarla presso il CAF CISL di Alì Terme, in {indirizzo}. Per informazioni può chiamare il {telefono}. Cordiali saluti.';
+const MODELLO_WHATSAPP_BASE = 'Gentile {nome}, la informiamo che la Sua {pratica} (protocollo n. {protocollo}) è pronta. Può passare a ritirarla presso il CAF CISL di Alì Terme, in {indirizzo}. Per informazioni può chiamare il {telefono}. Orari di apertura: {orari}. Cordiali saluti.';
 function modelliWhatsApp(){
   try{
     const l = JSON.parse(IMPOSTAZIONI.whatsapp_modelli || '[]');
@@ -1619,9 +1619,11 @@ function compilaMessaggio(modello, p){
     protocollo: formattaProtocollo(p),
     indirizzo: IMPOSTAZIONI.caf_indirizzo || '',
     telefono: IMPOSTAZIONI.caf_telefono || '',
-    email: IMPOSTAZIONI.caf_email || ''
+    email: IMPOSTAZIONI.caf_email || '',
+    orari: IMPOSTAZIONI.caf_orari || ''
   };
-  return String(modello).replace(/\{(nome|pratica|tipo|protocollo|indirizzo|telefono|email)\}/gi, function(_, k){ return valori[k.toLowerCase()]; })
+  return String(modello).replace(/\{(nome|pratica|tipo|protocollo|indirizzo|telefono|email|orari)\}/gi, function(_, k){ return valori[k.toLowerCase()]; })
+    .replace(/orari di apertura:\s*\.\s*/gi, '')
     .replace(/[ \t]+([.,;:])/g, '$1').replace(/,\s*in\s*\./g, '.').replace(/[ \t]{2,}/g, ' ').trim();
 }
 function messaggioRitiro(p, indice){
@@ -2140,6 +2142,8 @@ function mostraDatiCaf(){
   if(document.activeElement !== tel) tel.value = IMPOSTAZIONI.caf_telefono || '';
   const mail = document.getElementById('caf-email');
   if(mail && document.activeElement !== mail) mail.value = IMPOSTAZIONI.caf_email || '';
+  const orari = document.getElementById('caf-orari');
+  if(orari && document.activeElement !== orari) orari.value = IMPOSTAZIONI.caf_orari || '';
   const box = document.getElementById('wa-modelli');
   if(box && !(document.activeElement && box.contains(document.activeElement))){
     MODELLI_IN_MODIFICA = modelliWhatsApp().slice();
@@ -2184,7 +2188,7 @@ function anteprimaMessaggioCaf(){
   if(!box) return;
   const salvate = IMPOSTAZIONI;
   const modelli = MODELLI_IN_MODIFICA || modelliWhatsApp();
-  IMPOSTAZIONI = Object.assign({}, salvate, { caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(), caf_telefono: document.getElementById('caf-telefono').value.trim(), caf_email: document.getElementById('caf-email').value.trim() });
+  IMPOSTAZIONI = Object.assign({}, salvate, { caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(), caf_telefono: document.getElementById('caf-telefono').value.trim(), caf_email: document.getElementById('caf-email').value.trim(), caf_orari: document.getElementById('caf-orari').value.trim() });
   box.textContent = compilaMessaggio(modelli[PREDEFINITO_IN_MODIFICA] || modelli[0] || '', { nome: 'ROSSI MARIO', tipo: '730 SEDE', numero: 6, anno: annoAttivo() });
   IMPOSTAZIONI = salvate;
 }
@@ -2196,6 +2200,7 @@ async function salvaDatiCaf(){
     caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(),
     caf_telefono: document.getElementById('caf-telefono').value.trim(),
     caf_email: document.getElementById('caf-email').value.trim(),
+    caf_orari: document.getElementById('caf-orari').value.trim(),
     whatsapp_modelli: JSON.stringify(modelli),
     whatsapp_predefinito: String(pred)
   };
