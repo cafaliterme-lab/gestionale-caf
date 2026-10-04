@@ -209,11 +209,30 @@ function nomeFileStampa(est) {
   return pezzi.join('-') + '-' + dataOraFile() + '.' + est;
 }
 
+// Dati del CAF (scheda Messaggi > Dati del CAF) per l'intestazione delle stampe
+function datiCafStampa() {
+  const imp = (typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI) || {};
+  let orari = '';
+  try { orari = testoOrari(leggiTabellaOrari()); } catch (e) {}
+  return {
+    indirizzo: imp.caf_indirizzo || '',
+    telefono: imp.caf_telefono || '',
+    email: imp.caf_email || '',
+    orari: orari || imp.caf_orari || '',
+  };
+}
+
 function stampaExcel() {
   if (!window.XLSX) { alert('La libreria per generare il file Excel non si è caricata. Riprova tra poco.'); return; }
   const lista = praticheFiltrate();
   if (!lista.length) return;
-  const righe = [{ 'Voce': 'FILTRI DI STAMPA', 'Valore': '' }];
+  const caf = datiCafStampa();
+  const righe = [{ 'Voce': 'CAF CISL – Sede di Alì Terme', 'Valore': '' }];
+  if (caf.indirizzo) righe.push({ 'Voce': 'Indirizzo', 'Valore': caf.indirizzo });
+  if (caf.telefono) righe.push({ 'Voce': 'Telefono', 'Valore': caf.telefono });
+  if (caf.email) righe.push({ 'Voce': 'Email', 'Valore': caf.email });
+  if (caf.orari) righe.push({ 'Voce': 'Orari di apertura', 'Valore': caf.orari });
+  righe.push({ 'Voce': '', 'Valore': '' }, { 'Voce': 'FILTRI DI STAMPA', 'Valore': '' });
   descrizioneFiltri().forEach(function (r) { const i = r.indexOf(': '); righe.push({ 'Voce': r.slice(0, i), 'Valore': r.slice(i + 2) }); });
   righe.push({ 'Voce': '', 'Valore': '' }, { 'Voce': 'RIEPILOGO', 'Valore': '' });
   riepilogoStampa(lista).forEach(function (v) { righe.push({ 'Voce': v[0] + (v[2] ? ' (€)' : ''), 'Valore': v[2] ? Math.round(v[1] * 100) / 100 : v[1] }); });
@@ -258,6 +277,7 @@ function stampaPDF() {
   const logo = document.querySelector('.hero-logo');
   const titolo = STAMPA.origine === 'contabilita' ? 'Contabilità' : 'Registro di protocollo';
   const voci = riepilogoStampa(lista);
+  const caf = datiCafStampa();
   const colonne = ['Protocollo', 'Apertura', 'Fine lav. / Scad.', 'Cognome e Nome', 'Stato', 'Fattura', 'Pagato', 'Operatore'];
   let corpo = '';
   let totF = 0, totI = 0;
@@ -278,8 +298,10 @@ function stampaPDF() {
   const html = '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + esc(titolo + ' ' + STAMPA.anno) + '</title><style>'
     + '@page{size:A4 landscape; margin:12mm}'
     + 'body{font-family:Arial,Helvetica,sans-serif; color:#0f1b2d; background:#fff; margin:0; padding:16px; font-size:11px}'
-    + '.testa{display:flex; align-items:center; gap:14px; border-bottom:3px solid #1d4f91; padding-bottom:10px; margin-bottom:12px}'
-    + '.testa img{width:56px; height:auto}.testa h1{font-size:17px; margin:0; color:#1d4f91}.testa .sub2{font-size:11px; color:#5b6b82; margin-top:2px}'
+    + '.testa{display:flex; align-items:center; gap:16px; padding:14px 18px; margin-bottom:12px; border-radius:12px; color:#fff; background:linear-gradient(110deg,#0f3a73 0%,#1d4f91 45%,#2f7de1 100%); border-bottom:5px solid #e30613}'
+    + '.testa .logo{background:#fff; border-radius:50%; width:64px; height:64px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; box-shadow:0 2px 6px rgba(0,0,0,.25)}'
+    + '.testa img{width:52px; height:auto}.testa h1{font-size:19px; margin:0; letter-spacing:.3px}.testa .sub2{display:inline-block; font-size:11px; margin-top:5px; padding:2px 10px; border-radius:999px; background:rgba(255,255,255,.2); font-weight:700}'
+    + '.testa .caf{margin-left:auto; text-align:right; font-size:10.5px; line-height:1.55; max-width:48%}.testa .caf b{font-weight:700}'
     + '.filtri{font-size:10.5px; color:#334; margin-bottom:10px; line-height:1.5}'
     + '.riep{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px}.riep div{border:1px solid #cfd8e3; border-radius:8px; padding:6px 10px; min-width:120px}'
     + '.riep b{display:block; font-size:13px; margin-top:2px}'
@@ -294,7 +316,8 @@ function stampaPDF() {
     + '*{-webkit-print-color-adjust:exact; print-color-adjust:exact}@media print{.barra{display:none} body{padding:0}}'
     + '</style></head><body>'
     + '<div class="barra"><button onclick="window.print()">🖨️ Stampa / Salva come PDF</button><button class="chiudi" onclick="window.close()">Chiudi</button></div>'
-    + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1><div class="sub2">' + esc(titolo) + ' · stampato il ' + esc(todayIT()) + '</div></div></div>'
+    + '<div class="testa">' + (logo ? '<div class="logo"><img src="' + logo.src + '" alt=""></div>' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1><div class="sub2">' + esc(titolo) + ' ' + STAMPA.anno + ' · stampato il ' + esc(todayIT()) + '</div></div>'
+    + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : '', caf.orari ? '🕘 <b>Orari:</b> ' + esc(caf.orari) : ''].filter(Boolean).join('<br>') + '</div></div>'
     + '<div class="filtri">' + descrizioneFiltri().map(esc).join('<br>') + '</div>'
     + '<div class="riep">' + voci.map(function (v) { return '<div>' + esc(v[0]) + '<b>' + (v[2] ? fmtEuro(v[1]) : v[1]) + '</b></div>'; }).join('') + '</div>'
     + '<table><thead><tr>' + colonne.map(function (c, i) { return '<th' + (i === 5 || i === 6 ? ' class="num"' : '') + '>' + c + '</th>'; }).join('') + '</tr></thead><tbody>' + corpo + '</tbody></table>'
