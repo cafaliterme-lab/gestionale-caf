@@ -1283,6 +1283,7 @@ function render(){
     <div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO</span></div>
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true)}
     ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }))}
+    ${riepilogoGuadagno(pratAnno, versatoCaf)}
   `;
 
   const caf = document.getElementById('caf-card');
@@ -1946,4 +1947,17 @@ function aggiornaCampoFineForm(){
     inp.title = 'Si compila da sola quando l\'etichetta è Lavorata';
     inp.value = document.getElementById('f-stato').value === 'lavorata' ? todayIT() : '';
   }
+}
+
+function riepilogoGuadagno(pratiche, pagamentiCaf){
+  const provento = function(lista){ return lista.reduce(function(a,p){ return a + Number(p.pagato||0) - Number(p.compenso||0); }, 0); };
+  const p730 = provento(pratiche.filter(e730));
+  const pAltre = provento(pratiche.filter(function(p){ return !e730(p); }));
+  const voce = function(testo, valore, colore){ return '<span style="white-space:nowrap"><span style="color:var(--sub); font-weight:600">'+testo+'</span> <b style="color:'+colore+'">'+fmtEuro(valore)+'</b></span>'; };
+  return '<div style="flex-basis:100%; margin-top:6px; padding:12px 16px; border-radius:12px; background:var(--card); border:2px dashed #374151; font-size:15px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px">'
+    + voce('Provento 730', p730, '#1d4f91') + '<b>+</b>'
+    + voce('Provento altre pratiche', pAltre, '#6b7280') + '<b>−</b>'
+    + voce('Pagamenti CAF', pagamentiCaf, '#2f7de1') + '<b>=</b>'
+    + '<span style="white-space:nowrap; background:#374151; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre - pagamentiCaf) + '</span>'
+    + '</div>';
 }
