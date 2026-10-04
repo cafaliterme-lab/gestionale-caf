@@ -733,7 +733,8 @@ function rigaPratica(p){
   return {
     'N. Protocollo': formattaProtocolloTesto(p),
     'Data': p.data||'',
-    'Fine lavorazione': p.dataFine||'',
+    'Fine lavorazione': eColf(p.tipo) ? '' : (p.dataFine||''),
+    'Scadenza assistenza': p.scadenzaAssistenza||'',
     'Cognome e Nome': p.nome||'',
     'Congiunta': p.congiunta||'',
     'Data nascita': p.cf||'',
@@ -1056,8 +1057,8 @@ function pickChip(containerId, selectId, val){
     if(lbl && chip){ lbl.innerHTML = chip.innerHTML; }
     dd.classList.remove('open');
   }
-  if(containerId === 'f-tipo-btns') coloraTriggerTipo();
-  if(containerId === 'f-stato-btns'){ coloraTriggerStato(); const df = document.getElementById('f-data-fine'); if(df) df.value = val === 'lavorata' ? todayIT() : ''; }
+  if(containerId === 'f-tipo-btns'){ coloraTriggerTipo(); aggiornaCampoFineForm(); }
+  if(containerId === 'f-stato-btns'){ coloraTriggerStato(); const df = document.getElementById('f-data-fine'); if(df && !eColf(document.getElementById('f-tipo').value)) df.value = val === 'lavorata' ? todayIT() : ''; }
 }
 function showTab(btn){
   const tab = btn.dataset.tab;
@@ -1332,7 +1333,7 @@ function render(){
             <tr>
               <td class="n">${formattaProtocollo(p)}</td>
               <td>${p.data||'-'}</td>
-              <td>${esc(p.dataFine)||'-'}</td>
+              <td>${eColf(p.tipo) ? (p.scadenzaAssistenza ? '<span title="Scadenza assistenza" style="color:#c0392b; font-weight:700">⏰ '+esc(p.scadenzaAssistenza)+'</span>' : '-') : (esc(p.dataFine)||'-')}</td>
               <td class="wrap">${(p.nome||'-').toUpperCase()}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}</td>
               <td class="wrap">${p.tipo||'-'}</td>
               <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select></td>
@@ -1360,7 +1361,7 @@ function render(){
           <span class="badge stato">${pallino(p.stato)}${statoLabel(p.stato)}</span>
         </div>
       </div>
-      <div class="meta">Aperta il ${p.data||'-'}${p.dataFine ? ' · <b>Fine lavorazione il '+esc(p.dataFine)+'</b>' : ''} ${p.note ? '· '+esc(p.note) : ''}</div>
+      <div class="meta">Aperta il ${p.data||'-'}${eColf(p.tipo) ? (p.scadenzaAssistenza ? ' · <b style="color:#c0392b">⏰ Scadenza assistenza il '+esc(p.scadenzaAssistenza)+'</b>' : '') : (p.dataFine ? ' · <b>Fine lavorazione il '+esc(p.dataFine)+'</b>' : '')} ${p.note ? '· '+esc(p.note) : ''}</div>
       <div class="meta compenso">Fattura: ${fmtEuro(p.compenso)} · Pagato effettivo: ${fmtEuro(p.pagato)}</div>
       ${storicoClienteHTML(p)}
       ${p.numFattura ? `<div class="meta">Fattura n. ${esc(p.numFattura)}</div>` : ''}
@@ -1378,7 +1379,8 @@ function render(){
           <div><label>Cellulare *</label><input id="e-tel-${p.id}" type="tel" inputmode="tel" value="${esc(p.telefono)}"></div>
           <div><label>Telefono fisso *</label><input id="e-telfisso-${p.id}" type="tel" inputmode="tel" value="${esc(p.telefonoFisso)}"></div>
           <div><label>Data di nascita</label><input id="e-cf-${p.id}" value="${esc(p.cf)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
-          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}">${tipoOptions(p.tipo)}</select></div>
+          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'">${tipoOptions(p.tipo)}</select></div>
+          <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" value="${esc(p.compenso)}"></div>
           <div><label>Pagato effettivo (€)</label><input id="e-pag-${p.id}" type="text" inputmode="decimal" value="${esc(p.pagato)}"></div>
           <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}"></div>
@@ -1467,6 +1469,12 @@ async function addPraticaInterna(){
     document.getElementById('f-tel').focus();
     return;
   }
+  const scadAss = document.getElementById('f-data-fine').value.trim();
+  if(eColf(tipo) && scadAss && !parseDataIT(scadAss)){
+    msg.textContent = '⚠️ La scadenza assistenza deve essere nel formato GG/MM/AAAA.';
+    msg.style.display = 'block';
+    return;
+  }
   const codiceFiscale = document.getElementById('f-codfisc').value.trim();
   if(codiceFiscale && !cfValido(codiceFiscale)){
     msg.textContent = '⚠️ Il codice fiscale non e\' valido: correggilo o lascia il campo vuoto.';
@@ -1489,7 +1497,8 @@ async function addPraticaInterna(){
     anno: annoPr,
     nome, congiunta, congCognome, congNome, congData, telefono, telefonoFisso, cf, codiceFiscale, tipo, compenso, pagato, data: dataPratica, note,
     stato: document.getElementById('f-stato').value || 'arrivo',
-    dataFine: document.getElementById('f-stato').value === 'lavorata' ? todayIT() : '',
+    dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
+    scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
     fatt: 'dafatturare',
     numFattura: '',
     dataFattura: '',
@@ -1520,6 +1529,7 @@ async function addPraticaInterna(){
   pickChip('f-stato-btns','f-stato','arrivo');
   document.getElementById('f-tel').value='';
   document.getElementById('f-tel-fisso').value='';
+  document.getElementById('f-data-fine').value='';
   document.getElementById('f-stato').value='arrivo';
   document.getElementById('f-note').value='';
   document.getElementById('f-data').value=todayIT();
@@ -1581,7 +1591,8 @@ const STATI_IN_LAVORAZIONE = ['arrivo','lavorazione','da_lavorare_scansionata'];
 async function cambiaStato(id, stato){
   const p = (state.pratiche||[]).find(function(x){ return x.id===id; });
   const campi = { stato: stato };
-  if(STATI_IN_LAVORAZIONE.indexOf(stato) >= 0) campi.dataFine = '';
+  if(p && eColf(p.tipo)) { /* per colf e badanti c'e' la scadenza assistenza al posto della fine lavorazione */ }
+  else if(STATI_IN_LAVORAZIONE.indexOf(stato) >= 0) campi.dataFine = '';
   else if(stato === 'lavorata' && !(p && p.dataFine)) campi.dataFine = todayIT();
   const result = await data.pratiche.aggiorna(id, campi);
   if(result && result.error){ avviso('❌ Stato non salvato: ' + result.error, true); return; }
@@ -1630,6 +1641,7 @@ async function salvaModifica(id){
     telefonoFisso: g('e-telfisso').trim(),
     cf: g('e-cf').trim(),
     tipo: g('e-tipo'),
+    scadenzaAssistenza: eColf(g('e-tipo')) ? g('e-scadass').trim() : '',
     compenso: parseImporto(g('e-comp')) || '',
     pagato: parseImporto(g('e-pag')) || '',
     numFattura: numFattura,
@@ -1638,6 +1650,10 @@ async function salvaModifica(id){
   };
   if(!campi.telefono && !campi.telefonoFisso){
     avviso('❌ Inserisci almeno un numero di telefono: cellulare o telefono fisso.', true);
+    return;
+  }
+  if(campi.scadenzaAssistenza && !parseDataIT(campi.scadenzaAssistenza)){
+    avviso('❌ La scadenza assistenza deve essere nel formato GG/MM/AAAA.', true);
     return;
   }
   const annoP = annoPratica(p);
@@ -1907,4 +1923,27 @@ async function eliminaClienteArchivio(id, ctx){
   avviso('✓ ' + c.nomeCompleto + ' eliminato dall\'archivio');
   const inp = document.getElementById(ctx==='cong' ? 'cli-cerca-cong' : ctx==='sc' ? 'sc-cliente' : 'cli-cerca');
   if(inp) cercaClienti(inp.value, ctx);
+}
+
+function eColf(tipo){ return String(tipo||'').toUpperCase() === 'CONTRATTI COLF E BADANTI'; }
+// Nel modulo: per colf e badanti il campo "Fine lavorazione" diventa "Scadenza assistenza", da compilare a mano
+function aggiornaCampoFineForm(){
+  const inp = document.getElementById('f-data-fine');
+  const lbl = document.getElementById('f-data-fine-lbl');
+  if(!inp || !lbl) return;
+  if(eColf(document.getElementById('f-tipo').value)){
+    if(inp.readOnly) inp.value = '';
+    lbl.innerHTML = '<span style="color:#c0392b; font-weight:700">⏰ Scadenza assistenza</span>';
+    inp.readOnly = false;
+    inp.style.opacity = '1';
+    inp.placeholder = 'GG/MM/AAAA';
+    inp.title = 'Data di scadenza dell\'assistenza: viene messa nel calendario con avviso 30 giorni prima';
+  } else {
+    lbl.textContent = 'Fine lavorazione (automatica)';
+    inp.readOnly = true;
+    inp.style.opacity = '.8';
+    inp.placeholder = 'Quando è Lavorata';
+    inp.title = 'Si compila da sola quando l\'etichetta è Lavorata';
+    inp.value = document.getElementById('f-stato').value === 'lavorata' ? todayIT() : '';
+  }
 }

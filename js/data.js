@@ -104,6 +104,7 @@ const schemas = {
     fatt: 'fatt',
     numFattura: 'num_fattura',
     dataFine: 'data_fine',
+    scadenzaAssistenza: 'scadenza_assistenza',
     dataFattura: 'data_fattura',
     inseritoDa: 'inserito_da',
     inseritoIl: 'inserito_il',

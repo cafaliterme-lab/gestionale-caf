@@ -428,8 +428,8 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <input id="f-data" type="text" readonly="" style="opacity:.8">
       </div>
       <div>
-        <label>Fine lavorazione (automatica)</label>
-        <input id="f-data-fine" type="text" readonly="" style="opacity:.8" placeholder="Quando è Lavorata" title="Si compila da sola quando l'etichetta è Lavorata">
+        <label id="f-data-fine-lbl">Fine lavorazione (automatica)</label>
+        <input id="f-data-fine" type="text" readonly="" style="opacity:.8" placeholder="Quando è Lavorata" title="Si compila da sola quando l'etichetta è Lavorata" inputmode="numeric" oninput="if(!this.readOnly) autoSlashData(this)">
       </div>
     </div>
     <div>
@@ -595,9 +595,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610078"></script>
+<script src="js/data.js?v=202610084"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610083"></script>
+<script src="js/app.js?v=202610084"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->
