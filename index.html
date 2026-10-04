@@ -119,6 +119,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .hero p{margin:0; font-size:13px; opacity:.85}
 .card,.stat,.item{border-radius:14px; box-shadow:0 1px 2px rgba(15,27,45,.06),0 8px 24px rgba(15,27,45,.06)}
 .charts{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.grafici-griglia{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.grafici-griglia .card{margin-bottom:0}
+@media (max-width:760px){.grafici-griglia{grid-template-columns:1fr}}
 @media (max-width:560px){.charts{grid-template-columns:1fr}}
 .chart-cap{font-size:12px; color:var(--sub); margin-bottom:6px; font-weight:600}
 .chart-wrap{position:relative; height:210px}
@@ -331,6 +334,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <button type="button" data-tab="anagrafica" onclick="showTab(this)">INSERIMENTO ANAGRAFICA</button>
   <button type="button" data-tab="registro" onclick="showTab(this)">REGISTRO DI PROTOCOLLO</button>
   <button type="button" data-tab="contabilita" onclick="showTab(this)">CONTABILITA'</button>
+  <button type="button" data-tab="grafici" onclick="showTab(this)">GRAFICI</button>
   <button type="button" data-tab="caf" onclick="showTab(this)">VERSAMENTI CAF</button>
   <button type="button" data-tab="collaboratori" onclick="showTab(this)">COLLABORATORI</button>
   <button type="button" data-tab="scadenze" onclick="showTab(this)">SCADENZE</button>
@@ -355,6 +359,23 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <div class="card" id="caf-card"></div>
 <div id="list" style="display:none"></div>
 
+</section>
+
+<section class="tabsec" id="tab-grafici">
+<div class="raff-title" style="margin-bottom:4px">Grafici dell'anno <span id="grafici-anno"></span></div>
+<div style="font-size:12px; color:var(--sub); margin-bottom:10px">Le pratiche congiunte valgono 2. Per cambiare anno usa "Anno di protocollo" in alto.</div>
+<div id="grafici-avviso" style="color:#c0392b; font-size:13px; margin-bottom:8px"></div>
+<div class="grafici-griglia">
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Riepilogo economico</div><div class="chart-wrap" id="gr-economico-wrap" style="height:260px"><canvas id="gr-economico"></canvas></div></div>
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Pratiche per stato</div><div class="chart-wrap" id="gr-stati-wrap" style="height:260px"><canvas id="gr-stati"></canvas></div></div>
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Pratiche per tipo</div><div class="chart-wrap" id="gr-tipi-wrap" style="height:260px"><canvas id="gr-tipi"></canvas></div></div>
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Incasso: 730 e altre pratiche</div><div class="chart-wrap" id="gr-730-wrap" style="height:260px"><canvas id="gr-730"></canvas></div></div>
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Pratiche aperte per mese</div><div class="chart-wrap" id="gr-mesi-wrap" style="height:260px"><canvas id="gr-mesi"></canvas></div></div>
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Fatture emesse e incasso per mese</div><div class="chart-wrap" id="gr-mesi-euro-wrap" style="height:260px"><canvas id="gr-mesi-euro"></canvas></div></div>
+  <div class="card" style="grid-column:1/-1"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Fatture emesse, incasso e provento per tipo di pratica</div><div class="chart-wrap" id="gr-tipi-euro-wrap" style="height:260px"><canvas id="gr-tipi-euro"></canvas></div></div>
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Pratiche inserite e lavorate per operatore</div><div class="chart-wrap" id="gr-operatori-wrap" style="height:260px"><canvas id="gr-operatori"></canvas></div></div>
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Confronto tra anni: fatture emesse e incasso</div><div class="chart-wrap" id="gr-anni-wrap" style="height:260px"><canvas id="gr-anni"></canvas></div></div>
+</div>
 </section>
 
 <section class="tabsec" id="tab-contabilita">
@@ -589,6 +610,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
 <script src="js/ocr-documento.js?v=2"></script>
+<script src="js/grafici.js?v=1"></script>
 <script src="js/scadenze.js?v=202610083"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -597,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610084"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610087"></script>
+<script src="js/app.js?v=202610088"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

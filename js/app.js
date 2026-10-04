@@ -349,6 +349,7 @@ const TAB_LABELS = {
   anagrafica: 'INSERIMENTO ANAGRAFICA',
   registro: 'REGISTRO DI PROTOCOLLO',
   contabilita: "CONTABILITA'",
+  grafici: 'GRAFICI',
   caf: 'VERSAMENTI CAF',
   collaboratori: 'COLLABORATORI',
   scadenze: 'SCADENZE'
@@ -1069,6 +1070,7 @@ function showTab(btn){
   btn.classList.add('active');
   if(tab === 'collaboratori') renderCollaboratori();
   if(tab === 'scadenze') renderScadenze();
+  if(tab === 'grafici') renderGrafici();
   if(tab === 'permessi') renderPermessi(); // async, but fires in background
 }
 function renderCollaboratori(){
@@ -1224,6 +1226,7 @@ function filtra(lista){
 }
 
 function render(){
+  if(typeof renderGrafici === 'function') renderGrafici();
   const list = document.getElementById('gruppi'); const oldList = document.getElementById('list'); if(oldList) oldList.innerHTML = '';
   const summary = document.getElementById('summary');
   initSelettoreAnno();
