@@ -122,6 +122,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .hero p{margin:0; font-size:13px; opacity:.85}
 .card,.stat,.item{border-radius:14px; box-shadow:0 1px 2px rgba(15,27,45,.06),0 8px 24px rgba(15,27,45,.06)}
 .charts{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.tab-orari td, .tab-orari th{padding:4px 6px}
+.tab-orari input[type=time]{width:auto; padding:4px 6px; font-size:13px}
+.tab-orari tr.chiuso td{opacity:.45}
 .grafici-griglia{display:grid; grid-template-columns:1fr 1fr; gap:14px}
 .grafici-griglia .card{margin-bottom:0}
 @media (max-width:760px){.grafici-griglia{grid-template-columns:1fr}}
@@ -533,7 +536,10 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
     <div class="full"><label>Indirizzo</label><input id="caf-indirizzo" placeholder="Es. Via Roma 10, Alì Terme (ME)" oninput="anteprimaMessaggioCaf()"></div>
     <div class="full"><label>Telefono</label><input id="caf-telefono" type="tel" inputmode="tel" placeholder="Es. 0942 123456" oninput="anteprimaMessaggioCaf()"></div>
     <div class="full"><label>Email</label><input id="caf-email" type="email" inputmode="email" placeholder="Es. caf.aliterme@cisl.it" oninput="anteprimaMessaggioCaf()"></div>
-    <div class="full"><label>Orari di apertura</label><input id="caf-orari" placeholder="Es. dal lunedì al venerdì 9:00-13:00 e 15:30-18:30" oninput="anteprimaMessaggioCaf()"></div>
+    <div class="full"><label>Orari di apertura</label>
+      <div class="tab-wrap"><table class="tab-proto tab-orari" id="caf-orari-tabella"></table></div>
+      <div style="font-size:12px; color:var(--sub); margin-top:4px">Nel messaggio: <span id="caf-orari-testo" style="color:var(--ink); font-weight:600"></span></div>
+    </div>
   </div>
   <div class="raff-title" style="margin-top:14px">Messaggi WhatsApp</div>
   <div style="font-size:12px; color:var(--sub); margin-bottom:6px">Nel testo puoi usare: <b>{nome}</b> (nome del cliente), <b>{pratica}</b> (dichiarazione 730 / pratica), <b>{tipo}</b> (tipo di pratica), <b>{protocollo}</b>, <b>{indirizzo}</b>, <b>{telefono}</b>, <b>{email}</b> e <b>{orari}</b> del CAF. Il messaggio con ⭐ è quello predefinito per l'invio.</div>
@@ -639,7 +645,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610084"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610102"></script>
+<script src="js/app.js?v=202610103"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

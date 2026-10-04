@@ -2142,8 +2142,7 @@ function mostraDatiCaf(){
   if(document.activeElement !== tel) tel.value = IMPOSTAZIONI.caf_telefono || '';
   const mail = document.getElementById('caf-email');
   if(mail && document.activeElement !== mail) mail.value = IMPOSTAZIONI.caf_email || '';
-  const orari = document.getElementById('caf-orari');
-  if(orari && document.activeElement !== orari) orari.value = IMPOSTAZIONI.caf_orari || '';
+  if(!document.getElementById('caf-orari-tabella').contains(document.activeElement)) disegnaTabellaOrari(leggiTabellaOrari());
   const box = document.getElementById('wa-modelli');
   if(box && !(document.activeElement && box.contains(document.activeElement))){
     MODELLI_IN_MODIFICA = modelliWhatsApp().slice();
@@ -2188,7 +2187,7 @@ function anteprimaMessaggioCaf(){
   if(!box) return;
   const salvate = IMPOSTAZIONI;
   const modelli = MODELLI_IN_MODIFICA || modelliWhatsApp();
-  IMPOSTAZIONI = Object.assign({}, salvate, { caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(), caf_telefono: document.getElementById('caf-telefono').value.trim(), caf_email: document.getElementById('caf-email').value.trim(), caf_orari: document.getElementById('caf-orari').value.trim() });
+  IMPOSTAZIONI = Object.assign({}, salvate, { caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(), caf_telefono: document.getElementById('caf-telefono').value.trim(), caf_email: document.getElementById('caf-email').value.trim(), caf_orari: testoOrari(tabellaOrariDalModulo()) });
   box.textContent = compilaMessaggio(modelli[PREDEFINITO_IN_MODIFICA] || modelli[0] || '', { nome: 'ROSSI MARIO', tipo: '730 SEDE', numero: 6, anno: annoAttivo() });
   IMPOSTAZIONI = salvate;
 }
@@ -2200,7 +2199,8 @@ async function salvaDatiCaf(){
     caf_indirizzo: document.getElementById('caf-indirizzo').value.trim(),
     caf_telefono: document.getElementById('caf-telefono').value.trim(),
     caf_email: document.getElementById('caf-email').value.trim(),
-    caf_orari: document.getElementById('caf-orari').value.trim(),
+    caf_orari: testoOrari(tabellaOrariDalModulo()),
+    caf_orari_tabella: JSON.stringify(tabellaOrariDalModulo()),
     whatsapp_modelli: JSON.stringify(modelli),
     whatsapp_predefinito: String(pred)
   };
@@ -2213,5 +2213,59 @@ async function salvaDatiCaf(){
   PREDEFINITO_IN_MODIFICA = pred;
   disegnaModelliWhatsApp();
   avviso('✓ Dati del CAF e messaggi salvati');
+  anteprimaMessaggioCaf();
+}
+
+// Orari di apertura: tabella settimanale (mattina e pomeriggio) da cui si ricava la frase {orari}
+const GIORNI_SETTIMANA = ['lunedì','martedì','mercoledì','giovedì','venerdì','sabato','domenica'];
+function leggiTabellaOrari(){
+  try{
+    const t = JSON.parse(IMPOSTAZIONI.caf_orari_tabella || '');
+    if(Array.isArray(t) && t.length === 7) return t;
+  }catch(e){}
+  return GIORNI_SETTIMANA.map(function(_, i){ return { aperto: false, ma: '', mc: '', pa: '', pc: '' }; });
+}
+function disegnaTabellaOrari(t){
+  const tab = document.getElementById('caf-orari-tabella');
+  if(!tab) return;
+  const ora = function(i, k, v){ return '<input type="time" data-g="'+i+'" data-k="'+k+'" value="'+esc(v||'')+'" oninput="aggiornaTestoOrari()">'; };
+  tab.innerHTML = '<thead><tr><th>Giorno</th><th>Aperto</th><th>Mattina: apertura</th><th>chiusura</th><th>Pomeriggio: apertura</th><th>chiusura</th></tr></thead><tbody>'
+    + t.map(function(g, i){
+      return '<tr class="'+(g.aperto?'':'chiuso')+'"><td style="font-weight:700; text-transform:capitalize">'+GIORNI_SETTIMANA[i]+'</td>'
+        + '<td><input type="checkbox" style="width:auto" data-g="'+i+'" data-k="aperto" '+(g.aperto?'checked':'')+' onchange="this.closest(\'tr\').className=this.checked?\'\':\'chiuso\'; aggiornaTestoOrari()"></td>'
+        + '<td>'+ora(i,'ma',g.ma)+'</td><td>'+ora(i,'mc',g.mc)+'</td><td>'+ora(i,'pa',g.pa)+'</td><td>'+ora(i,'pc',g.pc)+'</td></tr>';
+    }).join('') + '</tbody>';
+  aggiornaTestoOrari();
+}
+function tabellaOrariDalModulo(){
+  const t = GIORNI_SETTIMANA.map(function(){ return { aperto: false, ma: '', mc: '', pa: '', pc: '' }; });
+  document.querySelectorAll('#caf-orari-tabella [data-g]').forEach(function(el){
+    const g = t[+el.dataset.g];
+    if(el.dataset.k === 'aperto') g.aperto = el.checked; else g[el.dataset.k] = el.value;
+  });
+  return t;
+}
+function testoOrari(t){
+  const breve = function(h){ return String(h||'').replace(/^0(\d)/, '$1'); };
+  const fascia = function(a, c){ return (a && c) ? breve(a) + '-' + breve(c) : ''; };
+  const desc = t.map(function(g){
+    if(!g.aperto) return '';
+    return [fascia(g.ma, g.mc), fascia(g.pa, g.pc)].filter(Boolean).join(' e ');
+  });
+  const parti = [];
+  let i = 0;
+  while(i < 7){
+    if(!desc[i]){ i++; continue; }
+    let j = i;
+    while(j + 1 < 7 && desc[j + 1] === desc[i]) j++;
+    const giorni = i === j ? GIORNI_SETTIMANA[i] : (j === i + 1 ? GIORNI_SETTIMANA[i] + ' e ' + GIORNI_SETTIMANA[j] : 'dal ' + GIORNI_SETTIMANA[i] + ' al ' + GIORNI_SETTIMANA[j]);
+    parti.push(giorni + ' ' + desc[i]);
+    i = j + 1;
+  }
+  return parti.join(', ');
+}
+function aggiornaTestoOrari(){
+  const el = document.getElementById('caf-orari-testo');
+  if(el) el.textContent = testoOrari(tabellaOrariDalModulo()) || '(nessun orario: la frase non compare)';
   anteprimaMessaggioCaf();
 }
