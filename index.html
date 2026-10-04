@@ -437,11 +437,11 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
     </div>
     <div>
       <label>Fattura (€)</label>
-      <input id="f-compenso" type="number" step="0.01" placeholder="0.00">
+      <input id="f-compenso" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)">
     </div>
     <div>
       <label>Pagato effettivo (€)</label>
-      <input id="f-pagato" type="number" step="0.01" placeholder="0.00">
+      <input id="f-pagato" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)">
     </div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
       <div>
@@ -619,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610084"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610092"></script>
+<script src="js/app.js?v=202610093"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

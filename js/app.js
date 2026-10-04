@@ -1160,8 +1160,25 @@ document.addEventListener('click', function(e){
 
 function totCaf(){ return (state.versamenti||[]).reduce(function(a,v){ return a+Number(v.importo||0); }, 0); }
 
+// Accetta "25,50", "25.50", "1.250,00" e "1250": la virgola e' sempre il decimale
 function parseImporto(v){
-  return Number(String(v||'').trim().replace(/\./g,'').replace(',', '.'));
+  let s = String(v==null?'':v).trim().replace(/[€\s]/g, '');
+  if(!s) return NaN;
+  if(s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+  else if(/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  return Number(s);
+}
+function importoInCampo(n){
+  if(n === '' || n == null || isNaN(Number(n))) return '';
+  return Number(n).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2, useGrouping:false });
+}
+function filtraImporto(el){
+  const pulito = el.value.replace(/[^0-9,.]/g, '');
+  if(pulito !== el.value) el.value = pulito;
+}
+function formattaCampoImporto(el){
+  const n = parseImporto(el.value);
+  el.value = isNaN(n) ? '' : importoInCampo(n);
 }
 function aggiungiIsee(){
   const msg = document.getElementById('isee-msg');
@@ -1395,8 +1412,8 @@ function render(){
           <div><label>Data di nascita</label><input id="e-cf-${p.id}" value="${esc(p.cf)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'">${tipoOptions(p.tipo)}</select></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
-          <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" value="${esc(p.compenso)}"></div>
-          <div><label>Pagato effettivo (€)</label><input id="e-pag-${p.id}" type="text" inputmode="decimal" value="${esc(p.pagato)}"></div>
+          <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
+          <div><label>Pagato effettivo (€)</label><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
           <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}"></div>
           <div class="full"><label>Note</label><input id="e-note-${p.id}" value="${esc(p.note)}"></div>
         </div>
