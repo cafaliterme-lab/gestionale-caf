@@ -1582,6 +1582,11 @@ async function addPraticaInterna(){
     msg.style.display = 'block';
     return;
   }
+  // Contribuente non presente nell'archivio: si chiede conferma prima di inserirlo in anagrafica
+  if(!trovaInArchivio(nome, cf, codiceFiscale)){
+    const conferma = await chiediNuovoContribuente(nome, cf, codiceFiscale);
+    if(!conferma) return;
+  }
   registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso);
   if(congCognome || congNome){ registraClienteSeNuovo(congCognome, congNome, congData); }
 
@@ -2154,6 +2159,35 @@ function impostaTipoPredefinito(){
   const t = getTipiList().indexOf(TIPO_PREDEFINITO) >= 0 ? TIPO_PREDEFINITO : (getTipiList()[0] || '');
   sel.value = t;
   pickChip('f-tipo-btns','f-tipo', t);
+}
+
+function chiediNuovoContribuente(nome, dataNascita, codiceFiscale){
+  return new Promise(function(risolvi){
+    const vecchio = document.getElementById('popup-nuovo-contribuente');
+    if(vecchio) vecchio.remove();
+    const ov = document.createElement('div');
+    ov.id = 'popup-nuovo-contribuente';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:400; background:rgba(15,27,45,.45); display:flex; align-items:center; justify-content:center; padding:16px';
+    ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #d98b1e; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:26px 30px; max-width:440px; width:100%; text-align:center">'
+      + '<div style="width:64px; height:64px; margin:0 auto 10px; border-radius:50%; background:#d98b1e; color:#fff; font-size:34px; line-height:64px">👤</div>'
+      + '<div style="font-size:21px; font-weight:800; color:#d98b1e; margin-bottom:4px">Nuovo Contribuente</div>'
+      + '<div style="font-size:15px; font-weight:700; margin-bottom:10px">Inserisco in Anagrafica?</div>'
+      + '<div style="font-size:16px; font-weight:700">' + esc(nome) + '</div>'
+      + '<div style="font-size:13px; color:var(--sub); margin-bottom:16px">' + (dataNascita ? 'Nato/a il ' + esc(dataNascita) : '') + (codiceFiscale ? (dataNascita ? ' · ' : '') + 'CF ' + esc(codiceFiscale) : '') + '<br>Non è presente nell\'archivio clienti</div>'
+      + '<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap">'
+      + '<button type="button" data-r="no" style="background:var(--line); color:var(--ink); min-width:120px; font-size:15px">Annulla</button>'
+      + '<button type="button" data-r="si" style="background:#2f9e5f; color:#fff; min-width:160px; font-size:15px">✓ Sì, inserisci</button></div></div>';
+    document.body.appendChild(ov);
+    const fine = function(esito){ ov.remove(); document.removeEventListener('keydown', tasto); risolvi(esito); };
+    const tasto = function(e){ if(e.key === 'Escape') fine(false); if(e.key === 'Enter'){ e.preventDefault(); fine(true); } };
+    document.addEventListener('keydown', tasto);
+    ov.addEventListener('click', function(e){
+      const b = e.target.closest('button[data-r]');
+      if(b) fine(b.dataset.r === 'si');
+      else if(e.target === ov) fine(false);
+    });
+    setTimeout(function(){ const si = ov.querySelector('[data-r="si"]'); if(si) si.focus(); }, 50);
+  });
 }
 
 function confermaPraticaSalvata(id, nome, tipo){
