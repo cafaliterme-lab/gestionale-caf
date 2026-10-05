@@ -389,6 +389,25 @@ function inviaCUDBriguglio(id) {
   const righe = lista.map(function (p, i) { return (lista.length > 1 ? (i + 1) + '. ' : '') + (p.nome || '') + ' – ' + (p.codiceFiscale || ('nato/a il ' + (p.cf || '?'))); });
   const testo = 'Buongiorno, dal CAF CISL di Alì Terme chiediamo ' + (lista.length > 1 ? 'i CUD dei seguenti contribuenti' : 'il CUD di') + ':\n' + righe.join('\n') + '\n\nGrazie.';
   window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(testo), '_blank');
+  popupRichiestaCUDInviata(lista, tel);
+}
+// Conferma al centro dopo l'invio della richiesta a Briguglio Santina
+function popupRichiestaCUDInviata(lista, tel) {
+  const vecchio = document.getElementById('popup-cud-inviata');
+  if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-cud-inviata';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:460; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #1a7f37; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:24px 26px; max-width:440px; width:100%; text-align:center">'
+    + '<div style="width:64px; height:64px; margin:0 auto 8px; border-radius:50%; background:#1a7f37; color:#fff; font-size:36px; line-height:64px">✓</div>'
+    + '<div style="font-size:20px; font-weight:800; color:#1a7f37">Richiesta andata a buon fine</div>'
+    + '<div style="font-size:14px; margin:6px 0 10px">Richiesta CUD inviata a <b>Briguglio Santina</b>' + (tel ? ' (' + esc(tel) + ')' : '') + ' per ' + (lista.length === 1 ? '<b>1 contribuente</b>' : '<b>' + lista.length + ' contribuenti</b>') + ':</div>'
+    + '<div style="max-height:30vh; overflow-y:auto; text-align:left; padding:8px 12px; border-radius:12px; border:2px solid #1a7f37; background:color-mix(in srgb, #1a7f37 8%, var(--card)); font-size:13.5px">'
+    + lista.map(function (p) { return '<div style="margin:3px 0"><b>' + esc(p.nome || '') + '</b> <span style="font-family:monospace; color:var(--sub)">' + esc(p.codiceFiscale || '') + '</span></div>'; }).join('') + '</div>'
+    + '<div style="font-size:12px; color:var(--sub); margin:10px 0 14px">Quando arriva il CUD, metti la spunta ☑ nell\'elenco "Richieste CUD".</div>'
+    + '<button type="button" style="background:#1a7f37; color:#fff; min-width:110px">OK</button></div>';
+  ov.addEventListener('click', function (e) { if (e.target === ov || e.target.tagName === 'BUTTON') ov.remove(); });
+  document.body.appendChild(ov);
 }
 function stampaElencoCUD() {
   const lista = praticheConRichiesta(CUD_PUNTO_FISCO);
