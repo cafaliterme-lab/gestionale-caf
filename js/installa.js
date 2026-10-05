@@ -79,11 +79,22 @@ function istruzioniInstallazione() {
       + passoHTML(3, '', 'Entra nel programma e tocca di nuovo <b>📲 Installa app</b>.')
       + '<button type="button" data-azione="copia" style="width:100%; background:#007aff; color:#fff; font-size:15px; padding:12px; margin-top:4px">📋 Copia il link</button>';
   } else if (iphone) {
-    corpo = passoHTML(1, ICONA.condividi, 'Tocca <b>Condividi</b> nella barra in basso di Safari (se non lo vedi tocca prima <b>•••</b>). Te lo indica la freccia.')
-      + passoHTML(2, ICONA.aggiungi, 'Scorri l\'elenco e tocca <b>"Aggiungi alla schermata Home"</b>.')
-      + passoHTML(3, '', 'Tocca <b>"Aggiungi"</b> in alto a destra. Fatto: trovi l\'icona <b>CAF CISL</b> sulla schermata Home.')
-      + (navigator.share ? '<button type="button" data-azione="condividi" style="width:100%; background:#007aff; color:#fff; font-size:15px; padding:12px; margin-top:4px">' + ICONA.condividi.replace('#007aff', '#fff') + ' Apri subito "Condividi"</button>' : '');
-    freccia = '<div class="freccia-installa" style="position:fixed; left:50%; bottom:6px; transform:translateX(-50%); z-index:460; text-align:center; color:#fff; font-weight:800; font-size:14px; text-shadow:0 1px 4px rgba(0,0,0,.6); pointer-events:none">Tocca Condividi qui<div style="font-size:44px; line-height:1; animation:rimbalzo 1s infinite">⬇️</div></div>';
+    const ver = parseInt((/OS (\d+)_/.exec(navigator.userAgent) || [])[1] || '0', 10);
+    const nuovo = ver >= 26; // da iOS 26 il pulsante Condividi e' dentro al menu •••
+    corpo = '<div style="font-size:13px; padding:10px 12px; margin-bottom:10px; border-radius:12px; background:color-mix(in srgb, #f08a24 15%, var(--card)); border:1.5px solid #f08a24">'
+        + '<b>Prima di tutto:</b> se hai aperto il link da <b>WhatsApp, email, Claude</b> o un\'altra app, "Aggiungi alla schermata Home" <b>non compare</b>. '
+        + 'Tocca <b>"Copia il link"</b> qui sotto, apri l\'app <b>Safari</b> 🧭 e incollalo nella barra dell\'indirizzo.</div>'
+      + (nuovo
+        ? passoHTML(1, ICONA.puntini.replace('<svg', '<svg style="transform:rotate(90deg)"'), 'In Safari tocca <b>•••</b> in basso a destra (la freccia te lo indica), poi tocca <b>Condividi</b> ' + ICONA.condividi.replace('width="22" height="22"', 'width="16" height="16" style="vertical-align:-2px"') + '.')
+          + passoHTML(2, ICONA.aggiungi, 'Nella finestra che si apre <b>scorri verso il basso</b> (o tocca <b>"Mostra altro"</b>) e tocca <b>"Aggiungi alla schermata Home"</b>.')
+          + passoHTML(3, '', 'Lascia attivo <b>"Apri come app web"</b> e tocca <b>"Aggiungi"</b>. Fatto: trovi l\'icona <b>CAF CISL</b> sulla schermata Home.')
+        : passoHTML(1, ICONA.condividi, 'In Safari tocca <b>Condividi</b> nella barra in basso, al centro (la freccia te lo indica).')
+          + passoHTML(2, ICONA.aggiungi, 'Nella finestra che si apre <b>scorri verso il basso</b> e tocca <b>"Aggiungi alla schermata Home"</b>.')
+          + passoHTML(3, '', 'Tocca <b>"Aggiungi"</b> in alto a destra. Fatto: trovi l\'icona <b>CAF CISL</b> sulla schermata Home.'))
+      + '<button type="button" data-azione="copia" style="width:100%; background:#007aff; color:#fff; font-size:15px; padding:12px; margin-top:4px">📋 Copia il link</button>';
+    freccia = nuovo
+      ? '<div class="freccia-installa" style="position:fixed; right:14px; bottom:6px; z-index:460; text-align:center; color:#fff; font-weight:800; font-size:14px; text-shadow:0 1px 4px rgba(0,0,0,.6); pointer-events:none">Tocca ••• qui<div style="font-size:44px; line-height:1; animation:rimbalzo 1s infinite">⬇️</div></div>'
+      : '<div class="freccia-installa" style="position:fixed; left:50%; bottom:6px; transform:translateX(-50%); z-index:460; text-align:center; color:#fff; font-weight:800; font-size:14px; text-shadow:0 1px 4px rgba(0,0,0,.6); pointer-events:none">Tocca Condividi qui<div style="font-size:44px; line-height:1; animation:rimbalzo 1s infinite">⬇️</div></div>';
   } else if (android) {
     corpo = passoHTML(1, ICONA.puntini, 'Tocca il menu <b>⋮</b> in alto a destra di Chrome. Te lo indica la freccia.')
       + passoHTML(2, ICONA.installa, 'Tocca <b>"Installa app"</b> (oppure <b>"Aggiungi a schermata Home"</b>).')
