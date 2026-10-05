@@ -778,6 +778,7 @@ function rigaPratica(p){
     'Stato': statoLabel(p.stato),
     'Fattura (€)': Number(p.compenso)||0,
     'Pagato (€)': Number(p.pagato)||0,
+    'Pagamento': p.metodoPagamento||'',
     'N. Fattura': p.numFattura||'',
     'Inserito da': p.inseritoDa||'',
     'Note': p.note||''
@@ -1489,7 +1490,7 @@ function render(){
         </div>
       </div>
       <div class="meta">Aperta il ${p.data||'-'}${eColf(p.tipo) ? (p.scadenzaAssistenza ? ' · <b style="color:#c0392b">⏰ Scadenza assistenza il '+esc(p.scadenzaAssistenza)+'</b>' : '') : (p.dataFine ? ' · <b>Fine lavorazione il '+esc(p.dataFine)+'</b>' : '')} ${p.note ? '· '+esc(p.note) : ''}</div>
-      <div class="meta compenso">Fattura: ${fmtEuro(p.compenso)} · Pagato effettivo: ${fmtEuro(p.pagato)}</div>
+      <div class="meta compenso">Fattura: ${fmtEuro(p.compenso)} · Pagato effettivo: ${fmtEuro(p.pagato)}${p.metodoPagamento ? ' (' + esc(p.metodoPagamento) + ')' : ''}</div>
       ${typeof documentoCardHTML === 'function' ? documentoCardHTML(p) : ''}
       ${typeof documentiCardHTML === 'function' ? documentiCardHTML(p) : ''}
       ${storicoClienteHTML(p)}
@@ -1515,7 +1516,7 @@ function render(){
           <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
-          <div><label>Pagato effettivo (€)</label><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
+          <div><label>Pagato effettivo (€)</label><div style="display:flex; gap:6px"><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0"><select id="e-met-${p.id}" title="Tipo di pagamento" style="width:auto; flex:0 0 auto">${metodoOptions(p.metodoPagamento)}</select></div></div>
           <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}"></div>
           <div class="full"><label>Note</label><input id="e-note-${p.id}" value="${esc(p.note)}"></div>
         </div>
@@ -1587,6 +1588,7 @@ async function addPraticaInterna(){
   const compensoAuto = fatturaAutomatica(document.getElementById('f-tipo').value);
   const compenso = compensoScritto || (compensoAuto !== undefined ? compensoAuto : '');
   const pagato = parseImporto(document.getElementById('f-pagato').value) || '';
+  const metodoPagamento = document.getElementById('f-metodo').value;
   const congCognome = document.getElementById('f-cong-cognome').value.trim().toUpperCase();
   const congNome = document.getElementById('f-cong-nome').value.trim().toUpperCase();
   const congData = document.getElementById('f-cong-data').value.trim();
@@ -1655,7 +1657,7 @@ async function addPraticaInterna(){
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, data: dataPratica, note,
+    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, metodoPagamento, data: dataPratica, note,
     stato: documenti.mancanti.length ? 'arrivo' : (document.getElementById('f-stato').value || 'arrivo'),
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
@@ -1683,6 +1685,7 @@ async function addPraticaInterna(){
   impostaTipoPredefinito();
   document.getElementById('f-compenso').value=''; document.getElementById('f-compenso').dataset.auto='';
   document.getElementById('f-pagato').value='';
+  document.getElementById('f-metodo').value='';
   document.getElementById('cli-cerca').value='';
   document.getElementById('cli-cerca-cong').value='';
   document.getElementById('f-congiunta-on').checked=false;
@@ -1738,6 +1741,8 @@ function apriChatWhatsApp(num, testo){
   const w = window.open(url, 'whatsapp-caf');
   if(w) try{ w.focus(); }catch(e){}
 }
+const METODI_PAGAMENTO = ['CONTANTI', 'POS', 'BONIFICO'];
+function metodoOptions(v){ return '<option value="">Pagamento…</option>' + METODI_PAGAMENTO.map(function(m){ return '<option' + (m === v ? ' selected' : '') + '>' + m + '</option>'; }).join(''); }
 function nomeProprio(s){ return String(s||'').toLowerCase().replace(/(^|[\s'-])\S/g, function(c){ return c.toUpperCase(); }); }
 const MODELLO_WHATSAPP_BASE = 'Gentile {nome}, la informiamo che la Sua {pratica} (protocollo n. {protocollo}) è pronta. Può passare a ritirarla presso il CAF CISL di Alì Terme, in {indirizzo}. Per informazioni può chiamare il {telefono}. Orari di apertura: {orari}. Cordiali saluti.';
 function modelliWhatsApp(){
@@ -1883,6 +1888,7 @@ async function salvaModifica(id){
     scadenzaAssistenza: eColf(g('e-tipo')) ? g('e-scadass').trim() : '',
     compenso: parseImporto(g('e-comp')) || '',
     pagato: parseImporto(g('e-pag')) || '',
+    metodoPagamento: g('e-met'),
     numFattura: numFattura,
     documentoScadenza: g('e-docscad').trim(),
     note: g('e-note').trim(),

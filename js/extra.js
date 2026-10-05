@@ -86,7 +86,7 @@ function stampaRicevuta(id) {
       + riga('Contribuente', p.nome) + riga('Nato/a il', p.cf) + riga('Codice fiscale', p.codiceFiscale)
       + riga('Coniuge (congiunta)', p.congiunta ? p.congiunta + (p.congData ? ' – nato/a il ' + p.congData : '') : '')
       + riga('Tipo di pratica', p.tipo)
-      + riga('Importo', Number(p.compenso) ? fmtEuro(p.compenso) : '') + riga('Pagato', Number(p.pagato) ? fmtEuro(p.pagato) : '')
+      + riga('Importo', Number(p.compenso) ? fmtEuro(p.compenso) : '') + riga('Pagato', Number(p.pagato) ? fmtEuro(p.pagato) + (p.metodoPagamento ? ' – ' + p.metodoPagamento : '') : '')
       + riga('Recapito', [p.telefono, p.telefonoFisso].filter(Boolean).join(' / '))
       + (p.documentoScadenza ? '<tr><th>Documento d\'identità</th><td>' + (statoScadenzaDocumento(p.documentoScadenza) && !statoScadenzaDocumento(p.documentoScadenza).valido ? '<b style="color:#c0392b">SCADUTO il ' + esc(p.documentoScadenza) + ' – portare il nuovo documento</b>' : 'valido fino al ' + esc(p.documentoScadenza)) + '</td></tr>' : '')
       + riga('Note', p.note)
@@ -126,7 +126,7 @@ function stampaRicevuta(id) {
 
 const ETICHETTE_CAMPI = {
   nome: 'Nominativo', stato: 'Stato', tipo: 'Tipo pratica', telefono: 'Cellulare', telefono_fisso: 'Telefono fisso',
-  compenso: 'Fattura', pagato: 'Pagato', data: 'Data apertura', data_fine: 'Fine lavorazione', note: 'Note',
+  compenso: 'Fattura', pagato: 'Pagato', metodo_pagamento: 'Tipo di pagamento', data: 'Data apertura', data_fine: 'Fine lavorazione', note: 'Note',
   num_fattura: 'N. fattura', data_fattura: 'Data fattura', fatt: 'Fatturazione', cf: 'Data di nascita', codice_fiscale: 'Codice fiscale',
   congiunta: 'Congiunta', cong_cognome: 'Cognome coniuge', cong_nome: 'Nome coniuge', cong_data: 'Nascita coniuge',
   cong_codice_fiscale: 'CF coniuge', cong_telefono: 'Cellulare coniuge', scadenza_assistenza: 'Scadenza assistenza',

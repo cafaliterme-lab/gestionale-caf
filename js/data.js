@@ -115,6 +115,7 @@ const schemas = {
     congTelefono: 'cong_telefono',
     documentoScadenza: 'documento_scadenza',
     documenti: 'documenti',
+    metodoPagamento: 'metodo_pagamento',
   },
   versamento: {
     id: 'id',
