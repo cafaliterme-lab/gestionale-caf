@@ -190,6 +190,8 @@ async function renderBackup() {
   if (!box) return;
   const { data, ok } = await fetchSupabase('/rest/v1/backup_automatici?select=id,creato_il,tipo,creato_da,n_pratiche&order=creato_il.desc');
   if (!ok || !Array.isArray(data)) { box.innerHTML = '<div class="empty">Elenco dei backup non disponibile</div>'; return; }
+  if (!document.getElementById('backup-cartella')) box.insertAdjacentHTML('beforebegin', '<div id="backup-cartella" style="margin:10px 0"></div>');
+  sincronizzaCartellaBackup(false);
   box.innerHTML = data.length ? data.map(function (b) {
     return '<div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; flex-wrap:wrap">'
       + '<span style="flex:1; min-width:200px"><b>' + esc(quandoStorico(b.creato_il)) + '</b> · ' + esc(NOMI_BACKUP[b.tipo] || b.tipo) + ' <span style="color:var(--sub)">(' + (b.n_pratiche || 0) + ' pratiche' + (b.creato_da ? ', ' + esc(b.creato_da) : '') + ')</span></span>'
@@ -202,9 +204,10 @@ async function creaBackupOra() {
   avviso('✓ Backup creato');
   renderBackup();
 }
-async function scaricaBackup(id) {
-  const { data, ok } = await fetchSupabase('/rest/v1/backup_automatici?select=creato_il,dati&id=eq.' + Number(id));
-  if (!ok || !data || !data.length) { avviso('❌ Backup non trovato', true); return; }
+// Prepara il file di un backup del server (stesso formato di "Esporta backup")
+async function preparaBackup(id) {
+  const { data, ok } = await fetchSupabase('/rest/v1/backup_automatici?select=creato_il,tipo,dati&id=eq.' + Number(id));
+  if (!ok || !data || !data.length) return null;
   const d = data[0].dati || {};
   const mappa = function (lista, schema) { return (lista || []).map(function (r) { return window.data.mappa(r, schema); }); };
   const s = window.data.schemi;
@@ -219,13 +222,121 @@ async function scaricaBackup(id) {
     collaboratori: (d.collaboratori || []).map(function (c) { return c.nome; }),
     impostazioni: d.impostazioni || [],
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  return { nome: nomeFileBackup(data[0]), testo: JSON.stringify(payload, null, 2) };
+}
+function nomeFileBackup(b) {
+  const d = new Date(b.creato_il);
+  const due = function (n) { return String(n).padStart(2, '0'); };
+  return 'backup-caf-' + d.getFullYear() + '-' + due(d.getMonth() + 1) + '-' + due(d.getDate()) + '-' + due(d.getHours()) + due(d.getMinutes()) + (b.tipo ? '-' + b.tipo : '') + '.json';
+}
+async function scaricaBackup(id) {
+  const f = await preparaBackup(id);
+  if (!f) { avviso('❌ Backup non trovato', true); return; }
+  const blob = new Blob([f.testo], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'backup-automatico-' + String(data[0].creato_il).slice(0, 10) + '.json';
+  a.download = f.nome;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+}
+
+/* --- Cartella dei backup sul PC (es. la cartella Dropbox): il programma ci salva i file da solo --- */
+// Funziona con Chrome o Edge sul computer. La cartella scelta si ricorda (IndexedDB) su quel PC.
+function dbCartella() {
+  return new Promise(function (ok, ko) {
+    const r = indexedDB.open('caf-backup', 1);
+    r.onupgradeneeded = function () { r.result.createObjectStore('h'); };
+    r.onsuccess = function () { ok(r.result); };
+    r.onerror = function () { ko(r.error); };
+  });
+}
+async function leggiCartellaBackup() {
+  try { const db = await dbCartella(); return await new Promise(function (ok) { const q = db.transaction('h').objectStore('h').get('cartella'); q.onsuccess = function () { ok(q.result || null); }; q.onerror = function () { ok(null); }; }); } catch (e) { return null; }
+}
+async function scriviCartellaBackup(h) {
+  try { const db = await dbCartella(); await new Promise(function (ok) { const t = db.transaction('h', 'readwrite'); if (h) t.objectStore('h').put(h, 'cartella'); else t.objectStore('h').delete('cartella'); t.oncomplete = ok; t.onerror = ok; }); } catch (e) {}
+}
+async function permessoCartella(h, chiedi) {
+  try {
+    if (await h.queryPermission({ mode: 'readwrite' }) === 'granted') return true;
+    return chiedi ? (await h.requestPermission({ mode: 'readwrite' })) === 'granted' : false;
+  } catch (e) { return false; }
+}
+async function scegliCartellaBackup() {
+  if (!window.showDirectoryPicker) { alert('Per salvare direttamente in una cartella usa Google Chrome o Microsoft Edge sul computer.'); return; }
+  let h;
+  try { h = await window.showDirectoryPicker({ id: 'backup-caf', mode: 'readwrite' }); } catch (e) { return; }
+  if (!(await permessoCartella(h, true))) { avviso('❌ Permesso sulla cartella non concesso', true); return; }
+  await scriviCartellaBackup(h);
+  avviso('✓ Cartella dei backup: ' + h.name);
+  await sincronizzaCartellaBackup(true);
+}
+async function dimenticaCartellaBackup() {
+  if (!confirm('Non salvare più i backup nella cartella di questo PC?')) return;
+  await scriviCartellaBackup(null);
+  renderBackup();
+}
+// Copia nella cartella i backup del server che non ci sono ancora
+let SINCRO_BACKUP_IN_CORSO = false;
+async function sincronizzaCartellaBackup(chiedi) {
+  if (SINCRO_BACKUP_IN_CORSO) return;
+  const h = await leggiCartellaBackup();
+  if (!h || !(await permessoCartella(h, chiedi))) { disegnaStatoCartella(); return; }
+  SINCRO_BACKUP_IN_CORSO = true;
+  let nuovi = 0, errore = '';
+  try {
+    const { data, ok } = await fetchSupabase('/rest/v1/backup_automatici?select=id,creato_il,tipo&order=creato_il.desc');
+    if (ok && Array.isArray(data)) {
+      for (const b of data) {
+        const nome = nomeFileBackup(b);
+        let esiste = true;
+        try { await h.getFileHandle(nome); } catch (e) { esiste = false; }
+        if (esiste) continue;
+        const f = await preparaBackup(b.id);
+        if (!f) continue;
+        const fh = await h.getFileHandle(nome, { create: true });
+        const w = await fh.createWritable();
+        await w.write(f.testo); await w.close();
+        nuovi++;
+      }
+    }
+  } catch (e) { errore = e.message || String(e); }
+  SINCRO_BACKUP_IN_CORSO = false;
+  try { localStorage.setItem('backup-cartella-ultimo', new Date().toISOString()); } catch (e) {}
+  if (errore) avviso('❌ Backup nella cartella non salvato: ' + errore, true);
+  else if (nuovi || chiedi) avviso('✓ Cartella ' + h.name + ': ' + (nuovi ? nuovi + (nuovi === 1 ? ' backup salvato' : ' backup salvati') : 'già aggiornata'));
+  disegnaStatoCartella();
+}
+async function disegnaStatoCartella() {
+  const box = document.getElementById('backup-cartella');
+  if (!box) return;
+  const stile = 'background:var(--line); color:var(--ink); border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-size:13px';
+  if (!window.showDirectoryPicker) {
+    box.innerHTML = '<div style="font-size:12.5px; color:var(--sub)">📁 Per salvare i backup direttamente in una cartella (es. Dropbox) apri il programma con <b>Chrome</b> o <b>Edge</b> sul computer.</div>';
+    return;
+  }
+  const h = await leggiCartellaBackup();
+  if (!h) {
+    box.innerHTML = '<div style="padding:10px 12px; border-radius:10px; border:2px dashed #0061fe">'
+      + '<div style="font-weight:800; color:#0061fe; margin-bottom:4px">📁 Salva i backup in una cartella del PC (es. Dropbox)</div>'
+      + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">Scegli una volta la cartella, per esempio <b>Dropbox › Backup CAF</b>: il programma ci copierà da solo ogni nuovo backup e Dropbox lo porterà nel cloud.</div>'
+      + '<button type="button" style="background:#0061fe; color:#fff; border:none; border-radius:8px; padding:7px 14px; cursor:pointer; font-weight:700" onclick="scegliCartellaBackup()">📁 Scegli la cartella</button></div>';
+    return;
+  }
+  const attiva = await permessoCartella(h, false);
+  let ultimo = '';
+  try { ultimo = localStorage.getItem('backup-cartella-ultimo') || ''; } catch (e) {}
+  box.innerHTML = '<div style="padding:10px 12px; border-radius:10px; border:2px solid ' + (attiva ? '#1a7f37' : '#b35f0c') + '">'
+    + '<div style="font-weight:800; color:' + (attiva ? '#1a7f37' : '#b35f0c') + '">📁 Cartella dei backup: ' + esc(h.name) + (attiva ? ' ✓' : '') + '</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 8px">' + (attiva
+      ? 'Ogni nuovo backup viene copiato qui da solo quando apri il programma su questo PC.' + (ultimo ? ' Ultimo controllo: ' + esc(quandoStorico(ultimo)) + '.' : '')
+      : 'Il browser chiede di riconfermare l\'accesso alla cartella: premi "Riattiva" e poi "Consenti".') + '</div>'
+    + '<div style="display:flex; gap:6px; flex-wrap:wrap">'
+    + (attiva ? '<button type="button" style="' + stile + '" onclick="sincronizzaCartellaBackup(true)">🔄 Salva ora nella cartella</button>'
+      : '<button type="button" style="background:#b35f0c; color:#fff; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:700" onclick="sincronizzaCartellaBackup(true)">🔓 Riattiva</button>')
+    + '<button type="button" style="' + stile + '" onclick="scegliCartellaBackup()">Cambia cartella</button>'
+    + '<button type="button" style="' + stile + '" onclick="dimenticaCartellaBackup()">Non usare più</button></div></div>';
 }
 function renderBackupEStorico() {
   if (typeof isAdmin === 'function' && !isAdmin()) return;
@@ -523,3 +634,11 @@ function inviaAccessoUtente(u) {
     }
   });
 }
+
+// All'apertura del programma (e poi ogni 6 ore) l'amministratore copia da solo i nuovi backup nella cartella scelta
+setInterval(function () {
+  if (typeof isAdmin !== 'function' || !isAdmin() || !window.showDirectoryPicker || document.hidden) return;
+  let ultimo = 0;
+  try { ultimo = Date.parse(localStorage.getItem('backup-cartella-ultimo') || '') || 0; } catch (e) {}
+  if (Date.now() - ultimo > 6 * 3600 * 1000) sincronizzaCartellaBackup(false);
+}, 60 * 1000);
