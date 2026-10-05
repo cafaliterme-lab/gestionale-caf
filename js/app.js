@@ -1685,7 +1685,7 @@ async function addPraticaInterna(){
   impostaTipoPredefinito();
   document.getElementById('f-compenso').value=''; document.getElementById('f-compenso').dataset.auto='';
   document.getElementById('f-pagato').value='';
-  document.getElementById('f-metodo').value='';
+  document.getElementById('f-metodo').value='CONTANTI';
   document.getElementById('cli-cerca').value='';
   document.getElementById('cli-cerca-cong').value='';
   document.getElementById('f-congiunta-on').checked=false;

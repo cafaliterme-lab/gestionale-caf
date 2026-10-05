@@ -511,7 +511,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <label>Pagato effettivo (€)</label>
       <div style="display:flex; gap:6px">
         <input id="f-pagato" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0">
-        <select id="f-metodo" title="Tipo di pagamento" style="width:auto; flex:0 0 auto"><option value="">Pagamento…</option><option>CONTANTI</option><option>POS</option><option>BONIFICO</option></select>
+        <select id="f-metodo" title="Tipo di pagamento" style="width:auto; flex:0 0 auto"><option value="">Pagamento…</option><option selected>CONTANTI</option><option>POS</option><option>BONIFICO</option></select>
       </div>
     </div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610110"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610140"></script>
+<script src="js/app.js?v=202610141"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->
