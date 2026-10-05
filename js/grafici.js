@@ -70,8 +70,10 @@ function renderGrafici() {
   document.getElementById('grafici-anno').textContent = anno;
   const pratAnno = (state.pratiche || []).filter(function (p) { return annoPratica(p) === anno; });
   const versAnno = (state.versamenti || []).filter(function (v) { return annoDiData(v.data) === anno; });
-  const fatture = sommaCampo(pratAnno, 'compenso');
-  const incasso = sommaCampo(pratAnno, 'pagato');
+  // importi: esclusi i 730 in convenzione (FILCA e FPS), come in Contabilita'
+  const pratEco = pratAnno.filter(function (p) { return !eConvenzione(p); });
+  const fatture = sommaCampo(pratEco, 'compenso');
+  const incasso = sommaCampo(pratEco, 'pagato');
   const caf = sommaCampo(versAnno, 'importo');
   document.getElementById('grafici-avviso').textContent = pratAnno.length ? '' : 'Nessuna pratica nel ' + anno + ': scegli un altro anno in "Anno di protocollo".';
 
@@ -128,6 +130,7 @@ function renderGrafici() {
     const m = meseDi(p);
     if (m < 0) return;
     praticheMese[m] += pesoPratica(p);
+    if (eConvenzione(p)) return;
     fattMese[m] += Number(p.compenso || 0);
     incMese[m] += Number(p.pagato || 0);
   });
@@ -153,7 +156,7 @@ function renderGrafici() {
     type: 'doughnut',
     data: {
       labels: ['730', 'Altre pratiche'],
-      datasets: [{ data: [sommaCampo(pratAnno.filter(e730), 'pagato'), sommaCampo(pratAnno.filter(function (p) { return !e730(p); }), 'pagato')], backgroundColor: ['#1d4f91', '#9aa3ae'], borderColor: getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#fff', borderWidth: 2 }],
+      datasets: [{ data: [sommaCampo(pratEco.filter(e730), 'pagato'), sommaCampo(pratEco.filter(function (p) { return !e730(p); }), 'pagato')], backgroundColor: ['#1d4f91', '#9aa3ae'], borderColor: getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#fff', borderWidth: 2 }],
     },
     options: opzioniCiambella(true),
   });
@@ -188,8 +191,8 @@ function renderGrafici() {
     data: {
       labels: anni.map(String),
       datasets: [
-        { label: 'Fatture emesse', data: anni.map(function (a) { return sommaCampo((state.pratiche || []).filter(function (p) { return annoPratica(p) === a; }), 'compenso'); }), backgroundColor: COL_FATTURE, borderRadius: 6, maxBarThickness: 40 },
-        { label: 'Incasso', data: anni.map(function (a) { return sommaCampo((state.pratiche || []).filter(function (p) { return annoPratica(p) === a; }), 'pagato'); }), backgroundColor: COL_INCASSO, borderRadius: 6, maxBarThickness: 40 },
+        { label: 'Fatture emesse', data: anni.map(function (a) { return sommaCampo((state.pratiche || []).filter(function (p) { return annoPratica(p) === a && !eConvenzione(p); }), 'compenso'); }), backgroundColor: COL_FATTURE, borderRadius: 6, maxBarThickness: 40 },
+        { label: 'Incasso', data: anni.map(function (a) { return sommaCampo((state.pratiche || []).filter(function (p) { return annoPratica(p) === a && !eConvenzione(p); }), 'pagato'); }), backgroundColor: COL_INCASSO, borderRadius: 6, maxBarThickness: 40 },
       ],
     },
     options: opzioniBase(true, false, true),

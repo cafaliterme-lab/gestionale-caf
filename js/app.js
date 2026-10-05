@@ -1359,8 +1359,10 @@ function render(){
 
   const conti = conteggi730(pratAnno);
   const tot = conti.tot, daLavorare = conti.daFare, lavorate = conti.lav;
-  const fattureEmesse = pratAnno.reduce((a,p)=>a+Number(p.compenso||0),0);
-  const incassoLordo = pratAnno.reduce((a,p)=>a+Number(p.pagato||0),0);
+  const pratCont = pratAnno.filter(function(p){ return !eConvenzione(p); });
+  const pratConv = pratAnno.filter(eConvenzione);
+  const fattureEmesse = pratCont.reduce((a,p)=>a+Number(p.compenso||0),0);
+  const incassoLordo = pratCont.reduce((a,p)=>a+Number(p.pagato||0),0);
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
   const incasso = incassoLordo - versatoCaf;
   const differenzaIncFatt = incasso - fattureEmesse;
@@ -1379,8 +1381,9 @@ function render(){
     <div class="stat c5 blu"><b>${fmtEuro(versatoCaf)}</b><span>PAGAMENTI CAF</span></div>
     <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">NETTO (incasso − pagamenti CAF)</span></div>
     ${vedeGuadagni() ? `<div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO</span></div>` : ''}` : '') + (vBlocchi ? `
-    ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true)}
-    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }))}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf) : '');
+    ${bloccoIntroito('SOLO 730 (esclusi FILCA e FPS in convenzione)', '#1d4f91', pratCont.filter(e730), true)}
+    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratCont.filter(function(p){ return !e730(p); }))}
+    ${bloccoConvenzione(pratConv, pratAnno.filter(e730))}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratCont, versatoCaf) : '');
 
   const caf = document.getElementById('caf-card');
   const vlist = versAnno;
@@ -2009,6 +2012,8 @@ async function cercaDoppione(anno, nome, tipo, codiceFiscale, escludiId){
 }
 
 function e730(p){ return /^730\b/.test(String(p.tipo||'').toUpperCase()); }
+// 730 in convenzione (FILCA e FPS): restano nel registro e nei contatori ma fuori dagli importi della contabilita'
+function eConvenzione(p){ return /^730\s+(FILCA|FPS)\b/.test(String(p.tipo||'').toUpperCase()); }
 // Stati: "da lavorare" finche' la pratica non e' stata lavorata; dopo (anche pagata o da pagare) conta come lavorata
 const STATI_DA_LAVORARE = ['arrivo','lavorazione','da_lavorare_scansionata'];
 function eDaLavorare(p){ return STATI_DA_LAVORARE.indexOf(p.stato) >= 0; }
@@ -2017,6 +2022,20 @@ function conteggi730(pratiche){
   const l = (pratiche||[]).filter(e730);
   const daFare = sommaPeso(l.filter(eDaLavorare)), lav = sommaPeso(l.filter(eLavorata));
   return { tot: sommaPeso(l), daFare: daFare, lav: lav, rinunce: sommaPeso(l) - daFare - lav };
+}
+// 730 FILCA e FPS in convenzione: fuori dalla contabilita', con il prezzo medio dei 730 calcolato anche con loro
+function bloccoConvenzione(conv, tutti730){
+  const n = sommaPeso(conv), fatt = conv.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0), inc = conv.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+  const nTot = sommaPeso(tutti730), fattTot = tutti730.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
+  const col = '#0f766e';
+  const tile = function(bg, valore, etichetta){
+    return '<div class="stat c4" style="background:'+bg+'; border-color:'+bg+'; color:#fff"><b>'+valore+'</b><span style="color:rgba(255,255,255,.92); font-weight:600; letter-spacing:.03em">'+etichetta+'</span></div>';
+  };
+  return '<div style="flex-basis:100%; margin-top:10px; padding:8px 14px; border-radius:10px; background:'+col+'; color:#fff; font-size:15px; font-weight:800; letter-spacing:.04em">730 IN CONVENZIONE (FILCA e FPS) <span style="font-weight:600; font-size:12.5px; opacity:.9">— non conteggiati nella contabilità</span></div>'
+    + tile(col, n, 'PRATICHE IN CONVENZIONE')
+    + tile('#5f9e8f', fmtEuro(fatt), 'FATTURE (ESCLUSE)')
+    + tile('#7c8fa6', fmtEuro(inc), 'INCASSO (ESCLUSO)')
+    + tile('#b7791f', nTot ? fmtEuro(fattTot / nTot) : '—', 'PREZZO MEDIO 730 COMPRESE CONVENZIONI ('+nTot+' pratiche)');
 }
 function bloccoIntroito(titolo, colore, lista, conMedia){
   const fatt = lista.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);

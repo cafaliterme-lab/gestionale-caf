@@ -97,17 +97,21 @@ function descrizioneFiltri() {
   return righe;
 }
 
-function riepilogoStampa(lista) {
+function riepilogoStampa(tutte) {
+  // importi senza i 730 in convenzione (FILCA e FPS), come in Contabilita'
+  const lista = tutte.filter(function (p) { return !eConvenzione(p); });
+  const conv = tutte.filter(eConvenzione);
   const fatt = lista.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
   const inc = lista.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);
   const l730 = lista.filter(e730), altre = lista.filter(function (p) { return !e730(p); });
   const voci = [
-    ['Pratiche (congiunte valgono 2)', sommaPeso(lista), false],
+    ['Pratiche (congiunte valgono 2)', sommaPeso(tutte), false],
     ['Fatture emesse', fatt, true],
     ['Incasso totale', inc, true],
     ['Incasso solo 730', l730.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0), true],
     ['Incasso altre pratiche', altre.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0), true],
   ];
+  if (conv.length) voci.push(['730 in convenzione FILCA/FPS (esclusi dagli importi)', sommaPeso(conv), false]);
   if (stampaSuTotale()) {
     const caf = versamentiFiltrati().reduce(function (t, v) { return t + Number(v.importo || 0); }, 0);
     voci.push(['Pagamenti CAF', caf, true]);
