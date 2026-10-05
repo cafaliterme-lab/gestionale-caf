@@ -380,7 +380,8 @@ function disegnaRichiesteCUD() {
   const puoModificare = (typeof isAdmin === 'function' && isAdmin()) || (typeof puo === 'function' && puo('messaggi', true));
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; max-width:720px; width:100%; max-height:92vh; overflow:auto; padding:18px 20px; box-shadow:0 20px 50px rgba(0,0,0,.3)">'
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px"><div style="font-size:19px; font-weight:800">📋 Richieste CUD – ' + annoAttivo() + '</div>'
-    + '<button type="button" style="background:var(--line); color:var(--ink)" onclick="chiudiRichiesteCUD()">Chiudi</button></div>'
+    + '<div style="display:flex; gap:6px">' + (eDispositivoMobile() ? '' : '<button type="button" style="background:var(--line); color:var(--ink)" onclick="scegliModoWhatsAppPC()" title="Come inviare i messaggi WhatsApp da questo PC">⚙️ WhatsApp su questo PC</button>')
+    + '<button type="button" style="background:var(--line); color:var(--ink)" onclick="chiudiRichiesteCUD()">Chiudi</button></div></div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 12px">Qui compaiono le pratiche con la richiesta CUD segnata in rosso nella documentazione. Spunta ☑ quando il CUD è arrivato: sparisce dall\'elenco e passa tra i documenti presentati. Il messaggio parte dal WhatsApp del telefono o PC che stai usando (Angelo o Federica) ed è firmato con il tuo nome' + (nomeOperatoreCUD() ? ' (<b>' + esc(nomeOperatoreCUD()) + '</b>)' : '') + '.</div>'
     + sezioneCUD('pf', puoModificare, valori) + sezioneCUD('bs', puoModificare, valori) + '</div>';
   ov.querySelectorAll('.cud-lista').forEach(function (el, i) { if (scroll[i]) el.scrollTop = scroll[i]; });
@@ -417,12 +418,11 @@ function inviaCUD(k, id) {
   if (!lista.length) return;
   const righe = lista.map(function (p, i) { return (lista.length > 1 ? (i + 1) + '. ' : '') + (p.nome || '') + ' – ' + (p.codiceFiscale || ('nato/a il ' + (p.cf || '?'))); });
   const testo = 'Buongiorno, dal CAF CISL di Alì Terme chiediamo ' + (lista.length > 1 ? 'i CUD dei seguenti contribuenti' : 'il CUD di') + ':\n' + righe.join('\n') + '\n\nGrazie.' + (nomeOperatoreCUD() ? '\n' + nomeOperatoreCUD() + ' – CAF CISL Alì Terme' : '');
-  apriChatWhatsApp(num, testo);
-  popupRichiestaCUDInviata(lista, tel, d);
+  apriChatWhatsApp(num, testo, function (modo) { popupRichiestaCUDInviata(lista, tel, d, modo === 'copia' ? num : ''); });
 }
 function inviaCUDBriguglio(id) { inviaCUD('bs', id); }
 // Conferma al centro dopo l'invio della richiesta
-function popupRichiestaCUDInviata(lista, tel, d) {
+function popupRichiestaCUDInviata(lista, tel, d, copiatoPer) {
   d = d || DESTINATARI_CUD.bs;
   const vecchio = document.getElementById('popup-cud-inviata');
   if (vecchio) vecchio.remove();
@@ -435,6 +435,7 @@ function popupRichiestaCUDInviata(lista, tel, d) {
     + '<div style="font-size:14px; margin:6px 0 10px">Richiesta CUD inviata a <b>' + esc(d.nome) + '</b>' + (tel ? ' (' + esc(tel) + ')' : '') + (nomeOperatoreCUD() ? ' dal WhatsApp di <b>' + esc(nomeOperatoreCUD()) + '</b>' : '') + ' per ' + (lista.length === 1 ? '<b>1 contribuente</b>' : '<b>' + lista.length + ' contribuenti</b>') + ':</div>'
     + '<div style="max-height:30vh; overflow-y:auto; text-align:left; padding:8px 12px; border-radius:12px; border:2px solid #1a7f37; background:color-mix(in srgb, #1a7f37 8%, var(--card)); font-size:13.5px">'
     + lista.map(function (p) { return '<div style="margin:3px 0"><b>' + esc(p.nome || '') + '</b> <span style="font-family:monospace; color:var(--sub)">' + esc(p.codiceFiscale || '') + '</span></div>'; }).join('') + '</div>'
+    + (copiatoPer ? '<div style="font-size:13.5px; margin:10px 0 0; padding:8px 10px; border-radius:10px; background:color-mix(in srgb, #25d366 14%, var(--card))">📋 ' + testoIstruzioniCopia(copiatoPer) + '</div>' : '')
     + '<div style="font-size:12px; color:var(--sub); margin:10px 0 14px">Quando arriva il CUD, metti la spunta ☑ nell\'elenco "Richieste CUD".</div>'
     + '<button type="button" style="background:#1a7f37; color:#fff; min-width:110px">OK</button></div>';
   ov.addEventListener('click', function (e) { if (e.target === ov || e.target.tagName === 'BUTTON') ov.remove(); });

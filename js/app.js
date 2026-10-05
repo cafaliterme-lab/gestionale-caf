@@ -1786,15 +1786,75 @@ function eDispositivoMobile(){
   const ua = navigator.userAgent || '';
   return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
 }
-function apriChatWhatsApp(num, testo){
+// Sul PC il browser non puo' usare la scheda di WhatsApp Web gia' aperta: si sceglie (una volta, per questo PC) come inviare
+//  app  = app WhatsApp per PC (nessuna scheda nuova)  ·  copia = copia il messaggio da incollare in WhatsApp Web gia' aperto  ·  web = nuova scheda
+function modoWhatsAppPC(){ try{ return localStorage.getItem('whatsapp-pc-modo') || ''; }catch(e){ return ''; } }
+function impostaModoWhatsAppPC(m){ try{ localStorage.setItem('whatsapp-pc-modo', m); }catch(e){} }
+function apriChatWhatsApp(num, testo, dopo){
   const t = testo ? encodeURIComponent(testo) : '';
   if(eDispositivoMobile()){
     window.open('https://wa.me/' + (num || '') + (t ? '?text=' + t : ''), '_blank');
+    if(dopo) dopo('telefono');
     return;
   }
-  const url = 'https://web.whatsapp.com/send?' + (num ? 'phone=' + num + (t ? '&' : '') : '') + (t ? 'text=' + t : '');
-  const w = window.open(url, 'whatsapp-caf');
-  if(w) try{ w.focus(); }catch(e){}
+  const modo = modoWhatsAppPC();
+  if(!modo){ scegliModoWhatsAppPC(function(){ apriChatWhatsApp(num, testo, dopo); }); return; }
+  if(modo === 'app'){
+    const a = document.createElement('a');
+    a.href = 'whatsapp://send?' + (num ? 'phone=' + num + (t ? '&' : '') : '') + (t ? 'text=' + t : '');
+    document.body.appendChild(a); a.click(); a.remove();
+  } else if(modo === 'copia'){
+    copiaTestoWhatsApp(testo);
+    if(!dopo) popupMessaggioCopiato(num);
+  } else {
+    window.open('https://web.whatsapp.com/send?' + (num ? 'phone=' + num + (t ? '&' : '') : '') + (t ? 'text=' + t : ''), '_blank');
+  }
+  if(dopo) dopo(modo);
+}
+function copiaTestoWhatsApp(testo){
+  const ripiego = function(){ const ta = document.createElement('textarea'); ta.value = testo || ''; ta.style.cssText = 'position:fixed; opacity:0'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }catch(e){} ta.remove(); };
+  try{ navigator.clipboard.writeText(testo || '').catch(ripiego); }catch(e){ ripiego(); }
+}
+function numeroLeggibile(num){ const n = String(num||''); return n.indexOf('39') === 0 ? n.slice(2).replace(/^(\d{3})(\d+)$/, '$1 $2') : '+' + n; }
+function testoIstruzioniCopia(num){
+  return 'Il messaggio è stato <b>copiato</b>. Vai sulla scheda di <b>WhatsApp Web già aperta</b>'
+    + (num ? ', apri la chat del numero <b>' + esc(numeroLeggibile(num)) + '</b>' : ', apri la chat giusta')
+    + ' e premi <b>Ctrl+V</b> (incolla), poi <b>Invio</b>.';
+}
+function popupMessaggioCopiato(num){
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #25d366; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:22px 24px; max-width:420px; width:100%; text-align:center">'
+    + '<div style="font-size:34px">📋</div><div style="font-size:19px; font-weight:800; color:#1a7f37; margin-bottom:6px">Messaggio copiato</div>'
+    + '<div style="font-size:14px; margin-bottom:14px">' + testoIstruzioniCopia(num) + '</div>'
+    + '<button type="button" style="background:#1a7f37; color:#fff; min-width:110px">OK</button></div>';
+  ov.addEventListener('click', function(e){ if(e.target === ov || e.target.tagName === 'BUTTON') ov.remove(); });
+  document.body.appendChild(ov);
+}
+function scegliModoWhatsAppPC(poi){
+  const vecchio = document.getElementById('popup-modo-wa'); if(vecchio) vecchio.remove();
+  const attuale = modoWhatsAppPC();
+  const ov = document.createElement('div');
+  ov.id = 'popup-modo-wa';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:480; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  const voce = function(m, titolo, testo){
+    return '<button type="button" data-modo="' + m + '" style="display:block; width:100%; text-align:left; margin:0 0 8px; padding:10px 12px; border-radius:12px; border:2px solid ' + (m === attuale ? '#1a7f37' : 'var(--line)') + '; background:var(--card); color:var(--ink); cursor:pointer">'
+      + '<div style="font-weight:800">' + titolo + (m === attuale ? ' ✓' : '') + '</div><div style="font-size:12.5px; color:var(--sub); font-weight:400">' + testo + '</div></button>';
+  };
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:20px 22px; max-width:480px; width:100%">'
+    + '<div style="font-size:19px; font-weight:800; margin-bottom:4px">💬 Come invio i messaggi WhatsApp da questo PC?</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:12px">Il browser non permette di usare la scheda di WhatsApp Web che hai già aperto: scegli come preferisci. Vale solo per questo PC e puoi cambiarlo quando vuoi.</div>'
+    + voce('copia', '📋 Copia il messaggio (consigliato con WhatsApp Web)', 'Nessuna nuova scheda: il messaggio viene copiato, lo incolli tu (Ctrl+V) nella chat di WhatsApp Web già aperta.')
+    + voce('app', '💻 App WhatsApp per PC', 'Si apre l\'app WhatsApp installata sul computer con il messaggio già scritto. Serve l\'app (gratis dal Microsoft Store).')
+    + voce('web', '🌐 Nuova scheda di WhatsApp Web', 'Come prima: si apre ogni volta una nuova scheda (WhatsApp chiede "Usa qui").')
+    + '<div style="text-align:right; margin-top:6px"><button type="button" data-modo="" style="background:var(--line); color:var(--ink)">Annulla</button></div></div>';
+  ov.addEventListener('click', function(e){
+    const b = e.target.closest('button[data-modo]');
+    if(!b && e.target !== ov) return;
+    ov.remove();
+    if(b && b.dataset.modo){ impostaModoWhatsAppPC(b.dataset.modo); avviso('✓ WhatsApp su questo PC: ' + ({ copia: 'copia il messaggio', app: 'app per PC', web: 'nuova scheda' })[b.dataset.modo]); if(poi) poi(); }
+  });
+  document.body.appendChild(ov);
 }
 const METODI_PAGAMENTO = ['CONTANTI', 'POS', 'BONIFICO'];
 function metodoOptions(v){ return '<option value="">Pagamento…</option>' + METODI_PAGAMENTO.map(function(m){ return '<option' + (m === v ? ' selected' : '') + '>' + m + '</option>'; }).join(''); }
