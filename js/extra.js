@@ -126,7 +126,7 @@ function stampaRicevuta(id) {
 
 const ETICHETTE_CAMPI = {
   nome: 'Nominativo', stato: 'Stato', tipo: 'Tipo pratica', telefono: 'Cellulare', telefono_fisso: 'Telefono fisso',
-  compenso: 'Fattura', pagato: 'Pagato', metodo_pagamento: 'Tipo di pagamento', data: 'Data apertura', data_fine: 'Fine lavorazione', note: 'Note',
+  compenso: 'Fattura', pagato: 'Pagato', metodo_pagamento: 'Tipo di pagamento', annullata: 'Annullata', annullata_motivo: 'Motivo annullamento', data: 'Data apertura', data_fine: 'Fine lavorazione', note: 'Note',
   num_fattura: 'N. fattura', data_fattura: 'Data fattura', fatt: 'Fatturazione', cf: 'Data di nascita', codice_fiscale: 'Codice fiscale',
   congiunta: 'Congiunta', cong_cognome: 'Cognome coniuge', cong_nome: 'Nome coniuge', cong_data: 'Nascita coniuge',
   cong_codice_fiscale: 'CF coniuge', cong_telefono: 'Cellulare coniuge', scadenza_assistenza: 'Scadenza assistenza',
@@ -135,6 +135,7 @@ const ETICHETTE_CAMPI = {
 function valoreStorico(campo, v) {
   if (v === null || v === undefined || v === '') return '—';
   if (campo === 'stato') return statoLabel(v);
+  if (campo === 'annullata') return v === true || v === 'true' ? 'SÌ' : 'NO';
   if (campo === 'compenso' || campo === 'pagato') return fmtEuro(v);
   return String(v);
 }

@@ -78,6 +78,7 @@ function praticaToDb(pratica) {
   for (const k of ['compenso', 'pagato']) {
     if (db[k] === '') db[k] = null;
   }
+  delete db.annullata_il; delete db.annullata_da;
   return db;
 }
 
@@ -116,6 +117,10 @@ const schemas = {
     documentoScadenza: 'documento_scadenza',
     documenti: 'documenti',
     metodoPagamento: 'metodo_pagamento',
+    annullata: 'annullata',
+    annullataMotivo: 'annullata_motivo',
+    annullataIl: 'annullata_il',
+    annullataDa: 'annullata_da',
   },
   versamento: {
     id: 'id',
@@ -194,7 +199,10 @@ async function caricaTutto(opzioni) {
       .order('numero', { ascending: false });
 
     if (errP) throw new Error('Errore pratiche: ' + errP.message);
-    state.pratiche = pratiche.map(p => mapFromDb(p, schemas.pratica));
+    // Le pratiche annullate tengono il numero ma restano fuori da conteggi e contabilità
+    const tutte = pratiche.map(p => mapFromDb(p, schemas.pratica));
+    state.pratiche = tutte.filter(p => !p.annullata);
+    state.annullate = tutte.filter(p => p.annullata);
 
     // Versamenti
     const { data: versamenti, error: errV } = await sb

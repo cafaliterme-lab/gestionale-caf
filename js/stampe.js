@@ -294,6 +294,14 @@ function stampaPDF() {
     corpo += '<tr class="subtot"><td colspan="5">Totale ' + esc(g.tipo) + '</td><td class="num">' + fmtEuro(fe) + '</td><td class="num">' + fmtEuro(inc) + '</td><td></td></tr>';
   });
   corpo += '<tr class="tot"><td colspan="5">TOTALE GENERALE · ' + sommaPeso(lista) + ' pratiche</td><td class="num">' + fmtEuro(totF) + '</td><td class="num">' + fmtEuro(totI) + '</td><td></td></tr>';
+  // Registro di protocollo: i numeri annullati restano elencati (non contano nei totali)
+  const annullate = STAMPA.origine === 'contabilita' ? [] : (state.annullate || []).filter(function (p) { return annoPratica(p) === STAMPA.anno; }).sort(function (x, y) { return x.numero - y.numero; });
+  if (annullate.length) {
+    corpo += '<tr class="gruppo"><td colspan="8">🚫 Pratiche annullate · ' + annullate.length + ' (numeri non riutilizzati)</td></tr>';
+    annullate.forEach(function (p) {
+      corpo += '<tr style="color:#6b7280"><td style="text-decoration:line-through">' + esc(formattaProtocollo(p)) + '</td><td>' + esc(p.data || '') + '</td><td></td><td>' + esc(p.nome || '') + '<div class="sub">' + esc(p.tipo || '') + (p.annullataMotivo ? ' – ' + esc(p.annullataMotivo) : '') + '</div></td><td><b>ANNULLATA</b></td><td></td><td></td><td>' + esc(p.annullataDa || p.inseritoDa || '') + '</td></tr>';
+    });
+  }
 
   const html = '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + esc(titolo + ' ' + STAMPA.anno) + '</title><style>'
     + '@page{size:A4 landscape; margin:12mm}'

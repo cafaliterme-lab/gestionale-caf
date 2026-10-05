@@ -735,7 +735,7 @@ async function esportaBackupJSON(){
   const payload = {
     versione: 1,
     esportatoIl: new Date().toISOString(),
-    pratiche: pulisciArray(state.pratiche),
+    pratiche: pulisciArray((state.pratiche||[]).concat(state.annullate||[])),
     versamenti: pulisciArray(state.versamenti),
     isee: pulisciArray(state.isee),
     clienti: pulisciArray(state.clienti),
@@ -1338,6 +1338,57 @@ function initFiltroStato(){
     return '<option value="'+k+'">'+STATI[k].e+' '+STATI[k].l+'</option>';
   }).join('');
 }
+function filtraTesto(lista){
+  const q = ((document.getElementById('cerca')||{}).value||'').trim().toLowerCase();
+  if(!q) return lista;
+  return lista.filter(function(p){ return [String(p.numero).padStart(4,'0'), p.nome, p.congiunta, p.tipo, p.data, p.annullataMotivo, 'annullata'].join(' ').toLowerCase().indexOf(q) >= 0; });
+}
+function rigaAnnullataHTML(p){
+  const quando = p.annullataIl ? new Date(p.annullataIl).toLocaleDateString('it-IT') : '';
+  return '<tr style="background:color-mix(in srgb, #8a8f98 12%, var(--card)); color:var(--sub)">'
+    + '<td class="n" style="text-decoration:line-through">' + formattaProtocollo(p) + '</td>'
+    + '<td>' + esc(p.data||'-') + '</td><td>-</td>'
+    + '<td class="wrap"><span style="text-decoration:line-through">' + esc((p.nome||'-').toUpperCase()) + '</span>'
+    + '<div class="sub2" style="color:#c0392b; font-weight:700">🚫 ANNULLATA' + (quando ? ' il ' + esc(quando) : '') + (p.annullataDa ? ' da ' + esc(p.annullataDa) : '') + (p.annullataMotivo ? ' – ' + esc(p.annullataMotivo) : '') + '</div></td>'
+    + '<td class="wrap" style="text-decoration:line-through">' + esc(p.tipo||'-') + '</td>'
+    + '<td><span style="display:inline-block; background:#8a8f98; color:#fff; border-radius:999px; padding:3px 10px; font-size:12px; font-weight:700">ANNULLATA</span></td>'
+    + '<td>' + formattaInserimento(p) + '</td>'
+    + '<td>' + (puoAnnullare() ? '<button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="ripristinaPratica(\'' + p.id + '\')" title="Toglie l\'annullamento">↩️ Ripristina</button>' : '') + '</td></tr>';
+}
+function puoAnnullare(){ return (typeof isAdmin === 'function' && isAdmin()) || (typeof puo === 'function' && puo('registro', true)); }
+// Annulla: la pratica resta nel registro con il suo numero, fuori da conteggi e contabilità
+function annullaPratica(id){
+  const p = state.pratiche.find(function(x){ return x.id === id; });
+  if(!p) return;
+  const vecchio = document.getElementById('popup-annulla'); if(vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-annulla';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:450; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #c0392b; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:22px 24px; max-width:440px; width:100%">'
+    + '<div style="font-size:20px; font-weight:800; color:#c0392b; text-align:center">🚫 Annulla pratica ' + esc(formattaProtocollo(p)) + '</div>'
+    + '<div style="font-size:14px; margin:8px 0 12px; text-align:center"><b>' + esc(p.nome||'') + '</b> · ' + esc(p.tipo||'') + '</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">La pratica <b>resta nel registro con il numero ' + esc(formattaProtocollo(p)) + '</b>, barrata e segnata ANNULLATA. Non conta più nei totali, nei contatori e nella contabilità. Si può ripristinare.</div>'
+    + '<label style="font-size:12.5px">Motivo (facoltativo)</label><input id="annulla-motivo" placeholder="Es. inserita per errore, doppione, rinuncia del cliente" style="margin-bottom:14px">'
+    + '<div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap"><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Indietro</button>'
+    + '<button type="button" data-azione="si" style="background:#c0392b; color:#fff">🚫 Conferma annullamento</button></div></div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){ const i = document.getElementById('annulla-motivo'); if(i) i.focus(); }, 50);
+  ov.addEventListener('click', async function(e){
+    const b = e.target.closest('button[data-azione]');
+    if(!b && e.target !== ov) return;
+    if(!b || b.dataset.azione === 'no'){ ov.remove(); return; }
+    const motivo = document.getElementById('annulla-motivo').value.trim();
+    ov.remove();
+    const esito = await data.pratiche.aggiorna(id, { annullata: true, annullataMotivo: motivo });
+    if(!(esito && esito.error)) avviso('🚫 Pratica ' + formattaProtocollo(p) + ' annullata: resta nel registro con il suo numero');
+  });
+}
+async function ripristinaPratica(id){
+  const p = (state.annullate||[]).find(function(x){ return x.id === id; });
+  if(!p || !confirm('Ripristinare la pratica ' + formattaProtocollo(p) + ' di ' + (p.nome||'') + '?\nTornerà a contare nei totali e nella contabilità.')) return;
+  const esito = await data.pratiche.aggiorna(id, { annullata: false });
+  if(!(esito && esito.error)) avviso('↩️ Pratica ' + formattaProtocollo(p) + ' ripristinata');
+}
 function filtra(lista){
   initFiltroStato();
   const statoSel = (document.getElementById('filtro-stato')||{}).value || '';
@@ -1450,14 +1501,18 @@ function render(){
   if(typeof aggiornaPulsanteCUD === 'function'){ aggiornaPulsanteCUD(); if(document.getElementById('richieste-cud')) disegnaRichiesteCUD(); }
 
   const tab = document.getElementById('tabella');
+  const annAnno = (state.annullate||[]).filter(function(p){ return annoPratica(p) === annoSel; });
   const ordinate = filtra([...pratAnno].sort((a,b)=> a.numero - b.numero));
+  // le annullate compaiono nel registro (barrate) solo senza filtro per stato
+  const statoFiltro = (document.getElementById('filtro-stato')||{}).value || '';
+  if(!statoFiltro){ filtraTesto(annAnno).forEach(function(p){ ordinate.push(p); }); ordinate.sort((a,b)=> a.numero - b.numero); }
   tab.innerHTML = (typeof avvisoRitiriHTML === 'function' ? avvisoRitiriHTML(pratAnno) : '') + `
     <div class="raff-title">Registro di protocollo</div>
     <div class="tab-wrap">
       <table class="tab-proto tab-registro">
         <thead><tr><th>N.</th><th>Apertura</th><th>Fine lav.</th><th>Mittente</th><th>Tipo</th><th>Stato</th><th>Inserito da</th><th></th></tr></thead>
         <tbody>
-          ${ordinate.length ? ordinate.map(p => `
+          ${ordinate.length ? ordinate.map(p => p.annullata ? rigaAnnullataHTML(p) : `
             <tr>
               <td class="n">${formattaProtocollo(p)}</td>
               <td>${p.data||'-'}</td>
@@ -1531,7 +1586,7 @@ function render(){
         <button onclick="modifica('${p.id}')">Modifica</button>
         <button onclick="stampaRicevuta('${p.id}')" title="Ricevuta da consegnare al cliente">🧾 Ricevuta</button>
         <button onclick="mostraStoricoPratica('${p.id}')" title="Chi ha modificato questa pratica e quando">📜 Storico</button>
-        <button onclick="rimuovi('${p.id}')" style="${p._confirmDelete?'background:#c0392b;color:#fff':''}">${p._confirmDelete?'Conferma eliminazione?':'Elimina'}</button>
+        <button onclick="annullaPratica('${p.id}')" title="La pratica resta nel registro con il suo numero, segnata ANNULLATA" style="color:#c0392b">🚫 Annulla pratica</button>
       </div>
       <div id="storico-${p.id}"></div>
       `}
