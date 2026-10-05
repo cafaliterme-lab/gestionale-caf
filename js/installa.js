@@ -53,29 +53,69 @@ async function installaApp() {
   istruzioniInstallazione();
 }
 
+// Icone disegnate come quelle dei telefoni, per riconoscere subito dove toccare
+const ICONA = {
+  condividi: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#007aff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>',
+  aggiungi: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#0f1b2d" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>',
+  puntini: '<svg viewBox="0 0 24 24" width="22" height="22" fill="#0f1b2d"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+  installa: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#0f1b2d" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 8v6M9 11l3 3 3-3"/><path d="M8 21h8"/></svg>',
+};
+function passoHTML(n, icona, testo) {
+  return '<div style="display:flex; align-items:center; gap:12px; padding:10px 12px; margin-bottom:8px; border-radius:12px; background:var(--bg); border:1px solid var(--line)">'
+    + '<div style="flex:none; width:28px; height:28px; border-radius:50%; background:#00612f; color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center">' + n + '</div>'
+    + '<div style="flex:1; font-size:14.5px; line-height:1.4">' + testo + '</div>'
+    + (icona ? '<div style="flex:none; width:40px; height:40px; border-radius:10px; background:#fff; border:1px solid #d6dde6; display:flex; align-items:center; justify-content:center">' + icona + '</div>' : '')
+    + '</div>';
+}
+function eSafariIPhone() { return eIPhone() && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA/i.test(navigator.userAgent); }
+
 function istruzioniInstallazione() {
-  const iphone = eIPhone();
-  const passi = iphone
-    ? ['Apri questa pagina con <b>Safari</b> (non con Chrome o altri).',
-      'Tocca il pulsante <b>Condividi</b> <span style="font-size:18px">⬆️</span> in basso al centro.',
-      'Scorri e tocca <b>"Aggiungi alla schermata Home"</b>.',
-      'Tocca <b>"Aggiungi"</b> in alto a destra: sulla schermata compare l\'icona <b>CAF CISL</b>.']
-    : /android/i.test(navigator.userAgent)
-      ? ['Apri questa pagina con <b>Chrome</b>.',
-        'Tocca il menu <b>⋮</b> in alto a destra.',
-        'Tocca <b>"Installa app"</b> (oppure "Aggiungi a schermata Home").',
-        'Conferma con <b>"Installa"</b>: l\'icona <b>CAF CISL</b> compare tra le app.']
-      : ['Apri questa pagina con <b>Chrome</b> o <b>Edge</b>.',
-        'Nella barra dell\'indirizzo, a destra, clicca l\'icona <b>Installa</b> <span style="font-size:16px">⊕</span> (oppure menu ⋮ → "Trasmetti, salva e condividi" → "Installa pagina come app").',
-        'Conferma con <b>"Installa"</b>: il programma si apre in una sua finestra e trovi l\'icona sul desktop e nel menu Start.'];
+  const iphone = eIPhone(), android = /android/i.test(navigator.userAgent);
+  const link = location.origin + location.pathname.replace(/index\.html$/, '');
+  let corpo = '', freccia = '';
+  if (iphone && !eSafariIPhone()) {
+    corpo = passoHTML(1, '', 'Su iPhone l\'app si installa solo da <b>Safari</b>. Tocca <b>"Copia il link"</b> qui sotto.')
+      + passoHTML(2, '', 'Apri <b>Safari</b>, tocca la barra dell\'indirizzo e scegli <b>Incolla e vai</b>.')
+      + passoHTML(3, '', 'Entra nel programma e tocca di nuovo <b>📲 Installa app</b>.')
+      + '<button type="button" data-azione="copia" style="width:100%; background:#007aff; color:#fff; font-size:15px; padding:12px; margin-top:4px">📋 Copia il link</button>';
+  } else if (iphone) {
+    corpo = passoHTML(1, ICONA.condividi, 'Tocca <b>Condividi</b> nella barra in basso di Safari (se non lo vedi tocca prima <b>•••</b>). Te lo indica la freccia.')
+      + passoHTML(2, ICONA.aggiungi, 'Scorri l\'elenco e tocca <b>"Aggiungi alla schermata Home"</b>.')
+      + passoHTML(3, '', 'Tocca <b>"Aggiungi"</b> in alto a destra. Fatto: trovi l\'icona <b>CAF CISL</b> sulla schermata Home.')
+      + (navigator.share ? '<button type="button" data-azione="condividi" style="width:100%; background:#007aff; color:#fff; font-size:15px; padding:12px; margin-top:4px">' + ICONA.condividi.replace('#007aff', '#fff') + ' Apri subito "Condividi"</button>' : '');
+    freccia = '<div class="freccia-installa" style="position:fixed; left:50%; bottom:6px; transform:translateX(-50%); z-index:460; text-align:center; color:#fff; font-weight:800; font-size:14px; text-shadow:0 1px 4px rgba(0,0,0,.6); pointer-events:none">Tocca Condividi qui<div style="font-size:44px; line-height:1; animation:rimbalzo 1s infinite">⬇️</div></div>';
+  } else if (android) {
+    corpo = passoHTML(1, ICONA.puntini, 'Tocca il menu <b>⋮</b> in alto a destra di Chrome. Te lo indica la freccia.')
+      + passoHTML(2, ICONA.installa, 'Tocca <b>"Installa app"</b> (oppure <b>"Aggiungi a schermata Home"</b>).')
+      + passoHTML(3, '', 'Conferma con <b>"Installa"</b>. Fatto: l\'icona <b>CAF CISL</b> è tra le tue app.');
+    freccia = '<div class="freccia-installa" style="position:fixed; right:8px; top:4px; z-index:460; text-align:center; color:#fff; font-weight:800; font-size:14px; text-shadow:0 1px 4px rgba(0,0,0,.6); pointer-events:none"><div style="font-size:44px; line-height:1; animation:rimbalzo-su 1s infinite">⬆️</div>Menu ⋮</div>';
+  } else {
+    corpo = passoHTML(1, ICONA.installa, 'Clicca l\'icona <b>Installa</b> che compare a destra nella barra dell\'indirizzo di Chrome o Edge (in alto). Te la indica la freccia.')
+      + passoHTML(2, ICONA.puntini, 'Se non la vedi: menu <b>⋮</b> → <b>"Trasmetti, salva e condividi"</b> → <b>"Installa pagina come app"</b>.')
+      + passoHTML(3, '', 'Conferma con <b>"Installa"</b>: il programma si apre in una sua finestra e trovi l\'icona sul desktop.');
+    freccia = '<div class="freccia-installa" style="position:fixed; right:120px; top:4px; z-index:460; text-align:center; color:#fff; font-weight:800; font-size:14px; text-shadow:0 1px 4px rgba(0,0,0,.6); pointer-events:none"><div style="font-size:44px; line-height:1; animation:rimbalzo-su 1s infinite">⬆️</div>Installa</div>';
+  }
   const ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed; inset:0; z-index:450; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
-  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #00612f; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:22px 24px; max-width:440px; width:100%">'
-    + '<div style="display:flex; align-items:center; gap:12px; margin-bottom:10px"><img src="icone/icona-192.png" alt="" style="width:56px; height:56px; border-radius:14px">'
-    + '<div><div style="font-size:19px; font-weight:800; color:#00612f">Installa l\'app CAF CISL</div><div style="font-size:12.5px; color:var(--sub)">' + (iphone ? 'iPhone / iPad' : /android/i.test(navigator.userAgent) ? 'Android' : 'Computer') + '</div></div></div>'
-    + '<ol style="margin:0 0 12px; padding-left:20px; font-size:14px; line-height:1.55">' + passi.map(function (p) { return '<li style="margin-bottom:6px">' + p + '</li>'; }).join('') + '</ol>'
-    + '<div style="font-size:12px; color:var(--sub); margin-bottom:12px">La prima volta che apri l\'app inserisci email e password: poi resti collegato.</div>'
-    + '<div style="text-align:right"><button type="button" style="background:#00612f; color:#fff; min-width:110px">Ho capito</button></div></div>';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:450; background:rgba(15,27,45,.55); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<style>@keyframes rimbalzo{0%,100%{transform:translateY(0)}50%{transform:translateY(10px)}}@keyframes rimbalzo-su{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}</style>'
+    + '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #00612f; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:20px 20px 16px; max-width:440px; width:100%; max-height:85vh; overflow:auto">'
+    + '<div style="display:flex; align-items:center; gap:12px; margin-bottom:12px"><img src="icone/icona-192.png" alt="" style="width:54px; height:54px; border-radius:14px">'
+    + '<div><div style="font-size:19px; font-weight:800; color:#00612f">Installa l\'app CAF CISL</div><div style="font-size:12.5px; color:var(--sub)">' + (iphone ? 'iPhone / iPad' : android ? 'Android' : 'Computer') + ' · segui i passaggi</div></div></div>'
+    + corpo
+    + '<div style="font-size:12px; color:var(--sub); margin:10px 0 12px">La prima volta che apri l\'app inserisci email e password: poi resti collegato.</div>'
+    + '<div style="text-align:right"><button type="button" data-azione="chiudi" style="background:#00612f; color:#fff; min-width:110px">Ho capito</button></div></div>'
+    + freccia;
   document.body.appendChild(ov);
-  ov.addEventListener('click', function (e) { if (e.target === ov || e.target.tagName === 'BUTTON') ov.remove(); });
+  ov.addEventListener('click', async function (e) {
+    const b = e.target.closest('[data-azione]');
+    if (e.target === ov || (b && b.dataset.azione === 'chiudi')) { ov.remove(); return; }
+    if (!b) return;
+    if (b.dataset.azione === 'copia') {
+      try { await navigator.clipboard.writeText(link); b.textContent = '✓ Link copiato: ora aprilo in Safari'; }
+      catch (err) { prompt('Copia questo link e aprilo in Safari:', link); }
+    }
+    if (b.dataset.azione === 'condividi') {
+      try { await navigator.share({ title: 'CAF CISL Alì Terme', url: link }); } catch (err) { /* annullato */ }
+    }
+  });
 }
