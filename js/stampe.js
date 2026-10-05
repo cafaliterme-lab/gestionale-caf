@@ -12,7 +12,7 @@ function apriStampa(origine) {
     da: '', a: '',
     riferimento: 'apertura',
     tipi: {}, stati: {},
-    operatore: '', cliente: '',
+    operatore: '', cliente: '', pagamento: '',
   };
   tipiPerStampa(anno).forEach(function (t) { STAMPA.tipi[t] = true; });
   Object.keys(STATI).forEach(function (k) { STAMPA.stati[k] = true; });
@@ -59,6 +59,7 @@ function praticheFiltrate() {
     if (!s.tipi[p.tipo || 'SENZA TIPO']) return false;
     if (!s.stati[p.stato]) return false;
     if (s.operatore && String(p.inseritoDa || '').toUpperCase() !== s.operatore) return false;
+    if (s.pagamento && (s.pagamento === 'NESSUNO' ? METODI_PAGAMENTO.indexOf(p.metodoPagamento) >= 0 : p.metodoPagamento !== s.pagamento)) return false;
     if (cerca && String(p.nome || '').toUpperCase().indexOf(cerca) < 0 && String(p.codiceFiscale || '').toUpperCase().indexOf(cerca) < 0) return false;
     if (da || a) {
       const d = dataNum(s.riferimento === 'fine' ? p.dataFine : p.data);
@@ -71,7 +72,7 @@ function praticheFiltrate() {
 }
 
 // Pagamenti CAF e netto hanno senso solo sul totale (nessun filtro su tipo, stato, operatore, cliente)
-function stampaSuTotale() { return tuttiTipi() && tuttiStati() && !STAMPA.operatore && !STAMPA.cliente.trim(); }
+function stampaSuTotale() { return tuttiTipi() && tuttiStati() && !STAMPA.operatore && !STAMPA.cliente.trim() && !STAMPA.pagamento; }
 function versamentiFiltrati() {
   const da = isoNum(STAMPA.da), a = isoNum(STAMPA.a);
   return (state.versamenti || []).filter(function (v) {
@@ -93,6 +94,7 @@ function descrizioneFiltri() {
   const statiSi = Object.keys(s.stati).filter(function (k) { return s.stati[k]; });
   righe.push('Stato: ' + (tuttiStati() ? 'tutti' : statiSi.map(statoLabel).join(', ')));
   righe.push('Operatore: ' + (s.operatore || 'tutti'));
+  if (s.pagamento) righe.push('Pagamento: ' + (s.pagamento === 'NESSUNO' ? 'non indicato' : s.pagamento));
   if (s.cliente.trim()) righe.push('Cliente: ' + s.cliente.trim());
   return righe;
 }
@@ -108,6 +110,9 @@ function riepilogoStampa(lista) {
     ['Incasso solo 730', l730.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0), true],
     ['Incasso altre pratiche', altre.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0), true],
   ];
+  const perPag = datiPerPagamento(lista);
+  METODI_PAGAMENTO.forEach(function (m) { voci.push(['Incasso ' + (m === 'POS' ? 'POS' : m.toLowerCase()), perPag[m].inc, true]); });
+  if (perPag[''].inc) voci.push(['Incasso senza tipo di pagamento', perPag[''].inc, true]);
   if (stampaSuTotale()) {
     const caf = versamentiFiltrati().reduce(function (t, v) { return t + Number(v.importo || 0); }, 0);
     voci.push(['Pagamenti CAF', caf, true]);
@@ -170,6 +175,8 @@ function disegnaStampa() {
     + '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:12px">'
     + '<div><label>Operatore (inserito da)</label><select id="st-op" onchange="STAMPA.operatore=this.value; disegnaStampa()"><option value="">Tutti</option>'
     + operatoriPerStampa().map(function (o) { return '<option value="' + esc(o) + '"' + (o === s.operatore ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></div>'
+    + '<div><label>Tipo di pagamento</label><select id="st-pag" onchange="STAMPA.pagamento=this.value; disegnaStampa()"><option value="">Tutti</option>'
+    + METODI_PAGAMENTO.concat(['NESSUNO']).map(function (m) { return '<option value="' + m + '"' + (m === s.pagamento ? ' selected' : '') + '>' + (m === 'NESSUNO' ? 'Non indicato' : m) + '</option>'; }).join('') + '</select></div>'
     + '<div><label>Cliente (cognome e nome)</label><input id="st-cliente" type="text" placeholder="Tutti i clienti" value="' + esc(s.cliente) + '" oninput="STAMPA.cliente=this.value; aggiornaContoStampa()"></div>'
     + '</div>'
 
@@ -289,7 +296,7 @@ function stampaPDF() {
     g.lista.forEach(function (p) {
       corpo += '<tr><td>' + esc(formattaProtocollo(p)) + '</td><td>' + esc(p.data || '') + '</td><td>' + esc(eColf(p.tipo) ? (p.scadenzaAssistenza || '') : (p.dataFine || '')) + '</td>'
         + '<td>' + esc(p.nome || '') + (p.congiunta ? '<div class="sub">+ ' + esc(p.congiunta) + '</div>' : '') + '</td>'
-        + '<td>' + esc(statoLabel(p.stato)) + '</td><td class="num">' + fmtEuro(p.compenso) + '</td><td class="num">' + fmtEuro(p.pagato) + '</td><td>' + esc(p.inseritoDa || '') + '</td></tr>';
+        + '<td>' + esc(statoLabel(p.stato)) + '</td><td class="num">' + fmtEuro(p.compenso) + '</td><td class="num">' + fmtEuro(p.pagato) + (p.metodoPagamento && Number(p.pagato) ? '<div class="sub">' + esc(p.metodoPagamento) + '</div>' : '') + '</td><td>' + esc(p.inseritoDa || '') + '</td></tr>';
     });
     corpo += '<tr class="subtot"><td colspan="5">Totale ' + esc(g.tipo) + '</td><td class="num">' + fmtEuro(fe) + '</td><td class="num">' + fmtEuro(inc) + '</td><td></td></tr>';
   });

@@ -1496,7 +1496,7 @@ function render(){
   document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso − pagamenti CAF − fatture emesse): ' + fmtEuro(incasso - fattureEmesse) : '';
   aggiornaGrafici(fattureEmesse, incassoLordo);
   aggiornaGraficoTipi(pratAnno);
-  document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno);
+  document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno) + riepilogoPerPagamento(pratAnno);
   if(typeof renderElencoFPS === 'function') renderElencoFPS(pratAnno);
   if(typeof aggiornaPulsanteCUD === 'function'){ aggiornaPulsanteCUD(); if(document.getElementById('richieste-cud')) disegnaRichiesteCUD(); }
 
@@ -2075,6 +2075,33 @@ function datiPerTipo(pratiche){
   return { tipi: tipi, righe: righe };
 }
 
+// Incasso diviso per tipo di pagamento (contanti, POS, bonifico)
+function datiPerPagamento(pratiche){
+  const righe = {};
+  METODI_PAGAMENTO.concat(['']).forEach(function(m){ righe[m] = { n: 0, inc: 0 }; });
+  (pratiche||[]).forEach(function(p){
+    const inc = Number(p.pagato||0);
+    if(!inc) return;
+    const m = METODI_PAGAMENTO.indexOf(p.metodoPagamento) >= 0 ? p.metodoPagamento : '';
+    righe[m].n++; righe[m].inc += inc;
+  });
+  return righe;
+}
+function riepilogoPerPagamento(pratiche){
+  const r = datiPerPagamento(pratiche);
+  const tot = Object.keys(r).reduce(function(t,k){ return t + r[k].inc; }, 0);
+  const totN = Object.keys(r).reduce(function(t,k){ return t + r[k].n; }, 0);
+  const icone = { CONTANTI: '💶', POS: '💳', BONIFICO: '🏦', '': '❔' };
+  const voci = METODI_PAGAMENTO.concat(r[''].n ? [''] : []);
+  return '<div class="raff-title" style="margin-top:14px">Incasso per tipo di pagamento</div>'
+    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Pagamento</th><th>Pratiche pagate</th><th>Incasso</th><th>%</th></tr></thead><tbody>'
+    + voci.map(function(m){
+      return '<tr><td><b>' + icone[m] + ' ' + (m || 'Non indicato') + '</b></td><td>' + r[m].n + '</td><td><b>' + fmtEuro(r[m].inc) + '</b></td><td>' + (tot ? Math.round(r[m].inc / tot * 100) : 0) + '%</td></tr>';
+    }).join('')
+    + '<tr style="font-weight:800; border-top:2px solid var(--line)"><td>TOTALE</td><td>' + totN + '</td><td>' + fmtEuro(tot) + '</td><td>100%</td></tr>'
+    + '</tbody></table></div>'
+    + (r[''].n ? '<div style="font-size:12px; color:var(--sub); margin-top:4px">"Non indicato" sono le pratiche pagate senza tipo di pagamento: puoi aggiungerlo con Modifica.</div>' : '');
+}
 function riepilogoPerTipo(pratiche){
   const d = datiPerTipo(pratiche);
   if(!d.tipi.length) return '';
