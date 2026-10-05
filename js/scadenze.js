@@ -92,9 +92,9 @@ function renderScadenze() {
     return '<div class="sc-riga">'
       + '<span class="dot" style="background:' + COLORI_SCADENZA[st] + '"></span>'
       + '<div style="flex:1; min-width:0"><b>' + esc(s.titolo) + '</b>' + (s.cliente ? ' · ' + esc(s.cliente) : '')
-      + '<div class="sub2">' + dataIT(s.data) + ' · ' + (s.completata ? 'fatta' : quandoScadenza(s)) + (s.avvisoGiorni ? ' · avviso ' + s.avvisoGiorni + ' gg prima' : ' · avviso il giorno stesso') + (s.note ? ' · ' + esc(s.note) : '') + '</div></div>'
+      + '<div class="sub2">' + dataIT(s.data) + ' · ' + (s.completata ? esitoScadenza(s) : quandoScadenza(s)) + (s.avvisoGiorni ? ' · avviso ' + s.avvisoGiorni + ' gg prima' : ' · avviso il giorno stesso') + (s.note ? ' · ' + esc(s.note) : '') + '</div></div>'
       + (eScadenzaColf(s) && !s.completata ? '<button type="button" title="Nuova pratica colf e badanti già compilata con i dati del cliente" style="flex:none; background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="rinnovaScadenza(\'' + s.id + '\')">🔁 Rinnova</button>' : '')
-      + '<label class="chk sc-fatta"><input type="checkbox" ' + (s.completata ? 'checked' : '') + ' onchange="segnaScadenza(\'' + s.id + '\', this.checked)"> Fatta</label>'
+      + '<label class="chk sc-fatta"><input type="checkbox" ' + (s.completata ? 'checked' : '') + ' onchange="segnaScadenza(\'' + s.id + '\', this.checked)"> ' + etichettaFatta(s) + '</label>'
       + '<button type="button" class="sc-elimina" onclick="rimuoviScadenza(\'' + s.id + '\')">✕</button>'
       + '</div>';
   };
@@ -124,7 +124,8 @@ async function aggiungiScadenzaForm() {
 async function segnaScadenza(id, fatta) {
   const r = await data.scadenze.aggiorna(id, { completata: fatta });
   if (r.error) { avviso('❌ ' + r.error, true); renderScadenze(); return; }
-  avviso(fatta ? '✓ Scadenza segnata come fatta' : 'Scadenza riaperta');
+  const sc = (state.scadenze || []).find(function (x) { return x.id === id; });
+  avviso(fatta ? (sc && eScadenzaColf(sc) ? '✓ Segnata: il cliente non rinnova' : '✓ Scadenza segnata come fatta') : 'Scadenza riaperta');
 }
 async function rimuoviScadenza(id) {
   const s = (state.scadenze || []).find(function (x) { return x.id === id; });
@@ -163,7 +164,7 @@ function aggiornaAvvisiScadenze() {
           + '<div style="flex:1; min-width:0"><b>' + esc(s.titolo) + '</b>' + (s.cliente ? '<br>' + esc(s.cliente) : '')
           + '<div style="font-size:12px; color:var(--sub)">' + dataIT(s.data) + ' · <b style="color:' + col + '">' + quandoScadenza(s) + '</b>' + (s.note ? ' · ' + esc(s.note) : '') + '</div></div>'
           + (eScadenzaColf(s) && !s.completata ? '<button type="button" title="Nuova pratica colf e badanti già compilata con i dati del cliente" style="flex:none; background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="rinnovaScadenza(\'' + s.id + '\')">🔁 Rinnova</button>' : '')
-          + '<label style="flex:none; display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:#2f9e5f; cursor:pointer; margin:0"><input type="checkbox" style="width:auto" onchange="this.disabled=true; segnaScadenza(\'' + s.id + '\', true)"> Fatta</label>'
+          + '<label style="flex:none; display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:#2f9e5f; cursor:pointer; margin:0"><input type="checkbox" style="width:auto" onchange="this.disabled=true; segnaScadenza(\'' + s.id + '\', true)"> ' + etichettaFatta(s) + '</label>'
           + '</div>';
       }).join('')
     + '<div style="padding:8px 0; text-align:right"><button type="button" style="background:none; border:none; color:#d4881c; font-weight:700; font-size:12px; cursor:pointer; padding:0" onclick="showTab(document.querySelector(\'.navmenu button[data-tab=&quot;scadenze&quot;]\'))">Apri calendario ›</button></div></div>');
@@ -214,10 +215,20 @@ function rinnovaScadenza(id) {
   avviso('🔁 Rinnovo di ' + (p.nome || '') + ': scrivi la nuova scadenza assistenza e l\'importo, poi salva');
 }
 // chiamata dopo il salvataggio di una pratica colf: chiude la vecchia scadenza
-function concludiRinnovoScadenza() {
+async function concludiRinnovoScadenza() {
   if (!RINNOVO_SCADENZA) return;
   const id = RINNOVO_SCADENZA;
   RINNOVO_SCADENZA = null;
-  segnaScadenza(id, true);
+  const sc = (state.scadenze || []).find(function (x) { return x.id === id; });
+  const note = [sc && sc.note, 'RINNOVATA'].filter(Boolean).join(' · ');
+  const r = await data.scadenze.aggiorna(id, { completata: true, note: note });
+  if (r && r.error) avviso('❌ ' + r.error, true);
   const df = document.getElementById('f-data-fine'); if (df) df.style.boxShadow = '';
+}
+
+// Per colf e badanti la spunta dice "Non rinnova"; se rinnovata con il pulsante resta scritto "rinnovata"
+function etichettaFatta(s) { return eScadenzaColf(s) ? 'Non rinnova' : 'Fatta'; }
+function esitoScadenza(s) {
+  if (!eScadenzaColf(s)) return 'fatta';
+  return /RINNOVATA/.test(s.note || '') ? '🔁 rinnovata' : 'non rinnova';
 }
