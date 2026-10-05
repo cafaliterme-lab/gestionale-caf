@@ -1610,6 +1610,10 @@ async function addPraticaInterna(){
     return;
   }
   const documenti = documentiDalModulo();
+  if(documenti.mancanti.length && (document.getElementById('f-stato').value || 'arrivo') !== 'arrivo'){
+    pickChip('f-stato-btns','f-stato','arrivo');
+    avviso('ℹ️ Mancano ' + documenti.mancanti.length + ' documenti: la pratica viene salvata "In arrivo"');
+  }
   const codiceFiscale = document.getElementById('f-codfisc').value.trim();
   if(codiceFiscale && !cfValido(codiceFiscale)){
     msg.textContent = '⚠️ Il codice fiscale non e\' valido: correggilo o lascia il campo vuoto.';
@@ -1641,7 +1645,7 @@ async function addPraticaInterna(){
   const nuovaPratica = {
     anno: annoPr,
     nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, data: dataPratica, note,
-    stato: document.getElementById('f-stato').value || 'arrivo',
+    stato: documenti.mancanti.length ? 'arrivo' : (document.getElementById('f-stato').value || 'arrivo'),
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
     fatt: 'dafatturare',
@@ -1791,6 +1795,12 @@ function bottoneWhatsApp(p, stile, soloIcona){
 const STATI_IN_LAVORAZIONE = ['arrivo','lavorazione','da_lavorare_scansionata'];
 async function cambiaStato(id, stato){
   const p = (state.pratiche||[]).find(function(x){ return x.id===id; });
+  // con documenti mancanti la pratica resta "In arrivo"
+  if(p && stato !== 'arrivo' && typeof documentiPratica === 'function' && documentiPratica(p).mancanti.length){
+    avviso('❌ ' + (p.nome||'La pratica') + ' resta "In arrivo": mancano ' + documentiPratica(p).mancanti.length + ' documenti (' + documentiPratica(p).mancanti.join(', ') + '). Spuntali quando li porta.', true);
+    render();
+    return;
+  }
   const campi = { stato: stato };
   if(p && eColf(p.tipo)) { /* per colf e badanti c'e' la scadenza assistenza al posto della fine lavorazione */ }
   else if(STATI_IN_LAVORAZIONE.indexOf(stato) >= 0) campi.dataFine = '';

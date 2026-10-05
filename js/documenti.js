@@ -164,8 +164,16 @@ function segnaliDocumentiHTML(p) {
 }
 async function salvaDocumentiPratica(p, d) {
   p.documenti = d;
+  const campi = { documenti: d };
+  // se mancano documenti la pratica torna/resta "In arrivo"
+  if (d.mancanti.length && p.stato !== 'arrivo') {
+    campi.stato = 'arrivo';
+    if (!eColf(p.tipo)) campi.dataFine = '';
+    p.stato = 'arrivo';
+    avviso('ℹ️ Mancano documenti: la pratica torna "In arrivo"');
+  }
   render();
-  const esito = await data.pratiche.aggiorna(p.id, { documenti: d });
+  const esito = await data.pratiche.aggiorna(p.id, campi);
   if (esito && esito.error) avviso('❌ Documentazione non salvata', true);
 }
 function segnaDocumentoConsegnato(id, nome) {
