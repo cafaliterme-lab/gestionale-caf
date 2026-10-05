@@ -691,9 +691,15 @@ async function cambiaMiaPassword(){
   setTimeout(function(){ msg.style.display = 'none'; }, 3000);
 }
 
-async function cambiaPasswordUtente(id, pwd){
+// Ultima password impostata per ogni utente in questa sessione: serve per inviargli l'accesso
+const PASSWORD_IMPOSTATE = {};
+async function cambiaPasswordUtente(id, pwd, utente){
   if(!pwd){
     alert('⚠️ Inserisci la nuova password');
+    return;
+  }
+  if(pwd.length < 6){
+    alert('⚠️ Password troppo corta: almeno 6 caratteri');
     return;
   }
 
@@ -704,8 +710,12 @@ async function cambiaPasswordUtente(id, pwd){
 
   try {
     await chiamaAdminUtenti('reset-password', 'POST', { user_id: id, password: pwd });
-
-    alert('✅ Password resettata');
+    PASSWORD_IMPOSTATE[id] = pwd;
+    const campo = document.getElementById('pwd-' + id);
+    if(campo) campo.value = '';
+    // subito la finestra per mandargli la nuova password
+    if(utente) inviaAccessoUtente(Object.assign({}, utente, { password: pwd, passwordCambiata: true }));
+    else alert('✅ Password cambiata');
   } catch(e){
     alert('❌ Errore: ' + e.message);
   }
@@ -923,13 +933,13 @@ async function renderPermessi(){
       + [['operatore','Operatore'],['consultazione','Sola consultazione'],['admin','Amministratore']].map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===ruoloAttuale?' selected':'')+'>'+o[1]+'</option>'; }).join('') + '</select>';
     return '<div class="card" style="margin-bottom:12px">'
       + '<div class="raff-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap"><span>'+esc(u.nome)+(u.email ? ' <span style="font-size:12px; font-weight:400; color:var(--sub)">'+esc(u.email)+'</span>' : '')+'</span>'
-      + '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:6px 12px; font-size:12.5px; font-weight:700; cursor:pointer" onclick="inviaAccessoUtente({ nome: &quot;'+esc(u.nome)+'&quot;, email: &quot;'+esc(u.email||'')+'&quot;, ruolo: &quot;'+ruoloAttuale+'&quot;, password: (document.getElementById(&quot;pwd-'+u.id+'&quot;)||{}).value || &quot;&quot; })">📨 Invia accesso</button></div>'
+      + '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:6px 12px; font-size:12.5px; font-weight:700; cursor:pointer" onclick="inviaAccessoUtente({ nome: &quot;'+esc(u.nome)+'&quot;, email: &quot;'+esc(u.email||'')+'&quot;, ruolo: &quot;'+ruoloAttuale+'&quot;, password: PASSWORD_IMPOSTATE[&quot;'+u.id+'&quot;] || &quot;&quot; })">📨 Invia accesso</button></div>'
       + '<div class="perm-row" style="border-bottom:2px solid var(--line); padding-bottom:10px; margin-bottom:6px"><span><b>Ruolo</b></span>'+selRuolo+'</div>'
       + '<div id="perm-'+u.id+'-tabs"'+(ruoloAttuale==='admin' ? ' style="display:none"' : '')+'>'
       + righeTab
       + '<div class="perm-row" style="margin-top:6px; border-top:2px solid var(--line); padding-top:12px"><span>🗑 Elimina clienti dall\'archivio</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="elimina_clienti" '+(tabs.elimina_clienti?'checked':'')+' id="perm-'+u.id+'-elimcli"> Consentito</label></div>'
       + '</div>'
-      + '<div class="perm-row"><span>Nuova password</span><span style="display:flex; gap:6px"><input type="password" id="pwd-'+u.id+'" placeholder="Lascia vuoto per non cambiarla" style="width:160px; padding:6px 8px; font-size:12.5px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink)"><button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer" onclick="cambiaPasswordUtente(&quot;'+u.id+'&quot;, document.getElementById(&quot;pwd-'+u.id+'&quot;).value); document.getElementById(&quot;pwd-'+u.id+'&quot;).value=&quot;&quot;">Salva</button></span></div>'
+      + '<div class="perm-row"><span>Nuova password</span><span style="display:flex; gap:6px"><input type="password" id="pwd-'+u.id+'" placeholder="Lascia vuoto per non cambiarla" style="width:160px; padding:6px 8px; font-size:12.5px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink)"><button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer" onclick="cambiaPasswordUtente(&quot;'+u.id+'&quot;, document.getElementById(&quot;pwd-'+u.id+'&quot;).value, { nome: &quot;'+esc(u.nome)+'&quot;, email: &quot;'+esc(u.email||'')+'&quot;, ruolo: &quot;'+ruoloAttuale+'&quot; })">Salva</button></span></div>'
       + '<div class="perm-row"><span></span><button type="button" style="background:none; border:none; color:#c0392b; font-weight:700; cursor:pointer" onclick="rimuoviUtente(&quot;'+u.id+'&quot;)">Elimina utente</button></div>'
       + '</div>';
   }).join('');

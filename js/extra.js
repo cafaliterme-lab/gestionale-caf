@@ -454,13 +454,14 @@ function inviaAccessoUtente(u) {
   ov.id = 'popup-accesso';
   ov.style.cssText = 'position:fixed; inset:0; z-index:450; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #2f9e5f; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:22px 24px; max-width:480px; width:100%; max-height:90vh; overflow:auto">'
+    + (u.passwordCambiata ? '<div style="text-align:center; font-size:15px; font-weight:800; color:#2f9e5f; margin-bottom:8px">✓ Password di ' + esc(u.nome) + ' cambiata</div>' : '')
     + (u.nuovo ? '<div style="text-align:center"><div style="width:56px; height:56px; margin:0 auto 6px; border-radius:50%; background:#2f9e5f; color:#fff; font-size:30px; line-height:56px; font-weight:800">✓</div>'
       + '<div style="font-size:20px; font-weight:800; color:#2f9e5f">Utente creato</div>'
       + '<div style="font-size:14px; margin:2px 0 12px"><b>' + esc(u.nome) + '</b> · ' + esc(NOMI_RUOLO[u.ruolo] || 'Operatore') + ' · può già accedere</div></div>'
       : '<div style="font-size:19px; font-weight:800; margin-bottom:10px">📨 Invia l\'accesso a ' + esc(u.nome) + '</div>')
     + '<div style="font-size:13px; font-weight:700; margin-bottom:4px">Messaggio da inviare:</div>'
     + '<textarea id="accesso-testo" rows="9" style="width:100%; font-size:13px; line-height:1.4">' + esc(testo) + '</textarea>'
-    + (u.password ? '' : '<div style="font-size:12px; color:#b5842a; margin-top:4px">La password non è nel messaggio: se vuoi, scrivi una nuova password nella sua scheda e premi di nuovo "Invia accesso", oppure aggiungila qui sopra.</div>')
+    + (u.password ? '' : '<div style="font-size:12px; color:#b5842a; margin-top:4px">La password non è nel messaggio perché il programma non la conosce (per sicurezza non viene salvata). Per mandarla: chiudi, scrivi una nuova password nella sua scheda e premi <b>Salva</b>: questa finestra si riapre con la password già inserita.</div>')
     + '<div style="display:flex; gap:8px; align-items:flex-end; margin-top:10px; flex-wrap:wrap">'
     + '<div style="flex:1; min-width:160px"><label style="font-size:12px">Cellulare</label><input id="accesso-tel" type="tel" inputmode="tel" value="' + esc(u.telefono || '') + '" placeholder="Numero del nuovo utente"></div>'
     + '<button type="button" data-azione="wa" style="background:#25d366; color:#fff">💬 Invia su WhatsApp</button></div>'
