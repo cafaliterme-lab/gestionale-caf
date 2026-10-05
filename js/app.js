@@ -1130,7 +1130,7 @@ function pickChip(containerId, selectId, val){
     if(lbl && chip){ lbl.innerHTML = chip.innerHTML; }
     dd.classList.remove('open');
   }
-  if(containerId === 'f-tipo-btns'){ coloraTriggerTipo(); aggiornaCampoFineForm(); applicaFatturaAutomatica(val); }
+  if(containerId === 'f-tipo-btns'){ coloraTriggerTipo(); aggiornaCampoFineForm(); applicaFatturaAutomatica(val); if(typeof mostraImportiFPSModulo === 'function') mostraImportiFPSModulo(val); }
   if(containerId === 'f-stato-btns'){ coloraTriggerStato(); const df = document.getElementById('f-data-fine'); if(df && !eColf(document.getElementById('f-tipo').value)) df.value = val === 'lavorata' ? todayIT() : ''; }
 }
 function showTab(btn){
@@ -2290,6 +2290,7 @@ async function caricaImpostazioni(){
     IMPOSTAZIONI = {};
     righe.forEach(function(r){ IMPOSTAZIONI[r.chiave] = r.valore || ''; });
     mostraDatiCaf();
+    render(); // importi FPS nell'elenco della contabilita'
   }catch(e){ console.error('impostazioni', e); }
 }
 let MODELLI_IN_MODIFICA = null;

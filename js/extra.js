@@ -226,6 +226,7 @@ async function scaricaBackup(id) {
 }
 function renderBackupEStorico() {
   if (typeof isAdmin === 'function' && !isAdmin()) return;
+  renderEditorImportiFPS();
   renderBackup();
   renderStoricoGlobale();
 }
@@ -256,6 +257,7 @@ function renderElencoFPS(pratAnno) {
     + '<label style="display:flex; align-items:center; gap:8px; font-size:13px; margin:0 0 8px; cursor:pointer"><input type="checkbox" style="width:auto" ' + (FPS_SOLO_DA_FATTURARE ? 'checked' : '') + ' onchange="FPS_SOLO_DA_FATTURARE=this.checked; render()"> Mostra solo quelle senza fattura</label>'
     + (lista.length ? '<div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; padding:8px 10px; border-radius:10px; background:var(--bg); border:1px solid var(--line); margin-bottom:8px">'
       + '<div style="font-size:12.5px; font-weight:700; align-self:center">Per tutte le selezionate:</div>'
+      + selectImportiFPS('fps-imp-tutte')
       + '<div><label style="font-size:11.5px">Importo (€)</label><input id="fps-imp-tutte" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" ' + inp + '></div>'
       + '<div><label style="font-size:11.5px">N. fattura</label><input id="fps-nf-tutte" ' + inp + '></div>'
       + '<button type="button" class="btn-add" style="margin:0" onclick="applicaFatturaFPSSelezionate()">Applica alle selezionate</button></div>' : '')
@@ -263,7 +265,7 @@ function renderElencoFPS(pratAnno) {
     + (lista.length ? lista.map(function (p) {
       return '<tr><td><input type="checkbox" style="width:auto" data-fps-sel="' + p.id + '"></td><td class="n">' + esc(formattaProtocollo(p)) + '</td><td class="wrap">' + esc(p.nome || '') + (p.congiunta ? '<div class="sub2">Congiunta: ' + esc(p.congiunta) + '</div>' : '') + '</td>'
         + '<td>' + esc(statoLabel(p.stato)) + '</td>'
-        + '<td><input id="fps-imp-' + p.id + '" inputmode="decimal" placeholder="0,00" value="' + (Number(p.compenso) ? importoInCampo(p.compenso) : '') + '" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" ' + inp + '></td>'
+        + '<td>' + selectImportiFPS('fps-imp-' + p.id, true) + '<input id="fps-imp-' + p.id + '" inputmode="decimal" placeholder="0,00" value="' + (Number(p.compenso) ? importoInCampo(p.compenso) : '') + '" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" ' + inp + '></td>'
         + '<td><input id="fps-nf-' + p.id + '" value="' + esc(p.numFattura || '') + '" ' + inp + '></td>'
         + '<td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:6px 10px; cursor:pointer" onclick="salvaFatturaFPS(\'' + p.id + '\')">💾 Salva</button></td></tr>';
     }).join('') : '<tr><td colspan="7" class="empty">' + (FPS_SOLO_DA_FATTURARE ? '✓ Tutte le pratiche FPS hanno la fattura' : 'Nessuna pratica FPS') + '</td></tr>')
@@ -295,4 +297,77 @@ async function applicaFatturaFPSSelezionate() {
   for (const id of ids) { await scriviFatturaFPS(id, imp, nf); }
   avviso('✓ Fattura applicata a ' + ids.length + (ids.length === 1 ? ' pratica' : ' pratiche'));
   render();
+}
+
+/* ---------------- Importi predefiniti per i 730 FPS in convenzione ---------------- */
+
+function importiFPS() {
+  try {
+    const l = JSON.parse((typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI.fps_importi) || '[]');
+    return Array.isArray(l) ? l.filter(function (x) { return x && !isNaN(Number(x.importo)); }) : [];
+  } catch (e) { return []; }
+}
+function etichettaImportoFPS(x) { return (x.descrizione ? x.descrizione + ' – ' : '') + fmtEuro(x.importo); }
+function selectImportiFPS(idCampo, compatto) {
+  const l = importiFPS();
+  if (!l.length) return '';
+  return (compatto ? '' : '<div><label style="font-size:11.5px">Importo convenzione</label>')
+    + '<select style="' + (compatto ? 'margin-bottom:4px; ' : '') + 'width:100%; min-width:120px; padding:6px 8px" onchange="if(this.value!==\'\'){ document.getElementById(\'' + idCampo + '\').value = importoInCampo(this.value); this.value=\'\'; }">'
+    + '<option value="">' + (compatto ? 'Scegli importo…' : '— scegli —') + '</option>'
+    + l.map(function (x) { return '<option value="' + Number(x.importo) + '">' + esc(etichettaImportoFPS(x)) + '</option>'; }).join('')
+    + '</select>' + (compatto ? '' : '</div>');
+}
+function mostraImportiFPSModulo(tipo) {
+  const box = document.getElementById('f-fps-importi');
+  if (!box) return;
+  const fps = /^730\s+FPS\b/.test(String(tipo || '').toUpperCase());
+  box.style.display = fps ? '' : 'none';
+  if (!fps) { box.innerHTML = ''; return; }
+  const l = importiFPS();
+  box.innerHTML = l.length
+    ? '<div style="font-size:11.5px; color:var(--sub); margin-bottom:4px">Importo convenzione (tocca per sceglierlo):</div><div class="doc-chips">'
+      + l.map(function (x) { return '<span class="doc-chip" role="button" data-importo="' + Number(x.importo) + '" onclick="scegliImportoFPSModulo(this)">' + esc(etichettaImportoFPS(x)) + '</span>'; }).join('')
+      + '</div>'
+    : '<div style="font-size:11.5px; color:var(--sub)">Nessun importo convenzione impostato (l\'amministratore li inserisce in Utenti e permessi). La pratica resta a 0 €.</div>';
+}
+function scegliImportoFPSModulo(chip) {
+  const el = document.getElementById('f-compenso');
+  el.value = importoInCampo(chip.dataset.importo);
+  el.dataset.auto = '';
+  document.querySelectorAll('#f-fps-importi .doc-chip').forEach(function (c) { c.classList.toggle('presentato', c === chip); });
+}
+
+// Editor (solo amministratore) in Utenti e permessi
+let IMPORTI_FPS_MODIFICA = null;
+function renderEditorImportiFPS() {
+  const box = document.getElementById('fps-importi-editor');
+  if (!box) return;
+  if (!IMPORTI_FPS_MODIFICA) IMPORTI_FPS_MODIFICA = importiFPS().map(function (x) { return { descrizione: x.descrizione || '', importo: importoInCampo(x.importo) }; });
+  const righe = IMPORTI_FPS_MODIFICA;
+  box.innerHTML = (righe.length ? righe.map(function (r, i) {
+    return '<div style="display:flex; gap:8px; align-items:center; margin-bottom:6px">'
+      + '<input placeholder="Descrizione (es. 730 singolo)" value="' + esc(r.descrizione) + '" oninput="IMPORTI_FPS_MODIFICA[' + i + '].descrizione=this.value" style="flex:2">'
+      + '<input placeholder="0,00" inputmode="decimal" value="' + esc(r.importo) + '" oninput="filtraImporto(this); IMPORTI_FPS_MODIFICA[' + i + '].importo=this.value" onblur="formattaCampoImporto(this); IMPORTI_FPS_MODIFICA[' + i + '].importo=this.value" style="flex:1; min-width:90px">'
+      + '<button type="button" title="Togli" style="background:none; border:none; color:#c0392b; font-weight:800; font-size:16px; cursor:pointer" onclick="IMPORTI_FPS_MODIFICA.splice(' + i + ',1); renderEditorImportiFPS()">✕</button></div>';
+  }).join('') : '<div class="empty" style="margin-bottom:8px">Nessun importo impostato</div>')
+    + '<div style="display:flex; gap:8px; flex-wrap:wrap"><button type="button" class="btn-add" style="background:var(--line); color:var(--ink); margin:0" onclick="IMPORTI_FPS_MODIFICA.push({descrizione:\'\', importo:\'\'}); renderEditorImportiFPS()">+ Aggiungi importo</button>'
+    + '<button type="button" class="btn-add" style="margin:0" onclick="salvaImportiFPS()">💾 Salva importi</button></div>';
+}
+async function salvaImportiFPS() {
+  const lista = [];
+  for (const r of IMPORTI_FPS_MODIFICA || []) {
+    if (!String(r.importo).trim() && !String(r.descrizione).trim()) continue;
+    const n = parseImporto(r.importo);
+    if (isNaN(n)) { avviso('❌ Importo non valido: ' + (r.descrizione || r.importo), true); return; }
+    lista.push({ descrizione: String(r.descrizione || '').trim(), importo: n });
+  }
+  const valore = JSON.stringify(lista);
+  const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valore, aggiornato_il: new Date().toISOString() }).eq('chiave', 'fps_importi').select('chiave');
+  if (error || !righe || !righe.length) { avviso('❌ Importi non salvati' + (error ? ': ' + error.message : ''), true); return; }
+  IMPOSTAZIONI.fps_importi = valore;
+  IMPORTI_FPS_MODIFICA = null;
+  renderEditorImportiFPS();
+  mostraImportiFPSModulo(document.getElementById('f-tipo').value);
+  render();
+  avviso('✓ Importi FPS salvati');
 }

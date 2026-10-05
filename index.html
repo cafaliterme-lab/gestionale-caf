@@ -500,6 +500,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
     <div>
       <label>Fattura (€)</label>
       <input id="f-compenso" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this); this.dataset.auto=''" onblur="formattaCampoImporto(this)">
+      <div id="f-fps-importi" style="display:none; margin-top:6px"></div>
     </div>
     <div>
       <label>Pagato effettivo (€)</label>
@@ -691,6 +692,12 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <div class="card">
+  <div class="raff-title">💶 Importi 730 FPS in convenzione</div>
+  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Gli importi che imposti qui compaiono come scelta rapida sotto "Fattura" quando il tipo di pratica è 730 FPS IN CONVENZIONE, e nell'elenco delle fatture FPS in Contabilità. Se non ne scegli nessuno la pratica resta a 0 €.</p>
+  <div id="fps-importi-editor"></div>
+</div>
+
+<div class="card">
   <div class="raff-title">🛟 Backup automatici</div>
   <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Ogni lunedì notte il programma salva da solo una copia completa di tutti i dati (pratiche, clienti, versamenti, scadenze, impostazioni). Una copia viene fatta anche prima di svuotare il registro o di importare un backup. Si tengono le ultime 12 settimane. Con "Scarica" ottieni il file da conservare o da ricaricare con "Importa Backup".</p>
   <button type="button" class="btn-add" onclick="creaBackupOra()">💾 Crea un backup adesso</button>
@@ -718,7 +725,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ocr-documento.js?v=6"></script>
 <script src="js/grafici.js?v=6"></script>
 <script src="js/stampe.js?v=5"></script>
-<script src="js/extra.js?v=3"></script>
+<script src="js/extra.js?v=5"></script>
 <script src="js/documenti.js?v=1"></script>
 <script src="js/installa.js?v=3"></script>
 <script src="js/scadenze.js?v=202610083"></script>
@@ -729,7 +736,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610109"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610126"></script>
+<script src="js/app.js?v=202610128"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->
