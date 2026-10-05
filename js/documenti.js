@@ -314,6 +314,14 @@ function aggiornaPulsanteCUD() {
   b.style.background = n ? '#b35f0c' : '#6b7280';
 }
 function idCUD(p) { return p.codiceFiscale ? 'CF ' + p.codiceFiscale : (p.cf ? 'nato/a il ' + p.cf : 'codice fiscale mancante'); }
+// Numero WhatsApp completo: un cellulare italiano (inizia con 3) deve avere 9-10 cifre
+function numeroWhatsAppCUD(v) {
+  const t = String(v || '').replace(/[^\d+]/g, '');
+  if (/^3/.test(t) && !/^3\d{8,9}$/.test(t)) return '';
+  if (/^(\+|00)39/.test(t) && !/^(\+|00)393\d{8,9}$/.test(t) && /^(\+|00)393/.test(t)) return '';
+  return numeroWhatsApp(t);
+}
+function nomeOperatoreCUD() { return nomeProprio((typeof auth !== 'undefined' && auth.profilo && auth.profilo.nome) || ''); }
 function telefonoCUD() { return (typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI.whatsapp_cud_telefono) || ''; }
 
 function apriRichiesteCUD() {
@@ -362,7 +370,10 @@ function disegnaRichiesteCUD() {
     + (bs.length ? '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer" onclick="inviaCUDBriguglio()">📤 Invia tabulato su WhatsApp</button>' : '') + '</div>'
     + '<div style="display:flex; gap:6px; align-items:flex-end; margin-bottom:8px; flex-wrap:wrap"><div style="flex:1; min-width:180px"><label style="font-size:12px">Telefono predefinito per le richieste</label>'
     + '<input id="cud-tel" type="tel" inputmode="tel" value="' + esc(tel) + '" placeholder="Numero di Briguglio Santina"' + (puoModificare ? '' : ' disabled') + '></div>'
-    + (puoModificare ? '<button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="salvaTelefonoCUD()">💾 Salva numero</button>' : '') + '</div>'
+    + (puoModificare ? '<button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="salvaTelefonoCUD()">💾 Salva numero</button>' : '')
+    + '<button type="button" class="btn-add" style="margin:0; background:#25d366; color:#fff" onclick="provaTelefonoCUD()" title="Apre la chat su WhatsApp per controllare che il numero sia giusto">🔗 Prova su WhatsApp</button></div>'
+    + (tel && !numeroWhatsAppCUD(tel) ? '<div style="font-size:12.5px; font-weight:700; color:#c0392b; margin:-2px 0 8px">⚠️ Il numero salvato (' + esc(tel) + ') è incompleto: un cellulare ha 10 cifre (es. 333 1234567). Correggilo e premi Salva numero.</div>' : '')
+    + '<div style="font-size:12px; color:var(--sub); margin:-2px 0 8px">Il messaggio parte dal WhatsApp del telefono o PC che stai usando (Angelo o Federica) e viene firmato con il tuo nome' + (nomeOperatoreCUD() ? ' (<b>' + esc(nomeOperatoreCUD()) + '</b>)' : '') + '.</div>'
     + righeCUD(bs, CUD_BRIGUGLIO, true) + '</div></div>';
   ov.querySelectorAll('.cud-lista').forEach(function (el, i) { if (scroll[i]) el.scrollTop = scroll[i]; });
   if (staScrivendo) { const t = document.getElementById('cud-tel'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
@@ -373,21 +384,27 @@ function ricevutoCUD(id, nome) {
 }
 async function salvaTelefonoCUD() {
   const v = document.getElementById('cud-tel').value.trim();
-  if (v && !numeroWhatsApp(v)) { avviso('❌ Numero non valido', true); return; }
+  if (v && !numeroWhatsAppCUD(v)) { avviso('❌ Numero non valido o incompleto: un cellulare ha 10 cifre (es. 333 1234567)', true); return; }
   const { data: righe, error } = await supabase.from('impostazioni').update({ valore: v, aggiornato_il: new Date().toISOString() }).eq('chiave', 'whatsapp_cud_telefono').select('chiave');
   if (error || !righe || !righe.length) { avviso('❌ Numero non salvato' + (error ? ': ' + error.message : ''), true); return; }
   IMPOSTAZIONI.whatsapp_cud_telefono = v;
   avviso('✓ Numero per le richieste CUD salvato');
+  disegnaRichiesteCUD();
+}
+function provaTelefonoCUD() {
+  const num = numeroWhatsAppCUD((document.getElementById('cud-tel') || {}).value || telefonoCUD());
+  if (!num) { avviso('❌ Numero non valido o incompleto: un cellulare ha 10 cifre (es. 333 1234567)', true); return; }
+  window.open('https://wa.me/' + num, '_blank');
 }
 // Senza id: tutto il tabulato; con id: solo quel codice fiscale
 function inviaCUDBriguglio(id) {
   const tel = (document.getElementById('cud-tel') || {}).value || telefonoCUD();
-  const num = numeroWhatsApp(tel);
-  if (!num) { avviso('❌ Inserisci il telefono predefinito per le richieste CUD', true); const el = document.getElementById('cud-tel'); if (el) el.focus(); return; }
+  const num = numeroWhatsAppCUD(tel);
+  if (!num) { avviso(tel ? '❌ Il numero di Briguglio Santina è incompleto: correggilo (10 cifre)' : '❌ Inserisci il telefono predefinito per le richieste CUD', true); const el = document.getElementById('cud-tel'); if (el) el.focus(); return; }
   const lista = praticheConRichiesta(CUD_BRIGUGLIO).filter(function (p) { return !id || p.id === id; });
   if (!lista.length) return;
   const righe = lista.map(function (p, i) { return (lista.length > 1 ? (i + 1) + '. ' : '') + (p.nome || '') + ' – ' + (p.codiceFiscale || ('nato/a il ' + (p.cf || '?'))); });
-  const testo = 'Buongiorno, dal CAF CISL di Alì Terme chiediamo ' + (lista.length > 1 ? 'i CUD dei seguenti contribuenti' : 'il CUD di') + ':\n' + righe.join('\n') + '\n\nGrazie.';
+  const testo = 'Buongiorno, dal CAF CISL di Alì Terme chiediamo ' + (lista.length > 1 ? 'i CUD dei seguenti contribuenti' : 'il CUD di') + ':\n' + righe.join('\n') + '\n\nGrazie.' + (nomeOperatoreCUD() ? '\n' + nomeOperatoreCUD() + ' – CAF CISL Alì Terme' : '');
   window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(testo), '_blank');
   popupRichiestaCUDInviata(lista, tel);
 }
@@ -401,7 +418,7 @@ function popupRichiestaCUDInviata(lista, tel) {
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #1a7f37; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:24px 26px; max-width:440px; width:100%; text-align:center">'
     + '<div style="width:64px; height:64px; margin:0 auto 8px; border-radius:50%; background:#1a7f37; color:#fff; font-size:36px; line-height:64px">✓</div>'
     + '<div style="font-size:20px; font-weight:800; color:#1a7f37">Richiesta andata a buon fine</div>'
-    + '<div style="font-size:14px; margin:6px 0 10px">Richiesta CUD inviata a <b>Briguglio Santina</b>' + (tel ? ' (' + esc(tel) + ')' : '') + ' per ' + (lista.length === 1 ? '<b>1 contribuente</b>' : '<b>' + lista.length + ' contribuenti</b>') + ':</div>'
+    + '<div style="font-size:14px; margin:6px 0 10px">Richiesta CUD inviata a <b>Briguglio Santina</b>' + (tel ? ' (' + esc(tel) + ')' : '') + (nomeOperatoreCUD() ? ' dal WhatsApp di <b>' + esc(nomeOperatoreCUD()) + '</b>' : '') + ' per ' + (lista.length === 1 ? '<b>1 contribuente</b>' : '<b>' + lista.length + ' contribuenti</b>') + ':</div>'
     + '<div style="max-height:30vh; overflow-y:auto; text-align:left; padding:8px 12px; border-radius:12px; border:2px solid #1a7f37; background:color-mix(in srgb, #1a7f37 8%, var(--card)); font-size:13.5px">'
     + lista.map(function (p) { return '<div style="margin:3px 0"><b>' + esc(p.nome || '') + '</b> <span style="font-family:monospace; color:var(--sub)">' + esc(p.codiceFiscale || '') + '</span></div>'; }).join('') + '</div>'
     + '<div style="font-size:12px; color:var(--sub); margin:10px 0 14px">Quando arriva il CUD, metti la spunta ☑ nell\'elenco "Richieste CUD".</div>'
