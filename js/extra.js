@@ -194,8 +194,16 @@ async function renderBackup() {
   box.innerHTML = data.length ? data.map(function (b) {
     return '<div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; flex-wrap:wrap">'
       + '<span style="flex:1; min-width:200px"><b>' + esc(quandoStorico(b.creato_il)) + '</b> · ' + esc(NOMI_BACKUP[b.tipo] || b.tipo) + ' <span style="color:var(--sub)">(' + (b.n_pratiche || 0) + ' pratiche' + (b.creato_da ? ', ' + esc(b.creato_da) : '') + ')</span></span>'
-      + '<button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:8px; padding:5px 12px; cursor:pointer" onclick="scaricaBackup(' + Number(b.id) + ')">⬇️ Scarica</button></div>';
+      + '<button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:8px; padding:5px 12px; cursor:pointer" onclick="scaricaBackup(' + Number(b.id) + ')">⬇️ Scarica</button>'
+      + '<button type="button" title="Elimina questo backup" style="background:var(--line); color:#c0392b; border:none; border-radius:8px; padding:5px 10px; cursor:pointer" onclick="eliminaBackup(' + Number(b.id) + ', \'' + esc(quandoStorico(b.creato_il)) + '\')">🗑️</button></div>';
   }).join('') : '<div class="empty">Nessun backup ancora</div>';
+}
+async function eliminaBackup(id, quando) {
+  if (!confirm('Eliminare il backup del ' + quando + '?\nNon si potrà recuperare.')) return;
+  const { data: righe, error } = await supabase.from('backup_automatici').delete().eq('id', Number(id)).select('id');
+  if (error || !righe || !righe.length) { avviso('❌ Backup non eliminato' + (error ? ': ' + error.message : ''), true); return; }
+  avviso('🗑️ Backup eliminato');
+  renderBackup();
 }
 async function creaBackupOra() {
   const { error } = await supabase.rpc('crea_backup', { p_tipo: 'manuale' });
@@ -276,37 +284,42 @@ async function dimenticaCartellaBackup() {
   await scriviCartellaBackup(null);
   renderBackup();
 }
-// Copia nella cartella i backup del server che non ci sono ancora
+// Nella cartella c'e' un solo file, sempre lo stesso nome: si riscrive con il backup piu' recente
+const FILE_BACKUP_CARTELLA = 'backup-caf.json';
 let SINCRO_BACKUP_IN_CORSO = false;
 async function sincronizzaCartellaBackup(chiedi) {
   if (SINCRO_BACKUP_IN_CORSO) return;
   const h = await leggiCartellaBackup();
   if (!h || !(await permessoCartella(h, chiedi))) { disegnaStatoCartella(); return; }
   SINCRO_BACKUP_IN_CORSO = true;
-  let nuovi = 0, errore = '';
+  let scritto = false, errore = '';
   try {
-    const { data, ok } = await fetchSupabase('/rest/v1/backup_automatici?select=id,creato_il,tipo&order=creato_il.desc');
-    if (ok && Array.isArray(data)) {
-      for (const b of data) {
-        const nome = nomeFileBackup(b);
-        let esiste = true;
-        try { await h.getFileHandle(nome); } catch (e) { esiste = false; }
-        if (esiste) continue;
+    const { data, ok } = await fetchSupabase('/rest/v1/backup_automatici?select=id,creato_il,tipo&order=creato_il.desc&limit=1');
+    if (ok && Array.isArray(data) && data.length) {
+      const b = data[0];
+      let gia = '';
+      try { gia = localStorage.getItem('backup-cartella-copiato') || ''; } catch (e) {}
+      let esiste = true;
+      try { await h.getFileHandle(FILE_BACKUP_CARTELLA); } catch (e) { esiste = false; }
+      if (chiedi || !esiste || gia !== String(b.id) + '|' + b.creato_il) {
         const f = await preparaBackup(b.id);
-        if (!f) continue;
-        const fh = await h.getFileHandle(nome, { create: true });
-        const w = await fh.createWritable();
-        await w.write(f.testo); await w.close();
-        nuovi++;
+        if (f) {
+          const fh = await h.getFileHandle(FILE_BACKUP_CARTELLA, { create: true });
+          const w = await fh.createWritable();
+          await w.write(f.testo); await w.close();
+          scritto = true;
+          try { localStorage.setItem('backup-cartella-copiato', String(b.id) + '|' + b.creato_il); localStorage.setItem('backup-cartella-data', b.creato_il); } catch (e) {}
+        }
       }
     }
   } catch (e) { errore = e.message || String(e); }
   SINCRO_BACKUP_IN_CORSO = false;
   try { localStorage.setItem('backup-cartella-ultimo', new Date().toISOString()); } catch (e) {}
   if (errore) avviso('❌ Backup nella cartella non salvato: ' + errore, true);
-  else if (nuovi || chiedi) avviso('✓ Cartella ' + h.name + ': ' + (nuovi ? nuovi + (nuovi === 1 ? ' backup salvato' : ' backup salvati') : 'già aggiornata'));
+  else if (scritto || chiedi) avviso('✓ ' + h.name + '/' + FILE_BACKUP_CARTELLA + (scritto ? ' aggiornato con l\'ultimo backup' : ' già aggiornato'));
   disegnaStatoCartella();
 }
+function dataCopiato() { try { return localStorage.getItem('backup-cartella-data') || ''; } catch (e) { return ''; } }
 async function disegnaStatoCartella() {
   const box = document.getElementById('backup-cartella');
   if (!box) return;
@@ -319,7 +332,7 @@ async function disegnaStatoCartella() {
   if (!h) {
     box.innerHTML = '<div style="padding:10px 12px; border-radius:10px; border:2px dashed #0061fe">'
       + '<div style="font-weight:800; color:#0061fe; margin-bottom:4px">📁 Salva i backup in una cartella del PC (es. Dropbox)</div>'
-      + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">Scegli una volta la cartella, per esempio <b>Dropbox › Backup CAF</b>: il programma ci copierà da solo ogni nuovo backup e Dropbox lo porterà nel cloud.</div>'
+      + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">Scegli una volta la cartella, per esempio <b>Dropbox › Backup CAF</b>: il programma ci terrà un solo file, <b>backup-caf.json</b>, riscritto ogni volta con il backup più recente, e Dropbox lo porterà nel cloud.</div>'
       + '<button type="button" style="background:#0061fe; color:#fff; border:none; border-radius:8px; padding:7px 14px; cursor:pointer; font-weight:700" onclick="scegliCartellaBackup()">📁 Scegli la cartella</button></div>';
     return;
   }
@@ -329,10 +342,10 @@ async function disegnaStatoCartella() {
   box.innerHTML = '<div style="padding:10px 12px; border-radius:10px; border:2px solid ' + (attiva ? '#1a7f37' : '#b35f0c') + '">'
     + '<div style="font-weight:800; color:' + (attiva ? '#1a7f37' : '#b35f0c') + '">📁 Cartella dei backup: ' + esc(h.name) + (attiva ? ' ✓' : '') + '</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 8px">' + (attiva
-      ? 'Ogni nuovo backup viene copiato qui da solo quando apri il programma su questo PC.' + (ultimo ? ' Ultimo controllo: ' + esc(quandoStorico(ultimo)) + '.' : '')
+      ? 'Qui c\'è un solo file, <b>' + FILE_BACKUP_CARTELLA + '</b>, che viene riscritto con il backup più recente quando apri il programma su questo PC (nessun file in più).' + (dataCopiato() ? ' Contiene il backup del <b>' + esc(quandoStorico(dataCopiato())) + '</b>.' : '')
       : 'Il browser chiede di riconfermare l\'accesso alla cartella: premi "Riattiva" e poi "Consenti".') + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap">'
-    + (attiva ? '<button type="button" style="' + stile + '" onclick="sincronizzaCartellaBackup(true)">🔄 Salva ora nella cartella</button>'
+    + (attiva ? '<button type="button" style="' + stile + '" onclick="sincronizzaCartellaBackup(true)">🔄 Riscrivi ora il file</button>'
       : '<button type="button" style="background:#b35f0c; color:#fff; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:700" onclick="sincronizzaCartellaBackup(true)">🔓 Riattiva</button>')
     + '<button type="button" style="' + stile + '" onclick="scegliCartellaBackup()">Cambia cartella</button>'
     + '<button type="button" style="' + stile + '" onclick="dimenticaCartellaBackup()">Non usare più</button></div></div>';
