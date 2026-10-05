@@ -105,19 +105,19 @@ function clienteEsiste(cognome, nome, dataNascita){
   const nc = (cognome+' '+nome).trim().toUpperCase();
   return ARCHIVIO_CLIENTI.some(function(c){ return c.nomeCompleto.toUpperCase() === nc && (c.dataNascita||'') === (dataNascita||''); });
 }
-function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale, telefono, telefonoFisso, documentoScadenza){
+function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale, telefono, telefonoFisso, documentoScadenza, email){
   cognome = (cognome||'').trim().toUpperCase();
   nome = (nome||'').trim().toUpperCase();
   if(!cognome && !nome) return Promise.resolve();
   const nc = (cognome+' '+nome).trim();
   dataNascita = (dataNascita||'').trim();
-  telefono = (telefono||'').trim(); telefonoFisso = (telefonoFisso||'').trim(); documentoScadenza = (documentoScadenza||'').trim();
+  telefono = (telefono||'').trim(); telefonoFisso = (telefonoFisso||'').trim(); documentoScadenza = (documentoScadenza||'').trim(); email = (email||'').trim();
   // Il telefono resta nell'archivio clienti anche se la pratica viene poi cancellata
   const salvaTelefono = function(){
-    if(!telefono && !telefonoFisso && !documentoScadenza) return;
+    if(!telefono && !telefonoFisso && !documentoScadenza && !email) return;
     const rec = trovaInArchivio(nc, dataNascita, codiceFiscale);
-    if(rec){ if(telefono) rec.telefono = telefono; if(telefonoFisso) rec.telefonoFisso = telefonoFisso; if(documentoScadenza) rec.documentoScadenza = documentoScadenza; }
-    return data.clienti.salvaTelefono({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: dataNascita, codiceFiscale: codiceFiscale || '', telefono: telefono, telefonoFisso: telefonoFisso, documentoScadenza: documentoScadenza });
+    if(rec){ if(telefono) rec.telefono = telefono; if(telefonoFisso) rec.telefonoFisso = telefonoFisso; if(documentoScadenza) rec.documentoScadenza = documentoScadenza; if(email) rec.email = email; }
+    return data.clienti.salvaTelefono({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: dataNascita, codiceFiscale: codiceFiscale || '', telefono: telefono, telefonoFisso: telefonoFisso, documentoScadenza: documentoScadenza, email: email });
   };
   if(codiceFiscale){
     if(ARCHIVIO_CLIENTI.some(function(c){ return c.codiceFiscale === codiceFiscale; })) return Promise.resolve(salvaTelefono());
@@ -131,6 +131,7 @@ function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale, telef
   if(telefono) nuovo.telefono = telefono;
   if(telefonoFisso) nuovo.telefonoFisso = telefonoFisso;
   if(documentoScadenza) nuovo.documentoScadenza = documentoScadenza;
+  if(email) nuovo.email = email;
   ARCHIVIO_CLIENTI.push(nuovo);
   return data.clienti.aggiungi(nuovo);
 }
@@ -179,6 +180,7 @@ function scegliCliente(i, ctx){
     document.getElementById('f-codfisc').value = c.codiceFiscale || '';
     if(c.telefono) document.getElementById('f-tel').value = c.telefono;
     if(c.telefonoFisso) document.getElementById('f-tel-fisso').value = c.telefonoFisso;
+    if(c.email) document.getElementById('f-email').value = c.email;
     if(c.documentoScadenza){ document.getElementById('f-doc-scad').value = c.documentoScadenza; coloraScadenzaDocumento(); }
     controllaCampoCF();
     aggiornaStoricoForm();
@@ -313,6 +315,7 @@ function onCFLetto(cf){
     campo('f-cf', archiviato.dataNascita);
     campo('f-tel', archiviato.telefono);
     campo('f-tel-fisso', archiviato.telefonoFisso);
+    campo('f-email', archiviato.email);
     campo('f-doc-scad', archiviato.documentoScadenza);
     coloraScadenzaDocumento();
     document.getElementById('cli-cerca').value = archiviato.nomeCompleto;
@@ -782,6 +785,7 @@ function rigaPratica(p){
     'Data nascita': p.cf||'',
     'Cellulare': p.telefono||'',
     'Telefono fisso': p.telefonoFisso||'',
+    'E-mail': p.email||'',
     'Stato': statoLabel(p.stato),
     'Fattura (€)': Number(p.compenso)||0,
     'Pagato (€)': Number(p.pagato)||0,
@@ -1545,6 +1549,7 @@ function render(){
           <div class="name">${p.tipo||''} ${p.cf ? '· nato il '+p.cf : ''}</div>
           ${p.congiunta ? `<div class="name">Congiunta con <b>${esc(p.congiunta)}</b>${p.congData ? ' (nato il '+esc(p.congData)+')' : ''}${p.congCodiceFiscale ? ' · CF '+esc(p.congCodiceFiscale) : ''}${p.congTelefono ? ' · Cell. <a href="tel:'+esc(p.congTelefono)+'" style="color:inherit">'+esc(p.congTelefono)+'</a>' : ''}</div>` : ''}
           ${p.telefono ? `<div class="name">Cell. <a href="tel:${esc(p.telefono)}" style="color:inherit">${esc(p.telefono)}</a></div>` : ''}
+          ${p.email ? `<div class="name">📧 <a href="mailto:${esc(p.email)}" style="color:inherit">${esc(p.email)}</a></div>` : ''}
           ${p.telefonoFisso ? `<div class="name">Tel. fisso <a href="tel:${esc(p.telefonoFisso)}" style="color:inherit">${esc(p.telefonoFisso)}</a></div>` : ''}
         </div>
         <div class="badges">
@@ -1574,6 +1579,7 @@ function render(){
           </div>
           <div><label>Cellulare *</label><input id="e-tel-${p.id}" type="tel" inputmode="tel" value="${esc(p.telefono)}"></div>
           <div><label>Telefono fisso *</label><input id="e-telfisso-${p.id}" type="tel" inputmode="tel" value="${esc(p.telefonoFisso)}"></div>
+          <div><label>📧 E-mail</label><input id="e-email-${p.id}" type="email" inputmode="email" value="${esc(p.email)}" style="text-transform:lowercase"></div>
           <div><label>Data di nascita</label><input id="e-cf-${p.id}" value="${esc(p.cf)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Scadenza documento</label><input id="e-docscad-${p.id}" value="${esc(p.documentoScadenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
@@ -1679,6 +1685,7 @@ async function addPraticaInterna(){
   const congiunta = [congCognome, congNome].filter(Boolean).join(' ');
   const telefono = document.getElementById('f-tel').value.trim();
   const telefonoFisso = document.getElementById('f-tel-fisso').value.trim();
+  const email = document.getElementById('f-email').value.trim().toLowerCase();
   const dataPratica = todayIT();
   const note = document.getElementById('f-note').value.trim();
 
@@ -1691,6 +1698,10 @@ async function addPraticaInterna(){
     msg.textContent = '⚠️ Inserisci almeno un numero di telefono: cellulare o telefono fisso.';
     msg.style.display = 'block';
     document.getElementById('f-tel').focus();
+    return;
+  }
+  if(email && !emailValida(email)){
+    popupErroreCampo('E-mail non valida', 'L\'indirizzo <b>' + esc(email) + '</b> non è corretto: controllalo (es. nome@esempio.it) oppure lascia il campo vuoto.', 'f-email');
     return;
   }
   const scadAss = document.getElementById('f-data-fine').value.trim();
@@ -1740,13 +1751,13 @@ async function addPraticaInterna(){
     const conferma = await chiediNuovoContribuente(nome, cf, codiceFiscale);
     if(!conferma) return;
   }
-  registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso, documentoScadenza);
+  registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso, documentoScadenza, email);
   if(congCognome || congNome){ registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono); }
 
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, metodoPagamento, data: dataPratica, note,
+    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, metodoPagamento, data: dataPratica, note,
     stato: documenti.mancanti.length ? 'arrivo' : (document.getElementById('f-stato').value || 'arrivo'),
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
@@ -1783,6 +1794,7 @@ async function addPraticaInterna(){
   pickChip('f-stato-btns','f-stato','arrivo');
   document.getElementById('f-tel').value='';
   document.getElementById('f-tel-fisso').value='';
+  document.getElementById('f-email').value='';
   document.getElementById('f-doc-scad').value=''; coloraScadenzaDocumento();
   azzeraDocumentiModulo();
   document.getElementById('f-data-fine').value='';
@@ -1893,6 +1905,7 @@ function scegliModoWhatsAppPC(poi){
 }
 const METODI_PAGAMENTO = ['CONTANTI', 'POS', 'BONIFICO'];
 function metodoOptions(v){ return '<option value="">Pagamento…</option>' + METODI_PAGAMENTO.map(function(m){ return '<option' + (m === v ? ' selected' : '') + '>' + m + '</option>'; }).join(''); }
+function emailValida(e){ return /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(String(e||'').trim()); }
 function nomeProprio(s){ return String(s||'').toLowerCase().replace(/(^|[\s'-])\S/g, function(c){ return c.toUpperCase(); }); }
 const MODELLO_WHATSAPP_BASE = 'Gentile {nome}, la informiamo che la Sua {pratica} (protocollo n. {protocollo}) è pronta. Può passare a ritirarla presso il CAF CISL di Alì Terme, in {indirizzo}. Per informazioni può chiamare il {telefono}. Orari di apertura: {orari}. Cordiali saluti.';
 function modelliWhatsApp(){
@@ -2033,6 +2046,7 @@ async function salvaModifica(id){
     congiunta: [cc, cn].filter(Boolean).join(' '),
     telefono: g('e-tel').trim(),
     telefonoFisso: g('e-telfisso').trim(),
+    email: g('e-email').trim().toLowerCase(),
     cf: g('e-cf').trim(),
     tipo: g('e-tipo'),
     scadenzaAssistenza: eColf(g('e-tipo')) ? g('e-scadass').trim() : '',
@@ -2044,6 +2058,7 @@ async function salvaModifica(id){
     note: g('e-note').trim(),
     fatt: (numFattura || p.dataFattura) ? 'fatturata' : 'dafatturare'
   };
+  if(campi.email && !emailValida(campi.email)){ popupErroreCampo('E-mail non valida', 'L\'indirizzo <b>' + esc(campi.email) + '</b> non è corretto.', 'e-email-' + id); return; }
   if(!campi.telefono && !campi.telefonoFisso){
     avviso('❌ Inserisci almeno un numero di telefono: cellulare o telefono fisso.', true);
     return;
@@ -2072,7 +2087,7 @@ async function salvaModifica(id){
   const esito = await data.pratiche.aggiorna(id, campi);
   if(esito && esito.error) return;
   await aggiornaArchivioCliente(vecchiTit, { cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf, codiceFiscale: p.codiceFiscale });
-  if(campi.telefono || campi.telefonoFisso || campi.documentoScadenza) data.clienti.salvaTelefono({ nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf || '', codiceFiscale: p.codiceFiscale || '', telefono: campi.telefono, telefonoFisso: campi.telefonoFisso, documentoScadenza: campi.documentoScadenza });
+  if(campi.telefono || campi.telefonoFisso || campi.documentoScadenza || campi.email) data.clienti.salvaTelefono({ nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf || '', codiceFiscale: p.codiceFiscale || '', telefono: campi.telefono, telefonoFisso: campi.telefonoFisso, documentoScadenza: campi.documentoScadenza, email: campi.email });
   if(cc || cn) await aggiornaArchivioCliente(vecchiCong, { cognome: cc, nome: cn, dataNascita: campi.congData });
   if((cc || cn) && (campi.congCodiceFiscale || campi.congTelefono)) registraClienteSeNuovo(cc, cn, campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', campi.congTelefono);
 }

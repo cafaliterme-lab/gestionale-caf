@@ -95,6 +95,7 @@ const schemas = {
     congData: 'cong_data',
     telefono: 'telefono',
     telefonoFisso: 'telefono_fisso',
+    email: 'email',
     whatsappInviato: 'whatsapp_inviato',
     cf: 'cf',
     tipo: 'tipo',
@@ -149,6 +150,7 @@ const schemas = {
     codiceFiscale: 'codice_fiscale',
     telefono: 'telefono',
     telefonoFisso: 'telefono_fisso',
+    email: 'email',
     documentoScadenza: 'documento_scadenza',
   },
   scadenza: {
@@ -587,6 +589,7 @@ async function salvaTelefonoCliente(cliente) {
       p_telefono: cliente.telefono || '',
       p_telefono_fisso: cliente.telefonoFisso || '',
       p_documento_scadenza: cliente.documentoScadenza || '',
+      p_email: cliente.email || '',
     });
     if (error) throw new Error(error.message);
     return {};
