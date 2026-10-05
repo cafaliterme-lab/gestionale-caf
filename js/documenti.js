@@ -298,7 +298,7 @@ function popupDocumentiMancanti(p, statoRichiesto) {
   });
 }
 
-/* ---------------- Richieste CUD: Punto Fisco (elenco da stampare) e Briguglio Santina (WhatsApp) ---------------- */
+/* ---------------- Richieste CUD: Punto Fisco e Briguglio Santina (elenco, stampa e invio su WhatsApp) ---------------- */
 
 function praticheConRichiesta(nome) {
   const anno = annoAttivo();
@@ -322,7 +322,13 @@ function numeroWhatsAppCUD(v) {
   return numeroWhatsApp(t);
 }
 function nomeOperatoreCUD() { return nomeProprio((typeof auth !== 'undefined' && auth.profilo && auth.profilo.nome) || ''); }
-function telefonoCUD() { return (typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI.whatsapp_cud_telefono) || ''; }
+// Destinatari delle richieste CUD: ognuno ha il suo telefono WhatsApp predefinito (modificabile)
+const DESTINATARI_CUD = {
+  pf: { doc: CUD_PUNTO_FISCO, nome: 'Punto Fisco', icona: '🏛️', chiave: 'whatsapp_cud_puntofisco_telefono', colore: '#1d4f91', stampa: true },
+  bs: { doc: CUD_BRIGUGLIO, nome: 'Briguglio Santina', icona: '👤', chiave: 'whatsapp_cud_telefono', colore: '#1a7f37', stampa: false },
+};
+function telefonoCUD(k) { const d = DESTINATARI_CUD[k || 'bs']; return (typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI[d.chiave]) || ''; }
+function campoTelCUD(k) { return document.getElementById('cud-tel-' + k); }
 
 function apriRichiesteCUD() {
   let ov = document.getElementById('richieste-cud');
@@ -336,80 +342,88 @@ function apriRichiesteCUD() {
   disegnaRichiesteCUD();
 }
 function chiudiRichiesteCUD() { const ov = document.getElementById('richieste-cud'); if (ov) ov.remove(); aggiornaPulsanteCUD(); }
-function righeCUD(lista, nome, conInvio) {
+function righeCUD(lista, k) {
+  const nome = DESTINATARI_CUD[k].doc;
   if (!lista.length) return '<div class="empty">✓ Nessuna richiesta in sospeso</div>';
-  return '<div class="cud-lista" style="max-height:34vh; overflow-y:auto; border:1px solid var(--line); border-radius:10px">' + lista.map(function (p) {
+  return '<div class="cud-lista" style="max-height:30vh; overflow-y:auto; border:1px solid var(--line); border-radius:10px">' + lista.map(function (p) {
     return '<div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); font-size:13px">'
       + '<input type="checkbox" style="width:auto" title="Spunta quando il CUD è arrivato" onchange="ricevutoCUD(\'' + p.id + '\', \'' + nome.replace(/'/g, "\\'") + '\')">'
       + '<span style="flex:1; min-width:0"><b>' + esc(formattaProtocollo(p)) + '</b> · ' + esc(p.nome || '') + '<br><span style="font-size:12px; color:var(--sub); font-family:monospace">' + esc(idCUD(p)) + '</span></span>'
-      + (conInvio ? '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:5px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="inviaCUDBriguglio(\'' + p.id + '\')">💬 Invia</button>' : '')
+      + '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:5px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="inviaCUD(\'' + k + '\', \'' + p.id + '\')">💬 Invia</button>'
       + '</div>';
   }).join('') + '</div>';
+}
+function sezioneCUD(k, puoModificare, valori) {
+  const d = DESTINATARI_CUD[k];
+  const lista = praticheConRichiesta(d.doc);
+  const tel = valori[k] !== undefined ? valori[k] : telefonoCUD(k);
+  return '<div style="padding:12px; border-radius:12px; border:2px solid ' + d.colore + '; margin-bottom:14px">'
+    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><div style="font-weight:800; color:' + d.colore + '">' + d.icona + ' ' + d.nome + ' <span style="font-weight:600; color:var(--sub)">(' + lista.length + ')</span></div>'
+    + '<div style="display:flex; gap:6px; flex-wrap:wrap">'
+    + (lista.length && d.stampa ? '<button type="button" class="btn-add" style="margin:0" onclick="stampaElencoCUD()">🖨️ Stampa elenco</button>' : '')
+    + (lista.length ? '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer" onclick="inviaCUD(\'' + k + '\')">📤 Invia tabulato su WhatsApp</button>' : '') + '</div></div>'
+    + '<div style="display:flex; gap:6px; align-items:flex-end; margin-bottom:8px; flex-wrap:wrap"><div style="flex:1; min-width:180px"><label style="font-size:12px">Telefono WhatsApp predefinito – ' + d.nome + '</label>'
+    + '<input id="cud-tel-' + k + '" type="tel" inputmode="tel" value="' + esc(tel) + '" placeholder="Numero di ' + d.nome + '"' + (puoModificare ? '' : ' disabled') + '></div>'
+    + (puoModificare ? '<button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="salvaTelefonoCUD(\'' + k + '\')">💾 Salva numero</button>' : '')
+    + '<button type="button" class="btn-add" style="margin:0; background:#25d366; color:#fff" onclick="provaTelefonoCUD(\'' + k + '\')" title="Apre la chat su WhatsApp per controllare che il numero sia giusto">🔗 Prova su WhatsApp</button></div>'
+    + (tel && !numeroWhatsAppCUD(tel) ? '<div style="font-size:12.5px; font-weight:700; color:#c0392b; margin:-2px 0 8px">⚠️ Il numero (' + esc(tel) + ') è incompleto: un cellulare ha 10 cifre (es. 333 1234567). Correggilo e premi Salva numero.</div>' : '')
+    + (!tel ? '<div style="font-size:12.5px; font-weight:700; color:#b35f0c; margin:-2px 0 8px">Inserisci il numero WhatsApp di ' + d.nome + ' e premi Salva numero.</div>' : '')
+    + righeCUD(lista, k) + '</div>';
 }
 function disegnaRichiesteCUD() {
   const ov = document.getElementById('richieste-cud');
   if (!ov) return;
-  const pf = praticheConRichiesta(CUD_PUNTO_FISCO), bs = praticheConRichiesta(CUD_BRIGUGLIO);
-  const vecchio = document.getElementById('cud-tel');
-  const staScrivendo = vecchio && document.activeElement === vecchio;
-  const tel = vecchio ? vecchio.value : telefonoCUD();
+  // conserva quello che si sta scrivendo nei campi telefono e lo scorrimento degli elenchi
+  const valori = {}; let attivo = null;
+  Object.keys(DESTINATARI_CUD).forEach(function (k) { const el = campoTelCUD(k); if (el) { valori[k] = el.value; if (document.activeElement === el) attivo = k; } });
   const scroll = Array.prototype.map.call(ov.querySelectorAll('.cud-lista'), function (el) { return el.scrollTop; });
   const puoModificare = (typeof isAdmin === 'function' && isAdmin()) || (typeof puo === 'function' && puo('messaggi', true));
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; max-width:720px; width:100%; max-height:92vh; overflow:auto; padding:18px 20px; box-shadow:0 20px 50px rgba(0,0,0,.3)">'
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px"><div style="font-size:19px; font-weight:800">📋 Richieste CUD – ' + annoAttivo() + '</div>'
     + '<button type="button" style="background:var(--line); color:var(--ink)" onclick="chiudiRichiesteCUD()">Chiudi</button></div>'
-    + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 12px">Qui compaiono le pratiche con la richiesta CUD segnata in rosso nella documentazione. Spunta ☑ quando il CUD è arrivato: sparisce dall\'elenco e passa tra i documenti presentati.</div>'
-    // Punto Fisco
-    + '<div style="padding:12px; border-radius:12px; border:2px solid #1d4f91; margin-bottom:14px">'
-    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><div style="font-weight:800; color:#1d4f91">🏛️ Punto Fisco <span style="font-weight:600; color:var(--sub)">(' + pf.length + ')</span></div>'
-    + (pf.length ? '<button type="button" class="btn-add" style="margin:0" onclick="stampaElencoCUD()">🖨️ Stampa elenco</button>' : '') + '</div>'
-    + righeCUD(pf, CUD_PUNTO_FISCO, false) + '</div>'
-    // Briguglio Santina
-    + '<div style="padding:12px; border-radius:12px; border:2px solid #25a35a">'
-    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><div style="font-weight:800; color:#1a7f37">👤 Briguglio Santina <span style="font-weight:600; color:var(--sub)">(' + bs.length + ')</span></div>'
-    + (bs.length ? '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer" onclick="inviaCUDBriguglio()">📤 Invia tabulato su WhatsApp</button>' : '') + '</div>'
-    + '<div style="display:flex; gap:6px; align-items:flex-end; margin-bottom:8px; flex-wrap:wrap"><div style="flex:1; min-width:180px"><label style="font-size:12px">Telefono predefinito per le richieste</label>'
-    + '<input id="cud-tel" type="tel" inputmode="tel" value="' + esc(tel) + '" placeholder="Numero di Briguglio Santina"' + (puoModificare ? '' : ' disabled') + '></div>'
-    + (puoModificare ? '<button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="salvaTelefonoCUD()">💾 Salva numero</button>' : '')
-    + '<button type="button" class="btn-add" style="margin:0; background:#25d366; color:#fff" onclick="provaTelefonoCUD()" title="Apre la chat su WhatsApp per controllare che il numero sia giusto">🔗 Prova su WhatsApp</button></div>'
-    + (tel && !numeroWhatsAppCUD(tel) ? '<div style="font-size:12.5px; font-weight:700; color:#c0392b; margin:-2px 0 8px">⚠️ Il numero salvato (' + esc(tel) + ') è incompleto: un cellulare ha 10 cifre (es. 333 1234567). Correggilo e premi Salva numero.</div>' : '')
-    + '<div style="font-size:12px; color:var(--sub); margin:-2px 0 8px">Il messaggio parte dal WhatsApp del telefono o PC che stai usando (Angelo o Federica) e viene firmato con il tuo nome' + (nomeOperatoreCUD() ? ' (<b>' + esc(nomeOperatoreCUD()) + '</b>)' : '') + '.</div>'
-    + righeCUD(bs, CUD_BRIGUGLIO, true) + '</div></div>';
+    + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 12px">Qui compaiono le pratiche con la richiesta CUD segnata in rosso nella documentazione. Spunta ☑ quando il CUD è arrivato: sparisce dall\'elenco e passa tra i documenti presentati. Il messaggio parte dal WhatsApp del telefono o PC che stai usando (Angelo o Federica) ed è firmato con il tuo nome' + (nomeOperatoreCUD() ? ' (<b>' + esc(nomeOperatoreCUD()) + '</b>)' : '') + '.</div>'
+    + sezioneCUD('pf', puoModificare, valori) + sezioneCUD('bs', puoModificare, valori) + '</div>';
   ov.querySelectorAll('.cud-lista').forEach(function (el, i) { if (scroll[i]) el.scrollTop = scroll[i]; });
-  if (staScrivendo) { const t = document.getElementById('cud-tel'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
+  if (attivo) { const t = campoTelCUD(attivo); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
 }
 function ricevutoCUD(id, nome) {
   segnaDocumentoConsegnato(id, nome);
   setTimeout(disegnaRichiesteCUD, 50);
 }
-async function salvaTelefonoCUD() {
-  const v = document.getElementById('cud-tel').value.trim();
+async function salvaTelefonoCUD(k) {
+  k = k || 'bs';
+  const d = DESTINATARI_CUD[k];
+  const v = campoTelCUD(k).value.trim();
   if (v && !numeroWhatsAppCUD(v)) { avviso('❌ Numero non valido o incompleto: un cellulare ha 10 cifre (es. 333 1234567)', true); return; }
-  const { data: righe, error } = await supabase.from('impostazioni').update({ valore: v, aggiornato_il: new Date().toISOString() }).eq('chiave', 'whatsapp_cud_telefono').select('chiave');
+  const { data: righe, error } = await supabase.from('impostazioni').update({ valore: v, aggiornato_il: new Date().toISOString() }).eq('chiave', d.chiave).select('chiave');
   if (error || !righe || !righe.length) { avviso('❌ Numero non salvato' + (error ? ': ' + error.message : ''), true); return; }
-  IMPOSTAZIONI.whatsapp_cud_telefono = v;
-  avviso('✓ Numero per le richieste CUD salvato');
+  IMPOSTAZIONI[d.chiave] = v;
+  avviso('✓ Numero WhatsApp di ' + d.nome + ' salvato');
   disegnaRichiesteCUD();
 }
-function provaTelefonoCUD() {
-  const num = numeroWhatsAppCUD((document.getElementById('cud-tel') || {}).value || telefonoCUD());
+function provaTelefonoCUD(k) {
+  k = k || 'bs';
+  const num = numeroWhatsAppCUD((campoTelCUD(k) || {}).value || telefonoCUD(k));
   if (!num) { avviso('❌ Numero non valido o incompleto: un cellulare ha 10 cifre (es. 333 1234567)', true); return; }
   apriChatWhatsApp(num, '');
 }
 // Senza id: tutto il tabulato; con id: solo quel codice fiscale
-function inviaCUDBriguglio(id) {
-  const tel = (document.getElementById('cud-tel') || {}).value || telefonoCUD();
+function inviaCUD(k, id) {
+  const d = DESTINATARI_CUD[k];
+  const tel = (campoTelCUD(k) || {}).value || telefonoCUD(k);
   const num = numeroWhatsAppCUD(tel);
-  if (!num) { avviso(tel ? '❌ Il numero di Briguglio Santina è incompleto: correggilo (10 cifre)' : '❌ Inserisci il telefono predefinito per le richieste CUD', true); const el = document.getElementById('cud-tel'); if (el) el.focus(); return; }
-  const lista = praticheConRichiesta(CUD_BRIGUGLIO).filter(function (p) { return !id || p.id === id; });
+  if (!num) { avviso(tel ? '❌ Il numero di ' + d.nome + ' è incompleto: correggilo (10 cifre)' : '❌ Inserisci il telefono WhatsApp di ' + d.nome, true); const el = campoTelCUD(k); if (el) el.focus(); return; }
+  const lista = praticheConRichiesta(d.doc).filter(function (p) { return !id || p.id === id; });
   if (!lista.length) return;
   const righe = lista.map(function (p, i) { return (lista.length > 1 ? (i + 1) + '. ' : '') + (p.nome || '') + ' – ' + (p.codiceFiscale || ('nato/a il ' + (p.cf || '?'))); });
   const testo = 'Buongiorno, dal CAF CISL di Alì Terme chiediamo ' + (lista.length > 1 ? 'i CUD dei seguenti contribuenti' : 'il CUD di') + ':\n' + righe.join('\n') + '\n\nGrazie.' + (nomeOperatoreCUD() ? '\n' + nomeOperatoreCUD() + ' – CAF CISL Alì Terme' : '');
   apriChatWhatsApp(num, testo);
-  popupRichiestaCUDInviata(lista, tel);
+  popupRichiestaCUDInviata(lista, tel, d);
 }
-// Conferma al centro dopo l'invio della richiesta a Briguglio Santina
-function popupRichiestaCUDInviata(lista, tel) {
+function inviaCUDBriguglio(id) { inviaCUD('bs', id); }
+// Conferma al centro dopo l'invio della richiesta
+function popupRichiestaCUDInviata(lista, tel, d) {
+  d = d || DESTINATARI_CUD.bs;
   const vecchio = document.getElementById('popup-cud-inviata');
   if (vecchio) vecchio.remove();
   const ov = document.createElement('div');
@@ -418,7 +432,7 @@ function popupRichiestaCUDInviata(lista, tel) {
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #1a7f37; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:24px 26px; max-width:440px; width:100%; text-align:center">'
     + '<div style="width:64px; height:64px; margin:0 auto 8px; border-radius:50%; background:#1a7f37; color:#fff; font-size:36px; line-height:64px">✓</div>'
     + '<div style="font-size:20px; font-weight:800; color:#1a7f37">Richiesta andata a buon fine</div>'
-    + '<div style="font-size:14px; margin:6px 0 10px">Richiesta CUD inviata a <b>Briguglio Santina</b>' + (tel ? ' (' + esc(tel) + ')' : '') + (nomeOperatoreCUD() ? ' dal WhatsApp di <b>' + esc(nomeOperatoreCUD()) + '</b>' : '') + ' per ' + (lista.length === 1 ? '<b>1 contribuente</b>' : '<b>' + lista.length + ' contribuenti</b>') + ':</div>'
+    + '<div style="font-size:14px; margin:6px 0 10px">Richiesta CUD inviata a <b>' + esc(d.nome) + '</b>' + (tel ? ' (' + esc(tel) + ')' : '') + (nomeOperatoreCUD() ? ' dal WhatsApp di <b>' + esc(nomeOperatoreCUD()) + '</b>' : '') + ' per ' + (lista.length === 1 ? '<b>1 contribuente</b>' : '<b>' + lista.length + ' contribuenti</b>') + ':</div>'
     + '<div style="max-height:30vh; overflow-y:auto; text-align:left; padding:8px 12px; border-radius:12px; border:2px solid #1a7f37; background:color-mix(in srgb, #1a7f37 8%, var(--card)); font-size:13.5px">'
     + lista.map(function (p) { return '<div style="margin:3px 0"><b>' + esc(p.nome || '') + '</b> <span style="font-family:monospace; color:var(--sub)">' + esc(p.codiceFiscale || '') + '</span></div>'; }).join('') + '</div>'
     + '<div style="font-size:12px; color:var(--sub); margin:10px 0 14px">Quando arriva il CUD, metti la spunta ☑ nell\'elenco "Richieste CUD".</div>'
