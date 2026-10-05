@@ -71,6 +71,7 @@ function stampaRicevuta(id) {
   if (!w) { alert('Il browser ha bloccato la finestra della ricevuta: consenti i popup per questo sito e riprova.'); return; }
   const logo = document.querySelector('.hero-logo');
   const caf = (typeof datiCafStampa === 'function') ? datiCafStampa() : {};
+  const doc = documentiPratica(p);
   const riga = function (etichetta, valore) { return valore ? '<tr><th>' + etichetta + '</th><td>' + esc(valore) + '</td></tr>' : ''; };
   const copia = function (perChi) {
     return '<div class="ric">'
@@ -85,8 +86,11 @@ function stampaRicevuta(id) {
       + riga('Tipo di pratica', p.tipo)
       + riga('Importo', Number(p.compenso) ? fmtEuro(p.compenso) : '') + riga('Pagato', Number(p.pagato) ? fmtEuro(p.pagato) : '')
       + riga('Recapito', [p.telefono, p.telefonoFisso].filter(Boolean).join(' / '))
+      + (p.documentoScadenza ? '<tr><th>Documento d\'identità</th><td>' + (statoScadenzaDocumento(p.documentoScadenza) && !statoScadenzaDocumento(p.documentoScadenza).valido ? '<b style="color:#c0392b">SCADUTO il ' + esc(p.documentoScadenza) + ' – portare il nuovo documento</b>' : 'valido fino al ' + esc(p.documentoScadenza)) + '</td></tr>' : '')
       + riga('Note', p.note)
       + '</table>'
+      + (doc.presentati.length ? '<div class="docs"><b>Documentazione presentata</b><ul>' + doc.presentati.map(function (n) { return '<li>☑ ' + esc(n) + '</li>'; }).join('') + '</ul></div>' : '')
+      + (doc.mancanti.length ? '<div class="docs mancanti"><b>Documentazione mancante – da portare</b><ul>' + doc.mancanti.map(function (n) { return '<li>☐ ' + esc(n) + '</li>'; }).join('') + '</ul></div>' : '')
       + (caf.orari ? '<div class="orari">🕘 Orari di apertura: ' + esc(caf.orari) + '</div>' : '')
       + '<div class="nota">Conservare la ricevuta e presentarla al ritiro della pratica. Verrà avvisato/a quando la pratica sarà pronta.</div>'
       + '<div class="firme"><div>L\'operatore<br><span>' + esc(p.inseritoDa || '') + '</span></div><div>Il contribuente</div></div>'
@@ -102,6 +106,8 @@ function stampaRicevuta(id) {
     + '.titolo{text-align:center; font-size:15px; font-weight:800; letter-spacing:.06em; margin:10px 0 2px}'
     + '.proto{text-align:center; font-size:13px; margin-bottom:8px}'
     + 'table{width:100%; border-collapse:collapse}th,td{text-align:left; padding:4px 6px; border-bottom:1px solid #e3e8ef; vertical-align:top}th{width:34%; color:#5b6b82; font-weight:600}'
+    + '.docs{margin-top:8px; font-size:11.5px}.docs ul{margin:3px 0 0; padding:0; list-style:none; columns:2; column-gap:20px}.docs li{padding:1px 0}'
+    + '.docs.mancanti{border:1.5px solid #c0392b; border-radius:8px; padding:6px 10px}.docs.mancanti b{color:#c0392b}'
     + '.orari{margin-top:8px; font-size:11px}.nota{margin-top:6px; font-size:11px; color:#445}'
     + '.firme{display:flex; justify-content:space-between; gap:30px; margin-top:26px}.firme div{flex:1; border-top:1px solid #0f1b2d; padding-top:4px; text-align:center; font-size:11px}.firme span{color:#5b6b82}'
     + '.taglio{border:none; border-top:1px dashed #8a8f98; margin:18px 0; position:relative}.taglio:after{content:"✂ taglia qui"; position:absolute; left:50%; top:-8px; transform:translateX(-50%); background:#fff; padding:0 8px; font-size:10px; color:#8a8f98}'

@@ -126,6 +126,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .hero-caf span{display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.28); color:#fff; backdrop-filter:blur(2px)}
 .hero-caf span.orari{background:rgba(227,6,19,.55); border-color:rgba(255,255,255,.35)}
 .hero-caf a{color:#fff; text-decoration:none}
+.doc-chips{display:flex; flex-wrap:wrap; gap:6px}
+.doc-chip{border:1.5px solid var(--line); background:var(--card); color:var(--ink); border-radius:999px; padding:6px 12px; font-size:12.5px; font-weight:600; cursor:pointer; user-select:none}
+.doc-chip.presentato{background:#1a7f37; border-color:#1a7f37; color:#fff}
+.doc-chip.mancante{background:#c0392b; border-color:#c0392b; color:#fff}
 .hero-orologio{margin-left:24px; flex:none; align-self:center; text-align:center; padding:8px 18px; border-radius:14px; background:linear-gradient(180deg,#ffffff 0%,#eef7f1 100%); color:#00612f; border-bottom:4px solid #e30613; box-shadow:0 4px 14px rgba(0,0,0,.25); position:relative; z-index:6}
 .hero-orologio .ora{font-size:30px; font-weight:800; line-height:1.05; letter-spacing:.02em; font-variant-numeric:tabular-nums}
 .hero-orologio .giorno{font-size:13px; font-weight:700; color:#c0141d; margin-top:3px; text-transform:capitalize; white-space:nowrap}
@@ -332,7 +336,8 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <div><label>Nome</label><input id="doc-nome" style="text-transform:uppercase" oninput="verificaRevisioneDocumento()"></div>
         <div><label>Data di nascita</label><input id="doc-nascita" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this); verificaRevisioneDocumento()"></div>
         <div><label>Sesso</label><select id="doc-sesso"><option value=""></option><option value="M">M</option><option value="F">F</option></select></div>
-        <div class="full"><label>Luogo di nascita</label><input id="doc-luogo" style="text-transform:uppercase"></div>
+        <div><label>Luogo di nascita</label><input id="doc-luogo" style="text-transform:uppercase"></div>
+        <div><label>Scadenza documento</label><input id="doc-scad" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
         <div class="full"><label>Codice fiscale</label><input id="doc-cf" maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); verificaRevisioneDocumento()"></div>
       </div>
       <div id="doc-verifica" style="font-size:12.5px; margin-top:8px"></div>
@@ -446,6 +451,14 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       </div>
       <div id="f-codfisc-msg" style="font-size:12px; margin-top:4px; display:none"></div>
     </div>
+    <div>
+      <label>Scadenza documento d'identità</label>
+      <div style="display:flex; gap:6px; align-items:stretch">
+        <input id="f-doc-scad" placeholder="GG/MM/AAAA" inputmode="numeric" autocomplete="off" style="flex:1; font-weight:700" oninput="autoSlashData(this); coloraScadenzaDocumento()">
+        <button type="button" id="f-doc-scad-wa" class="btn-scan-cf" style="display:none; background:#25d366; color:#fff" onclick="richiediNuovoDocumentoModulo()" title="Chiedi al cliente il nuovo documento su WhatsApp">💬 Richiedi nuovo</button>
+      </div>
+      <div id="f-doc-scad-msg" style="font-size:12px; font-weight:700; margin-top:4px"></div>
+    </div>
     <div class="full">
       <label class="chk"><input type="checkbox" id="f-congiunta-on" onchange="toggleCongBox()"> Congiunta</label>
       <div id="f-cong-box" class="grid" style="display:none; margin-top:6px">
@@ -506,6 +519,14 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <input id="f-tel-fisso" type="tel" inputmode="tel" placeholder="Numero di telefono fisso">
       </div>
       <div style="grid-column:1/-1; font-size:11.5px; color:var(--sub); margin-top:-4px">* Obbligatorio almeno uno dei due</div>
+    </div>
+    <div class="full">
+      <label>📎 Documentazione <span style="font-weight:400; color:var(--sub)">— tocca un documento: 1 volta = ✓ presentato, 2 volte = ✗ mancante, 3 volte = tolto</span></label>
+      <div id="f-documenti" class="doc-chips"></div>
+      <div style="display:flex; gap:6px; margin-top:6px">
+        <input id="f-doc-altro" placeholder="Altro documento (es. ricevuta asilo nido)" onkeydown="if(event.key==='Enter'){event.preventDefault(); aggiungiDocumentoAltro();}">
+        <button type="button" class="btn-scan-cf" onclick="aggiungiDocumentoAltro()">+ Aggiungi</button>
+      </div>
     </div>
     <div class="full">
       <label>Note</label>
@@ -680,19 +701,20 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/qrcode.js?v=1"></script>
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
-<script src="js/ocr-documento.js?v=5"></script>
+<script src="js/ocr-documento.js?v=6"></script>
 <script src="js/grafici.js?v=4"></script>
 <script src="js/stampe.js?v=3"></script>
-<script src="js/extra.js?v=1"></script>
+<script src="js/extra.js?v=2"></script>
+<script src="js/documenti.js?v=1"></script>
 <script src="js/scadenze.js?v=202610083"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610108"></script>
+<script src="js/data.js?v=202610109"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610120"></script>
+<script src="js/app.js?v=202610121"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

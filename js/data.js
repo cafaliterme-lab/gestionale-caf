@@ -113,6 +113,8 @@ const schemas = {
     codiceFiscale: 'codice_fiscale',
     congCodiceFiscale: 'cong_codice_fiscale',
     congTelefono: 'cong_telefono',
+    documentoScadenza: 'documento_scadenza',
+    documenti: 'documenti',
   },
   versamento: {
     id: 'id',
@@ -140,6 +142,7 @@ const schemas = {
     codiceFiscale: 'codice_fiscale',
     telefono: 'telefono',
     telefonoFisso: 'telefono_fisso',
+    documentoScadenza: 'documento_scadenza',
   },
   scadenza: {
     id: 'id',
@@ -564,7 +567,7 @@ async function salvaClienteCF(cliente) {
  */
 async function salvaTelefonoCliente(cliente) {
   try {
-    const { error } = await supabase.rpc('salva_telefono_cliente', {
+    const { error } = await supabase.rpc('salva_recapiti_cliente', {
       p_nome_completo: cliente.nomeCompleto,
       p_cognome: cliente.cognome || '',
       p_nome: cliente.nome || '',
@@ -572,6 +575,7 @@ async function salvaTelefonoCliente(cliente) {
       p_codice_fiscale: cliente.codiceFiscale || '',
       p_telefono: cliente.telefono || '',
       p_telefono_fisso: cliente.telefonoFisso || '',
+      p_documento_scadenza: cliente.documentoScadenza || '',
     });
     if (error) throw new Error(error.message);
     return {};

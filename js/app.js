@@ -101,19 +101,19 @@ function clienteEsiste(cognome, nome, dataNascita){
   const nc = (cognome+' '+nome).trim().toUpperCase();
   return ARCHIVIO_CLIENTI.some(function(c){ return c.nomeCompleto.toUpperCase() === nc && (c.dataNascita||'') === (dataNascita||''); });
 }
-function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale, telefono, telefonoFisso){
+function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale, telefono, telefonoFisso, documentoScadenza){
   cognome = (cognome||'').trim().toUpperCase();
   nome = (nome||'').trim().toUpperCase();
   if(!cognome && !nome) return Promise.resolve();
   const nc = (cognome+' '+nome).trim();
   dataNascita = (dataNascita||'').trim();
-  telefono = (telefono||'').trim(); telefonoFisso = (telefonoFisso||'').trim();
+  telefono = (telefono||'').trim(); telefonoFisso = (telefonoFisso||'').trim(); documentoScadenza = (documentoScadenza||'').trim();
   // Il telefono resta nell'archivio clienti anche se la pratica viene poi cancellata
   const salvaTelefono = function(){
-    if(!telefono && !telefonoFisso) return;
+    if(!telefono && !telefonoFisso && !documentoScadenza) return;
     const rec = trovaInArchivio(nc, dataNascita, codiceFiscale);
-    if(rec){ if(telefono) rec.telefono = telefono; if(telefonoFisso) rec.telefonoFisso = telefonoFisso; }
-    return data.clienti.salvaTelefono({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: dataNascita, codiceFiscale: codiceFiscale || '', telefono: telefono, telefonoFisso: telefonoFisso });
+    if(rec){ if(telefono) rec.telefono = telefono; if(telefonoFisso) rec.telefonoFisso = telefonoFisso; if(documentoScadenza) rec.documentoScadenza = documentoScadenza; }
+    return data.clienti.salvaTelefono({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: dataNascita, codiceFiscale: codiceFiscale || '', telefono: telefono, telefonoFisso: telefonoFisso, documentoScadenza: documentoScadenza });
   };
   if(codiceFiscale){
     if(ARCHIVIO_CLIENTI.some(function(c){ return c.codiceFiscale === codiceFiscale; })) return Promise.resolve(salvaTelefono());
@@ -126,6 +126,7 @@ function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale, telef
   const nuovo = { nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: dataNascita };
   if(telefono) nuovo.telefono = telefono;
   if(telefonoFisso) nuovo.telefonoFisso = telefonoFisso;
+  if(documentoScadenza) nuovo.documentoScadenza = documentoScadenza;
   ARCHIVIO_CLIENTI.push(nuovo);
   return data.clienti.aggiungi(nuovo);
 }
@@ -174,6 +175,7 @@ function scegliCliente(i, ctx){
     document.getElementById('f-codfisc').value = c.codiceFiscale || '';
     if(c.telefono) document.getElementById('f-tel').value = c.telefono;
     if(c.telefonoFisso) document.getElementById('f-tel-fisso').value = c.telefonoFisso;
+    if(c.documentoScadenza){ document.getElementById('f-doc-scad').value = c.documentoScadenza; coloraScadenzaDocumento(); }
     controllaCampoCF();
     aggiornaStoricoForm();
   }
@@ -307,6 +309,8 @@ function onCFLetto(cf){
     campo('f-cf', archiviato.dataNascita);
     campo('f-tel', archiviato.telefono);
     campo('f-tel-fisso', archiviato.telefonoFisso);
+    campo('f-doc-scad', archiviato.documentoScadenza);
+    coloraScadenzaDocumento();
     document.getElementById('cli-cerca').value = archiviato.nomeCompleto;
   }
   campo('f-cf', datiDaCF(cf).dataNascita);
@@ -1081,7 +1085,7 @@ function firmaDati(){
 function staModificando(){
   const a = document.activeElement;
   if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'checkbox' && a.type !== 'button') return true;
-  if(document.querySelector('.scanner-overlay.open, #invio-multiplo, #finestra-stampa')) return true;
+  if(document.querySelector('.scanner-overlay.open, #invio-multiplo, #finestra-stampa, #editor-documenti, .conferma-scritta, #popup-nuovo-contribuente')) return true;
   return [state.pratiche, state.versamenti, state.isee].some(function(l){ return (l||[]).some(function(x){ return x._editing || x._confirmDelete || x._editingFattura; }); });
 }
 async function aggiornaDaServer(){
@@ -1427,7 +1431,7 @@ function render(){
               <td class="n">${formattaProtocollo(p)}</td>
               <td>${p.data||'-'}</td>
               <td>${eColf(p.tipo) ? (p.scadenzaAssistenza ? '<span title="Scadenza assistenza" style="color:#c0392b; font-weight:700">⏰ '+esc(p.scadenzaAssistenza)+'</span>' : '-') : (esc(p.dataFine)||'-')}</td>
-              <td class="wrap">${(p.nome||'-').toUpperCase()}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}</td>
+              <td class="wrap">${(p.nome||'-').toUpperCase()}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}${typeof segnaliDocumentiHTML === 'function' ? segnaliDocumentiHTML(p) : ''}</td>
               <td class="wrap">${p.tipo||'-'}</td>
               <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select></td>
               <td>${formattaInserimento(p)}</td>
@@ -1456,6 +1460,8 @@ function render(){
       </div>
       <div class="meta">Aperta il ${p.data||'-'}${eColf(p.tipo) ? (p.scadenzaAssistenza ? ' · <b style="color:#c0392b">⏰ Scadenza assistenza il '+esc(p.scadenzaAssistenza)+'</b>' : '') : (p.dataFine ? ' · <b>Fine lavorazione il '+esc(p.dataFine)+'</b>' : '')} ${p.note ? '· '+esc(p.note) : ''}</div>
       <div class="meta compenso">Fattura: ${fmtEuro(p.compenso)} · Pagato effettivo: ${fmtEuro(p.pagato)}</div>
+      ${typeof documentoCardHTML === 'function' ? documentoCardHTML(p) : ''}
+      ${typeof documentiCardHTML === 'function' ? documentiCardHTML(p) : ''}
       ${storicoClienteHTML(p)}
       ${p.numFattura ? `<div class="meta">Fattura n. ${esc(p.numFattura)}</div>` : ''}
       ${p.whatsappInviato ? `<div class="meta" style="color:#1a9e4b">💬 Avvisato su WhatsApp il ${esc(p.whatsappInviato)}</div>` : ''}
@@ -1475,6 +1481,7 @@ function render(){
           <div><label>Cellulare *</label><input id="e-tel-${p.id}" type="tel" inputmode="tel" value="${esc(p.telefono)}"></div>
           <div><label>Telefono fisso *</label><input id="e-telfisso-${p.id}" type="tel" inputmode="tel" value="${esc(p.telefonoFisso)}"></div>
           <div><label>Data di nascita</label><input id="e-cf-${p.id}" value="${esc(p.cf)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
+          <div><label>Scadenza documento</label><input id="e-docscad-${p.id}" value="${esc(p.documentoScadenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'">${tipoOptions(p.tipo)}</select></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
@@ -1576,6 +1583,13 @@ async function addPraticaInterna(){
     msg.style.display = 'block';
     return;
   }
+  const documentoScadenza = document.getElementById('f-doc-scad').value.trim();
+  if(documentoScadenza && !parseDataIT(documentoScadenza)){
+    msg.textContent = '⚠️ La scadenza del documento deve essere nel formato GG/MM/AAAA.';
+    msg.style.display = 'block';
+    return;
+  }
+  const documenti = documentiDalModulo();
   const codiceFiscale = document.getElementById('f-codfisc').value.trim();
   if(codiceFiscale && !cfValido(codiceFiscale)){
     msg.textContent = '⚠️ Il codice fiscale non e\' valido: correggilo o lascia il campo vuoto.';
@@ -1600,13 +1614,13 @@ async function addPraticaInterna(){
     const conferma = await chiediNuovoContribuente(nome, cf, codiceFiscale);
     if(!conferma) return;
   }
-  registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso);
+  registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso, documentoScadenza);
   if(congCognome || congNome){ registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono); }
 
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, cf, codiceFiscale, tipo, compenso, pagato, data: dataPratica, note,
+    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, data: dataPratica, note,
     stato: document.getElementById('f-stato').value || 'arrivo',
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
@@ -1641,6 +1655,8 @@ async function addPraticaInterna(){
   pickChip('f-stato-btns','f-stato','arrivo');
   document.getElementById('f-tel').value='';
   document.getElementById('f-tel-fisso').value='';
+  document.getElementById('f-doc-scad').value=''; coloraScadenzaDocumento();
+  azzeraDocumentiModulo();
   document.getElementById('f-data-fine').value='';
   document.getElementById('f-stato').value='arrivo';
   document.getElementById('f-note').value='';
@@ -1812,11 +1828,16 @@ async function salvaModifica(id){
     compenso: parseImporto(g('e-comp')) || '',
     pagato: parseImporto(g('e-pag')) || '',
     numFattura: numFattura,
+    documentoScadenza: g('e-docscad').trim(),
     note: g('e-note').trim(),
     fatt: (numFattura || p.dataFattura) ? 'fatturata' : 'dafatturare'
   };
   if(!campi.telefono && !campi.telefonoFisso){
     avviso('❌ Inserisci almeno un numero di telefono: cellulare o telefono fisso.', true);
+    return;
+  }
+  if(campi.documentoScadenza && !parseDataIT(campi.documentoScadenza)){
+    avviso('❌ La scadenza del documento deve essere nel formato GG/MM/AAAA.', true);
     return;
   }
   if(campi.congCodiceFiscale && !cfValido(campi.congCodiceFiscale)){
@@ -1839,7 +1860,7 @@ async function salvaModifica(id){
   const esito = await data.pratiche.aggiorna(id, campi);
   if(esito && esito.error) return;
   await aggiornaArchivioCliente(vecchiTit, { cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf, codiceFiscale: p.codiceFiscale });
-  if(campi.telefono || campi.telefonoFisso) data.clienti.salvaTelefono({ nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf || '', codiceFiscale: p.codiceFiscale || '', telefono: campi.telefono, telefonoFisso: campi.telefonoFisso });
+  if(campi.telefono || campi.telefonoFisso || campi.documentoScadenza) data.clienti.salvaTelefono({ nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf || '', codiceFiscale: p.codiceFiscale || '', telefono: campi.telefono, telefonoFisso: campi.telefonoFisso, documentoScadenza: campi.documentoScadenza });
   if(cc || cn) await aggiornaArchivioCliente(vecchiCong, { cognome: cc, nome: cn, dataNascita: campi.congData });
   if((cc || cn) && (campi.congCodiceFiscale || campi.congTelefono)) registraClienteSeNuovo(cc, cn, campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', campi.congTelefono);
 }

@@ -299,6 +299,8 @@ function leggiMRZ(righe) {
       if (mm < 1 || mm > 12 || gg < 1 || gg > 31) continue;
       out.dataNascita = nascita.slice(4, 6) + '/' + nascita.slice(2, 4) + '/' + annoQuattroCifre(nascita.slice(0, 2));
       if (m2[3] !== '<') out.sesso = m2[3];
+      // scadenza del documento (anno sempre 20xx), solo se la sua cifra di controllo torna
+      if (cifraControlloMRZ(scad) === cs && +scad.slice(2, 4) >= 1 && +scad.slice(2, 4) <= 12) out.scadenzaDocumento = scad.slice(4, 6) + '/' + scad.slice(2, 4) + '/20' + scad.slice(0, 2);
       break;
     }
     // riga 3: COGNOME<<NOME<SECONDO<<<<
@@ -412,7 +414,7 @@ function campiPerPosizione(righe, nomeNoto) {
 function estraiDatiDocumento(testo, cfCodiceBarre) {
   const righe = righeOCR(testo);
   const tutto = righe.join('\n');
-  const dati = { tipo: 'Documento', cognome: '', nome: '', dataNascita: '', sesso: '', luogoNascita: '', codiceFiscale: '' };
+  const dati = { tipo: 'Documento', cognome: '', nome: '', dataNascita: '', sesso: '', luogoNascita: '', codiceFiscale: '', scadenzaDocumento: '' };
 
   if (/PATENTE|DRIVING/.test(tutto)) dati.tipo = 'Patente';
   else if (/TESSERA|SANITARIA|SERVIZIO SANITARIO/.test(tutto)) dati.tipo = 'Tessera sanitaria';
@@ -462,7 +464,19 @@ function estraiDatiDocumento(testo, cfCodiceBarre) {
     if (pos.dataNascita && !dataDaCIE) dati.dataNascita = pos.dataNascita;
   }
 
+  dati.scadenzaDocumento = scadenzaDaEtichetta(righe, dati.tipo === 'Patente' ? campo('4B') || campo('4 B') : '');
   return rifinisciDati(dati, righe);
+}
+// Scadenza: riga "scadenza / expiry" (il valore e' la data piu' lontana nelle righe vicine), patente campo 4b
+function scadenzaDaEtichetta(righe, campo4b) {
+  const futura = function (date) { return date.filter(function (d) { return d.anno >= 2000; }).sort(function (a, b) { return b.anno - a.anno; })[0]; };
+  if (campo4b) { const d = futura(cercaDate(campo4b)); if (d) return d.testo; }
+  for (let i = 0; i < righe.length; i++) {
+    if (!/SCADENZ|EXPIRY|EXPIRES|VALIDIT/.test(righe[i].replace(/[^A-Z]/g, ''))) continue;
+    const d = futura(cercaDate(righe.slice(i, i + 3).join(' ')));
+    if (d) return d.testo;
+  }
+  return '';
 }
 
 // MRZ (con cifre di controllo) e codice fiscale valido correggono i dati letti dalle etichette
@@ -470,7 +484,7 @@ function rifinisciDati(dati, righe) {
   dati.cognome = pulisciValoreNome(dati.cognome);
   dati.nome = pulisciValoreNome(dati.nome);
   const mrz = leggiMRZ(righe);
-  ['cognome', 'nome', 'dataNascita', 'sesso'].forEach(function (k) { if (mrz[k]) dati[k] = mrz[k]; });
+  ['cognome', 'nome', 'dataNascita', 'sesso', 'scadenzaDocumento'].forEach(function (k) { if (mrz[k]) dati[k] = mrz[k]; });
   // Un CF che contraddice la data dell'MRZ (che ha la cifra di controllo) e' stato letto male
   if (dati.codiceFiscale && mrz.dataNascita) {
     const d = datiDaCF(dati.codiceFiscale).dataNascita;
@@ -520,7 +534,7 @@ function leggiAltroLato() {
 function datiRevisione() {
   const v = function (id) { return document.getElementById(id).value.trim(); };
   return { tipo: (docLettura.dati || {}).tipo || 'Documento', cognome: v('doc-cognome'), nome: v('doc-nome'), dataNascita: v('doc-nascita'), sesso: v('doc-sesso'),
-    luogoNascita: v('doc-luogo'), codiceFiscale: cfValido(v('doc-cf')) ? normalizzaCF(v('doc-cf')) : '', cfGrezzo: v('doc-cf'), testo: (docLettura.dati || {}).testo || '' };
+    luogoNascita: v('doc-luogo'), scadenzaDocumento: v('doc-scad'), codiceFiscale: cfValido(v('doc-cf')) ? normalizzaCF(v('doc-cf')) : '', cfGrezzo: v('doc-cf'), testo: (docLettura.dati || {}).testo || '' };
 }
 
 // Documento del titolare o del coniuge (dichiarazione congiunta)
@@ -771,6 +785,7 @@ function mostraRevisioneDocumento(d) {
   document.getElementById('doc-nascita').value = d.dataNascita;
   document.getElementById('doc-sesso').value = d.sesso;
   document.getElementById('doc-luogo').value = d.luogoNascita;
+  document.getElementById('doc-scad').value = d.scadenzaDocumento || '';
   document.getElementById('doc-cf').value = d.codiceFiscale || d.cfGrezzo || '';
   document.getElementById('doc-testo').textContent = d.testo || '';
   verificaRevisioneDocumento();
@@ -810,6 +825,7 @@ function usaDatiDocumento() {
   document.getElementById('f-nome').value = v('doc-nome').toUpperCase();
   document.getElementById('f-cf').value = v('doc-nascita');
   document.getElementById('f-codfisc').value = cf;
+  if (v('doc-scad')) { document.getElementById('f-doc-scad').value = v('doc-scad'); coloraScadenzaDocumento(); }
   document.getElementById('cli-cerca').value = (v('doc-cognome') + ' ' + v('doc-nome')).trim().toUpperCase();
   chiudiLetturaDocumento();
   if (cf) onCFLetto(cf);
