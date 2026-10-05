@@ -69,6 +69,11 @@ function stampaRicevuta(id) {
   if (!p) { avviso('❌ Pratica non trovata: riprova tra qualche secondo.', true); return; }
   const w = window.open('', '_blank');
   if (!w) { alert('Il browser ha bloccato la finestra della ricevuta: consenti i popup per questo sito e riprova.'); return; }
+  const html = ricevutaHTML(p, false);
+  w.document.open(); w.document.write(html); w.document.close();
+}
+// Pagina della ricevuta: per la stampa due copie (cliente e CAF), per l'e-mail solo quella del cliente
+function ricevutaHTML(p, perEmail) {
   const logo = document.querySelector('.hero-logo');
   const caf = (typeof datiCafStampa === 'function') ? datiCafStampa() : {};
   const doc = documentiPratica(p);
@@ -77,7 +82,7 @@ function stampaRicevuta(id) {
   const riga = function (etichetta, valore) { return valore ? '<tr><th>' + etichetta + '</th><td>' + esc(valore) + '</td></tr>' : ''; };
   const copia = function (perChi) {
     return '<div class="ric">'
-      + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1>'
+      + '<div class="testa">' + (logo ? '<img src="' + (perEmail ? location.origin + location.pathname.replace(/[^\/]*$/, '') + 'icone/icona-192.png' : logo.src) + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1>'
       + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div>'
       + '<div class="copia">' + perChi + '</div></div>'
       + '<div class="titolo">RICEVUTA DI PRESA IN CARICO</div>'
@@ -116,10 +121,11 @@ function stampaRicevuta(id) {
     + '.barra{display:flex; gap:8px; margin-bottom:10px}.barra button{font-size:14px; padding:8px 16px; border:none; border-radius:999px; background:#1d4f91; color:#fff; cursor:pointer}.barra button.chiudi{background:#e3e8ef; color:#0f1b2d}'
     + '@media print{.barra{display:none} body{padding:0}}'
     + '</style></head><body>'
-    + '<div class="barra"><button onclick="window.print()">🖨️ Stampa / Salva come PDF</button><button class="chiudi" onclick="window.close()">Chiudi</button></div>'
-    + copia('Copia per il cliente') + '<hr class="taglio">' + copia('Copia per il CAF')
-    + '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>';
-  w.document.open(); w.document.write(html); w.document.close();
+    + (perEmail ? copia('Copia per il cliente') + '</body></html>'
+      : '<div class="barra"><button onclick="window.print()">🖨️ Stampa / Salva come PDF</button><button class="chiudi" onclick="window.close()">Chiudi</button></div>'
+      + copia('Copia per il cliente') + '<hr class="taglio">' + copia('Copia per il CAF')
+      + '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>');
+  return html;
 }
 
 /* ---------------- Storico delle modifiche ---------------- */
@@ -593,6 +599,7 @@ function inviaAccessoUtente(u) {
     + '<button type="button" data-azione="wa" style="background:#25d366; color:#fff">💬 Invia su WhatsApp</button></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap; align-items:center">'
     + '<span style="font-size:12.5px; font-weight:700; align-self:center">✉️ Email con:</span>'
+    + '<button type="button" data-azione="dalprogramma" style="background:#00612f; color:#fff; font-weight:800" title="Invia subito dalla casella del CAF aliterme@cafcislsicilia.com">📧 Invia dal programma</button>'
     + '<button type="button" data-azione="email" style="background:#1d4f91; color:#fff" title="Outlook, Mail o il programma di posta del computer">Programma di posta</button>'
     + '<button type="button" data-azione="aruba" style="background:#e2001a; color:#fff; font-weight:800" title="Posta del CAF su Aruba">Aruba Webmail</button>'
     + '<button type="button" data-azione="gmail" style="background:#c5221f; color:#fff" title="Posta Gmail o Google Workspace aperta nel browser">Gmail</button>'
@@ -621,6 +628,7 @@ function inviaAccessoUtente(u) {
     if (!b) { if (e.target === ov) ov.remove(); return; }
     const t = document.getElementById('accesso-testo').value;
     if (b.dataset.azione === 'chiudi') ov.remove();
+    if (b.dataset.azione === 'dalprogramma') { ov.remove(); emailAccessoUtente(u, t.replace(/\*/g, '')); return; }
     if (b.dataset.azione === 'wa') {
       const tel = document.getElementById('accesso-tel').value;
       const num = numeroWhatsApp(tel);

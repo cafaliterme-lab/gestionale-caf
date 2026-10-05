@@ -123,6 +123,7 @@ const schemas = {
     annullataIl: 'annullata_il',
     annullataDa: 'annullata_da',
     modificatoDa: 'modificato_da',
+    emailInviata: 'email_inviata',
   },
   versamento: {
     id: 'id',

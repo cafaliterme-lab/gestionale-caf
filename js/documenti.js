@@ -35,6 +35,8 @@ function coloraScadenzaDocumento() {
   el.style.color = st ? '#fff' : '';
   el.style.borderColor = st ? (st.valido ? '#1a7f37' : '#c0392b') : '';
   if (wa) wa.style.display = st && !st.valido ? '' : 'none';
+  const em = document.getElementById('f-doc-scad-mail');
+  if (em) em.style.display = st && !st.valido ? '' : 'none';
   if (msg) {
     msg.style.color = st ? (st.valido ? '#1a7f37' : '#c0392b') : 'var(--sub)';
     msg.textContent = !st ? '' : st.valido
@@ -159,7 +161,7 @@ function documentoCardHTML(p) {
   return '<div class="meta" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">'
     + '<span style="display:inline-block; padding:3px 10px; border-radius:999px; font-weight:700; color:#fff; background:' + (st.valido ? '#1a7f37' : '#c0392b') + '">🪪 Documento '
     + (st.valido ? 'valido fino al ' : 'SCADUTO il ') + esc(p.documentoScadenza) + '</span>'
-    + (st.valido ? '' : '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer" onclick="richiediNuovoDocumento(\'' + p.id + '\')">💬 Richiedi nuovo documento</button>')
+    + (st.valido ? '' : '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer" onclick="richiediNuovoDocumento(\'' + p.id + '\')">💬 Richiedi nuovo documento</button> ' + bottoneEmail('emailNuovoDocumento(\'' + p.id + '\')', 'E-mail'))
     + '</div>';
 }
 function documentiCardHTML(p) {
@@ -179,7 +181,7 @@ function documentiCardHTML(p) {
       + daPortare.map(function (n) {
         return '<label style="display:flex; align-items:center; gap:8px; margin:4px 0 0; font-size:13px; color:var(--ink); cursor:pointer"><input type="checkbox" style="width:auto" data-doc="' + esc(n) + '" onchange="segnaDocumentoConsegnato(\'' + p.id + '\', this.dataset.doc)"> ' + esc(n) + '</label>';
       }).join('')
-      + '<div style="margin-top:6px"><button type="button" style="background:#25d366; color:#fff; ' + btn + '" onclick="richiediDocumentiMancanti(\'' + p.id + '\')">💬 Chiedi i documenti mancanti</button></div></div>';
+      + '<div style="margin-top:6px"><button type="button" style="background:#25d366; color:#fff; ' + btn + '" onclick="richiediDocumentiMancanti(\'' + p.id + '\')">💬 Chiedi i documenti mancanti</button> ' + bottoneEmail('emailDocumentiMancanti(\'' + p.id + '\')', 'E-mail') + '</div></div>';
   }
   h += '<div style="margin-top:6px"><button type="button" style="background:var(--line); color:var(--ink); ' + btn + '" onclick="apriEditorDocumenti(\'' + p.id + '\')">📎 ' + (d.presentati.length || d.mancanti.length ? 'Modifica documentazione' : 'Aggiungi documentazione') + '</button></div></div>';
   return h;

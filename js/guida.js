@@ -178,6 +178,20 @@ const GUIDA = [
 </ul>
 <p>Per cambiare la scelta: <b>📋 Richieste CUD → ⚙️ WhatsApp su questo PC</b>. Dal telefono si apre direttamente WhatsApp.</p>` },
 
+  { id: 'email', icona: '📧', titolo: 'E-mail ai clienti dalla casella del CAF', parole: 'email e-mail posta aruba invia ricevuta documenti mancanti pratica pronta scadenza accesso',
+    testo: `
+<p>Il programma spedisce le e-mail direttamente dalla casella del CAF <b>aliterme@cafcislsicilia.com</b> (Aruba): le trovi anche nella "Posta inviata" di Aruba.</p>
+<ul>
+<li><b>📧 E-mail</b> accanto a 💬 WhatsApp sulle pratiche lavorate: avvisa che la pratica è pronta.</li>
+<li><b>📧 Ricevuta</b> nella scheda della pratica: manda la ricevuta al cliente.</li>
+<li><b>📧 E-mail</b> nel riquadro "Da portare": chiede i documenti mancanti.</li>
+<li><b>📧</b> accanto a "Richiedi nuovo" (documento scaduto), nel modulo e nella pratica.</li>
+<li><b>📧 Avvisa</b> sulle scadenze colf e badanti.</li>
+<li><b>📧 Invia dal programma</b> nella finestra "Invia accesso" degli utenti.</li>
+</ul>
+<p>Prima dell'invio si apre una finestra dove controlli e modifichi <b>destinatario, oggetto e testo</b>; poi <b>📤 Invia e-mail</b>. Se il cliente non ha l'e-mail salvata, scrivila lì: viene salvata nella pratica e nell'archivio. Sulla pratica resta scritto <b>"📧 E-mail inviata: … il GG/MM/AAAA"</b>.</p>
+<p class="g-nota">Gli utenti in sola consultazione non possono inviare e-mail.</p>` },
+
   { id: 'messaggi', icona: '🗨️', titolo: 'Sezione Messaggi: dati del CAF e modelli', parole: 'messaggi dati caf indirizzo telefono email orari modelli predefinito stella segnaposto',
     testo: `
 <ul>

@@ -481,6 +481,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <div style="display:flex; gap:6px; align-items:stretch">
         <input id="f-doc-scad" placeholder="GG/MM/AAAA" inputmode="numeric" autocomplete="off" style="flex:0 1 170px; min-width:0; font-weight:700" oninput="autoSlashData(this); coloraScadenzaDocumento()">
         <button type="button" id="f-doc-scad-wa" class="btn-scan-cf" style="display:none; background:#25d366; color:#fff" onclick="richiediNuovoDocumentoModulo()" title="Chiedi al cliente il nuovo documento su WhatsApp">💬 Richiedi nuovo</button>
+        <button type="button" id="f-doc-scad-mail" class="btn-scan-cf" style="display:none; background:#1d4f91; color:#fff" onclick="emailNuovoDocumentoModulo()" title="Chiedi al cliente il nuovo documento per e-mail">📧</button>
       </div>
       <div id="f-doc-scad-msg" style="font-size:12px; font-weight:700; margin-top:4px"></div>
     </div>
@@ -754,19 +755,20 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ocr-documento.js?v=6"></script>
 <script src="js/grafici.js?v=6"></script>
 <script src="js/stampe.js?v=7"></script>
-<script src="js/extra.js?v=19"></script>
-<script src="js/documenti.js?v=12"></script>
+<script src="js/extra.js?v=20"></script>
+<script src="js/documenti.js?v=13"></script>
 <script src="js/installa.js?v=4"></script>
-<script src="js/guida.js?v=1"></script>
-<script src="js/scadenze.js?v=202610086"></script>
+<script src="js/guida.js?v=2"></script>
+<script src="js/scadenze.js?v=202610087"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610114"></script>
+<script src="js/data.js?v=202610115"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610151"></script>
+<script src="js/app.js?v=202610152"></script>
+<script src="js/email.js?v=1"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

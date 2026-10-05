@@ -1562,6 +1562,7 @@ function render(){
       ${typeof documentiCardHTML === 'function' ? documentiCardHTML(p) : ''}
       ${storicoClienteHTML(p)}
       ${p.numFattura ? `<div class="meta">Fattura n. ${esc(p.numFattura)}</div>` : ''}
+      ${p.emailInviata ? `<div class="meta" style="color:#1d4f91">📧 E-mail inviata: ${esc(p.emailInviata)}</div>` : ''}
       ${ultimaModifica(p) ? `<div class="meta" style="color:var(--sub)">✏️ Ultima modifica: <b>${ultimaModifica(p)}</b></div>` : ''}
       ${p.whatsappInviato ? `<div class="meta" style="color:#1a9e4b">💬 Avvisato su WhatsApp il ${esc(p.whatsappInviato)}</div>` : ''}
       ${p._editing ? `
@@ -1599,6 +1600,7 @@ function render(){
         ${bottoneWhatsApp(p)}
         <button onclick="modifica('${p.id}')">Modifica</button>
         <button onclick="stampaRicevuta('${p.id}')" title="Ricevuta da consegnare al cliente">🧾 Ricevuta</button>
+        <button onclick="emailRicevuta('${p.id}')" title="Invia la ricevuta al cliente per e-mail" style="background:#1d4f91; color:#fff">📧 Ricevuta</button>
         <button onclick="annullaPratica('${p.id}')" title="La pratica resta nel registro con il suo numero, segnata ANNULLATA" style="color:#c0392b">🚫 Annulla pratica</button>
       </div>
       `}
@@ -1983,7 +1985,8 @@ function scegliMessaggioWhatsApp(p, num){
 }
 function bottoneWhatsApp(p, stile, soloIcona){
   if(p.stato !== 'lavorata') return '';
-  return '<button type="button" class="btn-wa" style="' + (stile||'') + '" onclick="inviaWhatsApp(\'' + p.id + '\')" title="' + (p.telefono ? 'Invia a ' + esc(p.telefono) : 'Telefono mancante: verra\' chiesto') + '">' + (soloIcona ? '💬' : '💬 WhatsApp') + '</button>';
+  return '<button type="button" class="btn-wa" style="' + (stile||'') + '" onclick="inviaWhatsApp(\'' + p.id + '\')" title="' + (p.telefono ? 'Invia a ' + esc(p.telefono) : 'Telefono mancante: verra\' chiesto') + '">' + (soloIcona ? '💬' : '💬 WhatsApp') + '</button>'
+    + ' <button type="button" style="' + (stile||'') + '; background:#1d4f91; color:#fff; border:none" onclick="emailRitiro(\'' + p.id + '\')" title="Avvisa per e-mail che la pratica è pronta">' + (soloIcona ? '📧' : '📧 E-mail') + '</button>';
 }
 
 const STATI_IN_LAVORAZIONE = ['arrivo','lavorazione','da_lavorare_scansionata'];
