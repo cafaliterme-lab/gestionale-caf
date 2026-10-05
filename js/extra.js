@@ -72,6 +72,8 @@ function stampaRicevuta(id) {
   const logo = document.querySelector('.hero-logo');
   const caf = (typeof datiCafStampa === 'function') ? datiCafStampa() : {};
   const doc = documentiPratica(p);
+  // le richieste CUD sono interne al CAF: non vanno sulla ricevuta del cliente
+  if (typeof senzaCUD === 'function') { doc.presentati = senzaCUD(doc.presentati); doc.mancanti = senzaCUD(doc.mancanti); }
   const riga = function (etichetta, valore) { return valore ? '<tr><th>' + etichetta + '</th><td>' + esc(valore) + '</td></tr>' : ''; };
   const copia = function (perChi) {
     return '<div class="ric">'

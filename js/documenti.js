@@ -56,7 +56,7 @@ function messaggioNuovoDocumento(nome, scadenza) {
     + '. Per completare la sua pratica le chiediamo di portarci (o inviarci qui) una copia del nuovo documento.\nGrazie.\n\n' + righeContattiCaf();
 }
 function messaggioDocumentiMancanti(p) {
-  const mancanti = documentiPratica(p).mancanti;
+  const mancanti = senzaCUD(documentiPratica(p).mancanti);
   return 'Gentile ' + nomeProprio(p.nome) + ', per completare la sua pratica ' + (p.tipo || '') + ' (protocollo ' + formattaProtocollo(p) + ') ci mancano ancora:\n'
     + mancanti.map(function (d) { return '• ' + d; }).join('\n') + '\n\nPuò portarli in ufficio quando le è comodo. Grazie.\n\n' + righeContattiCaf();
 }
@@ -80,7 +80,9 @@ function richiediNuovoDocumento(id) {
 }
 function richiediDocumentiMancanti(id) {
   const p = (state.pratiche || []).find(function (x) { return x.id === id; });
-  if (p) inviaWhatsAppLibero(p.telefono, messaggioDocumentiMancanti(p), p.nome);
+  if (!p) return;
+  if (!senzaCUD(documentiPratica(p).mancanti).length) { avviso('ℹ️ Manca solo il CUD: lo richiede il CAF da "📋 Richieste CUD"'); return; }
+  inviaWhatsAppLibero(p.telefono, messaggioDocumentiMancanti(p), p.nome);
 }
 
 /* ---------------- Documentazione: editor a "chip" ---------------- */
@@ -91,12 +93,24 @@ function documentiPratica(p) {
 }
 // stato: { nome: 'presentato' | 'mancante' }, ordine: elenco dei nomi da mostrare
 function chipsDocumentiHTML(stato, ordine, azione) {
-  return ordine.map(function (n) {
+  const chip = function (n) {
     const s = stato[n] || '';
     const segno = s === 'presentato' ? '✓ ' : s === 'mancante' ? '✗ ' : '';
     return '<span class="doc-chip ' + s + '" role="button" tabindex="0" data-doc="' + esc(n) + '" onclick="' + azione + '(this.dataset.doc)">' + segno + esc(n) + '</span>';
+  };
+  // Le richieste CUD stanno in un riquadro a parte, sempre visibile
+  const cud = RICHIESTE_CUD.map(function (n) {
+    const s = stato[n] || '';
+    const etichetta = (n === CUD_PUNTO_FISCO ? '🏛️ ' : '👤 ') + n + (s === 'mancante' ? ' – DA RICHIEDERE' : s === 'presentato' ? ' – ARRIVATO ✓' : '');
+    return '<span class="doc-chip ' + s + '" role="button" tabindex="0" data-doc="' + esc(n) + '" onclick="' + azione + '(this.dataset.doc)">' + esc(etichetta) + '</span>';
   }).join('');
+  return ordine.filter(function (n) { return !eRichiestaCUD(n); }).map(chip).join('')
+    + '<div style="flex-basis:100%; margin-top:6px; padding:8px 10px; border:2px dashed #1d4f91; border-radius:12px">'
+    + '<div style="font-size:12.5px; font-weight:800; color:#1d4f91; margin-bottom:6px">📋 Richieste CUD <span style="font-weight:400; color:var(--sub)">— 1 tocco = da richiedere (rosso), 2 tocchi = arrivato (verde), 3 = tolto · non compaiono sulla ricevuta del cliente</span></div>'
+    + '<div class="doc-chips">' + cud + '</div></div>';
 }
+function eRichiestaCUD(n) { return RICHIESTE_CUD.indexOf(n) >= 0; }
+function senzaCUD(lista) { return (lista || []).filter(function (n) { return !eRichiestaCUD(n); }); }
 function prossimoStato(s, nome) {
   if (RICHIESTE_CUD.indexOf(nome) >= 0) return !s ? 'mancante' : s === 'mancante' ? 'presentato' : '';
   return !s ? 'presentato' : s === 'presentato' ? 'mancante' : '';
@@ -152,9 +166,16 @@ function documentiCardHTML(p) {
   const btn = 'border:none; border-radius:999px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer';
   let h = '<div class="meta" style="margin-top:6px">';
   if (d.presentati.length) h += '<div style="margin-bottom:4px"><b>📎 Presentati:</b> ' + d.presentati.map(function (n) { return '<span class="doc-chip presentato" style="cursor:default; padding:2px 9px; font-size:11.5px">✓ ' + esc(n) + '</span>'; }).join(' ') + '</div>';
-  if (d.mancanti.length) {
+  const daPortare = senzaCUD(d.mancanti), cud = d.mancanti.filter(eRichiestaCUD);
+  if (cud.length) {
+    h += '<div style="padding:6px 10px; margin-bottom:4px; border-radius:10px; border:1.5px dashed #1d4f91"><b style="color:#1d4f91">📋 CUD da richiedere (spunta quando arriva):</b>'
+      + cud.map(function (n) {
+        return '<label style="display:flex; align-items:center; gap:8px; margin:4px 0 0; font-size:13px; color:var(--ink); cursor:pointer"><input type="checkbox" style="width:auto" data-doc="' + esc(n) + '" onchange="segnaDocumentoConsegnato(\'' + p.id + '\', this.dataset.doc)"> ' + esc(n) + '</label>';
+      }).join('') + '</div>';
+  }
+  if (daPortare.length) {
     h += '<div style="padding:6px 10px; border-radius:10px; border:1.5px solid #c0392b; background:color-mix(in srgb, #c0392b 8%, var(--card))"><b style="color:#c0392b">⚠️ Da portare (spunta quando li consegna):</b>'
-      + d.mancanti.map(function (n) {
+      + daPortare.map(function (n) {
         return '<label style="display:flex; align-items:center; gap:8px; margin:4px 0 0; font-size:13px; color:var(--ink); cursor:pointer"><input type="checkbox" style="width:auto" data-doc="' + esc(n) + '" onchange="segnaDocumentoConsegnato(\'' + p.id + '\', this.dataset.doc)"> ' + esc(n) + '</label>';
       }).join('')
       + '<div style="margin-top:6px"><button type="button" style="background:#25d366; color:#fff; ' + btn + '" onclick="richiediDocumentiMancanti(\'' + p.id + '\')">💬 Chiedi i documenti mancanti</button></div></div>';
