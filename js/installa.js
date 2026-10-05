@@ -130,3 +130,35 @@ function istruzioniInstallazione() {
     }
   });
 }
+
+/* ---------------- Avviso "nuova versione disponibile" ---------------- */
+// Ogni 5 minuti (e quando si torna sulla pagina) si confronta la versione caricata con quella pubblicata:
+// se e' cambiata compare una barra per aggiornare con un clic, cosi' non si resta sulla versione vecchia.
+(function () {
+  function firma(testo) { return (testo.match(/src="js\/[^"]+\?v=[^"]+"/g) || []).join('|'); }
+  // versione caricata: si legge a pagina completa (gli script dopo questo file non esistono ancora qui)
+  let caricata = '';
+  let avvisato = false;
+  async function controlla() {
+    if (!caricata) caricata = firma(Array.prototype.map.call(document.querySelectorAll('script[src^="js/"]'), function (s) { return 'src="' + s.getAttribute('src') + '"'; }).join(' '));
+    if (avvisato || document.hidden || !caricata) return;
+    try {
+      const r = await fetch(location.pathname + '?controllo=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      const pubblicata = firma(await r.text());
+      if (pubblicata && pubblicata !== caricata) mostra();
+    } catch (e) {}
+  }
+  function mostra() {
+    avvisato = true;
+    const b = document.createElement('div');
+    b.id = 'nuova-versione';
+    b.style.cssText = 'position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:600; background:#1d4f91; color:#fff; padding:10px 14px; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.3); display:flex; align-items:center; gap:12px; font-size:14px; font-weight:600; max-width:calc(100% - 32px)';
+    b.innerHTML = '<span>🔄 È disponibile una nuova versione del programma</span><button type="button" style="background:#fff; color:#1d4f91; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">Aggiorna ora</button>';
+    b.querySelector('button').onclick = function () { location.reload(); };
+    document.body.appendChild(b);
+  }
+  setInterval(controlla, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) controlla(); });
+  setTimeout(controlla, 20000);
+})();
