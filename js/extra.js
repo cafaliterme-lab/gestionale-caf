@@ -188,10 +188,9 @@ const NOMI_BACKUP = { settimanale: '🗓️ Settimanale', manuale: '💾 Manuale
 async function renderBackup() {
   const box = document.getElementById('backup-lista');
   if (!box) return;
+  sincronizzaCartellaBackup(false);
   const { data, ok } = await fetchSupabase('/rest/v1/backup_automatici?select=id,creato_il,tipo,creato_da,n_pratiche&order=creato_il.desc');
   if (!ok || !Array.isArray(data)) { box.innerHTML = '<div class="empty">Elenco dei backup non disponibile</div>'; return; }
-  if (!document.getElementById('backup-cartella')) box.insertAdjacentHTML('beforebegin', '<div id="backup-cartella" style="margin:10px 0"></div>');
-  sincronizzaCartellaBackup(false);
   box.innerHTML = data.length ? data.map(function (b) {
     return '<div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; flex-wrap:wrap">'
       + '<span style="flex:1; min-width:200px"><b>' + esc(quandoStorico(b.creato_il)) + '</b> · ' + esc(NOMI_BACKUP[b.tipo] || b.tipo) + ' <span style="color:var(--sub)">(' + (b.n_pratiche || 0) + ' pratiche' + (b.creato_da ? ', ' + esc(b.creato_da) : '') + ')</span></span>'
