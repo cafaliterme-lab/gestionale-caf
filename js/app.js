@@ -575,7 +575,7 @@ function applicaPermessi(){
   }
 
   const isAdmin = u.ruolo === 'admin';
-  bar.innerHTML = '<span>Accesso come <b>'+esc(u.nome)+(isAdmin?' (amministratore)':'')+'</b></span><button type="button" onclick="cambiaUtente()">Cambia utente</button><button type="button" onclick="esciDalProgramma()">🚪 Esci dal programma</button>';
+  bar.innerHTML = '<span>Accesso come <b>'+esc(u.nome)+(isAdmin?' (amministratore)':'')+'</b></span><button type="button" onclick="apriGuida()" style="background:#1d4f91; color:#fff; border-color:#1d4f91; font-weight:700" title="Guida del programma con ricerca">📖 GUIDA DEL PROGRAMMA</button><button type="button" onclick="cambiaUtente()">Cambia utente</button><button type="button" onclick="esciDalProgramma()">🚪 Esci dal programma</button>';
   document.getElementById('nav-permessi').style.display = isAdmin ? '' : 'none';
 
   const tabs = u.tabs || {};
