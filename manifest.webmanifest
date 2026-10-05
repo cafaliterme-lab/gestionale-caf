@@ -1,0 +1,18 @@
+{
+  "name": "Protocollo CAF CISL Alì Terme",
+  "short_name": "CAF CISL",
+  "description": "Gestione pratiche fiscali del CAF CISL - sede di Alì Terme",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "it",
+  "background_color": "#00612f",
+  "theme_color": "#00612f",
+  "icons": [
+    { "src": "icone/icona-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icone/icona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icone/icona-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
