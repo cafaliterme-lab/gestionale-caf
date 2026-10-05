@@ -587,6 +587,29 @@ function applicaPermessi(){
   if(document.getElementById('tab-permessi').classList.contains('active')) renderPermessi();
 }
 // NUOVO: Funzioni per gestione utenti con Supabase Auth + Edge Function
+// Chiamata alla funzione del server che gestisce gli utenti, sempre con l'accesso aggiornato
+async function chiamaAdminUtenti(azione, metodo, corpo){
+  const invia = function(){
+    return fetch(SUPABASE_URL + '/functions/v1/admin-utenti/' + azione, {
+      method: metodo,
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + (localStorage.getItem('auth_token') || '') },
+      body: JSON.stringify(corpo),
+    });
+  };
+  let response;
+  try{
+    await rinnovaToken(); // il codice d'accesso dura un'ora: si rinnova prima di usarlo
+    response = await invia();
+    if(response.status === 401 && await rinnovaToken()) response = await invia();
+  }catch(e){
+    throw new Error('il server non risponde, controlla la connessione e riprova');
+  }
+  let dati = {};
+  try{ dati = await response.json(); }catch(e){}
+  if(!response.ok) throw new Error(dati.error || dati.message || dati.msg || ('errore ' + response.status));
+  return dati;
+}
+
 async function aggiungiUtente(){
   const nome = document.getElementById('nu-nome')?.value.trim().toUpperCase();
   const email = document.getElementById('nu-email')?.value.trim();
@@ -601,31 +624,13 @@ async function aggiungiUtente(){
     return;
   }
 
-  if(!auth.session){
-    alert('❌ Non autenticato');
+  if(!localStorage.getItem('auth_token')){
+    alert('❌ Accesso scaduto: esci e rientra nel programma');
     return;
   }
 
   try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-utenti/create-user`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${auth.session.access_token}`,
-      },
-      body: JSON.stringify({
-        email,
-        password: pwd,
-        nome,
-      }),
-    });
-
-    if(!response.ok){
-      const err = await response.json();
-      throw new Error(err.error || 'Errore creazione utente');
-    }
-
-    const result = await response.json();
+    const result = await chiamaAdminUtenti('create-user', 'POST', { email, password: pwd, nome });
     alert('✅ ' + result.message);
     document.getElementById('nu-nome').value = '';
     document.getElementById('nu-email').value = '';
@@ -639,25 +644,13 @@ async function aggiungiUtente(){
 async function rimuoviUtente(id){
   if(!confirm('Sei sicuro di voler eliminare questo utente?')) return;
 
-  if(!auth.session){
-    alert('❌ Non autenticato');
+  if(!localStorage.getItem('auth_token')){
+    alert('❌ Accesso scaduto: esci e rientra nel programma');
     return;
   }
 
   try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-utenti/delete-user`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${auth.session.access_token}`,
-      },
-      body: JSON.stringify({ user_id: id }),
-    });
-
-    if(!response.ok){
-      const err = await response.json();
-      throw new Error(err.error || 'Errore eliminazione utente');
-    }
+    await chiamaAdminUtenti('delete-user', 'DELETE', { user_id: id });
 
     alert('✅ Utente eliminato');
     renderPermessi();
@@ -700,25 +693,13 @@ async function cambiaPasswordUtente(id, pwd){
     return;
   }
 
-  if(!auth.session){
-    alert('❌ Non autenticato');
+  if(!localStorage.getItem('auth_token')){
+    alert('❌ Accesso scaduto: esci e rientra nel programma');
     return;
   }
 
   try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-utenti/reset-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${auth.session.access_token}`,
-      },
-      body: JSON.stringify({ user_id: id, password: pwd }),
-    });
-
-    if(!response.ok){
-      const err = await response.json();
-      throw new Error(err.error || 'Errore reset password');
-    }
+    await chiamaAdminUtenti('reset-password', 'POST', { user_id: id, password: pwd });
 
     alert('✅ Password resettata');
   } catch(e){
