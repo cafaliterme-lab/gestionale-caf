@@ -1612,7 +1612,6 @@ async function addPraticaInterna(){
   const documenti = documentiDalModulo();
   if(documenti.mancanti.length && (document.getElementById('f-stato').value || 'arrivo') !== 'arrivo'){
     pickChip('f-stato-btns','f-stato','arrivo');
-    avviso('ℹ️ Mancano ' + documenti.mancanti.length + ' documenti: la pratica viene salvata "In arrivo"');
   }
   const codiceFiscale = document.getElementById('f-codfisc').value.trim();
   if(codiceFiscale && !cfValido(codiceFiscale)){
@@ -1662,7 +1661,7 @@ async function addPraticaInterna(){
     msg.style.display = 'block';
     return;
   }
-  confermaPraticaSalvata(result.id, nome, tipo);
+  confermaPraticaSalvata(result.id, nome, tipo, documenti.mancanti);
 
   document.getElementById('f-cognome').value='';
   document.getElementById('f-nome').value='';
@@ -1797,8 +1796,8 @@ async function cambiaStato(id, stato){
   const p = (state.pratiche||[]).find(function(x){ return x.id===id; });
   // con documenti mancanti la pratica resta "In arrivo"
   if(p && stato !== 'arrivo' && typeof documentiPratica === 'function' && documentiPratica(p).mancanti.length){
-    avviso('❌ ' + (p.nome||'La pratica') + ' resta "In arrivo": mancano ' + documentiPratica(p).mancanti.length + ' documenti (' + documentiPratica(p).mancanti.join(', ') + '). Spuntali quando li porta.', true);
     render();
+    popupDocumentiMancanti(p, statoLabel(stato));
     return;
   }
   const campi = { stato: stato };
@@ -2290,7 +2289,8 @@ function chiediNuovoContribuente(nome, dataNascita, codiceFiscale){
   });
 }
 
-function confermaPraticaSalvata(id, nome, tipo){
+function confermaPraticaSalvata(id, nome, tipo, mancanti){
+  mancanti = mancanti || [];
   const p = (state.pratiche||[]).find(function(x){ return x.id === id; });
   const numero = p ? formattaProtocollo(p) : '';
   const vecchio = document.getElementById('popup-salvata');
@@ -2303,14 +2303,19 @@ function confermaPraticaSalvata(id, nome, tipo){
     + '<div style="font-size:22px; font-weight:800; color:#2f9e5f; margin-bottom:6px">Pratica salvata</div>'
     + (numero ? '<div style="font-size:16px; font-weight:700; margin-bottom:2px">Protocollo n. ' + esc(numero) + '</div>' : '')
     + '<div style="font-size:15px">' + esc(nome) + '</div>'
-    + '<div style="font-size:13px; color:var(--sub); margin-bottom:16px">' + esc(tipo) + '</div>'
+    + '<div style="font-size:13px; color:var(--sub); margin-bottom:' + (mancanti.length ? '10' : '16') + 'px">' + esc(tipo) + '</div>'
+    + (mancanti.length ? '<div style="text-align:left; margin-bottom:16px; padding:10px 14px; border-radius:12px; border:2px solid #c0392b; background:color-mix(in srgb, #c0392b 8%, var(--card))">'
+        + '<div style="font-weight:800; color:#c0392b; margin-bottom:4px">⚠️ Stato: IN ARRIVO – mancano ' + mancanti.length + (mancanti.length === 1 ? ' documento' : ' documenti') + '</div>'
+        + '<ul style="margin:0 0 6px; padding-left:20px; font-size:14px">' + mancanti.map(function(d){ return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>'
+        + '<div style="font-size:12.5px; color:var(--sub)">La pratica potrà passare agli stati successivi solo quando il cliente avrà portato tutti i documenti (spuntali nel registro).</div></div>' : '')
     + '<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap"><button type="button" data-ricevuta="1" style="background:var(--line); color:var(--ink); font-size:15px">🧾 Stampa ricevuta</button>'
     + '<button type="button" style="background:#2f9e5f; color:#fff; min-width:120px; font-size:15px">OK</button></div></div>';
   document.body.appendChild(ov);
   const chiudi = function(){ clearTimeout(t); ov.remove(); };
-  const t = setTimeout(chiudi, 6000);
+  const t = mancanti.length ? null : setTimeout(chiudi, 6000);
   ov.addEventListener('click', function(e){
     if(e.target.closest('[data-ricevuta]')){ chiudi(); stampaRicevuta(id); return; }
+    if(mancanti.length && !e.target.closest('button')) return;
     chiudi();
   });
 }

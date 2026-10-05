@@ -239,3 +239,32 @@ function salvaEditorDocumenti() {
   chiudiEditorDocumenti();
   if (p) salvaDocumentiPratica(p, d);
 }
+
+// Finestra al centro: la pratica non puo' avanzare finche' mancano documenti
+function popupDocumentiMancanti(p, statoRichiesto) {
+  const mancanti = documentiPratica(p).mancanti;
+  const vecchio = document.getElementById('popup-mancanti');
+  if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-mancanti';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:450; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #c0392b; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:24px 26px; max-width:440px; width:100%">'
+    + '<div style="text-align:center"><div style="width:60px; height:60px; margin:0 auto 8px; border-radius:50%; background:#c0392b; color:#fff; font-size:32px; line-height:60px">📎</div>'
+    + '<div style="font-size:20px; font-weight:800; color:#c0392b">Documenti mancanti</div>'
+    + '<div style="font-size:14px; margin:4px 0 12px"><b>' + esc(p.nome || '') + '</b> non può passare a <b>' + esc(statoRichiesto || 'uno stato successivo') + '</b>: resta <b>In arrivo</b> finché non porta:</div></div>'
+    + '<ul style="margin:0 0 14px; padding:10px 14px 10px 32px; border-radius:12px; border:2px solid #c0392b; background:color-mix(in srgb, #c0392b 8%, var(--card)); font-size:15px; font-weight:600">'
+    + mancanti.map(function (d) { return '<li style="margin:3px 0">' + esc(d) + '</li>'; }).join('') + '</ul>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:14px">Quando li porta, spuntali nella pratica (riquadro rosso "Da portare"): poi potrai cambiare lo stato.</div>'
+    + '<div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap">'
+    + '<button type="button" data-azione="wa" style="background:#25d366; color:#fff">💬 Chiedi su WhatsApp</button>'
+    + '<button type="button" data-azione="apri" style="background:var(--line); color:var(--ink)">Apri la pratica</button>'
+    + '<button type="button" data-azione="ok" style="background:#c0392b; color:#fff; min-width:90px">OK</button></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-azione]');
+    if (!b && e.target !== ov) return;
+    ov.remove();
+    if (b && b.dataset.azione === 'wa') richiediDocumentiMancanti(p.id);
+    if (b && b.dataset.azione === 'apri' && typeof apriPraticaDaTabella === 'function') { apriPraticaDaTabella(p.id); const q = state.pratiche.find(function (x) { return x.id === p.id; }); if (q) { delete q._editing; render(); setTimeout(function () { const el = document.getElementById('pratica-' + p.id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150); } }
+  });
+}
