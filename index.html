@@ -434,6 +434,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 </div>
 <div class="summary" id="summary"></div>
 <div class="card" id="elenco-fps" style="display:none"></div>
+<div class="card" id="elenco-filca" style="display:none"></div>
 <div class="card" id="raffronto"></div>
 </section>
 
@@ -693,8 +694,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <div class="card">
   <div class="raff-title">💶 Importi 730 FPS in convenzione</div>
-  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Gli importi che imposti qui compaiono come scelta rapida sotto "Fattura" quando il tipo di pratica è 730 FPS IN CONVENZIONE, e nell'elenco delle fatture FPS in Contabilità. Se non ne scegli nessuno la pratica resta a 0 €.</p>
+  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Gli importi che imposti qui compaiono come scelta rapida sotto "Fattura" quando il tipo di pratica è 730 FPS IN CONVENZIONE, e nell'elenco delle fatture FPS in Contabilità. L'importo segnato ★ predefinito si compila da solo; senza predefinito la pratica resta a 0 €.</p>
   <div id="fps-importi-editor"></div>
+</div>
+
+<div class="card">
+  <div class="raff-title">💶 Importi 730 FILCA</div>
+  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Come per le FPS: gli importi compaiono come scelta rapida quando il tipo di pratica è 730 FILCA e nell'elenco delle fatture FILCA in Contabilità. L'importo segnato ★ predefinito si compila da solo; senza predefinito la pratica resta a 0 €.</p>
+  <div id="filca-importi-editor"></div>
 </div>
 
 <div class="card">
@@ -725,7 +732,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ocr-documento.js?v=6"></script>
 <script src="js/grafici.js?v=6"></script>
 <script src="js/stampe.js?v=5"></script>
-<script src="js/extra.js?v=5"></script>
+<script src="js/extra.js?v=6"></script>
 <script src="js/documenti.js?v=1"></script>
 <script src="js/installa.js?v=3"></script>
 <script src="js/scadenze.js?v=202610083"></script>
@@ -736,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610109"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610128"></script>
+<script src="js/app.js?v=202610129"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

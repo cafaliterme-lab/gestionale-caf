@@ -1235,8 +1235,8 @@ function parseImporto(v){
   return Number(s);
 }
 // Fatturazione automatica per tipo di pratica (es. 730 FILCA: 25 €)
-const FATTURA_AUTOMATICA = { '730 FILCA': 25, '730 FPS IN CONVENZIONE': 0 };
-function fatturaAutomatica(tipo){ return FATTURA_AUTOMATICA[String(tipo||'').toUpperCase().trim()]; }
+// Pratiche in convenzione (FPS, FILCA): importo predefinito impostato in Utenti e permessi, altrimenti 0 €
+function fatturaAutomatica(tipo){ return typeof importoAutomaticoConvenzione === 'function' ? importoAutomaticoConvenzione(tipo) : undefined; }
 function applicaFatturaAutomatica(tipo, idCampo){
   const el = document.getElementById(idCampo || 'f-compenso');
   if(!el) return;

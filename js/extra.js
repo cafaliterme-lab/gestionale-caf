@@ -231,104 +231,57 @@ function renderBackupEStorico() {
   renderStoricoGlobale();
 }
 
-/* ---------------- 730 FPS in convenzione: fatture da inserire dopo ---------------- */
+/* ---------------- Pratiche in convenzione (730 FPS e 730 FILCA) ---------------- */
+// Importi gestiti dall'amministratore in Utenti e permessi; quello "predefinito" si compila da solo.
+// Le pratiche senza importo entrano in contabilita' a 0 € e si completano dall'elenco in Contabilita'.
 
-let FPS_SOLO_DA_FATTURARE = true;
-function eFPS(p) { return /^730\s+FPS\b/.test(String(p.tipo || '').toUpperCase()); }
-function fpsSenzaFattura(p) { return !Number(p.compenso) && !String(p.numFattura || '').trim(); }
+const CONVENZIONI = [
+  { chiave: 'fps', nome: '730 FPS in convenzione', re: /^730\s+FPS\b/, impostazione: 'fps_importi' },
+  { chiave: 'filca', nome: '730 FILCA', re: /^730\s+FILCA\b/, impostazione: 'filca_importi' },
+];
+const CONV_SOLO_DA_FATTURARE = { fps: true, filca: true };
+function convenzioneDi(tipo) { const t = String(tipo || '').toUpperCase().trim(); return CONVENZIONI.find(function (c) { return c.re.test(t); }) || null; }
+function convenzione(chiave) { return CONVENZIONI.find(function (c) { return c.chiave === chiave; }); }
+function senzaFattura(p) { return !Number(p.compenso) && !String(p.numFattura || '').trim(); }
 
-function renderElencoFPS(pratAnno) {
-  const box = document.getElementById('elenco-fps');
-  if (!box) return;
-  // non si ridisegna mentre si sta scrivendo un importo
-  if (box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT' && document.activeElement.type !== 'checkbox') return;
-  const tutte = (pratAnno || []).filter(eFPS).sort(function (a, b) { return a.numero - b.numero; });
-  const visibile = tutte.length && (typeof vedeSezioneContabilita !== 'function' || vedeSezioneContabilita('cont_economici'));
-  box.style.display = visibile ? '' : 'none';
-  if (!visibile) { box.innerHTML = ''; return; }
-  const daFatturare = tutte.filter(fpsSenzaFattura);
-  const lista = FPS_SOLO_DA_FATTURARE ? daFatturare : tutte;
-  const totFatt = tutte.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
-  const inp = 'style="width:100%; min-width:80px; padding:6px 8px"';
-  box.innerHTML = '<div class="raff-title" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap">'
-    + '<span>🧾 730 FPS in convenzione – fatture da inserire</span>'
-    + '<span style="font-size:12.5px; font-weight:600; color:var(--sub)">' + tutte.length + ' pratiche · <b style="color:' + (daFatturare.length ? '#c0392b' : '#1a7f37') + '">' + daFatturare.length + ' senza fattura</b> · fatturato ' + fmtEuro(totFatt) + '</span></div>'
-    + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">Le pratiche FPS entrano in contabilità a 0 €. Quando arriva la fattura della convenzione inserisci qui importo e numero: la contabilità si aggiorna da sola.</div>'
-    + '<label style="display:flex; align-items:center; gap:8px; font-size:13px; margin:0 0 8px; cursor:pointer"><input type="checkbox" style="width:auto" ' + (FPS_SOLO_DA_FATTURARE ? 'checked' : '') + ' onchange="FPS_SOLO_DA_FATTURARE=this.checked; render()"> Mostra solo quelle senza fattura</label>'
-    + (lista.length ? '<div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; padding:8px 10px; border-radius:10px; background:var(--bg); border:1px solid var(--line); margin-bottom:8px">'
-      + '<div style="font-size:12.5px; font-weight:700; align-self:center">Per tutte le selezionate:</div>'
-      + selectImportiFPS('fps-imp-tutte')
-      + '<div><label style="font-size:11.5px">Importo (€)</label><input id="fps-imp-tutte" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" ' + inp + '></div>'
-      + '<div><label style="font-size:11.5px">N. fattura</label><input id="fps-nf-tutte" ' + inp + '></div>'
-      + '<button type="button" class="btn-add" style="margin:0" onclick="applicaFatturaFPSSelezionate()">Applica alle selezionate</button></div>' : '')
-    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th style="width:30px"><input type="checkbox" style="width:auto" title="Seleziona tutte" onchange="document.querySelectorAll(\'#elenco-fps input[data-fps-sel]\').forEach(function(c){ c.checked = this.checked; }, this)"></th><th>N.</th><th>Contribuente</th><th>Stato</th><th>Fattura (€)</th><th>N. fattura</th><th></th></tr></thead><tbody>'
-    + (lista.length ? lista.map(function (p) {
-      return '<tr><td><input type="checkbox" style="width:auto" data-fps-sel="' + p.id + '"></td><td class="n">' + esc(formattaProtocollo(p)) + '</td><td class="wrap">' + esc(p.nome || '') + (p.congiunta ? '<div class="sub2">Congiunta: ' + esc(p.congiunta) + '</div>' : '') + '</td>'
-        + '<td>' + esc(statoLabel(p.stato)) + '</td>'
-        + '<td>' + selectImportiFPS('fps-imp-' + p.id, true) + '<input id="fps-imp-' + p.id + '" inputmode="decimal" placeholder="0,00" value="' + (Number(p.compenso) ? importoInCampo(p.compenso) : '') + '" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" ' + inp + '></td>'
-        + '<td><input id="fps-nf-' + p.id + '" value="' + esc(p.numFattura || '') + '" ' + inp + '></td>'
-        + '<td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:6px 10px; cursor:pointer" onclick="salvaFatturaFPS(\'' + p.id + '\')">💾 Salva</button></td></tr>';
-    }).join('') : '<tr><td colspan="7" class="empty">' + (FPS_SOLO_DA_FATTURARE ? '✓ Tutte le pratiche FPS hanno la fattura' : 'Nessuna pratica FPS') + '</td></tr>')
-    + '</tbody></table></div>';
-}
-
-async function scriviFatturaFPS(id, importoTesto, numero) {
-  const imp = parseImporto(importoTesto);
-  const campi = { compenso: isNaN(imp) ? 0 : imp, numFattura: String(numero || '').trim() };
-  campi.fatt = campi.numFattura ? 'fatturata' : 'dafatturare';
-  return data.pratiche.aggiorna(id, campi);
-}
-async function salvaFatturaFPS(id) {
-  const imp = document.getElementById('fps-imp-' + id).value, nf = document.getElementById('fps-nf-' + id).value;
-  if (!imp.trim() && !nf.trim()) { avviso('❌ Inserisci l\'importo o il numero della fattura', true); return; }
-  document.activeElement && document.activeElement.blur();
-  const esito = await scriviFatturaFPS(id, imp, nf);
-  if (esito && esito.error) return;
-  avviso('✓ Fattura salvata');
-  render();
-}
-async function applicaFatturaFPSSelezionate() {
-  const ids = Array.from(document.querySelectorAll('#elenco-fps input[data-fps-sel]:checked')).map(function (c) { return c.dataset.fpsSel; });
-  const imp = document.getElementById('fps-imp-tutte').value, nf = document.getElementById('fps-nf-tutte').value;
-  if (!ids.length) { avviso('❌ Seleziona almeno una pratica', true); return; }
-  if (!imp.trim() && !nf.trim()) { avviso('❌ Inserisci l\'importo o il numero della fattura', true); return; }
-  if (!confirm('Applicare ' + (imp ? 'importo ' + imp + ' €' : '') + (imp && nf ? ' e ' : '') + (nf ? 'fattura n. ' + nf : '') + ' a ' + ids.length + ' pratiche FPS?')) return;
-  document.activeElement && document.activeElement.blur();
-  for (const id of ids) { await scriviFatturaFPS(id, imp, nf); }
-  avviso('✓ Fattura applicata a ' + ids.length + (ids.length === 1 ? ' pratica' : ' pratiche'));
-  render();
-}
-
-/* ---------------- Importi predefiniti per i 730 FPS in convenzione ---------------- */
-
-function importiFPS() {
+function importiConvenzione(conv) {
   try {
-    const l = JSON.parse((typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI.fps_importi) || '[]');
+    const l = JSON.parse((typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI[conv.impostazione]) || '[]');
     return Array.isArray(l) ? l.filter(function (x) { return x && !isNaN(Number(x.importo)); }) : [];
   } catch (e) { return []; }
 }
-function etichettaImportoFPS(x) { return (x.descrizione ? x.descrizione + ' – ' : '') + fmtEuro(x.importo); }
-function selectImportiFPS(idCampo, compatto) {
-  const l = importiFPS();
+// Importo che si compila da solo scegliendo il tipo: il predefinito, altrimenti 0 € (undefined = tipo normale)
+function importoAutomaticoConvenzione(tipo) {
+  const conv = convenzioneDi(tipo);
+  if (!conv) return undefined;
+  const pred = importiConvenzione(conv).find(function (x) { return x.predefinito; });
+  return pred ? Number(pred.importo) : 0;
+}
+function etichettaImporto(x) { return (x.descrizione ? x.descrizione + ' – ' : '') + fmtEuro(x.importo); }
+function selectImporti(conv, idCampo, compatto) {
+  const l = importiConvenzione(conv);
   if (!l.length) return '';
   return (compatto ? '' : '<div><label style="font-size:11.5px">Importo convenzione</label>')
     + '<select style="' + (compatto ? 'margin-bottom:4px; ' : '') + 'width:100%; min-width:120px; padding:6px 8px" onchange="if(this.value!==\'\'){ document.getElementById(\'' + idCampo + '\').value = importoInCampo(this.value); this.value=\'\'; }">'
     + '<option value="">' + (compatto ? 'Scegli importo…' : '— scegli —') + '</option>'
-    + l.map(function (x) { return '<option value="' + Number(x.importo) + '">' + esc(etichettaImportoFPS(x)) + '</option>'; }).join('')
+    + l.map(function (x) { return '<option value="' + Number(x.importo) + '">' + esc(etichettaImporto(x)) + (x.predefinito ? ' ★' : '') + '</option>'; }).join('')
     + '</select>' + (compatto ? '' : '</div>');
 }
+
+// Modulo di inserimento: pulsanti con gli importi sotto "Fattura"
 function mostraImportiFPSModulo(tipo) {
   const box = document.getElementById('f-fps-importi');
   if (!box) return;
-  const fps = /^730\s+FPS\b/.test(String(tipo || '').toUpperCase());
-  box.style.display = fps ? '' : 'none';
-  if (!fps) { box.innerHTML = ''; return; }
-  const l = importiFPS();
+  const conv = convenzioneDi(tipo);
+  box.style.display = conv ? '' : 'none';
+  if (!conv) { box.innerHTML = ''; return; }
+  const l = importiConvenzione(conv);
+  const attuale = parseImporto(document.getElementById('f-compenso').value);
   box.innerHTML = l.length
-    ? '<div style="font-size:11.5px; color:var(--sub); margin-bottom:4px">Importo convenzione (tocca per sceglierlo):</div><div class="doc-chips">'
-      + l.map(function (x) { return '<span class="doc-chip" role="button" data-importo="' + Number(x.importo) + '" onclick="scegliImportoFPSModulo(this)">' + esc(etichettaImportoFPS(x)) + '</span>'; }).join('')
+    ? '<div style="font-size:11.5px; color:var(--sub); margin-bottom:4px">Importo ' + esc(conv.nome) + ' (tocca per sceglierlo):</div><div class="doc-chips">'
+      + l.map(function (x) { return '<span class="doc-chip' + (Number(x.importo) === attuale ? ' presentato' : '') + '" role="button" data-importo="' + Number(x.importo) + '" onclick="scegliImportoFPSModulo(this)">' + esc(etichettaImporto(x)) + '</span>'; }).join('')
       + '</div>'
-    : '<div style="font-size:11.5px; color:var(--sub)">Nessun importo convenzione impostato (l\'amministratore li inserisce in Utenti e permessi). La pratica resta a 0 €.</div>';
+    : '<div style="font-size:11.5px; color:var(--sub)">Nessun importo impostato per ' + esc(conv.nome) + ' (l\'amministratore li inserisce in Utenti e permessi). La pratica resta a 0 €.</div>';
 }
 function scegliImportoFPSModulo(chip) {
   const el = document.getElementById('f-compenso');
@@ -337,37 +290,108 @@ function scegliImportoFPSModulo(chip) {
   document.querySelectorAll('#f-fps-importi .doc-chip').forEach(function (c) { c.classList.toggle('presentato', c === chip); });
 }
 
-// Editor (solo amministratore) in Utenti e permessi
-let IMPORTI_FPS_MODIFICA = null;
-function renderEditorImportiFPS() {
-  const box = document.getElementById('fps-importi-editor');
-  if (!box) return;
-  if (!IMPORTI_FPS_MODIFICA) IMPORTI_FPS_MODIFICA = importiFPS().map(function (x) { return { descrizione: x.descrizione || '', importo: importoInCampo(x.importo) }; });
-  const righe = IMPORTI_FPS_MODIFICA;
-  box.innerHTML = (righe.length ? righe.map(function (r, i) {
-    return '<div style="display:flex; gap:8px; align-items:center; margin-bottom:6px">'
-      + '<input placeholder="Descrizione (es. 730 singolo)" value="' + esc(r.descrizione) + '" oninput="IMPORTI_FPS_MODIFICA[' + i + '].descrizione=this.value" style="flex:2">'
-      + '<input placeholder="0,00" inputmode="decimal" value="' + esc(r.importo) + '" oninput="filtraImporto(this); IMPORTI_FPS_MODIFICA[' + i + '].importo=this.value" onblur="formattaCampoImporto(this); IMPORTI_FPS_MODIFICA[' + i + '].importo=this.value" style="flex:1; min-width:90px">'
-      + '<button type="button" title="Togli" style="background:none; border:none; color:#c0392b; font-weight:800; font-size:16px; cursor:pointer" onclick="IMPORTI_FPS_MODIFICA.splice(' + i + ',1); renderEditorImportiFPS()">✕</button></div>';
-  }).join('') : '<div class="empty" style="margin-bottom:8px">Nessun importo impostato</div>')
-    + '<div style="display:flex; gap:8px; flex-wrap:wrap"><button type="button" class="btn-add" style="background:var(--line); color:var(--ink); margin:0" onclick="IMPORTI_FPS_MODIFICA.push({descrizione:\'\', importo:\'\'}); renderEditorImportiFPS()">+ Aggiungi importo</button>'
-    + '<button type="button" class="btn-add" style="margin:0" onclick="salvaImportiFPS()">💾 Salva importi</button></div>';
+// Contabilita': un elenco per ogni convenzione con le fatture da inserire
+function renderElencoFPS(pratAnno) {
+  CONVENZIONI.forEach(function (conv) { renderElencoConvenzione(conv, pratAnno); });
 }
-async function salvaImportiFPS() {
+function renderElencoConvenzione(conv, pratAnno) {
+  const box = document.getElementById('elenco-' + conv.chiave);
+  if (!box) return;
+  if (box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT' && document.activeElement.type !== 'checkbox') return;
+  const tutte = (pratAnno || []).filter(function (p) { return conv.re.test(String(p.tipo || '').toUpperCase()); }).sort(function (a, b) { return a.numero - b.numero; });
+  const visibile = tutte.length && (typeof vedeSezioneContabilita !== 'function' || vedeSezioneContabilita('cont_economici'));
+  box.style.display = visibile ? '' : 'none';
+  if (!visibile) { box.innerHTML = ''; return; }
+  const k = conv.chiave;
+  const daFatturare = tutte.filter(senzaFattura);
+  const lista = CONV_SOLO_DA_FATTURARE[k] ? daFatturare : tutte;
+  const totFatt = tutte.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
+  const inp = 'style="width:100%; min-width:80px; padding:6px 8px"';
+  box.innerHTML = '<div class="raff-title" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap">'
+    + '<span>🧾 ' + esc(conv.nome) + ' – fatture da inserire</span>'
+    + '<span style="font-size:12.5px; font-weight:600; color:var(--sub)">' + tutte.length + ' pratiche · <b style="color:' + (daFatturare.length ? '#c0392b' : '#1a7f37') + '">' + daFatturare.length + ' senza fattura</b> · fatturato ' + fmtEuro(totFatt) + '</span></div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">Le pratiche senza importo entrano in contabilità a 0 €. Quando arriva la fattura inserisci qui importo e numero: la contabilità si aggiorna da sola.</div>'
+    + '<label style="display:flex; align-items:center; gap:8px; font-size:13px; margin:0 0 8px; cursor:pointer"><input type="checkbox" style="width:auto" ' + (CONV_SOLO_DA_FATTURARE[k] ? 'checked' : '') + ' onchange="CONV_SOLO_DA_FATTURARE[\'' + k + '\']=this.checked; render()"> Mostra solo quelle senza fattura</label>'
+    + (lista.length ? '<div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; padding:8px 10px; border-radius:10px; background:var(--bg); border:1px solid var(--line); margin-bottom:8px">'
+      + '<div style="font-size:12.5px; font-weight:700; align-self:center">Per tutte le selezionate:</div>'
+      + selectImporti(conv, k + '-imp-tutte')
+      + '<div><label style="font-size:11.5px">Importo (€)</label><input id="' + k + '-imp-tutte" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" ' + inp + '></div>'
+      + '<div><label style="font-size:11.5px">N. fattura</label><input id="' + k + '-nf-tutte" ' + inp + '></div>'
+      + '<button type="button" class="btn-add" style="margin:0" onclick="applicaFatturaSelezionate(\'' + k + '\')">Applica alle selezionate</button></div>' : '')
+    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th style="width:30px"><input type="checkbox" style="width:auto" title="Seleziona tutte" onchange="document.querySelectorAll(\'#elenco-' + k + ' input[data-sel]\').forEach(function(c){ c.checked = this.checked; }, this)"></th><th>N.</th><th>Contribuente</th><th>Stato</th><th>Fattura (€)</th><th>N. fattura</th><th></th></tr></thead><tbody>'
+    + (lista.length ? lista.map(function (p) {
+      return '<tr><td><input type="checkbox" style="width:auto" data-sel="' + p.id + '"></td><td class="n">' + esc(formattaProtocollo(p)) + '</td><td class="wrap">' + esc(p.nome || '') + (p.congiunta ? '<div class="sub2">Congiunta: ' + esc(p.congiunta) + '</div>' : '') + '</td>'
+        + '<td>' + esc(statoLabel(p.stato)) + '</td>'
+        + '<td>' + selectImporti(conv, k + '-imp-' + p.id, true) + '<input id="' + k + '-imp-' + p.id + '" inputmode="decimal" placeholder="0,00" value="' + (Number(p.compenso) ? importoInCampo(p.compenso) : '') + '" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" ' + inp + '></td>'
+        + '<td><input id="' + k + '-nf-' + p.id + '" value="' + esc(p.numFattura || '') + '" ' + inp + '></td>'
+        + '<td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:6px 10px; cursor:pointer" onclick="salvaFatturaConvenzione(\'' + k + '\', \'' + p.id + '\')">💾 Salva</button></td></tr>';
+    }).join('') : '<tr><td colspan="7" class="empty">' + (CONV_SOLO_DA_FATTURARE[k] ? '✓ Tutte le pratiche ' + esc(conv.nome) + ' hanno la fattura' : 'Nessuna pratica') + '</td></tr>')
+    + '</tbody></table></div>';
+}
+async function scriviFatturaConvenzione(id, importoTesto, numero) {
+  const imp = parseImporto(importoTesto);
+  const campi = { compenso: isNaN(imp) ? 0 : imp, numFattura: String(numero || '').trim() };
+  campi.fatt = campi.numFattura ? 'fatturata' : 'dafatturare';
+  return data.pratiche.aggiorna(id, campi);
+}
+async function salvaFatturaConvenzione(k, id) {
+  const imp = document.getElementById(k + '-imp-' + id).value, nf = document.getElementById(k + '-nf-' + id).value;
+  if (!imp.trim() && !nf.trim()) { avviso('❌ Inserisci l\'importo o il numero della fattura', true); return; }
+  if (document.activeElement) document.activeElement.blur();
+  const esito = await scriviFatturaConvenzione(id, imp, nf);
+  if (esito && esito.error) return;
+  avviso('✓ Fattura salvata');
+  render();
+}
+async function applicaFatturaSelezionate(k) {
+  const ids = Array.from(document.querySelectorAll('#elenco-' + k + ' input[data-sel]:checked')).map(function (c) { return c.dataset.sel; });
+  const imp = document.getElementById(k + '-imp-tutte').value, nf = document.getElementById(k + '-nf-tutte').value;
+  if (!ids.length) { avviso('❌ Seleziona almeno una pratica', true); return; }
+  if (!imp.trim() && !nf.trim()) { avviso('❌ Inserisci l\'importo o il numero della fattura', true); return; }
+  if (!confirm('Applicare ' + (imp ? 'importo ' + imp + ' €' : '') + (imp && nf ? ' e ' : '') + (nf ? 'fattura n. ' + nf : '') + ' a ' + ids.length + ' pratiche ' + convenzione(k).nome + '?')) return;
+  if (document.activeElement) document.activeElement.blur();
+  for (const id of ids) { await scriviFatturaConvenzione(id, imp, nf); }
+  avviso('✓ Fattura applicata a ' + ids.length + (ids.length === 1 ? ' pratica' : ' pratiche'));
+  render();
+}
+
+// Editor degli importi (solo amministratore) in Utenti e permessi
+const IMPORTI_IN_MODIFICA = {};
+function renderEditorImportiFPS() { CONVENZIONI.forEach(function (c) { renderEditorImporti(c.chiave); }); }
+function renderEditorImporti(k) {
+  const box = document.getElementById(k + '-importi-editor');
+  if (!box) return;
+  const conv = convenzione(k);
+  if (!IMPORTI_IN_MODIFICA[k]) IMPORTI_IN_MODIFICA[k] = importiConvenzione(conv).map(function (x) { return { descrizione: x.descrizione || '', importo: importoInCampo(x.importo), predefinito: !!x.predefinito }; });
+  const righe = IMPORTI_IN_MODIFICA[k];
+  const rif = 'IMPORTI_IN_MODIFICA[\'' + k + '\']';
+  box.innerHTML = (righe.length ? righe.map(function (r, i) {
+    return '<div style="display:flex; gap:8px; align-items:center; margin-bottom:6px; flex-wrap:wrap">'
+      + '<input placeholder="Descrizione (es. 730 singolo)" value="' + esc(r.descrizione) + '" oninput="' + rif + '[' + i + '].descrizione=this.value" style="flex:2; min-width:150px">'
+      + '<input placeholder="0,00" inputmode="decimal" value="' + esc(r.importo) + '" oninput="filtraImporto(this); ' + rif + '[' + i + '].importo=this.value" onblur="formattaCampoImporto(this); ' + rif + '[' + i + '].importo=this.value" style="flex:1; min-width:90px">'
+      + '<label title="Si compila da solo quando scegli il tipo di pratica" style="display:flex; align-items:center; gap:4px; font-size:12.5px; margin:0; cursor:pointer; white-space:nowrap"><input type="radio" name="pred-' + k + '" style="width:auto" ' + (r.predefinito ? 'checked' : '') + ' onchange="' + rif + '.forEach(function(x, j){ x.predefinito = j === ' + i + '; })"> ★ predefinito</label>'
+      + '<button type="button" title="Togli" style="background:none; border:none; color:#c0392b; font-weight:800; font-size:16px; cursor:pointer" onclick="' + rif + '.splice(' + i + ',1); renderEditorImporti(\'' + k + '\')">✕</button></div>';
+  }).join('') : '<div class="empty" style="margin-bottom:8px">Nessun importo impostato</div>')
+    + '<div style="display:flex; gap:8px; flex-wrap:wrap"><button type="button" class="btn-add" style="background:var(--line); color:var(--ink); margin:0" onclick="' + rif + '.push({descrizione:\'\', importo:\'\', predefinito:false}); renderEditorImporti(\'' + k + '\')">+ Aggiungi importo</button>'
+    + (righe.some(function (r) { return r.predefinito; }) ? '<button type="button" class="btn-add" style="background:var(--line); color:var(--ink); margin:0" onclick="' + rif + '.forEach(function(x){ x.predefinito = false; }); renderEditorImporti(\'' + k + '\')">Nessun predefinito (resta a 0 €)</button>' : '')
+    + '<button type="button" class="btn-add" style="margin:0" onclick="salvaImporti(\'' + k + '\')">💾 Salva importi</button></div>';
+}
+async function salvaImporti(k) {
+  const conv = convenzione(k);
   const lista = [];
-  for (const r of IMPORTI_FPS_MODIFICA || []) {
+  for (const r of IMPORTI_IN_MODIFICA[k] || []) {
     if (!String(r.importo).trim() && !String(r.descrizione).trim()) continue;
     const n = parseImporto(r.importo);
     if (isNaN(n)) { avviso('❌ Importo non valido: ' + (r.descrizione || r.importo), true); return; }
-    lista.push({ descrizione: String(r.descrizione || '').trim(), importo: n });
+    lista.push({ descrizione: String(r.descrizione || '').trim(), importo: n, predefinito: !!r.predefinito });
   }
   const valore = JSON.stringify(lista);
-  const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valore, aggiornato_il: new Date().toISOString() }).eq('chiave', 'fps_importi').select('chiave');
+  const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valore, aggiornato_il: new Date().toISOString() }).eq('chiave', conv.impostazione).select('chiave');
   if (error || !righe || !righe.length) { avviso('❌ Importi non salvati' + (error ? ': ' + error.message : ''), true); return; }
-  IMPOSTAZIONI.fps_importi = valore;
-  IMPORTI_FPS_MODIFICA = null;
-  renderEditorImportiFPS();
+  IMPOSTAZIONI[conv.impostazione] = valore;
+  IMPORTI_IN_MODIFICA[k] = null;
+  renderEditorImporti(k);
   mostraImportiFPSModulo(document.getElementById('f-tipo').value);
   render();
-  avviso('✓ Importi FPS salvati');
+  avviso('✓ Importi ' + conv.nome + ' salvati');
 }
