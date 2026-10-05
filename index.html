@@ -498,7 +498,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
     </div>
     <div>
       <label>Fattura (€)</label>
-      <input id="f-compenso" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)">
+      <input id="f-compenso" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this); this.dataset.auto=''" onblur="formattaCampoImporto(this)">
     </div>
     <div>
       <label>Pagato effettivo (€)</label>
@@ -728,7 +728,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610109"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610124"></script>
+<script src="js/app.js?v=202610125"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

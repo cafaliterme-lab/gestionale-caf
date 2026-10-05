@@ -1130,7 +1130,7 @@ function pickChip(containerId, selectId, val){
     if(lbl && chip){ lbl.innerHTML = chip.innerHTML; }
     dd.classList.remove('open');
   }
-  if(containerId === 'f-tipo-btns'){ coloraTriggerTipo(); aggiornaCampoFineForm(); }
+  if(containerId === 'f-tipo-btns'){ coloraTriggerTipo(); aggiornaCampoFineForm(); applicaFatturaAutomatica(val); }
   if(containerId === 'f-stato-btns'){ coloraTriggerStato(); const df = document.getElementById('f-data-fine'); if(df && !eColf(document.getElementById('f-tipo').value)) df.value = val === 'lavorata' ? todayIT() : ''; }
 }
 function showTab(btn){
@@ -1233,6 +1233,19 @@ function parseImporto(v){
   if(s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
   else if(/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
   return Number(s);
+}
+// Fatturazione automatica per tipo di pratica (es. 730 FILCA: 25 €)
+const FATTURA_AUTOMATICA = { '730 FILCA': 25 };
+function fatturaAutomatica(tipo){ return FATTURA_AUTOMATICA[String(tipo||'').toUpperCase().trim()]; }
+function applicaFatturaAutomatica(tipo, idCampo){
+  const el = document.getElementById(idCampo || 'f-compenso');
+  if(!el) return;
+  const importo = fatturaAutomatica(tipo);
+  if(importo !== undefined){
+    if(!el.value.trim() || el.dataset.auto === '1'){ el.value = importoInCampo(importo); el.dataset.auto = '1'; }
+  } else if(el.dataset.auto === '1'){
+    el.value = ''; el.dataset.auto = '';
+  }
 }
 function importoInCampo(n){
   if(n === '' || n == null || isNaN(Number(n))) return '';
@@ -1482,7 +1495,7 @@ function render(){
           <div><label>Telefono fisso *</label><input id="e-telfisso-${p.id}" type="tel" inputmode="tel" value="${esc(p.telefonoFisso)}"></div>
           <div><label>Data di nascita</label><input id="e-cf-${p.id}" value="${esc(p.cf)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Scadenza documento</label><input id="e-docscad-${p.id}" value="${esc(p.documentoScadenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
-          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'">${tipoOptions(p.tipo)}</select></div>
+          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
           <div><label>Pagato effettivo (€)</label><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
@@ -1553,7 +1566,7 @@ async function addPraticaInterna(){
   const nome = (cognome + ' ' + nomeProprio).trim();
   const cf = document.getElementById('f-cf').value.trim();
   const tipo = document.getElementById('f-tipo').value.trim();
-  const compenso = parseImporto(document.getElementById('f-compenso').value) || '';
+  const compenso = parseImporto(document.getElementById('f-compenso').value) || (fatturaAutomatica(document.getElementById('f-tipo').value) || '');
   const pagato = parseImporto(document.getElementById('f-pagato').value) || '';
   const congCognome = document.getElementById('f-cong-cognome').value.trim().toUpperCase();
   const congNome = document.getElementById('f-cong-nome').value.trim().toUpperCase();
@@ -1646,7 +1659,7 @@ async function addPraticaInterna(){
   document.getElementById('f-codfisc').value='';
   controllaCampoCF();
   impostaTipoPredefinito();
-  document.getElementById('f-compenso').value='';
+  document.getElementById('f-compenso').value=''; document.getElementById('f-compenso').dataset.auto='';
   document.getElementById('f-pagato').value='';
   document.getElementById('cli-cerca').value='';
   document.getElementById('cli-cerca-cong').value='';
