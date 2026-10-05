@@ -2,7 +2,9 @@
   "buildCommand": "",
   "outputDirectory": "",
   "framework": null,
-  "regions": ["cdg1"],
+  "regions": [
+    "cdg1"
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -40,5 +42,11 @@
         }
       ]
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "main": false,
+      "claude/upbeat-bardeen-6mt5ij": false
+    }
+  }
 }
