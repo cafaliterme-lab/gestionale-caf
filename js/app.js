@@ -80,6 +80,10 @@ function toggleCongBox(){
   const on = document.getElementById('f-congiunta-on').checked;
   document.getElementById('f-cong-box').style.display = on ? '' : 'none';
   if(!on){ ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel'].forEach(function(id){ document.getElementById(id).value=''; }); document.getElementById('cli-cerca-cong').value=''; }
+  // importo convenzione: singola e congiunta possono avere importi predefiniti diversi
+  const tipo = document.getElementById('f-tipo').value;
+  applicaFatturaAutomatica(tipo);
+  if(typeof mostraImportiFPSModulo === 'function') mostraImportiFPSModulo(tipo);
 }
 
 function renderChips(containerId, selectId, items, getLabel, getVal, getDot, getColor){

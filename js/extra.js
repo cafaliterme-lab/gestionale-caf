@@ -251,13 +251,21 @@ function importiConvenzione(conv) {
   } catch (e) { return []; }
 }
 // Importo che si compila da solo scegliendo il tipo: il predefinito, altrimenti 0 € (undefined = tipo normale)
-function importoAutomaticoConvenzione(tipo) {
+function categoriaModulo() { const c = document.getElementById('f-congiunta-on'); return c && c.checked ? 'congiunta' : 'singola'; }
+function valePer(x, cat) { return !x.applica || x.applica === 'tutte' || x.applica === cat; }
+function importoAutomaticoConvenzione(tipo, cat) {
   const conv = convenzioneDi(tipo);
   if (!conv) return undefined;
-  const pred = importiConvenzione(conv).find(function (x) { return x.predefinito; });
+  cat = cat || categoriaModulo();
+  const l = importiConvenzione(conv).filter(function (x) { return x.predefinito; });
+  const pred = l.find(function (x) { return x.applica === cat; }) || l.find(function (x) { return valePer(x, cat); });
   return pred ? Number(pred.importo) : 0;
 }
-function etichettaImporto(x) { return (x.descrizione ? x.descrizione + ' – ' : '') + fmtEuro(x.importo); }
+const NOMI_APPLICA = { singola: 'singola', congiunta: 'congiunta' };
+function etichettaImporto(x) {
+  const extra = [NOMI_APPLICA[x.applica], x.reddito].filter(Boolean).join(', ');
+  return (x.descrizione ? x.descrizione : '') + (extra ? (x.descrizione ? ' ' : '') + '(' + extra + ')' : '') + (x.descrizione || extra ? ' – ' : '') + fmtEuro(x.importo);
+}
 function selectImporti(conv, idCampo, compatto) {
   const l = importiConvenzione(conv);
   if (!l.length) return '';
@@ -275,13 +283,14 @@ function mostraImportiFPSModulo(tipo) {
   const conv = convenzioneDi(tipo);
   box.style.display = conv ? '' : 'none';
   if (!conv) { box.innerHTML = ''; return; }
-  const l = importiConvenzione(conv);
+  const cat = categoriaModulo();
+  const l = importiConvenzione(conv).filter(function (x) { return valePer(x, cat); });
   const attuale = parseImporto(document.getElementById('f-compenso').value);
   box.innerHTML = l.length
-    ? '<div style="font-size:11.5px; color:var(--sub); margin-bottom:4px">Importo ' + esc(conv.nome) + ' (tocca per sceglierlo):</div><div class="doc-chips">'
+    ? '<div style="font-size:11.5px; color:var(--sub); margin-bottom:4px">Importo ' + esc(conv.nome) + ' – dichiarazione <b>' + cat + '</b> (tocca per sceglierlo):</div><div class="doc-chips">'
       + l.map(function (x) { return '<span class="doc-chip' + (Number(x.importo) === attuale ? ' presentato' : '') + '" role="button" data-importo="' + Number(x.importo) + '" onclick="scegliImportoFPSModulo(this)">' + esc(etichettaImporto(x)) + '</span>'; }).join('')
       + '</div>'
-    : '<div style="font-size:11.5px; color:var(--sub)">Nessun importo impostato per ' + esc(conv.nome) + ' (l\'amministratore li inserisce in Utenti e permessi). La pratica resta a 0 €.</div>';
+    : '<div style="font-size:11.5px; color:var(--sub)">Nessun importo impostato per ' + esc(conv.nome) + ' (dichiarazione ' + cat + '): l\'amministratore li inserisce in Utenti e permessi. La pratica resta a 0 €.</div>';
 }
 function scegliImportoFPSModulo(chip) {
   const el = document.getElementById('f-compenso');
@@ -362,19 +371,32 @@ function renderEditorImporti(k) {
   const box = document.getElementById(k + '-importi-editor');
   if (!box) return;
   const conv = convenzione(k);
-  if (!IMPORTI_IN_MODIFICA[k]) IMPORTI_IN_MODIFICA[k] = importiConvenzione(conv).map(function (x) { return { descrizione: x.descrizione || '', importo: importoInCampo(x.importo), predefinito: !!x.predefinito }; });
+  if (!IMPORTI_IN_MODIFICA[k]) IMPORTI_IN_MODIFICA[k] = importiConvenzione(conv).map(function (x) { return { descrizione: x.descrizione || '', importo: importoInCampo(x.importo), applica: x.applica || 'tutte', reddito: x.reddito || '', predefinito: !!x.predefinito }; });
   const righe = IMPORTI_IN_MODIFICA[k];
   const rif = 'IMPORTI_IN_MODIFICA[\'' + k + '\']';
-  box.innerHTML = (righe.length ? righe.map(function (r, i) {
-    return '<div style="display:flex; gap:8px; align-items:center; margin-bottom:6px; flex-wrap:wrap">'
-      + '<input placeholder="Descrizione (es. 730 singolo)" value="' + esc(r.descrizione) + '" oninput="' + rif + '[' + i + '].descrizione=this.value" style="flex:2; min-width:150px">'
-      + '<input placeholder="0,00" inputmode="decimal" value="' + esc(r.importo) + '" oninput="filtraImporto(this); ' + rif + '[' + i + '].importo=this.value" onblur="formattaCampoImporto(this); ' + rif + '[' + i + '].importo=this.value" style="flex:1; min-width:90px">'
-      + '<label title="Si compila da solo quando scegli il tipo di pratica" style="display:flex; align-items:center; gap:4px; font-size:12.5px; margin:0; cursor:pointer; white-space:nowrap"><input type="radio" name="pred-' + k + '" style="width:auto" ' + (r.predefinito ? 'checked' : '') + ' onchange="' + rif + '.forEach(function(x, j){ x.predefinito = j === ' + i + '; })"> ★ predefinito</label>'
-      + '<button type="button" title="Togli" style="background:none; border:none; color:#c0392b; font-weight:800; font-size:16px; cursor:pointer" onclick="' + rif + '.splice(' + i + ',1); renderEditorImporti(\'' + k + '\')">✕</button></div>';
-  }).join('') : '<div class="empty" style="margin-bottom:8px">Nessun importo impostato</div>')
-    + '<div style="display:flex; gap:8px; flex-wrap:wrap"><button type="button" class="btn-add" style="background:var(--line); color:var(--ink); margin:0" onclick="' + rif + '.push({descrizione:\'\', importo:\'\', predefinito:false}); renderEditorImporti(\'' + k + '\')">+ Aggiungi importo</button>'
-    + (righe.some(function (r) { return r.predefinito; }) ? '<button type="button" class="btn-add" style="background:var(--line); color:var(--ink); margin:0" onclick="' + rif + '.forEach(function(x){ x.predefinito = false; }); renderEditorImporti(\'' + k + '\')">Nessun predefinito (resta a 0 €)</button>' : '')
+  const campo = 'padding:7px 9px';
+  box.innerHTML = (righe.length
+    ? '<div style="display:grid; grid-template-columns:minmax(120px,2fr) minmax(80px,1fr) minmax(110px,1fr) minmax(130px,1.6fr) auto auto; gap:6px 8px; align-items:center; font-size:11.5px; color:var(--sub); font-weight:700; margin-bottom:4px" class="importi-griglia"><span>Descrizione</span><span>Importo €</span><span>Dichiarazione</span><span>Fascia di reddito</span><span>Predefinito</span><span></span></div>'
+      + righe.map(function (r, i) {
+        return '<div class="importi-griglia" style="display:grid; grid-template-columns:minmax(120px,2fr) minmax(80px,1fr) minmax(110px,1fr) minmax(130px,1.6fr) auto auto; gap:6px 8px; align-items:center; margin-bottom:6px">'
+          + '<input placeholder="es. 730 base" value="' + esc(r.descrizione) + '" oninput="' + rif + '[' + i + '].descrizione=this.value" style="' + campo + '">'
+          + '<input placeholder="0,00" inputmode="decimal" value="' + esc(r.importo) + '" oninput="filtraImporto(this); ' + rif + '[' + i + '].importo=this.value" onblur="formattaCampoImporto(this); ' + rif + '[' + i + '].importo=this.value" style="' + campo + '">'
+          + '<select onchange="' + rif + '[' + i + '].applica=this.value; correggiPredefiniti(\'' + k + '\', ' + i + ')" style="' + campo + '">'
+          + [['tutte', 'Tutte'], ['singola', 'Singola'], ['congiunta', 'Congiunta']].map(function (o) { return '<option value="' + o[0] + '"' + (r.applica === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>'
+          + '<input placeholder="es. fino a 15.000 € (facoltativo)" value="' + esc(r.reddito) + '" oninput="' + rif + '[' + i + '].reddito=this.value" style="' + campo + '">'
+          + '<label title="Si compila da solo quando scegli il tipo di pratica (uno per singola e uno per congiunta)" style="display:flex; align-items:center; gap:4px; font-size:12.5px; margin:0; cursor:pointer; white-space:nowrap"><input type="checkbox" style="width:auto" ' + (r.predefinito ? 'checked' : '') + ' onchange="' + rif + '[' + i + '].predefinito=this.checked; correggiPredefiniti(\'' + k + '\', ' + i + ')"> ★</label>'
+          + '<button type="button" title="Togli" style="background:none; border:none; color:#c0392b; font-weight:800; font-size:16px; cursor:pointer" onclick="' + rif + '.splice(' + i + ',1); renderEditorImporti(\'' + k + '\')">✕</button></div>';
+      }).join('')
+    : '<div class="empty" style="margin-bottom:8px">Nessun importo impostato</div>')
+    + '<div style="font-size:11.5px; color:var(--sub); margin:2px 0 8px">★ = si compila da solo. Puoi averne uno per le <b>singole</b> e uno per le <b>congiunte</b> (oppure uno per "Tutte"). Gli importi per fascia di reddito si scelgono a mano dai pulsanti.</div>'
+    + '<div style="display:flex; gap:8px; flex-wrap:wrap"><button type="button" class="btn-add" style="background:var(--line); color:var(--ink); margin:0" onclick="' + rif + '.push({descrizione:\'\', importo:\'\', applica:\'tutte\', reddito:\'\', predefinito:false}); renderEditorImporti(\'' + k + '\')">+ Aggiungi importo</button>'
     + '<button type="button" class="btn-add" style="margin:0" onclick="salvaImporti(\'' + k + '\')">💾 Salva importi</button></div>';
+}
+// Un solo predefinito per ogni tipo di dichiarazione (singola, congiunta, tutte)
+function correggiPredefiniti(k, i) {
+  const righe = IMPORTI_IN_MODIFICA[k], r = righe[i];
+  if (r.predefinito) righe.forEach(function (x, j) { if (j !== i && x.predefinito && (x.applica || 'tutte') === (r.applica || 'tutte')) x.predefinito = false; });
+  renderEditorImporti(k);
 }
 async function salvaImporti(k) {
   const conv = convenzione(k);
@@ -383,7 +405,7 @@ async function salvaImporti(k) {
     if (!String(r.importo).trim() && !String(r.descrizione).trim()) continue;
     const n = parseImporto(r.importo);
     if (isNaN(n)) { avviso('❌ Importo non valido: ' + (r.descrizione || r.importo), true); return; }
-    lista.push({ descrizione: String(r.descrizione || '').trim(), importo: n, predefinito: !!r.predefinito });
+    lista.push({ descrizione: String(r.descrizione || '').trim(), importo: n, applica: r.applica || 'tutte', reddito: String(r.reddito || '').trim(), predefinito: !!r.predefinito });
   }
   const valore = JSON.stringify(lista);
   const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valore, aggiornato_il: new Date().toISOString() }).eq('chiave', conv.impostazione).select('chiave');
