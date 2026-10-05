@@ -467,7 +467,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <input id="f-cf" type="text" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this); controllaCampoCF(); aggiornaStoricoForm()">
     </div>
     <div>
-      <label>Codice fiscale</label>
+      <label>Codice fiscale *</label>
       <div style="display:flex; gap:6px">
         <input id="f-codfisc" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace; letter-spacing:.04em" oninput="this.value=normalizzaCF(this.value); controllaCampoCF(); aggiornaStoricoForm()">
         <button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('titolare')" title="Leggi i dati da carta d'identita', tessera sanitaria o patente">📄 Leggi documento</button>
@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610112"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610146"></script>
+<script src="js/app.js?v=202610147"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

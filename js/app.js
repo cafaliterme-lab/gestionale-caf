@@ -1637,6 +1637,27 @@ async function addPratica(){
     if(btnSalva){ btnSalva.disabled = false; btnSalva.textContent = btnTestoOriginale || '💾 Salva pratica'; }
   }
 }
+// Finestra di errore al centro: evidenzia il campo e ci porta il cursore
+function popupErroreCampo(titolo, testo, idCampo){
+  const vecchio = document.getElementById('popup-errore'); if(vecchio) vecchio.remove();
+  const campo = idCampo ? document.getElementById(idCampo) : null;
+  if(campo){ campo.style.borderColor = '#c0392b'; campo.style.boxShadow = '0 0 0 3px rgba(192,57,43,.25)'; campo.addEventListener('input', function pulisci(){ campo.style.borderColor = ''; campo.style.boxShadow = ''; campo.removeEventListener('input', pulisci); }); }
+  const ov = document.createElement('div');
+  ov.id = 'popup-errore';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:490; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #c0392b; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:22px 24px; max-width:420px; width:100%; text-align:center">'
+    + '<div style="width:60px; height:60px; margin:0 auto 8px; border-radius:50%; background:#c0392b; color:#fff; font-size:34px; line-height:60px">!</div>'
+    + '<div style="font-size:20px; font-weight:800; color:#c0392b">' + esc(titolo) + '</div>'
+    + '<div style="font-size:14px; margin:8px 0 16px">' + testo + '</div>'
+    + '<button type="button" style="background:#c0392b; color:#fff; min-width:110px">OK</button></div>';
+  ov.addEventListener('click', function(e){
+    if(e.target !== ov && e.target.tagName !== 'BUTTON') return;
+    ov.remove();
+    if(campo){ campo.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(function(){ campo.focus(); }, 300); }
+  });
+  document.body.appendChild(ov);
+  setTimeout(function(){ const b = ov.querySelector('button'); if(b) b.focus(); }, 50);
+}
 async function addPraticaInterna(){
   const msg = document.getElementById('form-msg');
   msg.style.display = 'none';
@@ -1689,9 +1710,12 @@ async function addPraticaInterna(){
     pickChip('f-stato-btns','f-stato','arrivo');
   }
   const codiceFiscale = document.getElementById('f-codfisc').value.trim();
-  if(codiceFiscale && !cfValido(codiceFiscale)){
-    msg.textContent = '⚠️ Il codice fiscale non e\' valido: correggilo o lascia il campo vuoto.';
-    msg.style.display = 'block';
+  if(!codiceFiscale){
+    popupErroreCampo('Codice fiscale obbligatorio', 'Per salvare la pratica inserisci il <b>codice fiscale</b> del contribuente (puoi anche leggerlo con "📄 Leggi documento").', 'f-codfisc');
+    return;
+  }
+  if(!cfValido(codiceFiscale)){
+    popupErroreCampo('Codice fiscale non valido', 'Il codice fiscale <b>' + esc(codiceFiscale) + '</b> non è corretto: controllalo (16 caratteri) e correggilo.', 'f-codfisc');
     return;
   }
   if(congCodiceFiscale && !cfValido(congCodiceFiscale)){
