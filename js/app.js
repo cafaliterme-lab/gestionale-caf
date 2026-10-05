@@ -1235,7 +1235,7 @@ function parseImporto(v){
   return Number(s);
 }
 // Fatturazione automatica per tipo di pratica (es. 730 FILCA: 25 €)
-const FATTURA_AUTOMATICA = { '730 FILCA': 25 };
+const FATTURA_AUTOMATICA = { '730 FILCA': 25, '730 FPS IN CONVENZIONE': 0 };
 function fatturaAutomatica(tipo){ return FATTURA_AUTOMATICA[String(tipo||'').toUpperCase().trim()]; }
 function applicaFatturaAutomatica(tipo, idCampo){
   const el = document.getElementById(idCampo || 'f-compenso');
@@ -1430,6 +1430,7 @@ function render(){
   aggiornaGrafici(fattureEmesse, incassoLordo);
   aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno);
+  if(typeof renderElencoFPS === 'function') renderElencoFPS(pratAnno);
 
   const tab = document.getElementById('tabella');
   const ordinate = filtra([...pratAnno].sort((a,b)=> a.numero - b.numero));
@@ -1566,7 +1567,9 @@ async function addPraticaInterna(){
   const nome = (cognome + ' ' + nomeProprio).trim();
   const cf = document.getElementById('f-cf').value.trim();
   const tipo = document.getElementById('f-tipo').value.trim();
-  const compenso = parseImporto(document.getElementById('f-compenso').value) || (fatturaAutomatica(document.getElementById('f-tipo').value) || '');
+  const compensoScritto = parseImporto(document.getElementById('f-compenso').value);
+  const compensoAuto = fatturaAutomatica(document.getElementById('f-tipo').value);
+  const compenso = compensoScritto || (compensoAuto !== undefined ? compensoAuto : '');
   const pagato = parseImporto(document.getElementById('f-pagato').value) || '';
   const congCognome = document.getElementById('f-cong-cognome').value.trim().toUpperCase();
   const congNome = document.getElementById('f-cong-nome').value.trim().toUpperCase();

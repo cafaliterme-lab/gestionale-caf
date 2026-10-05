@@ -229,3 +229,70 @@ function renderBackupEStorico() {
   renderBackup();
   renderStoricoGlobale();
 }
+
+/* ---------------- 730 FPS in convenzione: fatture da inserire dopo ---------------- */
+
+let FPS_SOLO_DA_FATTURARE = true;
+function eFPS(p) { return /^730\s+FPS\b/.test(String(p.tipo || '').toUpperCase()); }
+function fpsSenzaFattura(p) { return !Number(p.compenso) && !String(p.numFattura || '').trim(); }
+
+function renderElencoFPS(pratAnno) {
+  const box = document.getElementById('elenco-fps');
+  if (!box) return;
+  // non si ridisegna mentre si sta scrivendo un importo
+  if (box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT' && document.activeElement.type !== 'checkbox') return;
+  const tutte = (pratAnno || []).filter(eFPS).sort(function (a, b) { return a.numero - b.numero; });
+  const visibile = tutte.length && (typeof vedeSezioneContabilita !== 'function' || vedeSezioneContabilita('cont_economici'));
+  box.style.display = visibile ? '' : 'none';
+  if (!visibile) { box.innerHTML = ''; return; }
+  const daFatturare = tutte.filter(fpsSenzaFattura);
+  const lista = FPS_SOLO_DA_FATTURARE ? daFatturare : tutte;
+  const totFatt = tutte.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
+  const inp = 'style="width:100%; min-width:80px; padding:6px 8px"';
+  box.innerHTML = '<div class="raff-title" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap">'
+    + '<span>🧾 730 FPS in convenzione – fatture da inserire</span>'
+    + '<span style="font-size:12.5px; font-weight:600; color:var(--sub)">' + tutte.length + ' pratiche · <b style="color:' + (daFatturare.length ? '#c0392b' : '#1a7f37') + '">' + daFatturare.length + ' senza fattura</b> · fatturato ' + fmtEuro(totFatt) + '</span></div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">Le pratiche FPS entrano in contabilità a 0 €. Quando arriva la fattura della convenzione inserisci qui importo e numero: la contabilità si aggiorna da sola.</div>'
+    + '<label style="display:flex; align-items:center; gap:8px; font-size:13px; margin:0 0 8px; cursor:pointer"><input type="checkbox" style="width:auto" ' + (FPS_SOLO_DA_FATTURARE ? 'checked' : '') + ' onchange="FPS_SOLO_DA_FATTURARE=this.checked; render()"> Mostra solo quelle senza fattura</label>'
+    + (lista.length ? '<div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; padding:8px 10px; border-radius:10px; background:var(--bg); border:1px solid var(--line); margin-bottom:8px">'
+      + '<div style="font-size:12.5px; font-weight:700; align-self:center">Per tutte le selezionate:</div>'
+      + '<div><label style="font-size:11.5px">Importo (€)</label><input id="fps-imp-tutte" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" ' + inp + '></div>'
+      + '<div><label style="font-size:11.5px">N. fattura</label><input id="fps-nf-tutte" ' + inp + '></div>'
+      + '<button type="button" class="btn-add" style="margin:0" onclick="applicaFatturaFPSSelezionate()">Applica alle selezionate</button></div>' : '')
+    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th style="width:30px"><input type="checkbox" style="width:auto" title="Seleziona tutte" onchange="document.querySelectorAll(\'#elenco-fps input[data-fps-sel]\').forEach(function(c){ c.checked = this.checked; }, this)"></th><th>N.</th><th>Contribuente</th><th>Stato</th><th>Fattura (€)</th><th>N. fattura</th><th></th></tr></thead><tbody>'
+    + (lista.length ? lista.map(function (p) {
+      return '<tr><td><input type="checkbox" style="width:auto" data-fps-sel="' + p.id + '"></td><td class="n">' + esc(formattaProtocollo(p)) + '</td><td class="wrap">' + esc(p.nome || '') + (p.congiunta ? '<div class="sub2">Congiunta: ' + esc(p.congiunta) + '</div>' : '') + '</td>'
+        + '<td>' + esc(statoLabel(p.stato)) + '</td>'
+        + '<td><input id="fps-imp-' + p.id + '" inputmode="decimal" placeholder="0,00" value="' + (Number(p.compenso) ? importoInCampo(p.compenso) : '') + '" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" ' + inp + '></td>'
+        + '<td><input id="fps-nf-' + p.id + '" value="' + esc(p.numFattura || '') + '" ' + inp + '></td>'
+        + '<td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:6px 10px; cursor:pointer" onclick="salvaFatturaFPS(\'' + p.id + '\')">💾 Salva</button></td></tr>';
+    }).join('') : '<tr><td colspan="7" class="empty">' + (FPS_SOLO_DA_FATTURARE ? '✓ Tutte le pratiche FPS hanno la fattura' : 'Nessuna pratica FPS') + '</td></tr>')
+    + '</tbody></table></div>';
+}
+
+async function scriviFatturaFPS(id, importoTesto, numero) {
+  const imp = parseImporto(importoTesto);
+  const campi = { compenso: isNaN(imp) ? 0 : imp, numFattura: String(numero || '').trim() };
+  campi.fatt = campi.numFattura ? 'fatturata' : 'dafatturare';
+  return data.pratiche.aggiorna(id, campi);
+}
+async function salvaFatturaFPS(id) {
+  const imp = document.getElementById('fps-imp-' + id).value, nf = document.getElementById('fps-nf-' + id).value;
+  if (!imp.trim() && !nf.trim()) { avviso('❌ Inserisci l\'importo o il numero della fattura', true); return; }
+  document.activeElement && document.activeElement.blur();
+  const esito = await scriviFatturaFPS(id, imp, nf);
+  if (esito && esito.error) return;
+  avviso('✓ Fattura salvata');
+  render();
+}
+async function applicaFatturaFPSSelezionate() {
+  const ids = Array.from(document.querySelectorAll('#elenco-fps input[data-fps-sel]:checked')).map(function (c) { return c.dataset.fpsSel; });
+  const imp = document.getElementById('fps-imp-tutte').value, nf = document.getElementById('fps-nf-tutte').value;
+  if (!ids.length) { avviso('❌ Seleziona almeno una pratica', true); return; }
+  if (!imp.trim() && !nf.trim()) { avviso('❌ Inserisci l\'importo o il numero della fattura', true); return; }
+  if (!confirm('Applicare ' + (imp ? 'importo ' + imp + ' €' : '') + (imp && nf ? ' e ' : '') + (nf ? 'fattura n. ' + nf : '') + ' a ' + ids.length + ' pratiche FPS?')) return;
+  document.activeElement && document.activeElement.blur();
+  for (const id of ids) { await scriviFatturaFPS(id, imp, nf); }
+  avviso('✓ Fattura applicata a ' + ids.length + (ids.length === 1 ? ' pratica' : ' pratiche'));
+  render();
+}
