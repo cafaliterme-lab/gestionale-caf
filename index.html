@@ -493,7 +493,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <div><label>Cognome</label><input id="f-cong-cognome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
         <div><label>Nome</label><input id="f-cong-nome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
         <div><label>Data di nascita</label><input id="f-cong-data" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
-        <div><label>Codice fiscale coniuge</label><input id="f-cong-cf" placeholder="16 caratteri (facoltativo)" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"></div>
+        <div><label>Codice fiscale coniuge *</label><input id="f-cong-cf" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"></div>
         <div><label>Cellulare coniuge</label><input id="f-cong-tel" type="tel" inputmode="tel" placeholder="Facoltativo"></div>
         <div style="display:flex; align-items:flex-end"><button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('coniuge')" title="Leggi i dati del coniuge da carta d'identita', tessera sanitaria o patente">📄 Leggi documento coniuge</button></div>
       </div>
@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610112"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610147"></script>
+<script src="js/app.js?v=202610148"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

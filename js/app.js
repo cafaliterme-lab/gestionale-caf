@@ -1718,9 +1718,13 @@ async function addPraticaInterna(){
     popupErroreCampo('Codice fiscale non valido', 'Il codice fiscale <b>' + esc(codiceFiscale) + '</b> non è corretto: controllalo (16 caratteri) e correggilo.', 'f-codfisc');
     return;
   }
+  const congiuntaOn = (document.getElementById('f-congiunta-on') || {}).checked || congCognome || congNome;
+  if(congiuntaOn && !congCodiceFiscale){
+    popupErroreCampo('Codice fiscale del coniuge obbligatorio', 'È una dichiarazione <b>congiunta</b>: per salvare la pratica inserisci anche il <b>codice fiscale del coniuge</b> (puoi leggerlo con "📄 Leggi documento" del coniuge).', 'f-cong-cf');
+    return;
+  }
   if(congCodiceFiscale && !cfValido(congCodiceFiscale)){
-    msg.textContent = '⚠️ Il codice fiscale del coniuge non e\' valido: correggilo o lascia il campo vuoto.';
-    msg.style.display = 'block';
+    popupErroreCampo('Codice fiscale del coniuge non valido', 'Il codice fiscale del coniuge <b>' + esc(congCodiceFiscale) + '</b> non è corretto: controllalo (16 caratteri) e correggilo.', 'f-cong-cf');
     return;
   }
 
