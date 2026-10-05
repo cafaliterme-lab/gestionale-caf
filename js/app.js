@@ -1585,10 +1585,8 @@ function render(){
         ${bottoneWhatsApp(p)}
         <button onclick="modifica('${p.id}')">Modifica</button>
         <button onclick="stampaRicevuta('${p.id}')" title="Ricevuta da consegnare al cliente">🧾 Ricevuta</button>
-        <button onclick="mostraStoricoPratica('${p.id}')" title="Chi ha modificato questa pratica e quando">📜 Storico</button>
         <button onclick="annullaPratica('${p.id}')" title="La pratica resta nel registro con il suo numero, segnata ANNULLATA" style="color:#c0392b">🚫 Annulla pratica</button>
       </div>
-      <div id="storico-${p.id}"></div>
       `}
     </div>
   `;
