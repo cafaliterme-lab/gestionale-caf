@@ -468,12 +468,29 @@ function inviaAccessoUtente(u) {
     + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap; align-items:center">'
     + '<span style="font-size:12.5px; font-weight:700; align-self:center">✉️ Email con:</span>'
     + '<button type="button" data-azione="email" style="background:#1d4f91; color:#fff" title="Outlook, Mail o il programma di posta del computer">Programma di posta</button>'
+    + '<button type="button" data-azione="aruba" style="background:#e2001a; color:#fff; font-weight:800" title="Posta del CAF su Aruba">Aruba Webmail</button>'
     + '<button type="button" data-azione="gmail" style="background:#c5221f; color:#fff" title="Posta Gmail o Google Workspace aperta nel browser">Gmail</button>'
     + '<button type="button" data-azione="outlookweb" style="background:#0f6cbd; color:#fff" title="Posta Outlook / Microsoft 365 aperta nel browser">Outlook web</button>'
     + '<button type="button" data-azione="copia" style="background:var(--line); color:var(--ink)">📋 Copia</button>'
-    + '<button type="button" data-azione="chiudi" style="background:var(--line); color:var(--ink)">Chiudi</button></div></div>';
+    + '<button type="button" data-azione="chiudi" style="background:var(--line); color:var(--ink)">Chiudi</button></div>'
+    + '<div id="aruba-guida" style="display:none; margin-top:12px; padding:12px 14px; border-radius:12px; border:2px solid #e2001a; background:color-mix(in srgb, #e2001a 6%, var(--card))">'
+    + '<div style="font-weight:800; color:#e2001a; margin-bottom:6px">📮 Invio con Aruba Webmail</div>'
+    + '<div style="font-size:13px; line-height:1.5">Si è aperta la webmail Aruba in un\'altra scheda (entra con la mail del CAF se te lo chiede). Premi <b>Scrivi</b> / <b>Nuovo messaggio</b>, poi usa questi pulsanti e incolla (tasto destro → Incolla, oppure Ctrl+V) nel campo giusto:</div>'
+    + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px">'
+    + '<button type="button" data-copia="dest" style="background:#fff; color:#0f1b2d; border:1.5px solid #e2001a">1. Copia destinatario</button>'
+    + '<button type="button" data-copia="ogg" style="background:#fff; color:#0f1b2d; border:1.5px solid #e2001a">2. Copia oggetto</button>'
+    + '<button type="button" data-copia="testo" style="background:#fff; color:#0f1b2d; border:1.5px solid #e2001a">3. Copia testo</button>'
+    + '<button type="button" data-azione="aruba-apri" style="background:var(--line); color:var(--ink)">Riapri webmail</button></div></div></div>';
   document.body.appendChild(ov);
   ov.addEventListener('click', async function (e) {
+    const c = e.target.closest('button[data-copia]');
+    if (c) {
+      const valori = { dest: u.email || '', ogg: 'Accesso al programma CAF CISL Alì Terme', testo: document.getElementById('accesso-testo').value.replace(/\*/g, '') };
+      const etichetta = c.textContent.replace(/^✓ /, '');
+      try { await navigator.clipboard.writeText(valori[c.dataset.copia]); c.textContent = '✓ ' + etichetta.replace(/^\d\. Copia/, 'Copiato:').replace('Copiato:', 'Copiato'); }
+      catch (err) { prompt('Copia questo testo:', valori[c.dataset.copia]); }
+      return;
+    }
     const b = e.target.closest('button[data-azione]');
     if (!b) { if (e.target === ov) ov.remove(); return; }
     const t = document.getElementById('accesso-testo').value;
@@ -484,6 +501,11 @@ function inviaAccessoUtente(u) {
       window.open(num ? 'https://wa.me/' + num + '?text=' + encodeURIComponent(t) : 'https://wa.me/?text=' + encodeURIComponent(t), '_blank');
     }
     const oggetto = 'Accesso al programma CAF CISL Alì Terme', corpo = t.replace(/\*/g, '');
+    if (b.dataset.azione === 'aruba' || b.dataset.azione === 'aruba-apri') {
+      window.open('https://webmail.aruba.it/', '_blank');
+      document.getElementById('aruba-guida').style.display = '';
+      try { await navigator.clipboard.writeText(u.email || ''); } catch (err) {}
+    }
     if (b.dataset.azione === 'gmail') {
       window.open('https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(u.email || '') + '&su=' + encodeURIComponent(oggetto) + '&body=' + encodeURIComponent(corpo), '_blank');
     }
