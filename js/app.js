@@ -1897,22 +1897,42 @@ function rimuovi(id){
 // Lo stato è gestito direttamente da data.js e Supabase realtime
 
 function indirizzoApp(){ return location.origin + location.pathname.replace(/index\.html$/, ''); }
+// Il QR apre il programma con la guida per installare l'app (icona CAF CISL sulla schermata Home)
+function indirizzoInstallazione(){ return indirizzoApp() + '?installa=1'; }
 function qrSvg(testo){
-  const qr = qrcode(0, 'M');
+  const qr = qrcode(0, 'H'); // correzione alta: il logo al centro non disturba la lettura
   qr.addData(testo);
   qr.make();
-  return qr.createSvgTag({ cellSize: 4, margin: 1, scalable: true });
+  const n = qr.getModuleCount(), m = 2, tot = n + m * 2;
+  let celle = '';
+  for(let r = 0; r < n; r++) for(let c = 0; c < n; c++) if(qr.isDark(r, c)) celle += 'M' + (c + m) + ' ' + (r + m) + 'h1v1h-1z';
+  const lato = tot * 0.24, pos = (tot - lato) / 2;
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + tot + ' ' + tot + '" width="100%" height="100%" shape-rendering="crispEdges">'
+    + '<rect width="' + tot + '" height="' + tot + '" fill="#fff"/><path d="' + celle + '" fill="#0f1b2d"/>'
+    + '<rect x="' + (pos - 0.6) + '" y="' + (pos - 0.6) + '" width="' + (lato + 1.2) + '" height="' + (lato + 1.2) + '" rx="1.6" fill="#fff"/>'
+    + '<image href="icone/icona-192.png" x="' + pos + '" y="' + pos + '" width="' + lato + '" height="' + lato + '" preserveAspectRatio="xMidYMid slice" style="image-rendering:auto"/></svg>';
 }
 function disegnaQrApp(){
   const box = document.getElementById('qr-app');
   if(!box || typeof qrcode !== 'function') return;
-  box.innerHTML = qrSvg(indirizzoApp());
+  box.innerHTML = qrSvg(indirizzoInstallazione());
 }
 function apriQrApp(){
-  document.getElementById('qr-grande').innerHTML = qrSvg(indirizzoApp());
+  document.getElementById('qr-grande').innerHTML = qrSvg(indirizzoInstallazione());
   document.getElementById('qr-url').textContent = indirizzoApp();
   document.getElementById('qr-overlay').classList.add('open');
 }
+// Aperto dal QR: si mostra subito la guida per installare l'app
+(function(){
+  if(!/[?&]installa=1/.test(location.search)) return;
+  try{ history.replaceState(null, '', location.pathname); }catch(e){}
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      if(typeof appGiaInstallata === 'function' && appGiaInstallata()) return;
+      if(typeof installaApp === 'function') installaApp();
+    }, 1200);
+  });
+})();
 
 document.addEventListener('DOMContentLoaded', async function(){
   const logoCisl = document.querySelector('.hero-logo');

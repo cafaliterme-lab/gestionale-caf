@@ -148,7 +148,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .hero-orologio{margin-left:24px; flex:none; align-self:center; text-align:center; padding:8px 18px; border-radius:14px; background:linear-gradient(180deg,#ffffff 0%,#eef7f1 100%); color:#00612f; border-bottom:4px solid #e30613; box-shadow:0 4px 14px rgba(0,0,0,.25); position:relative; z-index:6}
 .hero-orologio .ora{font-size:30px; font-weight:800; line-height:1.05; letter-spacing:.02em; font-variant-numeric:tabular-nums}
 .hero-orologio .giorno{font-size:13px; font-weight:700; color:#c0141d; margin-top:3px; text-transform:capitalize; white-space:nowrap}
-.hero-orologio + .qr-app{margin-left:auto}
+.hero-orologio + .qr-app{margin-left:16px; margin-top:0; align-self:center}
 @media (max-width:560px){.hero{flex-wrap:wrap} .hero-orologio{margin-left:0; order:3; width:100%; display:flex; align-items:baseline; justify-content:center; gap:10px; padding:6px 12px} .hero-orologio .ora{font-size:24px} .hero-orologio .giorno{margin-top:0}}
 .card,.stat,.item{border-radius:14px; box-shadow:0 1px 2px rgba(15,27,45,.06),0 8px 24px rgba(15,27,45,.06)}
 .charts{display:grid; grid-template-columns:1fr 1fr; gap:14px}
@@ -276,7 +276,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .sc-elimina{background:none; color:#c0392b; font-weight:700; padding:4px 8px}
 body.sola-lettura .sc-fatta, body.sola-lettura .sc-elimina{display:none}
 .btn-wa{background:#25d366 !important; color:#fff !important}
-.qr-app{margin-left:auto; margin-top:26px; align-self:flex-end; flex:none; width:76px; height:76px; padding:4px; border:none; border-radius:10px; background:#fff; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.25); position:relative; z-index:6}
+.qr-app{margin-left:auto; margin-top:26px; align-self:flex-end; flex:none; width:92px; height:92px; padding:4px; border:none; border-radius:10px; background:#fff; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.25); position:relative; z-index:6}
 .qr-app svg, #qr-grande svg{display:block; width:100%; height:100%}
 @media (max-width:560px){.qr-app{display:none}}
 .qr-overlay{display:none; position:fixed; inset:0; z-index:200; background:rgba(10,20,36,.6); align-items:center; justify-content:center; padding:16px}
@@ -326,7 +326,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
     <div id="hero-caf" class="hero-caf"></div>
   </div>
   <div id="hero-orologio" class="hero-orologio"><div class="ora"></div><div class="giorno"></div></div>
-  <button type="button" id="qr-app" class="qr-app" onclick="apriQrApp()" title="Inquadra con la fotocamera del telefono per aprire l'app"></button>
+  <button type="button" id="qr-app" class="qr-app" onclick="apriQrApp()" title="Inquadra con la fotocamera del telefono per scaricare l'app CAF CISL"></button>
 </header>
 <div id="doc-overlay" class="scanner-overlay">
   <div class="scanner-box">
@@ -369,9 +369,10 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <div id="qr-overlay" class="qr-overlay" onclick="this.classList.remove('open')">
   <div class="qr-box">
     <div id="qr-grande"></div>
-    <div style="font-weight:700; margin-top:10px">Apri l'app sul telefono</div>
-    <div id="qr-url" style="font-size:12px; color:var(--sub); margin-top:4px; word-break:break-all"></div>
-    <div style="font-size:11.5px; color:var(--sub); margin-top:8px">Inquadra il codice con la fotocamera. Tocca per chiudere.</div>
+    <div style="font-weight:800; font-size:17px; color:#00612f; margin-top:10px">📲 Scarica l'app CAF CISL sul telefono</div>
+    <div style="font-size:13px; margin-top:6px; line-height:1.45">1. Inquadra il codice con la <b>fotocamera</b> del telefono e apri il link.<br>2. Si apre la guida: segui i passaggi e l'icona <b>CAF CISL</b> arriva sulla schermata Home.</div>
+    <div id="qr-url" style="font-size:12px; color:var(--sub); margin-top:6px; word-break:break-all"></div>
+    <div style="font-size:11.5px; color:var(--sub); margin-top:8px">Tocca per chiudere.</div>
   </div>
 </div>
 
@@ -745,7 +746,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610109"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610130"></script>
+<script src="js/app.js?v=202610131"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->
