@@ -432,3 +432,58 @@ async function salvaImporti(k) {
   render();
   avviso('✓ Importi ' + conv.nome + ' salvati');
 }
+
+/* ---------------- Invio delle credenziali al nuovo utente ---------------- */
+
+const NOMI_RUOLO = { operatore: 'Operatore', consultazione: 'Sola consultazione', admin: 'Amministratore' };
+function messaggioAccesso(u) {
+  const link = indirizzoApp() + '?installa=1';
+  return 'Ciao ' + nomeProprio(u.nome) + ', ti ho creato l\'accesso al programma *Protocollo CAF CISL Alì Terme*.\n\n'
+    + '🔗 Link: ' + link + '\n'
+    + '📧 Email: ' + u.email + '\n'
+    + '🔑 Password: ' + (u.password || '(quella che ti ho comunicato)') + '\n'
+    + '👤 Ruolo: ' + (NOMI_RUOLO[u.ruolo] || 'Operatore') + '\n\n'
+    + 'Apri il link dal telefono: si apre la guida per installare l\'app con l\'icona CAF CISL (su iPhone usa Safari). '
+    + 'Poi entra con la tua email e la password.';
+}
+function inviaAccessoUtente(u) {
+  const testo = messaggioAccesso(u);
+  const vecchio = document.getElementById('popup-accesso');
+  if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-accesso';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:450; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #2f9e5f; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:22px 24px; max-width:480px; width:100%; max-height:90vh; overflow:auto">'
+    + (u.nuovo ? '<div style="text-align:center"><div style="width:56px; height:56px; margin:0 auto 6px; border-radius:50%; background:#2f9e5f; color:#fff; font-size:30px; line-height:56px; font-weight:800">✓</div>'
+      + '<div style="font-size:20px; font-weight:800; color:#2f9e5f">Utente creato</div>'
+      + '<div style="font-size:14px; margin:2px 0 12px"><b>' + esc(u.nome) + '</b> · ' + esc(NOMI_RUOLO[u.ruolo] || 'Operatore') + ' · può già accedere</div></div>'
+      : '<div style="font-size:19px; font-weight:800; margin-bottom:10px">📨 Invia l\'accesso a ' + esc(u.nome) + '</div>')
+    + '<div style="font-size:13px; font-weight:700; margin-bottom:4px">Messaggio da inviare:</div>'
+    + '<textarea id="accesso-testo" rows="9" style="width:100%; font-size:13px; line-height:1.4">' + esc(testo) + '</textarea>'
+    + (u.password ? '' : '<div style="font-size:12px; color:#b5842a; margin-top:4px">La password non è nel messaggio: se vuoi, scrivi una nuova password nella sua scheda e premi di nuovo "Invia accesso", oppure aggiungila qui sopra.</div>')
+    + '<div style="display:flex; gap:8px; align-items:flex-end; margin-top:10px; flex-wrap:wrap">'
+    + '<div style="flex:1; min-width:160px"><label style="font-size:12px">Cellulare</label><input id="accesso-tel" type="tel" inputmode="tel" value="' + esc(u.telefono || '') + '" placeholder="Numero del nuovo utente"></div>'
+    + '<button type="button" data-azione="wa" style="background:#25d366; color:#fff">💬 Invia su WhatsApp</button></div>'
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap">'
+    + '<button type="button" data-azione="email" style="background:#1d4f91; color:#fff">✉️ Invia per email</button>'
+    + '<button type="button" data-azione="copia" style="background:var(--line); color:var(--ink)">📋 Copia</button>'
+    + '<button type="button" data-azione="chiudi" style="background:var(--line); color:var(--ink)">Chiudi</button></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', async function (e) {
+    const b = e.target.closest('button[data-azione]');
+    if (!b) { if (e.target === ov) ov.remove(); return; }
+    const t = document.getElementById('accesso-testo').value;
+    if (b.dataset.azione === 'chiudi') ov.remove();
+    if (b.dataset.azione === 'wa') {
+      const tel = document.getElementById('accesso-tel').value;
+      const num = numeroWhatsApp(tel);
+      window.open(num ? 'https://wa.me/' + num + '?text=' + encodeURIComponent(t) : 'https://wa.me/?text=' + encodeURIComponent(t), '_blank');
+    }
+    if (b.dataset.azione === 'email') {
+      location.href = 'mailto:' + encodeURIComponent(u.email || '') + '?subject=' + encodeURIComponent('Accesso al programma CAF CISL Alì Terme') + '&body=' + encodeURIComponent(t.replace(/\*/g, ''));
+    }
+    if (b.dataset.azione === 'copia') {
+      try { await navigator.clipboard.writeText(t); b.textContent = '✓ Copiato'; } catch (err) { document.getElementById('accesso-testo').select(); }
+    }
+  });
+}

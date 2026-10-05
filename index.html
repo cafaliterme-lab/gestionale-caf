@@ -638,7 +638,13 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <div class="grid">
     <div><label>Nome</label><input id="nu-nome" placeholder="Es. MARCO"></div>
     <div><label>Email</label><input id="nu-email" placeholder="Es. marco@example.com" type="email"></div>
-    <div><label>Password</label><input type="password" id="nu-pwd" placeholder="Password"></div>
+    <div><label>Password</label><input type="password" id="nu-pwd" placeholder="Almeno 6 caratteri"></div>
+    <div><label>Ruolo</label><select id="nu-ruolo">
+      <option value="operatore">Operatore (inserisce e lavora le pratiche)</option>
+      <option value="consultazione">Sola consultazione (vede ma non modifica)</option>
+      <option value="admin">Amministratore (tutto, compresi utenti e permessi)</option>
+    </select></div>
+    <div><label>Cellulare (per inviargli l'accesso su WhatsApp)</label><input id="nu-tel" type="tel" inputmode="tel" placeholder="Facoltativo"></div>
   </div>
   <div style="text-align:left"><button type="button" class="btn-add" onclick="aggiungiUtente()">+ Crea utente</button></div>
 </div>
@@ -735,7 +741,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ocr-documento.js?v=6"></script>
 <script src="js/grafici.js?v=6"></script>
 <script src="js/stampe.js?v=5"></script>
-<script src="js/extra.js?v=8"></script>
+<script src="js/extra.js?v=9"></script>
 <script src="js/documenti.js?v=3"></script>
 <script src="js/installa.js?v=3"></script>
 <script src="js/scadenze.js?v=202610083"></script>
@@ -746,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610109"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610134"></script>
+<script src="js/app.js?v=202610136"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

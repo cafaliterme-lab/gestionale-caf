@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     const action = new URL(req.url).pathname.split("/").pop()
 
     if (action === "create-user" && req.method === "POST") {
-      const { email, password, nome } = await req.json()
+      const { email, password, nome, ruolo } = await req.json()
       if (!email || !password) return risposta({ error: "Email e password sono obbligatori" }, 400)
       const nomeMaiuscolo = String(nome || String(email).split("@")[0]).trim().toUpperCase()
 
@@ -52,13 +52,17 @@ Deno.serve(async (req) => {
       // Il profilo nasce dal trigger sul database; qui lo si rende subito operativo
       // (anagrafica e registro, non in sola lettura). I permessi si cambiano poi da "Utenti e permessi".
       if (data.user) {
+        // ruolo scelto alla creazione: operatore, consultazione (operatore in sola lettura) o amministratore
+        const admin = ruolo === "admin"
         await supabase.from("profili").upsert({
           id: data.user.id,
           nome: nomeMaiuscolo,
           email: data.user.email,
-          ruolo: "operatore",
-          tabs: { anagrafica: true, registro: true, contabilita: false, caf: false, collaboratori: false },
-          sola_lettura: false,
+          ruolo: admin ? "admin" : "operatore",
+          tabs: admin
+            ? { anagrafica: true, registro: true, contabilita: true, caf: true, collaboratori: true, scadenze: true, messaggi: true, grafici: true }
+            : { anagrafica: true, registro: true, contabilita: false, caf: false, collaboratori: false },
+          sola_lettura: ruolo === "consultazione",
         }, { onConflict: "id" })
       }
       return risposta({ success: true, user: data.user, message: `Utente ${nomeMaiuscolo} (${data.user?.email}) creato: può già accedere con la sua email e password.` })

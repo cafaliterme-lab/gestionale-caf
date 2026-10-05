@@ -630,11 +630,15 @@ async function aggiungiUtente(){
   }
 
   try {
-    const result = await chiamaAdminUtenti('create-user', 'POST', { email, password: pwd, nome });
-    alert('✅ ' + result.message);
+    const ruolo = (document.getElementById('nu-ruolo') || {}).value || 'operatore';
+    const tel = ((document.getElementById('nu-tel') || {}).value || '').trim();
+    await chiamaAdminUtenti('create-user', 'POST', { email, password: pwd, nome, ruolo });
     document.getElementById('nu-nome').value = '';
     document.getElementById('nu-email').value = '';
     document.getElementById('nu-pwd').value = '';
+    if(document.getElementById('nu-tel')) document.getElementById('nu-tel').value = '';
+    if(document.getElementById('nu-ruolo')) document.getElementById('nu-ruolo').value = 'operatore';
+    inviaAccessoUtente({ nome: nome, email: email, password: pwd, ruolo: ruolo, telefono: tel, nuovo: true });
     renderPermessi();
   } catch(e){
     alert('❌ Errore: ' + e.message);
@@ -894,10 +898,11 @@ async function renderPermessi(){
     return;
   }
 
-  const operatori = allProfili.filter(function(u){ return u.ruolo !== 'admin'; });
+  const io = auth.profilo && auth.profilo.id;
+  const operatori = allProfili.filter(function(u){ return u.id !== io; });
 
   if(!operatori.length) {
-    wrap.innerHTML = '<div class="empty">Nessun operatore oltre all\'amministratore</div>';
+    wrap.innerHTML = '<div class="empty">Nessun altro utente oltre a te</div>';
     return;
   }
 
@@ -913,11 +918,17 @@ async function renderPermessi(){
       }
       return riga;
     }).join('');
+    const ruoloAttuale = u.ruolo === 'admin' ? 'admin' : (u.sola_lettura ? 'consultazione' : 'operatore');
+    const selRuolo = '<select class="perm-ruolo" data-user-id="'+u.id+'" data-prima="'+ruoloAttuale+'" style="padding:6px 8px; font-size:13px; max-width:260px" onchange="var c=document.getElementById(\'perm-'+u.id+'-tabs\'); if(c) c.style.display = this.value===\'admin\' ? \'none\' : \'\';">'
+      + [['operatore','Operatore'],['consultazione','Sola consultazione'],['admin','Amministratore']].map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===ruoloAttuale?' selected':'')+'>'+o[1]+'</option>'; }).join('') + '</select>';
     return '<div class="card" style="margin-bottom:12px">'
-      + '<div class="raff-title">'+esc(u.nome)+'</div>'
+      + '<div class="raff-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap"><span>'+esc(u.nome)+(u.email ? ' <span style="font-size:12px; font-weight:400; color:var(--sub)">'+esc(u.email)+'</span>' : '')+'</span>'
+      + '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:6px 12px; font-size:12.5px; font-weight:700; cursor:pointer" onclick="inviaAccessoUtente({ nome: &quot;'+esc(u.nome)+'&quot;, email: &quot;'+esc(u.email||'')+'&quot;, ruolo: &quot;'+ruoloAttuale+'&quot;, password: (document.getElementById(&quot;pwd-'+u.id+'&quot;)||{}).value || &quot;&quot; })">📨 Invia accesso</button></div>'
+      + '<div class="perm-row" style="border-bottom:2px solid var(--line); padding-bottom:10px; margin-bottom:6px"><span><b>Ruolo</b></span>'+selRuolo+'</div>'
+      + '<div id="perm-'+u.id+'-tabs"'+(ruoloAttuale==='admin' ? ' style="display:none"' : '')+'>'
       + righeTab
       + '<div class="perm-row" style="margin-top:6px; border-top:2px solid var(--line); padding-top:12px"><span>🗑 Elimina clienti dall\'archivio</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="elimina_clienti" '+(tabs.elimina_clienti?'checked':'')+' id="perm-'+u.id+'-elimcli"> Consentito</label></div>'
-      + '<div class="perm-row"><span>Sola lettura</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-type="sola_lettura" '+(u.sola_lettura?'checked':'')+' id="perm-'+u.id+'-solo"> Attiva</label></div>'
+      + '</div>'
       + '<div class="perm-row"><span>Nuova password</span><span style="display:flex; gap:6px"><input type="password" id="pwd-'+u.id+'" placeholder="Lascia vuoto per non cambiarla" style="width:160px; padding:6px 8px; font-size:12.5px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink)"><button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer" onclick="cambiaPasswordUtente(&quot;'+u.id+'&quot;, document.getElementById(&quot;pwd-'+u.id+'&quot;).value); document.getElementById(&quot;pwd-'+u.id+'&quot;).value=&quot;&quot;">Salva</button></span></div>'
       + '<div class="perm-row"><span></span><button type="button" style="background:none; border:none; color:#c0392b; font-weight:700; cursor:pointer" onclick="rimuoviUtente(&quot;'+u.id+'&quot;)">Elimina utente</button></div>'
       + '</div>';
@@ -946,7 +957,16 @@ async function salvaPermessi(){
       }
     });
 
+    document.querySelectorAll('.perm-ruolo').forEach(function(sel){
+      const userId = sel.dataset.userId;
+      if(!changes[userId]) changes[userId] = { tabs: {} };
+      changes[userId].ruolo = sel.value === 'admin' ? 'admin' : 'operatore';
+      changes[userId].sola_lettura = sel.value === 'consultazione';
+    });
+    const nuoviAdmin = Array.from(document.querySelectorAll('.perm-ruolo')).filter(function(sel){ return sel.value === 'admin' && sel.dataset.prima !== 'admin'; });
+    if(nuoviAdmin.length && !confirm('Stai rendendo AMMINISTRATORE un altro utente: potrà vedere e modificare tutto, compresi utenti, permessi e backup. Confermi?')) return;
     for(const userId in changes) {
+      if(changes[userId].tabs && !Object.keys(changes[userId].tabs).length) delete changes[userId].tabs;
       const result = await aggiornaProfilo(userId, changes[userId]);
       if(result.error) {
         alert('❌ Errore: ' + result.error);
