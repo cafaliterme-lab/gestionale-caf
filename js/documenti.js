@@ -68,7 +68,7 @@ function inviaWhatsAppLibero(telefono, testo, nome) {
     num = numeroWhatsApp(t);
     if (!num) { avviso('❌ Numero di telefono non valido', true); return; }
   }
-  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(testo), '_blank');
+  apriChatWhatsApp(num, testo);
 }
 function richiediNuovoDocumentoModulo() {
   const nome = (document.getElementById('f-cognome').value + ' ' + document.getElementById('f-nome').value).trim();
@@ -394,7 +394,7 @@ async function salvaTelefonoCUD() {
 function provaTelefonoCUD() {
   const num = numeroWhatsAppCUD((document.getElementById('cud-tel') || {}).value || telefonoCUD());
   if (!num) { avviso('❌ Numero non valido o incompleto: un cellulare ha 10 cifre (es. 333 1234567)', true); return; }
-  window.open('https://wa.me/' + num, '_blank');
+  apriChatWhatsApp(num, '');
 }
 // Senza id: tutto il tabulato; con id: solo quel codice fiscale
 function inviaCUDBriguglio(id) {
@@ -405,7 +405,7 @@ function inviaCUDBriguglio(id) {
   if (!lista.length) return;
   const righe = lista.map(function (p, i) { return (lista.length > 1 ? (i + 1) + '. ' : '') + (p.nome || '') + ' – ' + (p.codiceFiscale || ('nato/a il ' + (p.cf || '?'))); });
   const testo = 'Buongiorno, dal CAF CISL di Alì Terme chiediamo ' + (lista.length > 1 ? 'i CUD dei seguenti contribuenti' : 'il CUD di') + ':\n' + righe.join('\n') + '\n\nGrazie.' + (nomeOperatoreCUD() ? '\n' + nomeOperatoreCUD() + ' – CAF CISL Alì Terme' : '');
-  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(testo), '_blank');
+  apriChatWhatsApp(num, testo);
   popupRichiestaCUDInviata(lista, tel);
 }
 // Conferma al centro dopo l'invio della richiesta a Briguglio Santina

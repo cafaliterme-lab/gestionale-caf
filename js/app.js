@@ -1723,6 +1723,21 @@ function numeroWhatsApp(tel){
   else if(n) n = '39' + n;
   return /^\d{10,15}$/.test(n) ? n : '';
 }
+// Apre WhatsApp: sul telefono l'app, sul PC sempre la STESSA scheda di WhatsApp Web (niente nuove aperture a ogni invio)
+function eDispositivoMobile(){
+  const ua = navigator.userAgent || '';
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+}
+function apriChatWhatsApp(num, testo){
+  const t = testo ? encodeURIComponent(testo) : '';
+  if(eDispositivoMobile()){
+    window.open('https://wa.me/' + (num || '') + (t ? '?text=' + t : ''), '_blank');
+    return;
+  }
+  const url = 'https://web.whatsapp.com/send?' + (num ? 'phone=' + num + (t ? '&' : '') : '') + (t ? 'text=' + t : '');
+  const w = window.open(url, 'whatsapp-caf');
+  if(w) try{ w.focus(); }catch(e){}
+}
 function nomeProprio(s){ return String(s||'').toLowerCase().replace(/(^|[\s'-])\S/g, function(c){ return c.toUpperCase(); }); }
 const MODELLO_WHATSAPP_BASE = 'Gentile {nome}, la informiamo che la Sua {pratica} (protocollo n. {protocollo}) è pronta. Può passare a ritirarla presso il CAF CISL di Alì Terme, in {indirizzo}. Per informazioni può chiamare il {telefono}. Orari di apertura: {orari}. Cordiali saluti.';
 function modelliWhatsApp(){
@@ -1774,7 +1789,7 @@ function inviaWhatsApp(id){
   scegliMessaggioWhatsApp(p, num);
 }
 function apriWhatsApp(num, testo, p){
-  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(testo), '_blank');
+  apriChatWhatsApp(num, testo);
   if(p && p.id){ p.whatsappInviato = todayIT(); data.pratiche.aggiorna(p.id, { whatsappInviato: p.whatsappInviato }); }
 }
 function scegliMessaggioWhatsApp(p, num){

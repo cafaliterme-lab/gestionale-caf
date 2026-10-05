@@ -500,7 +500,7 @@ function inviaAccessoUtente(u) {
     if (b.dataset.azione === 'wa') {
       const tel = document.getElementById('accesso-tel').value;
       const num = numeroWhatsApp(tel);
-      window.open(num ? 'https://wa.me/' + num + '?text=' + encodeURIComponent(t) : 'https://wa.me/?text=' + encodeURIComponent(t), '_blank');
+      apriChatWhatsApp(num || '', t);
     }
     const oggetto = 'Accesso al programma CAF CISL Alì Terme', corpo = t.replace(/\*/g, '');
     if (b.dataset.azione === 'aruba' || b.dataset.azione === 'aruba-apri') {
