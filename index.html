@@ -478,7 +478,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
     <div>
       <label>Scadenza documento d'identità</label>
       <div style="display:flex; gap:6px; align-items:stretch">
-        <input id="f-doc-scad" placeholder="GG/MM/AAAA" inputmode="numeric" autocomplete="off" style="flex:1; font-weight:700" oninput="autoSlashData(this); coloraScadenzaDocumento()">
+        <input id="f-doc-scad" placeholder="GG/MM/AAAA" inputmode="numeric" autocomplete="off" style="flex:0 1 170px; min-width:0; font-weight:700" oninput="autoSlashData(this); coloraScadenzaDocumento()">
         <button type="button" id="f-doc-scad-wa" class="btn-scan-cf" style="display:none; background:#25d366; color:#fff" onclick="richiediNuovoDocumentoModulo()" title="Chiedi al cliente il nuovo documento su WhatsApp">💬 Richiedi nuovo</button>
       </div>
       <div id="f-doc-scad-msg" style="font-size:12px; font-weight:700; margin-top:4px"></div>
@@ -507,17 +507,20 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <div class="chip-dd-panel" id="f-tipo-btns"></div>
       </div>
     </div>
-    <div>
-      <label>Fattura (€)</label>
-      <input id="f-compenso" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this); this.dataset.auto=''" onblur="formattaCampoImporto(this)">
-      <div id="f-fps-importi" style="display:none; margin-top:6px"></div>
-    </div>
-    <div>
-      <label>Pagato effettivo (€)</label>
-      <div style="display:flex; gap:6px">
-        <input id="f-pagato" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0">
-        <select id="f-metodo" title="Tipo di pagamento" style="width:auto; flex:0 0 auto"><option value="">Pagamento…</option><option selected>CONTANTI</option><option>POS</option><option>BONIFICO</option></select>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; align-items:start">
+      <div>
+        <label>Fattura (€)</label>
+        <input id="f-compenso" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this); this.dataset.auto=''" onblur="formattaCampoImporto(this)">
       </div>
+      <div>
+        <label>Pagato effettivo (€)</label>
+        <input id="f-pagato" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)">
+      </div>
+      <div>
+        <label>Pagamento</label>
+        <select id="f-metodo" title="Tipo di pagamento"><option value="">Pagamento…</option><option selected>CONTANTI</option><option>POS</option><option>BONIFICO</option></select>
+      </div>
+      <div id="f-fps-importi" style="display:none; grid-column:1/-1"></div>
     </div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
       <div>
