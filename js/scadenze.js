@@ -93,6 +93,7 @@ function renderScadenze() {
       + '<span class="dot" style="background:' + COLORI_SCADENZA[st] + '"></span>'
       + '<div style="flex:1; min-width:0"><b>' + esc(s.titolo) + '</b>' + (s.cliente ? ' · ' + esc(s.cliente) : '')
       + '<div class="sub2">' + dataIT(s.data) + ' · ' + (s.completata ? esitoScadenza(s) : quandoScadenza(s)) + (s.avvisoGiorni ? ' · avviso ' + s.avvisoGiorni + ' gg prima' : ' · avviso il giorno stesso') + (s.note ? ' · ' + esc(s.note) : '') + '</div></div>'
+      + (eScadenzaColf(s) && !s.completata ? '<button type="button" title="Avvisa il cliente su WhatsApp della scadenza" style="flex:none; background:#25d366; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="avvisaClienteScadenza(\'' + s.id + '\')">💬 Avvisa</button>' : '')
       + (eScadenzaColf(s) && !s.completata ? '<button type="button" title="Nuova pratica colf e badanti già compilata con i dati del cliente" style="flex:none; background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="rinnovaScadenza(\'' + s.id + '\')">🔁 Rinnova</button>' : '')
       + '<label class="chk sc-fatta"><input type="checkbox" ' + (s.completata ? 'checked' : '') + ' onchange="segnaScadenza(\'' + s.id + '\', this.checked)"> ' + etichettaFatta(s) + '</label>'
       + '<button type="button" class="sc-elimina" onclick="rimuoviScadenza(\'' + s.id + '\')">✕</button>'
@@ -163,7 +164,8 @@ function aggiornaAvvisiScadenze() {
           + '<span style="flex:none; width:10px; height:10px; border-radius:50%; margin-top:4px; background:' + col + '"></span>'
           + '<div style="flex:1; min-width:0"><b>' + esc(s.titolo) + '</b>' + (s.cliente ? '<br>' + esc(s.cliente) : '')
           + '<div style="font-size:12px; color:var(--sub)">' + dataIT(s.data) + ' · <b style="color:' + col + '">' + quandoScadenza(s) + '</b>' + (s.note ? ' · ' + esc(s.note) : '') + '</div></div>'
-          + (eScadenzaColf(s) && !s.completata ? '<button type="button" title="Nuova pratica colf e badanti già compilata con i dati del cliente" style="flex:none; background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="rinnovaScadenza(\'' + s.id + '\')">🔁 Rinnova</button>' : '')
+          + (eScadenzaColf(s) && !s.completata ? '<button type="button" title="Avvisa il cliente su WhatsApp della scadenza" style="flex:none; background:#25d366; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="avvisaClienteScadenza(\'' + s.id + '\')">💬 Avvisa</button>' : '')
+      + (eScadenzaColf(s) && !s.completata ? '<button type="button" title="Nuova pratica colf e badanti già compilata con i dati del cliente" style="flex:none; background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="rinnovaScadenza(\'' + s.id + '\')">🔁 Rinnova</button>' : '')
           + '<label style="flex:none; display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:#2f9e5f; cursor:pointer; margin:0"><input type="checkbox" style="width:auto" onchange="this.disabled=true; segnaScadenza(\'' + s.id + '\', true)"> ' + etichettaFatta(s) + '</label>'
           + '</div>';
       }).join('')
@@ -231,4 +233,27 @@ function etichettaFatta(s) { return eScadenzaColf(s) ? 'Non rinnova' : 'Fatta'; 
 function esitoScadenza(s) {
   if (!eScadenzaColf(s)) return 'fatta';
   return /RINNOVATA/.test(s.note || '') ? '🔁 rinnovata' : 'non rinnova';
+}
+
+// Avviso al cliente su WhatsApp: telefono dalla pratica (o dall'archivio clienti); si annota "AVVISATO il ..."
+function praticaDiScadenza(s) {
+  const tutte = (state.pratiche || []).concat(state.annullate || []);
+  return (s.praticaId && tutte.find(function (x) { return x.id === s.praticaId; }))
+    || tutte.filter(function (x) { return s.cliente && x.nome === s.cliente && eColf(x.tipo); })[0] || null;
+}
+async function avvisaClienteScadenza(id) {
+  const s = (state.scadenze || []).find(function (x) { return x.id === id; });
+  if (!s) return;
+  const p = praticaDiScadenza(s);
+  const nome = (p && p.nome) || s.cliente || '';
+  let tel = p && p.telefono;
+  if (!tel && typeof ARCHIVIO_CLIENTI !== 'undefined') { const c = ARCHIVIO_CLIENTI.find(function (x) { return x.nomeCompleto === nome; }); if (c) tel = c.telefono; }
+  const scaduta = s.data < isoLocale(new Date());
+  const testo = 'Gentile ' + nomeProprio(nome) + ', le ricordiamo che l\'assistenza per il contratto di lavoro domestico (colf/badante) '
+    + (scaduta ? 'è scaduta il ' : 'scade il ') + dataIT(s.data) + '. Se desidera rinnovarla può passare in ufficio o rispondere a questo messaggio.\nGrazie.\n\n' + righeContattiCaf();
+  if (!inviaWhatsAppLibero(tel, testo, nome)) return;
+  const quando = 'AVVISATO il ' + new Date().toLocaleDateString('it-IT');
+  const note = [String(s.note || '').replace(/\s*·?\s*AVVISATO il [\d\/]+/g, ''), quando].filter(Boolean).join(' · ');
+  const r = await data.scadenze.aggiorna(id, { note: note });
+  if (r && r.error) avviso('❌ ' + r.error, true); else avviso('💬 ' + quando + ': ' + nome);
 }

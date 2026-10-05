@@ -64,11 +64,12 @@ function inviaWhatsAppLibero(telefono, testo, nome) {
   let num = numeroWhatsApp(telefono);
   if (!num) {
     const t = prompt('Numero di cellulare di ' + (nome || 'cliente') + ':', telefono || '');
-    if (!t) return;
+    if (!t) return false;
     num = numeroWhatsApp(t);
-    if (!num) { avviso('❌ Numero di telefono non valido', true); return; }
+    if (!num) { avviso('❌ Numero di telefono non valido', true); return false; }
   }
   apriChatWhatsApp(num, testo);
+  return true;
 }
 function richiediNuovoDocumentoModulo() {
   const nome = (document.getElementById('f-cognome').value + ' ' + document.getElementById('f-nome').value).trim();
