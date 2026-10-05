@@ -322,6 +322,13 @@ function onCFLetto(cf){
   aggiornaStoricoForm();
   avviso(archiviato ? '✓ Cliente gia\' in archivio: ' + archiviato.nomeCompleto : '✓ Codice fiscale letto: ' + cf);
 }
+// Ultima modifica (chi e quando): si sovrascrive a ogni modifica
+function ultimaModifica(p){
+  if(!p.modificatoDa || !p.aggiornatoIl) return '';
+  const d = new Date(p.aggiornatoIl);
+  if(isNaN(d.getTime())) return '';
+  return esc(p.modificatoDa) + ' il ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + ' alle ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
 function formattaInserimento(p){
   if(!p.inseritoDa && !p.inseritoIl) return '-';
   let quando = '';
@@ -1520,7 +1527,7 @@ function render(){
               <td class="wrap">${(p.nome||'-').toUpperCase()}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}${typeof segnaliDocumentiHTML === 'function' ? segnaliDocumentiHTML(p) : ''}</td>
               <td class="wrap">${p.tipo||'-'}</td>
               <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select></td>
-              <td>${formattaInserimento(p)}</td>
+              <td>${formattaInserimento(p)}${ultimaModifica(p) ? '<div class="sub2" title="Ultima modifica">✏️ ' + ultimaModifica(p) + '</div>' : ''}</td>
               <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)} <button type="button" title="Ricevuta da consegnare al cliente" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer" onclick="stampaRicevuta('${p.id}')">🧾</button></td>
             </tr>`).join('') : '<tr><td colspan="8" class="empty">'+(pratAnno.length ? 'Nessun risultato' : 'Nessuna registrazione per l\'anno '+annoSel)+'</td></tr>'}
         </tbody>
@@ -1550,6 +1557,7 @@ function render(){
       ${typeof documentiCardHTML === 'function' ? documentiCardHTML(p) : ''}
       ${storicoClienteHTML(p)}
       ${p.numFattura ? `<div class="meta">Fattura n. ${esc(p.numFattura)}</div>` : ''}
+      ${ultimaModifica(p) ? `<div class="meta" style="color:var(--sub)">✏️ Ultima modifica: <b>${ultimaModifica(p)}</b></div>` : ''}
       ${p.whatsappInviato ? `<div class="meta" style="color:#1a9e4b">💬 Avvisato su WhatsApp il ${esc(p.whatsappInviato)}</div>` : ''}
       ${p._editing ? `
         <div class="grid" style="margin-top:8px">
