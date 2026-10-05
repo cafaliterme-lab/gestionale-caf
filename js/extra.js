@@ -464,8 +464,11 @@ function inviaAccessoUtente(u) {
     + '<div style="display:flex; gap:8px; align-items:flex-end; margin-top:10px; flex-wrap:wrap">'
     + '<div style="flex:1; min-width:160px"><label style="font-size:12px">Cellulare</label><input id="accesso-tel" type="tel" inputmode="tel" value="' + esc(u.telefono || '') + '" placeholder="Numero del nuovo utente"></div>'
     + '<button type="button" data-azione="wa" style="background:#25d366; color:#fff">💬 Invia su WhatsApp</button></div>'
-    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap">'
-    + '<button type="button" data-azione="email" style="background:#1d4f91; color:#fff">✉️ Invia per email</button>'
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap; align-items:center">'
+    + '<span style="font-size:12.5px; font-weight:700; align-self:center">✉️ Email con:</span>'
+    + '<button type="button" data-azione="email" style="background:#1d4f91; color:#fff" title="Outlook, Mail o il programma di posta del computer">Programma di posta</button>'
+    + '<button type="button" data-azione="gmail" style="background:#c5221f; color:#fff" title="Posta Gmail o Google Workspace aperta nel browser">Gmail</button>'
+    + '<button type="button" data-azione="outlookweb" style="background:#0f6cbd; color:#fff" title="Posta Outlook / Microsoft 365 aperta nel browser">Outlook web</button>'
     + '<button type="button" data-azione="copia" style="background:var(--line); color:var(--ink)">📋 Copia</button>'
     + '<button type="button" data-azione="chiudi" style="background:var(--line); color:var(--ink)">Chiudi</button></div></div>';
   document.body.appendChild(ov);
@@ -478,6 +481,13 @@ function inviaAccessoUtente(u) {
       const tel = document.getElementById('accesso-tel').value;
       const num = numeroWhatsApp(tel);
       window.open(num ? 'https://wa.me/' + num + '?text=' + encodeURIComponent(t) : 'https://wa.me/?text=' + encodeURIComponent(t), '_blank');
+    }
+    const oggetto = 'Accesso al programma CAF CISL Alì Terme', corpo = t.replace(/\*/g, '');
+    if (b.dataset.azione === 'gmail') {
+      window.open('https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(u.email || '') + '&su=' + encodeURIComponent(oggetto) + '&body=' + encodeURIComponent(corpo), '_blank');
+    }
+    if (b.dataset.azione === 'outlookweb') {
+      window.open('https://outlook.office.com/mail/deeplink/compose?to=' + encodeURIComponent(u.email || '') + '&subject=' + encodeURIComponent(oggetto) + '&body=' + encodeURIComponent(corpo), '_blank');
     }
     if (b.dataset.azione === 'email') {
       location.href = 'mailto:' + encodeURIComponent(u.email || '') + '?subject=' + encodeURIComponent('Accesso al programma CAF CISL Alì Terme') + '&body=' + encodeURIComponent(t.replace(/\*/g, ''));
