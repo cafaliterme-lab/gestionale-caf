@@ -1446,6 +1446,7 @@ function render(){
   aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno);
   if(typeof renderElencoFPS === 'function') renderElencoFPS(pratAnno);
+  if(typeof aggiornaPulsanteCUD === 'function'){ aggiornaPulsanteCUD(); if(document.getElementById('richieste-cud')) disegnaRichiesteCUD(); }
 
   const tab = document.getElementById('tabella');
   const ordinate = filtra([...pratAnno].sort((a,b)=> a.numero - b.numero));

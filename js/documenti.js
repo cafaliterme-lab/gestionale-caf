@@ -8,7 +8,12 @@ const DOCUMENTI_STANDARD = [
   'Spese mediche e farmacia', 'Interessi mutuo', 'Spese istruzione / università', 'Assicurazioni',
   'Bonus edilizi / ristrutturazioni', 'Contratto di affitto', 'Spese funebri', 'Contributi colf / previdenziali',
   'Spese veterinarie', 'Spese sportive figli', 'Delega firmata',
+  'Richiesta CUD Punto Fisco', 'Richiesta CUD Briguglio Santina',
 ];
+// Richieste CUD: un tocco = da richiedere (rosso), due tocchi = ricevuto (verde), tre = tolto
+const CUD_PUNTO_FISCO = 'Richiesta CUD Punto Fisco';
+const CUD_BRIGUGLIO = 'Richiesta CUD Briguglio Santina';
+const RICHIESTE_CUD = [CUD_PUNTO_FISCO, CUD_BRIGUGLIO];
 
 /* ---------------- Scadenza documento ---------------- */
 
@@ -92,7 +97,10 @@ function chipsDocumentiHTML(stato, ordine, azione) {
     return '<span class="doc-chip ' + s + '" role="button" tabindex="0" data-doc="' + esc(n) + '" onclick="' + azione + '(this.dataset.doc)">' + segno + esc(n) + '</span>';
   }).join('');
 }
-function prossimoStato(s) { return !s ? 'presentato' : s === 'presentato' ? 'mancante' : ''; }
+function prossimoStato(s, nome) {
+  if (RICHIESTE_CUD.indexOf(nome) >= 0) return !s ? 'mancante' : s === 'mancante' ? 'presentato' : '';
+  return !s ? 'presentato' : s === 'presentato' ? 'mancante' : '';
+}
 
 // Modulo di inserimento
 let DOC_MODULO = {};
@@ -103,7 +111,7 @@ function disegnaDocumentiModulo() {
   if (box) box.innerHTML = chipsDocumentiHTML(DOC_MODULO, ordineModulo(), 'cambiaDocumentoModulo');
 }
 function cambiaDocumentoModulo(nome) {
-  const s = prossimoStato(DOC_MODULO[nome]);
+  const s = prossimoStato(DOC_MODULO[nome], nome);
   if (s) DOC_MODULO[nome] = s; else delete DOC_MODULO[nome];
   disegnaDocumentiModulo();
 }
@@ -214,7 +222,7 @@ function disegnaEditorDocumenti() {
   if (box && DOC_EDITOR) box.innerHTML = chipsDocumentiHTML(DOC_EDITOR.stato, DOC_EDITOR.ordine, 'cambiaDocumentoEditor');
 }
 function cambiaDocumentoEditor(nome) {
-  const s = prossimoStato(DOC_EDITOR.stato[nome]);
+  const s = prossimoStato(DOC_EDITOR.stato[nome], nome);
   if (s) DOC_EDITOR.stato[nome] = s; else delete DOC_EDITOR.stato[nome];
   disegnaEditorDocumenti();
 }
@@ -267,4 +275,115 @@ function popupDocumentiMancanti(p, statoRichiesto) {
     if (b && b.dataset.azione === 'wa') richiediDocumentiMancanti(p.id);
     if (b && b.dataset.azione === 'apri' && typeof apriPraticaDaTabella === 'function') { apriPraticaDaTabella(p.id); const q = state.pratiche.find(function (x) { return x.id === p.id; }); if (q) { delete q._editing; render(); setTimeout(function () { const el = document.getElementById('pratica-' + p.id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150); } }
   });
+}
+
+/* ---------------- Richieste CUD: Punto Fisco (elenco da stampare) e Briguglio Santina (WhatsApp) ---------------- */
+
+function praticheConRichiesta(nome) {
+  const anno = annoAttivo();
+  return (state.pratiche || []).filter(function (p) { return annoPratica(p) === anno && documentiPratica(p).mancanti.indexOf(nome) >= 0; })
+    .sort(function (a, b) { return a.numero - b.numero; });
+}
+function numeroRichiesteCUD() { return praticheConRichiesta(CUD_PUNTO_FISCO).length + praticheConRichiesta(CUD_BRIGUGLIO).length; }
+function aggiornaPulsanteCUD() {
+  const b = document.getElementById('btn-richieste-cud');
+  if (!b) return;
+  const n = numeroRichiesteCUD();
+  b.textContent = '📋 Richieste CUD' + (n ? ' (' + n + ')' : '');
+  b.style.background = n ? '#b35f0c' : '#6b7280';
+}
+function idCUD(p) { return p.codiceFiscale ? 'CF ' + p.codiceFiscale : (p.cf ? 'nato/a il ' + p.cf : 'codice fiscale mancante'); }
+function telefonoCUD() { return (typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI.whatsapp_cud_telefono) || ''; }
+
+function apriRichiesteCUD() {
+  let ov = document.getElementById('richieste-cud');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'richieste-cud';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:420; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+    ov.addEventListener('click', function (e) { if (e.target === ov) chiudiRichiesteCUD(); });
+    document.body.appendChild(ov);
+  }
+  disegnaRichiesteCUD();
+}
+function chiudiRichiesteCUD() { const ov = document.getElementById('richieste-cud'); if (ov) ov.remove(); aggiornaPulsanteCUD(); }
+function righeCUD(lista, nome, conInvio) {
+  if (!lista.length) return '<div class="empty">✓ Nessuna richiesta in sospeso</div>';
+  return '<div class="cud-lista" style="max-height:34vh; overflow-y:auto; border:1px solid var(--line); border-radius:10px">' + lista.map(function (p) {
+    return '<div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); font-size:13px">'
+      + '<input type="checkbox" style="width:auto" title="Spunta quando il CUD è arrivato" onchange="ricevutoCUD(\'' + p.id + '\', \'' + nome.replace(/'/g, "\\'") + '\')">'
+      + '<span style="flex:1; min-width:0"><b>' + esc(formattaProtocollo(p)) + '</b> · ' + esc(p.nome || '') + '<br><span style="font-size:12px; color:var(--sub); font-family:monospace">' + esc(idCUD(p)) + '</span></span>'
+      + (conInvio ? '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:5px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="inviaCUDBriguglio(\'' + p.id + '\')">💬 Invia</button>' : '')
+      + '</div>';
+  }).join('') + '</div>';
+}
+function disegnaRichiesteCUD() {
+  const ov = document.getElementById('richieste-cud');
+  if (!ov) return;
+  const pf = praticheConRichiesta(CUD_PUNTO_FISCO), bs = praticheConRichiesta(CUD_BRIGUGLIO);
+  const vecchio = document.getElementById('cud-tel');
+  const staScrivendo = vecchio && document.activeElement === vecchio;
+  const tel = vecchio ? vecchio.value : telefonoCUD();
+  const scroll = Array.prototype.map.call(ov.querySelectorAll('.cud-lista'), function (el) { return el.scrollTop; });
+  const puoModificare = (typeof isAdmin === 'function' && isAdmin()) || (typeof puo === 'function' && puo('messaggi', true));
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; max-width:720px; width:100%; max-height:92vh; overflow:auto; padding:18px 20px; box-shadow:0 20px 50px rgba(0,0,0,.3)">'
+    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px"><div style="font-size:19px; font-weight:800">📋 Richieste CUD – ' + annoAttivo() + '</div>'
+    + '<button type="button" style="background:var(--line); color:var(--ink)" onclick="chiudiRichiesteCUD()">Chiudi</button></div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 12px">Qui compaiono le pratiche con la richiesta CUD segnata in rosso nella documentazione. Spunta ☑ quando il CUD è arrivato: sparisce dall\'elenco e passa tra i documenti presentati.</div>'
+    // Punto Fisco
+    + '<div style="padding:12px; border-radius:12px; border:2px solid #1d4f91; margin-bottom:14px">'
+    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><div style="font-weight:800; color:#1d4f91">🏛️ Punto Fisco <span style="font-weight:600; color:var(--sub)">(' + pf.length + ')</span></div>'
+    + (pf.length ? '<button type="button" class="btn-add" style="margin:0" onclick="stampaElencoCUD()">🖨️ Stampa elenco</button>' : '') + '</div>'
+    + righeCUD(pf, CUD_PUNTO_FISCO, false) + '</div>'
+    // Briguglio Santina
+    + '<div style="padding:12px; border-radius:12px; border:2px solid #25a35a">'
+    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><div style="font-weight:800; color:#1a7f37">👤 Briguglio Santina <span style="font-weight:600; color:var(--sub)">(' + bs.length + ')</span></div>'
+    + (bs.length ? '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer" onclick="inviaCUDBriguglio()">📤 Invia tabulato su WhatsApp</button>' : '') + '</div>'
+    + '<div style="display:flex; gap:6px; align-items:flex-end; margin-bottom:8px; flex-wrap:wrap"><div style="flex:1; min-width:180px"><label style="font-size:12px">Telefono predefinito per le richieste</label>'
+    + '<input id="cud-tel" type="tel" inputmode="tel" value="' + esc(tel) + '" placeholder="Numero di Briguglio Santina"' + (puoModificare ? '' : ' disabled') + '></div>'
+    + (puoModificare ? '<button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="salvaTelefonoCUD()">💾 Salva numero</button>' : '') + '</div>'
+    + righeCUD(bs, CUD_BRIGUGLIO, true) + '</div></div>';
+  ov.querySelectorAll('.cud-lista').forEach(function (el, i) { if (scroll[i]) el.scrollTop = scroll[i]; });
+  if (staScrivendo) { const t = document.getElementById('cud-tel'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
+}
+function ricevutoCUD(id, nome) {
+  segnaDocumentoConsegnato(id, nome);
+  setTimeout(disegnaRichiesteCUD, 50);
+}
+async function salvaTelefonoCUD() {
+  const v = document.getElementById('cud-tel').value.trim();
+  if (v && !numeroWhatsApp(v)) { avviso('❌ Numero non valido', true); return; }
+  const { data: righe, error } = await supabase.from('impostazioni').update({ valore: v, aggiornato_il: new Date().toISOString() }).eq('chiave', 'whatsapp_cud_telefono').select('chiave');
+  if (error || !righe || !righe.length) { avviso('❌ Numero non salvato' + (error ? ': ' + error.message : ''), true); return; }
+  IMPOSTAZIONI.whatsapp_cud_telefono = v;
+  avviso('✓ Numero per le richieste CUD salvato');
+}
+// Senza id: tutto il tabulato; con id: solo quel codice fiscale
+function inviaCUDBriguglio(id) {
+  const tel = (document.getElementById('cud-tel') || {}).value || telefonoCUD();
+  const num = numeroWhatsApp(tel);
+  if (!num) { avviso('❌ Inserisci il telefono predefinito per le richieste CUD', true); const el = document.getElementById('cud-tel'); if (el) el.focus(); return; }
+  const lista = praticheConRichiesta(CUD_BRIGUGLIO).filter(function (p) { return !id || p.id === id; });
+  if (!lista.length) return;
+  const righe = lista.map(function (p, i) { return (lista.length > 1 ? (i + 1) + '. ' : '') + (p.nome || '') + ' – ' + (p.codiceFiscale || ('nato/a il ' + (p.cf || '?'))); });
+  const testo = 'Buongiorno, dal CAF CISL di Alì Terme chiediamo ' + (lista.length > 1 ? 'i CUD dei seguenti contribuenti' : 'il CUD di') + ':\n' + righe.join('\n') + '\n\nGrazie.';
+  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(testo), '_blank');
+}
+function stampaElencoCUD() {
+  const lista = praticheConRichiesta(CUD_PUNTO_FISCO);
+  const w = window.open('', '_blank');
+  if (!w) { alert('Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito.'); return; }
+  const logo = document.querySelector('.hero-logo');
+  const caf = (typeof datiCafStampa === 'function') ? datiCafStampa() : {};
+  const html = '<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Richieste CUD Punto Fisco</title><style>'
+    + '@page{size:A4 portrait; margin:12mm} body{font-family:Arial,Helvetica,sans-serif; color:#0f1b2d; margin:0; padding:14px; font-size:12px}'
+    + '.testa{display:flex; align-items:center; gap:12px; border-bottom:3px solid #1d4f91; padding-bottom:8px; margin-bottom:12px}.testa img{width:50px}.testa h1{font-size:16px; margin:0; color:#1d4f91}.sub{font-size:11px; color:#5b6b82}'
+    + 'table{width:100%; border-collapse:collapse}th,td{border:1px solid #cfd8e3; padding:6px 8px; text-align:left}th{background:#1d4f91; color:#fff}td.cf{font-family:monospace; font-size:12.5px}td.ok{width:40px; text-align:center; font-size:16px}'
+    + '.barra{margin-bottom:10px}.barra button{font-size:14px; padding:8px 16px; border:none; border-radius:999px; background:#1d4f91; color:#fff; cursor:pointer}@media print{.barra{display:none} body{padding:0}}'
+    + '</style></head><body><div class="barra"><button onclick="window.print()">🖨️ Stampa</button></div>'
+    + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>Richieste CUD – Punto Fisco</h1><div class="sub">CAF CISL Alì Terme' + (caf.indirizzo ? ' · ' + esc(caf.indirizzo) : '') + ' · anno ' + annoAttivo() + ' · stampato il ' + esc(todayIT()) + ' · ' + lista.length + ' richieste</div></div></div>'
+    + '<table><thead><tr><th>#</th><th>Protocollo</th><th>Cognome e Nome</th><th>Codice fiscale</th><th>Data di nascita</th><th>Arrivato</th></tr></thead><tbody>'
+    + lista.map(function (p, i) { return '<tr><td>' + (i + 1) + '</td><td>' + esc(formattaProtocollo(p)) + '</td><td>' + esc(p.nome || '') + '</td><td class="cf">' + esc(p.codiceFiscale || '—') + '</td><td>' + esc(p.cf || '') + '</td><td class="ok">☐</td></tr>'; }).join('')
+    + '</tbody></table><script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>';
+  w.document.open(); w.document.write(html); w.document.close();
 }
