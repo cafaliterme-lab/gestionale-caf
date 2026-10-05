@@ -1764,6 +1764,7 @@ async function addPraticaInterna(){
     msg.style.display = 'block';
     return;
   }
+  if(eColf(tipo) && typeof concludiRinnovoScadenza === 'function') concludiRinnovoScadenza();
   confermaPraticaSalvata(result.id, nome, tipo, documenti.mancanti);
 
   document.getElementById('f-cognome').value='';

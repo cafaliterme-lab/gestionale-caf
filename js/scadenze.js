@@ -93,6 +93,7 @@ function renderScadenze() {
       + '<span class="dot" style="background:' + COLORI_SCADENZA[st] + '"></span>'
       + '<div style="flex:1; min-width:0"><b>' + esc(s.titolo) + '</b>' + (s.cliente ? ' · ' + esc(s.cliente) : '')
       + '<div class="sub2">' + dataIT(s.data) + ' · ' + (s.completata ? 'fatta' : quandoScadenza(s)) + (s.avvisoGiorni ? ' · avviso ' + s.avvisoGiorni + ' gg prima' : ' · avviso il giorno stesso') + (s.note ? ' · ' + esc(s.note) : '') + '</div></div>'
+      + (eScadenzaColf(s) && !s.completata ? '<button type="button" title="Nuova pratica colf e badanti già compilata con i dati del cliente" style="flex:none; background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="rinnovaScadenza(\'' + s.id + '\')">🔁 Rinnova</button>' : '')
       + '<label class="chk sc-fatta"><input type="checkbox" ' + (s.completata ? 'checked' : '') + ' onchange="segnaScadenza(\'' + s.id + '\', this.checked)"> Fatta</label>'
       + '<button type="button" class="sc-elimina" onclick="rimuoviScadenza(\'' + s.id + '\')">✕</button>'
       + '</div>';
@@ -161,6 +162,7 @@ function aggiornaAvvisiScadenze() {
           + '<span style="flex:none; width:10px; height:10px; border-radius:50%; margin-top:4px; background:' + col + '"></span>'
           + '<div style="flex:1; min-width:0"><b>' + esc(s.titolo) + '</b>' + (s.cliente ? '<br>' + esc(s.cliente) : '')
           + '<div style="font-size:12px; color:var(--sub)">' + dataIT(s.data) + ' · <b style="color:' + col + '">' + quandoScadenza(s) + '</b>' + (s.note ? ' · ' + esc(s.note) : '') + '</div></div>'
+          + (eScadenzaColf(s) && !s.completata ? '<button type="button" title="Nuova pratica colf e badanti già compilata con i dati del cliente" style="flex:none; background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="rinnovaScadenza(\'' + s.id + '\')">🔁 Rinnova</button>' : '')
           + '<label style="flex:none; display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:#2f9e5f; cursor:pointer; margin:0"><input type="checkbox" style="width:auto" onchange="this.disabled=true; segnaScadenza(\'' + s.id + '\', true)"> Fatta</label>'
           + '</div>';
       }).join('')
@@ -175,3 +177,47 @@ function posizionaPannelloScadenze() {
   pan.style.top = Math.max(10, Math.round(sotto) + 10) + 'px';
 }
 window.addEventListener('resize', posizionaPannelloScadenze);
+
+
+/* ---------------- Rinnovo dell'assistenza colf e badanti ---------------- */
+// Dalla scadenza si apre una nuova pratica nell'anno attivo, gia' compilata con i dati del cliente:
+// resta da scrivere la nuova scadenza (e l'importo). Salvata la pratica, la vecchia scadenza diventa "fatta".
+let RINNOVO_SCADENZA = null;
+function eScadenzaColf(s) { return !!s.praticaId || /colf|badant/i.test(s.titolo || ''); }
+function rinnovaScadenza(id) {
+  const s = (state.scadenze || []).find(function (x) { return x.id === id; });
+  if (!s) return;
+  const tutte = (state.pratiche || []).concat(state.annullate || []);
+  let p = s.praticaId ? tutte.find(function (x) { return x.id === s.praticaId; }) : null;
+  if (!p && s.cliente) p = tutte.filter(function (x) { return x.nome === s.cliente && eColf(x.tipo); }).sort(function (a, b) { return String(b.inseritoIl || '').localeCompare(String(a.inseritoIl || '')); })[0];
+  if (!p && s.cliente) p = { nome: s.cliente };
+  if (!p) { avviso('❌ Non trovo il cliente di questa scadenza', true); return; }
+  showTab(document.querySelector('.navmenu button[data-tab="anagrafica"]'));
+  const metti = function (idc, v) { const el = document.getElementById(idc); if (el) el.value = v || ''; };
+  const nn = dividiNominativo(p);
+  metti('f-cognome', (nn.cognome || '').toUpperCase());
+  metti('f-nome', (nn.nome || '').toUpperCase());
+  metti('f-cf', p.cf);
+  metti('f-codfisc', p.codiceFiscale);
+  metti('f-tel', p.telefono);
+  metti('f-tel-fisso', p.telefonoFisso);
+  metti('f-doc-scad', p.documentoScadenza);
+  if (getTipiList().indexOf('CONTRATTI COLF E BADANTI') >= 0) pickChip('f-tipo-btns', 'f-tipo', 'CONTRATTI COLF E BADANTI');
+  metti('f-data-fine', '');
+  metti('f-note', 'Rinnovo assistenza (scadenza del ' + dataIT(s.data) + ')');
+  if (typeof coloraScadenzaDocumento === 'function') coloraScadenzaDocumento();
+  if (typeof controllaCampoCF === 'function') controllaCampoCF();
+  if (typeof aggiornaStoricoForm === 'function') aggiornaStoricoForm();
+  RINNOVO_SCADENZA = s.id;
+  const df = document.getElementById('f-data-fine');
+  setTimeout(function () { if (df) { df.scrollIntoView({ behavior: 'smooth', block: 'center' }); df.focus(); df.style.boxShadow = '0 0 0 3px rgba(47,158,158,.45)'; } }, 200);
+  avviso('🔁 Rinnovo di ' + (p.nome || '') + ': scrivi la nuova scadenza assistenza e l\'importo, poi salva');
+}
+// chiamata dopo il salvataggio di una pratica colf: chiude la vecchia scadenza
+function concludiRinnovoScadenza() {
+  if (!RINNOVO_SCADENZA) return;
+  const id = RINNOVO_SCADENZA;
+  RINNOVO_SCADENZA = null;
+  segnaScadenza(id, true);
+  const df = document.getElementById('f-data-fine'); if (df) df.style.boxShadow = '';
+}

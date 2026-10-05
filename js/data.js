@@ -159,6 +159,7 @@ const schemas = {
     cliente: 'cliente',
     note: 'note',
     completata: 'completata',
+    praticaId: 'pratica_id',
     creatoDa: 'creato_da',
     creatoIl: 'creato_il',
   },
