@@ -242,6 +242,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .navmenu button[data-tab="scadenze"]{--tc:#c0392b}
 .navmenu button[data-tab="messaggi"]{--tc:#128c7e}
 .navmenu button[data-tab="permessi"]{--tc:#4b5563}
+.navmenu button[data-tab="modulistica"]{--tc:#b35f0c}
 .navmenu button.active{background:var(--tc); border-color:var(--tc); color:#fff; box-shadow:0 4px 12px color-mix(in srgb, var(--tc) 45%, transparent)}
 @media (max-width:600px){ .navmenu{grid-template-columns:repeat(2, 1fr)} .navmenu button{white-space:normal; padding:8px 8px; font-size:11.5px} }
 .tabsec{display:none}
@@ -396,6 +397,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <button type="button" data-tab="collaboratori" onclick="showTab(this)">COLLABORATORI</button>
   <button type="button" data-tab="scadenze" onclick="showTab(this)">SCADENZE</button>
   <button type="button" data-tab="messaggi" onclick="showTab(this)">MESSAGGI</button>
+  <button type="button" data-tab="modulistica" onclick="showTab(this)">MODULISTICA</button>
   <button type="button" data-tab="permessi" id="nav-permessi" onclick="showTab(this)" style="display:none">UTENTI&nbsp;E&nbsp;PERMESSI</button>
 </div>
 
@@ -637,6 +639,8 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <div style="text-align:left"><button type="button" class="btn-add" onclick="salvaDatiCaf()">💾 Salva dati del CAF e messaggi</button></div>
 </section>
 
+<section class="tabsec" id="tab-modulistica"></section>
+
 <section class="tabsec" id="tab-permessi">
 </div>
 <div class="card">
@@ -758,7 +762,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/extra.js?v=20"></script>
 <script src="js/documenti.js?v=13"></script>
 <script src="js/installa.js?v=4"></script>
-<script src="js/guida.js?v=2"></script>
+<script src="js/guida.js?v=3"></script>
 <script src="js/scadenze.js?v=202610087"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -767,8 +771,9 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610115"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610152"></script>
+<script src="js/app.js?v=202610153"></script>
 <script src="js/email.js?v=1"></script>
+<script src="js/modulistica.js?v=1"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

@@ -1171,6 +1171,7 @@ function showTab(btn){
   if(tab === 'scadenze') renderScadenze();
   if(tab === 'messaggi') mostraDatiCaf();
   if(tab === 'grafici') renderGrafici();
+  if(tab === 'modulistica' && typeof renderModulistica === 'function') renderModulistica();
   if(tab === 'permessi'){ renderPermessi(); if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
 }
 function renderCollaboratori(){

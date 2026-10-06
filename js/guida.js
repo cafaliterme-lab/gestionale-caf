@@ -277,6 +277,18 @@ const GUIDA = [
 <li><b>Esporta Backup (JSON)</b> / <b>Esporta Registro (Excel)</b> e <b>Importa Backup</b> per ripristinare.</li>
 </ul>` },
 
+  { id: 'modulistica', icona: '📂', titolo: 'Modulistica: moduli da scaricare, compilare e stampare', parole: 'modulistica moduli modulo word pdf excel carica scarica stampa editabile non editabile categoria delega privacy',
+    testo: `
+<ul>
+<li>Nel menu <b>MODULISTICA</b> trovi i moduli del CAF divisi per <b>categoria</b> (es. 730, ISEE, Deleghe, Privacy).</li>
+<li>Ogni modulo è segnato <b>✏️ Editabile</b> (si compila al computer: Word, Excel, PDF compilabile) o <b>🔒 Non editabile</b> (solo da stampare).</li>
+<li><b>👁️ Apri</b> lo apre in una nuova scheda (da lì puoi anche stampare); <b>⬇️ Scarica</b> lo salva sul computer per compilarlo con Word o con il lettore PDF.</li>
+<li>Con la <b>🔍 ricerca</b> e i filtri trovi subito il modulo per nome, categoria o descrizione.</li>
+<li><b>⬆️ Carica un nuovo modulo</b>: scegli il file (fino a 20 MB), scrivi nome, categoria, tipo e descrizione e premi <b>Carica modulo</b>. Gli utenti in sola consultazione possono solo aprire e scaricare.</li>
+<li><b>🗑️</b> elimina un modulo: può farlo l'amministratore o chi lo ha caricato.</li>
+</ul>
+<p class="g-nota">Dopo averlo compilato, il modulo va salvato sul tuo computer: la copia nella Modulistica resta sempre quella vuota, pronta per il cliente successivo.</p>` },
+
   { id: 'app', icona: '📲', titolo: 'Installare l\'app su telefono e PC', parole: 'installa app telefono iphone android pc icona schermata home qr safari',
     testo: `
 <ul>
