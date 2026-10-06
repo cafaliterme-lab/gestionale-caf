@@ -261,7 +261,7 @@ const GUIDA = [
 <ul>
 <li>Le spese con la spunta <b>💰 Prelevati Angelo</b> sono pagate con i soldi di Angelo e vanno <b>restituite</b>. La spunta si può mettere o togliere anche dopo, su ogni spesa.</li>
 <li>Su queste spese compare il tasto viola <b>💸 Restituiti ad Angelo</b>: premilo quando Angelo viene rimborsato; diventa verde con la data ("annulla" per togliere).</li>
-<li>Il riquadro viola <b>💰 Da restituire ad Angelo</b>, in fondo, mostra il totale ancora da rimborsare (di tutti gli anni) con l'elenco; <b>💸 Restituito tutto ad Angelo</b> le segna tutte insieme.</li>
+<li>Il riquadro viola <b>💰 Da restituire ad Angelo</b>, in fondo, mostra il totale ancora da rimborsare (di tutti gli anni) e l'<b>elenco con la spunta "Restituite"</b>: spunta ogni voce quando Angelo viene rimborsato; passa in "Restituite di recente", barrata e con la data. Togliendo la spunta torna da restituire. Con <b>Spunta tutte come restituite</b> le segni tutte insieme.</li>
 <li>In Contabilità, se c'è qualcosa da restituire, compare il riquadro <b>DA RESTITUIRE AD ANGELO</b>.</li>
 </ul>
 <p><b>Effetto sul guadagno</b></p>

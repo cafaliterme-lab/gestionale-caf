@@ -117,17 +117,29 @@ function debitoAngelo() {
   return { lista: aperte, totale: aperte.reduce(function (t, s) { return t + Number(s.importo || 0); }, 0) };
 }
 function riquadroDebitoAngelo(d, scrivi) {
+  const restituite = (state.speseSede || []).filter(function (s) { return s.prelevatiAngelo && s.restituitoAngelo; })
+    .sort(function (a, b) { return String(b.restituitoIl || '').localeCompare(String(a.restituitoIl || '')); }).slice(0, 10);
+  const riga = function (s, fatta) {
+    return '<label style="display:flex; align-items:center; gap:10px; padding:7px 10px; border-bottom:1px solid var(--line); font-size:13.5px; margin:0; cursor:' + (scrivi ? 'pointer' : 'default') + (fatta ? '; color:var(--sub)' : '') + '">'
+      + '<input type="checkbox" style="width:auto; transform:scale(1.25)" ' + (fatta ? 'checked' : '') + (scrivi ? '' : ' disabled') + ' onchange="restituitoAngelo(\'' + s.id + '\', this.checked)">'
+      + '<span style="flex:1">' + esc(s.data || '') + ' · <b>' + esc(s.categoria || '') + '</b>' + (s.descrizione ? ' · ' + esc(s.descrizione) : '')
+      + (fatta && s.restituitoIl ? ' <span style="font-size:12px">— restituite il ' + new Date(s.restituitoIl).toLocaleDateString('it-IT') + '</span>' : '') + '</span>'
+      + '<b style="' + (fatta ? 'text-decoration:line-through' : 'color:#8e5bd6') + '">' + fmtEuro(s.importo) + '</b>'
+      + '<span style="font-size:12px; font-weight:700; color:' + (fatta ? '#1a7f37' : 'var(--sub)') + '; min-width:72px; text-align:right">' + (fatta ? '✓ Restituite' : 'Restituite') + '</span></label>';
+  };
   return '<div style="margin-top:12px; padding:12px 14px; border-radius:12px; border:2px solid #8e5bd6; background:color-mix(in srgb, #8e5bd6 7%, var(--card))">'
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap">'
-    + '<div><div style="font-weight:800; color:#8e5bd6">💰 Da restituire ad Angelo</div><div style="font-size:12px; color:var(--sub)">Spese pagate con soldi di Angelo e non ancora rimborsate (tutti gli anni)</div></div>'
+    + '<div><div style="font-weight:800; color:#8e5bd6">💰 Da restituire ad Angelo</div><div style="font-size:12px; color:var(--sub)">Spunta "Restituite" quando Angelo viene rimborsato (tutti gli anni)</div></div>'
     + '<div style="font-size:22px; font-weight:800; color:' + (d.totale ? '#8e5bd6' : '#1a7f37') + '">' + fmtEuro(d.totale) + '</div></div>'
-    + (d.lista.length ? '<div style="font-size:12.5px; margin-top:6px">' + d.lista.map(function (s) { return esc(s.data) + ' · ' + esc(s.categoria) + ' ' + fmtEuro(s.importo); }).join(' &nbsp;·&nbsp; ') + '</div>'
-      + (scrivi ? '<div style="margin-top:8px"><button type="button" onclick="restituisciTuttoAngelo()" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">💸 Restituito tutto ad Angelo (' + fmtEuro(d.totale) + ')</button></div>' : '')
-      : '<div style="font-size:12.5px; color:#1a7f37; margin-top:4px">✓ Nessun importo da restituire</div>')
+    + '<div style="margin-top:8px; border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden">'
+    + (d.lista.length ? d.lista.map(function (s) { return riga(s, false); }).join('') : '<div style="padding:8px 10px; font-size:13px; color:#1a7f37">✓ Nessun importo da restituire</div>')
+    + '</div>'
+    + (d.lista.length > 1 && scrivi ? '<div style="margin-top:6px; text-align:right"><button type="button" onclick="restituisciTuttoAngelo()" style="background:none; border:none; color:#8e5bd6; font-weight:700; font-size:12.5px; cursor:pointer; text-decoration:underline">Spunta tutte come restituite</button></div>' : '')
+    + (restituite.length ? '<div style="font-size:12px; font-weight:700; color:var(--sub); margin:10px 0 4px">Restituite di recente</div><div style="border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden">' + restituite.map(function (s) { return riga(s, true); }).join('') + '</div>' : '')
     + '</div>';
 }
 async function restituitoAngelo(id, si) {
-  if (!si && !confirm('Togliere "restituiti ad Angelo"? L\'importo tornerà tra quelli da restituire.')) return;
+  if (!si && !confirm('Togliere la spunta "Restituite"? L\'importo tornerà tra quelli da restituire.')) { render(); return; }
   const r = await data.speseSede.aggiorna(id, { restituitoAngelo: si });
   if (r.error) { avviso('❌ ' + r.error, true); return; }
   avviso(si ? '💸 Segnato come restituito ad Angelo' : 'Tornato tra quelli da restituire');
