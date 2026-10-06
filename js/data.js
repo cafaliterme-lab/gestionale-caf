@@ -132,6 +132,10 @@ const schemas = {
     descrizione: 'descrizione',
     importo: 'importo',
     metodoPagamento: 'metodo_pagamento',
+    inContabilita: 'in_contabilita',
+    inContabilitaIl: 'in_contabilita_il',
+    inContabilitaDa: 'in_contabilita_da',
+    prelevatiAngelo: 'prelevati_angelo',
     creatoDa: 'creato_da',
     creatoIl: 'creato_il',
   },
@@ -450,6 +454,17 @@ async function eliminaVersamento(id) {
 async function aggiungiSpesaSede(spesa) {
   try {
     const { data: righe, error } = await supabase.from('spese_sede').insert([mapToDb(spesa, schemas.spesaSede)]).select('id');
+    if (error) throw new Error(error.message);
+    if (!righe || !righe.length) throw new Error('Permesso negato');
+    await caricaTutto();
+    return {};
+  } catch (err) { return { error: err.message }; }
+}
+async function aggiornaSpesaSede(id, campi) {
+  try {
+    const db = mapToDb(campi, schemas.spesaSede);
+    delete db.in_contabilita_il; delete db.in_contabilita_da;
+    const { data: righe, error } = await supabase.from('spese_sede').update(db).eq('id', id).select('id');
     if (error) throw new Error(error.message);
     if (!righe || !righe.length) throw new Error('Permesso negato');
     await caricaTutto();
@@ -800,6 +815,7 @@ window.data = {
   },
   speseSede: {
     aggiungi: aggiungiSpesaSede,
+    aggiorna: aggiornaSpesaSede,
     elimina: eliminaSpesaSede,
   },
   isee: {
