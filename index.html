@@ -461,7 +461,10 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <div class="card form-anagrafica">
   <div class="grid">
     <div class="full cli-wrap">
-      <label>Cerca cliente nell'archivio (cognome o nome)</label>
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; flex-wrap:wrap">
+        <label style="margin:0">Cerca cliente nell'archivio (cognome o nome)</label>
+        <button type="button" onclick="apriLetturaDocumentoPer('archivio')" style="background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-size:12.5px; font-weight:800; cursor:pointer; margin-bottom:4px" title="Scansiona il documento e salva il cliente nell'archivio, senza creare una pratica">📇 Nuovo cliente da documento</button>
+      </div>
       <input id="cli-cerca" placeholder="Scrivi per cercare tra i clienti gia' archiviati..." autocomplete="off" oninput="cercaClienti(this.value)" onfocus="cercaClienti(this.value)">
       <div class="cli-results" id="cli-results"></div>
     </div>
@@ -763,13 +766,13 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/qrcode.js?v=1"></script>
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
-<script src="js/ocr-documento.js?v=6"></script>
+<script src="js/ocr-documento.js?v=7"></script>
 <script src="js/grafici.js?v=7"></script>
 <script src="js/stampe.js?v=9"></script>
 <script src="js/extra.js?v=20"></script>
 <script src="js/documenti.js?v=13"></script>
 <script src="js/installa.js?v=4"></script>
-<script src="js/guida.js?v=8"></script>
+<script src="js/guida.js?v=9"></script>
 <script src="js/scadenze.js?v=202610087"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>

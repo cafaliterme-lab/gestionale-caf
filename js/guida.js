@@ -298,11 +298,12 @@ const GUIDA = [
 <li>Cliente e scadenza passano all'anno successivo; la pratica resta nel registro dell'anno in cui è stata fatta.</li>
 </ul>` },
 
-  { id: 'archivio', icona: '🗂️', titolo: 'Archivio clienti (anagrafica)', parole: 'archivio clienti anagrafica cerca telefono email importa csv elimina cliente',
+  { id: 'archivio', icona: '🗂️', titolo: 'Archivio clienti (anagrafica) e nuovo cliente da documento', parole: 'archivio clienti anagrafica cerca telefono email importa csv elimina cliente nuovo cliente documento ocr scansione senza pratica',
     testo: `
 <ul>
 <li>Ogni cliente inserito resta nell'<b>archivio</b>, valido per tutti gli anni, con data di nascita, codice fiscale, telefoni, e-mail e scadenza documento.</li>
 <li>Si cerca da <b>"Cerca cliente nell'archivio"</b> scrivendo cognome o nome.</li>
+<li><b>📇 Nuovo cliente da documento</b> (in alto in Inserimento anagrafica): scansioni carta d'identità, tessera sanitaria o patente e il cliente viene salvato <b>solo nell'archivio, senza creare una pratica</b>. Nella finestra controlli i dati letti, aggiungi cellulare, telefono fisso ed e-mail e premi <b>💾 Salva in archivio</b>; oppure <b>✍️ Salva e apri nuova pratica</b> per compilare subito anche la pratica. Se il cliente c'è già, i suoi recapiti vengono aggiornati.</li>
 <li>L'amministratore può importare clienti da file <b>CSV</b> (Utenti e permessi → Importa Clienti da CSV).</li>
 </ul>` },
 

@@ -539,8 +539,8 @@ function datiRevisione() {
 
 // Documento del titolare o del coniuge (dichiarazione congiunta)
 function apriLetturaDocumentoPer(chi) {
-  docLettura.destinazione = chi === 'coniuge' ? 'coniuge' : 'titolare';
-  document.getElementById('doc-titolo').textContent = chi === 'coniuge' ? '📄 Leggi documento del coniuge' : '📄 Leggi documento';
+  docLettura.destinazione = chi === 'coniuge' || chi === 'archivio' ? chi : 'titolare';
+  document.getElementById('doc-titolo').textContent = chi === 'coniuge' ? '📄 Leggi documento del coniuge' : chi === 'archivio' ? '📇 Nuovo cliente in archivio da documento' : '📄 Leggi documento';
   apriLetturaDocumento();
 }
 
@@ -811,6 +811,12 @@ function usaDatiDocumento() {
   const v = function (id) { return document.getElementById(id).value.trim(); };
   const cf = normalizzaCF(v('doc-cf'));
   if (cf && !cfValido(cf)) { verificaRevisioneDocumento(); return; }
+  if (docLettura.destinazione === 'archivio') {
+    const dati = { cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, documentoScadenza: v('doc-scad') };
+    chiudiLetturaDocumento();
+    apriSchedaClienteArchivio(dati);
+    return;
+  }
   if (docLettura.destinazione === 'coniuge') {
     document.getElementById('f-cong-cognome').value = v('doc-cognome').toUpperCase();
     document.getElementById('f-cong-nome').value = v('doc-nome').toUpperCase();
@@ -830,4 +836,70 @@ function usaDatiDocumento() {
   chiudiLetturaDocumento();
   if (cf) onCFLetto(cf);
   else { controllaCampoCF(); aggiornaStoricoForm(); avviso('✓ Dati del documento inseriti nel modulo'); }
+}
+
+
+/* ---------------- Cliente nuovo in archivio dal documento (senza creare una pratica) ---------------- */
+function apriSchedaClienteArchivio(d) {
+  const vecchio = document.getElementById('popup-cliente-archivio'); if (vecchio) vecchio.remove();
+  const esiste = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).find(function (c) {
+    return (d.codiceFiscale && c.codiceFiscale === d.codiceFiscale) || (c.nomeCompleto === (d.cognome + ' ' + d.nome).trim() && (c.dataNascita || '') === d.dataNascita);
+  });
+  const val = function (k) { return esc((esiste && esiste[k]) || ''); };
+  const campo = function (id, etichetta, valore, extra) { return '<div><label style="font-size:12px">' + etichetta + '</label><input id="' + id + '" value="' + esc(valore || '') + '" ' + (extra || '') + '></div>'; };
+  const ov = document.createElement('div');
+  ov.id = 'popup-cliente-archivio';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #2f9e9e; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:20px 22px; max-width:560px; width:100%; max-height:92vh; overflow:auto">'
+    + '<div style="font-size:19px; font-weight:800; color:#2f9e9e">📇 ' + (esiste ? 'Cliente già in archivio' : 'Nuovo cliente in archivio') + '</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 12px">' + (esiste ? 'Il cliente c\'è già: puoi completare telefoni, e-mail e scadenza del documento.' : 'Controlla i dati letti dal documento e aggiungi i recapiti. Non viene creata nessuna pratica.') + '</div>'
+    + '<div class="grid" style="gap:8px">'
+    + campo('ca-cognome', 'Cognome', d.cognome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
+    + campo('ca-nome', 'Nome', d.nome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
+    + campo('ca-nascita', 'Data di nascita', d.dataNascita, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
+    + campo('ca-cf', 'Codice fiscale *', d.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"')
+    + campo('ca-scad', 'Scadenza documento', d.documentoScadenza || (esiste && esiste.documentoScadenza), 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
+    + campo('ca-tel', 'Cellulare', esiste && esiste.telefono, 'type="tel" inputmode="tel"')
+    + campo('ca-fisso', 'Telefono fisso', esiste && esiste.telefonoFisso, 'type="tel" inputmode="tel"')
+    + campo('ca-email', 'E-mail', esiste && esiste.email, 'type="email" inputmode="email" style="text-transform:lowercase"')
+    + '</div><div id="ca-esito" style="font-size:13px; margin-top:8px"></div>'
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px; flex-wrap:wrap">'
+    + '<button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
+    + '<button type="button" data-azione="pratica" style="background:#1d4f91; color:#fff">✍️ Salva e apri nuova pratica</button>'
+    + '<button type="button" data-azione="salva" style="background:#2f9e9e; color:#fff; font-weight:800">💾 Salva in archivio</button></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', async function (e) {
+    const b = e.target.closest('button[data-azione]');
+    if (!b && e.target !== ov) return;
+    if (!b || b.dataset.azione === 'no') { ov.remove(); return; }
+    const g = function (id) { return document.getElementById(id).value.trim(); };
+    const c = { cognome: g('ca-cognome').toUpperCase(), nome: g('ca-nome').toUpperCase(), dataNascita: g('ca-nascita'), cf: normalizzaCF(g('ca-cf')),
+      scad: g('ca-scad'), tel: g('ca-tel'), fisso: g('ca-fisso'), email: g('ca-email').toLowerCase() };
+    const esito = document.getElementById('ca-esito');
+    const errore = function (t) { esito.innerHTML = '<b style="color:#c0392b">❌ ' + t + '</b>'; };
+    if (!c.cognome) return errore('Manca il cognome');
+    if (!c.cf || !cfValido(c.cf)) return errore('Codice fiscale mancante o non valido (16 caratteri)');
+    if (c.dataNascita && !parseDataIT(c.dataNascita)) return errore('Data di nascita nel formato GG/MM/AAAA');
+    if (c.scad && !parseDataIT(c.scad)) return errore('Scadenza documento nel formato GG/MM/AAAA');
+    if (c.email && !emailValida(c.email)) return errore('E-mail non valida');
+    b.disabled = true;
+    try {
+      await registraClienteSeNuovo(c.cognome, c.nome, c.dataNascita, c.cf, c.tel, c.fisso, c.scad, c.email);
+      if (typeof data !== 'undefined' && data.caricaTutto) await data.caricaTutto({ silenzioso: true });
+      if (typeof caricaArchivioClienti === 'function') caricaArchivioClienti();
+    } catch (err) { b.disabled = false; return errore('Non salvato: ' + (err.message || err)); }
+    ov.remove();
+    const nome = (c.cognome + ' ' + c.nome).trim();
+    if (b.dataset.azione === 'pratica') {
+      const metti = function (id, v) { const el = document.getElementById(id); if (el) el.value = v || ''; };
+      metti('f-cognome', c.cognome); metti('f-nome', c.nome); metti('f-cf', c.dataNascita); metti('f-codfisc', c.cf);
+      metti('f-doc-scad', c.scad); metti('f-tel', c.tel); metti('f-tel-fisso', c.fisso); metti('f-email', c.email); metti('cli-cerca', nome);
+      if (typeof coloraScadenzaDocumento === 'function') coloraScadenzaDocumento();
+      if (typeof controllaCampoCF === 'function') controllaCampoCF();
+      if (typeof aggiornaStoricoForm === 'function') aggiornaStoricoForm();
+      avviso('✓ ' + nome + ' salvato in archivio: completa la pratica e premi Salva');
+    } else {
+      avviso('📇 ' + nome + (esiste ? ': dati aggiornati in archivio' : ' aggiunto all\'archivio clienti'));
+    }
+  });
 }
