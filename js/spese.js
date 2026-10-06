@@ -19,6 +19,7 @@ function renderSpese() {
   const scrivi = puoScrivereSpese();
   const daConf = { si: 0, no: 0, n: 0, angelo: 0 };
   lista.forEach(function (s) { const v = Number(s.importo || 0); if (s.inContabilita) daConf.si += v; else { daConf.no += v; daConf.n++; } if (s.prelevatiAngelo) daConf.angelo += v; });
+  const debito = debitoAngelo();
   // il modulo resta com'e' (non si perde quello che si sta scrivendo) se c'e' gia'
   if (!document.getElementById('sp-importo') || !scrivi) {
     box.innerHTML = '<div class="raff-title">🏢 Spese gestione sede – ' + anno + '</div>'
@@ -43,7 +44,8 @@ function renderSpese() {
     + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; font-size:13px">'
     + '<span style="padding:4px 10px; border-radius:999px; background:color-mix(in srgb, #1a7f37 14%, var(--card))">✔ In contabilità: <b>' + fmtEuro(daConf.si) + '</b></span>'
     + '<span style="padding:4px 10px; border-radius:999px; background:color-mix(in srgb, #d4881c 18%, var(--card))">⏳ Da confermare: <b>' + fmtEuro(daConf.no) + '</b> (' + daConf.n + ')</span>'
-    + '<span style="padding:4px 10px; border-radius:999px; background:color-mix(in srgb, #8e5bd6 16%, var(--card))">💰 Prelevati Angelo: <b>' + fmtEuro(daConf.angelo) + '</b></span></div>';
+    + '<span style="padding:4px 10px; border-radius:999px; background:color-mix(in srgb, #8e5bd6 16%, var(--card))">💰 Anticipati da Angelo nel ' + anno + ': <b>' + fmtEuro(daConf.angelo) + '</b></span></div>'
+    + riquadroDebitoAngelo(debito, scrivi);
 }
 // Ogni spesa mostra i passaggi: 1 registrata → 2 pagata → 3 inserita in contabilità (con il tasto di conferma)
 function rigaSpesaHTML(s) {
@@ -64,6 +66,11 @@ function rigaSpesaHTML(s) {
     + passo(1, 'Registrata', true, '#1d4f91') + freccia
     + passo(2, 'Pagata' + (s.metodoPagamento ? ' – ' + esc(s.metodoPagamento) : ''), true, '#2f7de1') + freccia + conf
     + '<label class="chk" style="margin:0 0 0 auto; font-size:12px; font-weight:700; color:#8e5bd6; cursor:' + (scrivi ? 'pointer' : 'default') + '"><input type="checkbox" ' + (s.prelevatiAngelo ? 'checked' : '') + (scrivi ? '' : ' disabled') + ' onchange="segnaPrelevatiAngelo(\'' + s.id + '\', this.checked)"> 💰 Prelevati Angelo</label>'
+    + (s.prelevatiAngelo ? (s.restituitoAngelo
+      ? '<span style="padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700; background:#1a7f37; color:#fff">✓ Restituiti ad Angelo' + (s.restituitoIl ? ' il ' + new Date(s.restituitoIl).toLocaleDateString('it-IT') : '') + '</span>'
+        + (scrivi ? ' <button type="button" onclick="restituitoAngelo(\'' + s.id + '\', false)" style="background:none; border:none; color:var(--sub); font-size:11px; cursor:pointer; text-decoration:underline">annulla</button>' : '')
+      : (scrivi ? '<button type="button" onclick="restituitoAngelo(\'' + s.id + '\', true)" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:4px 12px; font-size:12px; font-weight:800; cursor:pointer">💸 Restituiti ad Angelo</button>'
+        : '<span style="padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700; background:#8e5bd6; color:#fff">Da restituire ad Angelo</span>')) : '')
     + '</div></div>';
 }
 async function confermaSpesaContabilita(id, si) {
@@ -101,5 +108,38 @@ async function rimuoviSpesa(id) {
   const r = await data.speseSede.elimina(id);
   if (r.error) { avviso('❌ ' + r.error, true); return; }
   avviso('✓ Spesa eliminata');
+  render();
+}
+
+/* ---- Soldi anticipati da Angelo: debito del CAF verso Angelo finché non vengono restituiti ---- */
+function debitoAngelo() {
+  const aperte = (state.speseSede || []).filter(function (s) { return s.prelevatiAngelo && !s.restituitoAngelo; });
+  return { lista: aperte, totale: aperte.reduce(function (t, s) { return t + Number(s.importo || 0); }, 0) };
+}
+function riquadroDebitoAngelo(d, scrivi) {
+  return '<div style="margin-top:12px; padding:12px 14px; border-radius:12px; border:2px solid #8e5bd6; background:color-mix(in srgb, #8e5bd6 7%, var(--card))">'
+    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap">'
+    + '<div><div style="font-weight:800; color:#8e5bd6">💰 Da restituire ad Angelo</div><div style="font-size:12px; color:var(--sub)">Spese pagate con soldi di Angelo e non ancora rimborsate (tutti gli anni)</div></div>'
+    + '<div style="font-size:22px; font-weight:800; color:' + (d.totale ? '#8e5bd6' : '#1a7f37') + '">' + fmtEuro(d.totale) + '</div></div>'
+    + (d.lista.length ? '<div style="font-size:12.5px; margin-top:6px">' + d.lista.map(function (s) { return esc(s.data) + ' · ' + esc(s.categoria) + ' ' + fmtEuro(s.importo); }).join(' &nbsp;·&nbsp; ') + '</div>'
+      + (scrivi ? '<div style="margin-top:8px"><button type="button" onclick="restituisciTuttoAngelo()" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">💸 Restituito tutto ad Angelo (' + fmtEuro(d.totale) + ')</button></div>' : '')
+      : '<div style="font-size:12.5px; color:#1a7f37; margin-top:4px">✓ Nessun importo da restituire</div>')
+    + '</div>';
+}
+async function restituitoAngelo(id, si) {
+  if (!si && !confirm('Togliere "restituiti ad Angelo"? L\'importo tornerà tra quelli da restituire.')) return;
+  const r = await data.speseSede.aggiorna(id, { restituitoAngelo: si });
+  if (r.error) { avviso('❌ ' + r.error, true); return; }
+  avviso(si ? '💸 Segnato come restituito ad Angelo' : 'Tornato tra quelli da restituire');
+  render();
+}
+async function restituisciTuttoAngelo() {
+  const d = debitoAngelo();
+  if (!d.lista.length || !confirm('Confermi di aver restituito ad Angelo ' + fmtEuro(d.totale) + ' (' + d.lista.length + ' spese)?')) return;
+  for (const s of d.lista) {
+    const r = await data.speseSede.aggiorna(s.id, { restituitoAngelo: true });
+    if (r.error) { avviso('❌ ' + r.error, true); render(); return; }
+  }
+  avviso('💸 Restituiti ad Angelo ' + fmtEuro(d.totale));
   render();
 }

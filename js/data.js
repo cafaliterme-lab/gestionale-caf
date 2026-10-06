@@ -136,6 +136,8 @@ const schemas = {
     inContabilitaIl: 'in_contabilita_il',
     inContabilitaDa: 'in_contabilita_da',
     prelevatiAngelo: 'prelevati_angelo',
+    restituitoAngelo: 'restituito_angelo',
+    restituitoIl: 'restituito_il',
     creatoDa: 'creato_da',
     creatoIl: 'creato_il',
   },
@@ -463,7 +465,7 @@ async function aggiungiSpesaSede(spesa) {
 async function aggiornaSpesaSede(id, campi) {
   try {
     const db = mapToDb(campi, schemas.spesaSede);
-    delete db.in_contabilita_il; delete db.in_contabilita_da;
+    delete db.in_contabilita_il; delete db.in_contabilita_da; delete db.restituito_il;
     const { data: righe, error } = await supabase.from('spese_sede').update(db).eq('id', id).select('id');
     if (error) throw new Error(error.message);
     if (!righe || !righe.length) throw new Error('Permesso negato');
