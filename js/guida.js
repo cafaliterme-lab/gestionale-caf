@@ -120,7 +120,8 @@ const GUIDA = [
   { id: 'registro', icona: '📒', titolo: 'Registro di protocollo', parole: 'registro protocollo numero cerca filtro stato apri modifica tabella elenco pratiche',
     testo: `
 <ul>
-<li>La tabella <b>Registro di protocollo</b> elenca tutte le pratiche dell'anno in ordine di numero, con apertura, fine lavorazione, cliente, tipo, stato e chi l'ha inserita (con <b>✏️ ultima modifica</b>).</li>
+<li>Ci sono <b>due registri con numerazioni separate</b>: <b>📘 Registro 730</b> (protocolli <b>730-0001/2027</b>, 730-0002…) per tutte le dichiarazioni 730, e <b>📗 Registro altre pratiche</b> (protocolli <b>AP-0001/2027</b>, AP-0002…) per IMU, ISEE, affitti, colf e badanti, successioni, ecc. La serie la sceglie il programma in base al <b>tipo di pratica</b>; se cambi il tipo da 730 ad altra pratica (o viceversa) la pratica prende il numero successivo della nuova serie.</li>
+<li>Ogni registro elenca tutte le pratiche dell'anno in ordine di numero, con apertura, fine lavorazione, cliente, tipo, stato e chi l'ha inserita (con <b>✏️ ultima modifica</b>).</li>
 <li>Usa la <b>barra di ricerca</b> (nome, numero, tipo, telefono…) e il filtro <b>per stato</b>.</li>
 <li>Puoi cambiare lo <b>stato</b> direttamente dal menu nella riga.</li>
 <li><b>Apri</b> porta alla scheda completa della pratica; <b>🧾</b> stampa la ricevuta.</li>

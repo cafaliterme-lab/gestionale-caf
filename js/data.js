@@ -78,7 +78,7 @@ function praticaToDb(pratica) {
   for (const k of ['compenso', 'pagato']) {
     if (db[k] === '') db[k] = null;
   }
-  delete db.annullata_il; delete db.annullata_da; delete db.modificato_da;
+  delete db.annullata_il; delete db.annullata_da; delete db.modificato_da; delete db.serie;
   return db;
 }
 
@@ -87,6 +87,7 @@ const schemas = {
   pratica: {
     id: 'id',
     numero: 'numero',
+    serie: 'serie',
     anno: 'anno',
     nome: 'nome',
     congiunta: 'congiunta',

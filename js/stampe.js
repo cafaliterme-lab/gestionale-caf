@@ -68,7 +68,7 @@ function praticheFiltrate() {
       if (a && d > a) return false;
     }
     return true;
-  }).sort(function (x, y) { return x.numero - y.numero; });
+  }).sort(function (x, y) { return serieDi(x).localeCompare(serieDi(y)) || x.numero - y.numero; });
 }
 
 // Pagamenti CAF e netto hanno senso solo sul totale (nessun filtro su tipo, stato, operatore, cliente)

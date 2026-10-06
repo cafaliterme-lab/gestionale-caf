@@ -343,9 +343,11 @@ function formattaInserimento(p){
   }
   return '<span style="font-size:9.5px; color:var(--sub); line-height:1.15">' + esc(p.inseritoDa||'-') + (quando ? '<br>'+quando : '') + '</span>';
 }
+// Serie del protocollo: "730" per le dichiarazioni 730, "AP" per le altre pratiche
+function serieDi(p){ return (p && p.serie) || (String((p && p.tipo) || '').toUpperCase().indexOf('730') === 0 ? '730' : 'AP'); }
 function formattaProtocollo(p){
   const anno = annoPratica(p);
-  const num = String(p.numero).padStart(4,'0');
+  const num = serieDi(p) + '-' + String(p.numero).padStart(4,'0');
   return anno >= ANNO_INIZIO_PROTOCOLLO ? (num + '/' + anno) : num;
 }
 function elencoAnniDisponibili(){
@@ -796,11 +798,7 @@ function rigaPratica(p){
     'Note': p.note||''
   };
 }
-function formattaProtocolloTesto(p){
-  const anno = annoPratica(p);
-  const num = String(p.numero).padStart(4,'0');
-  return anno >= ANNO_INIZIO_PROTOCOLLO ? (num + '/' + anno) : num;
-}
+function formattaProtocolloTesto(p){ return formattaProtocollo(p); }
 async function esportaRegistroExcel(){
   if(!window.XLSX){ alert('La libreria per generare il file Excel non si è caricata. Riprova tra poco.'); return; }
 
@@ -1356,7 +1354,7 @@ function initFiltroStato(){
 function filtraTesto(lista){
   const q = ((document.getElementById('cerca')||{}).value||'').trim().toLowerCase();
   if(!q) return lista;
-  return lista.filter(function(p){ return [String(p.numero).padStart(4,'0'), p.nome, p.congiunta, p.tipo, p.data, p.annullataMotivo, 'annullata'].join(' ').toLowerCase().indexOf(q) >= 0; });
+  return lista.filter(function(p){ return [String(p.numero).padStart(4,'0'), formattaProtocollo(p), p.nome, p.congiunta, p.tipo, p.data, p.annullataMotivo, 'annullata'].join(' ').toLowerCase().indexOf(q) >= 0; });
 }
 function rigaAnnullataHTML(p){
   const quando = p.annullataIl ? new Date(p.annullataIl).toLocaleDateString('it-IT') : '';
@@ -1411,7 +1409,7 @@ function filtra(lista){
   const q = ((document.getElementById('cerca')||{}).value||'').trim().toLowerCase();
   if(!q) return lista;
   return lista.filter(function(p){
-    return [String(p.numero).padStart(4,'0'), p.nome, p.congiunta, p.congData, p.telefono, p.telefonoFisso, p.tipo, p.cf, p.data, p.note, statoLabel(p.stato), p.numFattura, p.inseritoDa].join(' ').toLowerCase().indexOf(q) >= 0;
+    return [String(p.numero).padStart(4,'0'), formattaProtocollo(p), p.nome, p.congiunta, p.congData, p.telefono, p.telefonoFisso, p.tipo, p.cf, p.data, p.note, statoLabel(p.stato), p.numFattura, p.inseritoDa].join(' ').toLowerCase().indexOf(q) >= 0;
   });
 }
 
@@ -1524,13 +1522,7 @@ function render(){
   // le annullate compaiono nel registro (barrate) solo senza filtro per stato
   const statoFiltro = (document.getElementById('filtro-stato')||{}).value || '';
   if(!statoFiltro){ filtraTesto(annAnno).forEach(function(p){ ordinate.push(p); }); ordinate.sort((a,b)=> a.numero - b.numero); }
-  tab.innerHTML = (typeof avvisoRitiriHTML === 'function' ? avvisoRitiriHTML(pratAnno) : '') + `
-    <div class="raff-title">Registro di protocollo</div>
-    <div class="tab-wrap">
-      <table class="tab-proto tab-registro">
-        <thead><tr><th>N.</th><th>Apertura</th><th>Fine lav.</th><th>Mittente</th><th>Tipo</th><th>Stato</th><th>Inserito da</th><th></th></tr></thead>
-        <tbody>
-          ${ordinate.length ? ordinate.map(p => p.annullata ? rigaAnnullataHTML(p) : `
+  const rigaRegistro = (p) => p.annullata ? rigaAnnullataHTML(p) : `
             <tr>
               <td class="n">${formattaProtocollo(p)}</td>
               <td>${p.data||'-'}</td>
@@ -1540,11 +1532,23 @@ function render(){
               <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select></td>
               <td>${formattaInserimento(p)}${ultimaModifica(p) ? '<div class="sub2" title="Ultima modifica">✏️ ' + ultimaModifica(p) + '</div>' : ''}</td>
               <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)} <button type="button" title="Ricevuta da consegnare al cliente" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer" onclick="stampaRicevuta('${p.id}')">🧾</button></td>
-            </tr>`).join('') : '<tr><td colspan="8" class="empty">'+(pratAnno.length ? 'Nessun risultato' : 'Nessuna registrazione per l\'anno '+annoSel)+'</td></tr>'}
+            </tr>`;
+  // Due registri con numerazioni separate: 730 e altre pratiche (AP)
+  const tabellaRegistro = function(titolo, colore, lista, totale){
+    return `<div class="raff-title" style="margin-top:14px; color:${colore}">${titolo} <span style="color:var(--sub); font-weight:600">(${totale})</span></div>
+    <div class="tab-wrap">
+      <table class="tab-proto tab-registro">
+        <thead><tr><th>N.</th><th>Apertura</th><th>Fine lav.</th><th>Mittente</th><th>Tipo</th><th>Stato</th><th>Inserito da</th><th></th></tr></thead>
+        <tbody>
+          ${lista.length ? lista.map(rigaRegistro).join('') : '<tr><td colspan="8" class="empty">'+(totale ? 'Nessun risultato' : 'Nessuna registrazione per l\'anno '+annoSel)+'</td></tr>'}
         </tbody>
       </table>
-    </div>
-  `;
+    </div>`;
+  };
+  const di730 = ordinate.filter(function(p){ return serieDi(p) === '730'; }), diAP = ordinate.filter(function(p){ return serieDi(p) !== '730'; });
+  tab.innerHTML = (typeof avvisoRitiriHTML === 'function' ? avvisoRitiriHTML(pratAnno) : '')
+    + tabellaRegistro('📘 Registro di protocollo 730', '#1d4f91', di730, pratAnno.filter(function(p){ return serieDi(p) === '730'; }).length)
+    + tabellaRegistro('📗 Registro di protocollo altre pratiche (AP)', '#2f9e5f', diAP, pratAnno.filter(function(p){ return serieDi(p) !== '730'; }).length);
 
 
   const sorted = [...pratAnno].sort((a,b)=> b.numero - a.numero);
@@ -2289,7 +2293,7 @@ async function cercaDoppione(anno, nome, tipo, codiceFiscale, escludiId){
     if(Number(p.anno) !== Number(anno) || (p.nome||'').toUpperCase() !== nome.toUpperCase() || p.tipo !== tipo) return false;
     return !(codiceFiscale && p.codiceFiscale && p.codiceFiscale !== codiceFiscale);
   });
-  return trovato ? String(trovato.numero).padStart(4,'0') + '/' + anno : null;
+  return trovato ? serieDi(trovato) + '-' + String(trovato.numero).padStart(4,'0') + '/' + anno : null;
 }
 
 function e730(p){ return /^730\b/.test(String(p.tipo||'').toUpperCase()); }
