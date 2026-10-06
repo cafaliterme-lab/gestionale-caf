@@ -759,6 +759,18 @@ document.addEventListener('DOMContentLoaded', function() {
   <div class="raff-title" style="color:#c0392b">Zona pericolosa</div>
   <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Elimina definitivamente tutte le pratiche dal registro di protocollo, per tutti gli anni. Non si può annullare.</p>
   <button type="button" id="btn-svuota" class="btn-add" style="background:var(--line); color:#c0392b" onclick="svuotaRegistro()">Svuota registro (elimina tutte le pratiche)</button>
+  <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line)">
+    <div style="font-weight:800; color:#c0392b; margin-bottom:4px">🗓️ Cancella un solo anno</div>
+    <p style="font-size:12.5px; color:var(--sub); margin:0 0 8px">Elimina solo i dati dell'anno scelto. Prima della cancellazione il programma salva da solo un backup completo. L'archivio clienti non viene toccato.</p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+      <select id="sva-anno" style="width:auto"></select>
+      <label class="chk"><input type="checkbox" id="sva-pratiche" checked> Pratiche (registri 730 e AP)</label>
+      <label class="chk"><input type="checkbox" id="sva-versamenti"> Versamenti CAF</label>
+      <label class="chk"><input type="checkbox" id="sva-spese"> Spese sede</label>
+      <label class="chk"><input type="checkbox" id="sva-scadenze"> Scadenze</label>
+    </div>
+    <button type="button" id="btn-svuota-anno" class="btn-add" style="background:var(--line); color:#c0392b; margin-top:8px" onclick="svuotaAnno()">🗑️ Cancella i dati dell'anno scelto</button>
+  </div>
 </div>
 </section>
 
@@ -770,10 +782,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ocr-documento.js?v=8"></script>
 <script src="js/grafici.js?v=7"></script>
 <script src="js/stampe.js?v=9"></script>
-<script src="js/extra.js?v=20"></script>
+<script src="js/extra.js?v=21"></script>
 <script src="js/documenti.js?v=13"></script>
 <script src="js/installa.js?v=4"></script>
-<script src="js/guida.js?v=10"></script>
+<script src="js/guida.js?v=11"></script>
 <script src="js/scadenze.js?v=202610087"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>

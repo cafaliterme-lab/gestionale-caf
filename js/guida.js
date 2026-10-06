@@ -323,6 +323,7 @@ const GUIDA = [
 <li><b>💾 Crea un backup adesso</b> ne fa uno subito; <b>⬇️ Scarica</b> scarica il file; <b>🗑️</b> lo elimina.</li>
 <li><b>📁 Scegli la cartella</b> (es. Dropbox › Backup CAF, con Chrome o Edge sul PC): il programma tiene lì un solo file <b>backup-caf.json</b>, riscritto con il backup più recente; Dropbox lo porta nel cloud.</li>
 <li><b>Esporta Backup (JSON)</b> / <b>Esporta Registro (Excel)</b> e <b>Importa Backup</b> per ripristinare.</li>
+<li><b>Cancellare un solo anno</b> (solo amministratore, in Utenti e permessi → Zona pericolosa → <b>🗓️ Cancella un solo anno</b>): scegli l'anno e cosa cancellare (pratiche dei registri 730 e AP, versamenti CAF, spese sede, scadenze), poi scrivi l'anno per confermare. Prima viene fatto da solo un backup completo; l'archivio clienti non viene toccato.</li>
 </ul>` },
 
   { id: 'modulistica', icona: '📂', titolo: 'Modulistica: moduli da scaricare, compilare e stampare', parole: 'modulistica moduli modulo word pdf excel carica scarica stampa editabile non editabile categoria delega privacy',

@@ -361,6 +361,7 @@ function renderBackupEStorico() {
   renderEditorImportiFPS();
   renderBackup();
   renderStoricoGlobale();
+  preparaSvuotaAnno();
 }
 
 /* ---------------- Pratiche in convenzione (730 FPS e 730 FILCA) ---------------- */
@@ -662,3 +663,50 @@ setInterval(function () {
   try { ultimo = Date.parse(localStorage.getItem('backup-cartella-ultimo') || '') || 0; } catch (e) {}
   if (Date.now() - ultimo > 6 * 3600 * 1000) sincronizzaCartellaBackup(false);
 }, 60 * 1000);
+
+
+/* ---------------- Cancellazione di un solo anno (solo amministratore, con backup prima) ---------------- */
+function preparaSvuotaAnno() {
+  const sel = document.getElementById('sva-anno');
+  if (!sel) return;
+  const scelto = sel.value;
+  const anni = typeof elencoAnniDisponibili === 'function' ? elencoAnniDisponibili() : [];
+  sel.innerHTML = anni.map(function (a) { return '<option value="' + a + '"' + (String(a) === scelto ? ' selected' : '') + '>' + a + '</option>'; }).join('');
+}
+async function svuotaAnno() {
+  const anno = parseInt(document.getElementById('sva-anno').value, 10);
+  const cosa = { pratiche: document.getElementById('sva-pratiche').checked, versamenti: document.getElementById('sva-versamenti').checked,
+    spese: document.getElementById('sva-spese').checked, scadenze: document.getElementById('sva-scadenze').checked };
+  if (!anno) return;
+  if (!cosa.pratiche && !cosa.versamenti && !cosa.spese && !cosa.scadenze) { avviso('⚠️ Scegli cosa cancellare', true); return; }
+  const nP = (state.pratiche || []).concat(state.annullate || []).filter(function (p) { return annoPratica(p) === anno; }).length;
+  const nV = (state.versamenti || []).filter(function (v) { return annoDiData(v.data) === anno; }).length;
+  const nS = (state.speseSede || []).filter(function (x) { return annoDiData(x.data) === anno; }).length;
+  const nSc = (state.scadenze || []).filter(function (x) { return String(x.data || '').slice(0, 4) === String(anno); }).length;
+  const elenco = [cosa.pratiche ? nP + ' pratiche' : '', cosa.versamenti ? nV + ' versamenti CAF' : '', cosa.spese ? nS + ' spese sede' : '', cosa.scadenze ? nSc + ' scadenze' : ''].filter(Boolean).join(', ');
+  const ok = await chiediConfermaScritta('Cancella l\'anno ' + anno, 'Verranno eliminati DEFINITIVAMENTE i dati del ' + anno + ': ' + elenco + '. Prima di cancellare il programma salva da solo un backup completo (lo trovi in "Backup automatici").', String(anno));
+  if (!ok) return;
+  const btn = document.getElementById('btn-svuota-anno');
+  btn.disabled = true; btn.textContent = 'Backup e cancellazione in corso...';
+  try {
+    const { error: eb } = await supabase.rpc('crea_backup', { p_tipo: 'prima_di_svuotare' });
+    if (eb) throw new Error('backup di sicurezza non riuscito, NIENTE è stato cancellato (' + eb.message + ')');
+    const cancella = async function (percorso) {
+      const r = await fetchSupabase('/rest/v1/' + percorso, 'DELETE', null, { 'Prefer': 'return=minimal' });
+      if (!r.ok) throw new Error((r.data && (r.data.message || r.data.hint)) || ('errore ' + r.status));
+    };
+    if (cosa.pratiche) await cancella('pratiche?anno=eq.' + anno);
+    if (cosa.versamenti) await cancella('versamenti?data=like.*%2F' + anno);
+    if (cosa.spese) await cancella('spese_sede?data=like.*%2F' + anno);
+    if (cosa.scadenze) await cancella('scadenze?data=gte.' + anno + '-01-01&data=lte.' + anno + '-12-31');
+    await data.caricaTutto();
+    avviso('🗑️ Dati del ' + anno + ' cancellati. Il backup di sicurezza è in "Backup automatici".');
+    if (typeof render === 'function') render();
+    if (typeof renderBackup === 'function') renderBackup();
+  } catch (e) {
+    avviso('❌ Cancellazione non completata: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = '🗑️ Cancella i dati dell\'anno scelto';
+    preparaSvuotaAnno();
+  }
+}
