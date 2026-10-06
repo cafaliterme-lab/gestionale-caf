@@ -1125,6 +1125,14 @@ async function aggiornaDaServer(){
       if(firma === ULTIMA_FIRMA_SERVER) return;
       ULTIMA_FIRMA_SERVER = firma;
     }
+    // impostazioni (dati CAF, telefoni CUD, importi convenzioni) e modulistica cambiate da un altro utente
+    const inModifica = document.activeElement && document.activeElement.closest && document.activeElement.closest('#tab-messaggi, #tab-permessi');
+    if(!inModifica) await caricaImpostazioni();
+    if(typeof MODULI_CARICATI !== 'undefined'){
+      MODULI_CARICATI = false;
+      const sm = document.getElementById('tab-modulistica');
+      if(sm && sm.classList.contains('active') && typeof renderModulistica === 'function') renderModulistica();
+    }
     const prima = firmaDati();
     const ok = await data.caricaTutto({ silenzioso: true });
     if(ok && firmaDati() !== prima && !staModificando()) onDatiAggiornati();
