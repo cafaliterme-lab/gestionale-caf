@@ -10,7 +10,7 @@ const GUIDA = [
 <li>Inserisci <b>e-mail</b> e <b>password</b> che ti ha dato l'amministratore e premi <b>Accedi</b>.</li>
 <li>In alto trovi il logo, i <b>dati del CAF</b>, la <b>data e l'ora</b>, il <b>QR</b> per installare l'app sul telefono e i <b>contatori</b> delle pratiche 730.</li>
 <li>Sotto c'è <b>Anno di protocollo</b>: sceglie l'anno che vedi nel Registro, in Contabilità e nei Grafici. Il numero di una pratica nuova dipende invece dal giorno in cui la inserisci.</li>
-<li>Il <b>menu</b> colorato porta alle varie sezioni: Inserimento anagrafica, Registro di protocollo, Contabilità, Grafici, Versamenti CAF, Collaboratori, Scadenze, Messaggi, Utenti e permessi (solo amministratore).</li>
+<li>Il <b>menu</b> colorato porta alle varie sezioni: Inserimento anagrafica, Registro di protocollo, Contabilità, Grafici, Versamenti CAF, Spese sede, Collaboratori, Scadenze, Messaggi, Modulistica, Utenti e permessi (solo amministratore).</li>
 <li>In alto a destra: <b>📲 Installa app</b>, <b>📖 Guida</b>, <b>Cambia utente</b> e <b>🚪 Esci dal programma</b>.</li>
 </ol>
 <p class="g-nota">I dati sono salvati online: quello che inserisce un operatore lo vedono subito anche gli altri, su PC e telefono. Il programma si aggiorna da solo ogni pochi secondi.</p>` },
@@ -208,6 +208,8 @@ const GUIDA = [
 <li><b>Dettaglio per tipo di pratica</b>: pratiche, fatture, incasso e provento per ogni tipo.</li>
 <li><b>Incasso per tipo di pagamento</b>: contanti 💶, POS 💳, bonifico 🏦 (e "non indicato").</li>
 <li>Gli elenchi <b>fatture da inserire</b> delle convenzioni FPS e FILCA.</li>
+<li><b>🔎 Ricerca fatture</b> dal… al… con il tipo di pagamento (vedi il capitolo dedicato).</li>
+<li>I riquadri <b>SPESE SEDE</b>, <b>GUADAGNO NETTO (meno spese sede)</b> e, se c'è, <b>DA RESTITUIRE AD ANGELO</b>.</li>
 <li><b>🖨️ Stampa contabilità (Excel / PDF)</b>.</li>
 </ul>` },
 
@@ -237,13 +239,37 @@ const GUIDA = [
   { id: 'versamenti', icona: '🏦', titolo: 'Versamenti CAF', parole: 'versamenti caf pagamenti al caf importo data causale',
     testo: `<p>In <b>VERSAMENTI CAF</b> registri i pagamenti fatti al CAF (importo, data, causale). Vengono sottratti all'incasso per calcolare il <b>netto</b> in Contabilità.</p>` },
 
-  { id: 'spese', icona: '🏢', titolo: 'Spese gestione sede (TARI, acqua, luce…)', parole: 'spese sede tari imu tasse comunali acqua luce gas affitto condominio guadagno netto',
+  { id: 'spese', icona: '🏢', titolo: 'Spese gestione sede (TARI, acqua, luce…)', parole: 'spese sede tari imu tasse comunali acqua luce gas affitto condominio guadagno netto conferma contabilita passaggi prelevati angelo restituiti restituire anticipati',
     testo: `
+<p><b>Registrare una spesa</b></p>
+<ol>
+<li>Nel menu <b>SPESE SEDE</b> scrivi la <b>data</b> del pagamento (propone oggi) e l'<b>importo</b>.</li>
+<li>Scegli la <b>voce di spesa</b>: TARI, IMU / tasse comunali, acqua, luce, gas, telefono / internet, affitto, condominio, pulizie, cancelleria, manutenzione, assicurazione, altro.</li>
+<li>Scegli il <b>pagamento</b>: <b>CONTANTI</b> è già selezionato, cambialo se hai pagato con POS o bonifico.</li>
+<li>Se vuoi, scrivi una <b>descrizione</b> (es. "TARI 1ª rata 2026").</li>
+<li>Se l'hai pagata con i tuoi soldi, spunta <b>💰 Prelevati Angelo</b>.</li>
+<li>Premi <b>+ Aggiungi spesa</b>.</li>
+</ol>
+<p><b>I passaggi di ogni spesa</b></p>
+<p>Ogni spesa mostra tre passaggi colorati: <b>① ✓ Registrata</b> → <b>② ✓ Pagata – CONTANTI</b> → <b>③ Conferma: già inserita in contabilità</b>.</p>
 <ul>
-<li>Nel menu <b>SPESE SEDE</b> registri i pagamenti della sede: data, <b>importo</b>, voce di spesa (TARI, IMU / tasse comunali, acqua, luce, gas, telefono, affitto, condominio, pulizie…), modo di pagamento e descrizione, poi <b>+ Aggiungi spesa</b>.</li>
-<li>Vedi l'elenco dell'anno di protocollo scelto, i totali per voce e il <b>totale spese sede</b>; con ✕ elimini una spesa sbagliata.</li>
-<li>Il totale dell'anno viene <b>tolto dal guadagno netto</b>: in Contabilità compaiono i riquadri <b>SPESE SEDE</b> e <b>GUADAGNO NETTO (meno spese sede)</b>, e lo stesso nei Grafici, nell'Excel e nella stampa della contabilità.</li>
-<li>La sezione si abilita per ogni utente in <b>Utenti e permessi</b> (voce "SPESE GESTIONE SEDE").</li>
+<li>Il terzo è un <b>tasto arancione</b>: premilo quando hai riportato la spesa in contabilità. Diventa <b>verde</b> con data e nome di chi ha confermato.</li>
+<li>Il bordo della spesa è <b>arancione</b> finché non è confermata, <b>verde</b> dopo. Con <b>annulla</b> togli una conferma data per sbaglio.</li>
+<li>In fondo vedi i totali <b>✔ In contabilità</b> e <b>⏳ Da confermare</b> (con quante spese mancano).</li>
+</ul>
+<p><b>Soldi anticipati da Angelo</b></p>
+<ul>
+<li>Le spese con la spunta <b>💰 Prelevati Angelo</b> sono pagate con i soldi di Angelo e vanno <b>restituite</b>. La spunta si può mettere o togliere anche dopo, su ogni spesa.</li>
+<li>Su queste spese compare il tasto viola <b>💸 Restituiti ad Angelo</b>: premilo quando Angelo viene rimborsato; diventa verde con la data ("annulla" per togliere).</li>
+<li>Il riquadro viola <b>💰 Da restituire ad Angelo</b>, in fondo, mostra il totale ancora da rimborsare (di tutti gli anni) con l'elenco; <b>💸 Restituito tutto ad Angelo</b> le segna tutte insieme.</li>
+<li>In Contabilità, se c'è qualcosa da restituire, compare il riquadro <b>DA RESTITUIRE AD ANGELO</b>.</li>
+</ul>
+<p><b>Effetto sul guadagno</b></p>
+<ul>
+<li>Il totale delle spese dell'anno viene <b>tolto dal guadagno netto</b>: in Contabilità compaiono <b>SPESE SEDE</b> e <b>GUADAGNO NETTO (meno spese sede)</b>, e lo stesso nei Grafici, nell'Excel e nella stampa della contabilità.</li>
+<li>Il rimborso ad Angelo <b>non cambia</b> il guadagno: la spesa è già tolta una volta.</li>
+<li>Le spese contano nell'anno della loro data di pagamento: scegli l'anno giusto in "Anno di protocollo".</li>
+<li>Con ✕ elimini una spesa sbagliata. La sezione si abilita per ogni utente in <b>Utenti e permessi</b> (voce "SPESE GESTIONE SEDE").</li>
 </ul>` },
 
   { id: 'collaboratori', icona: '🧩', titolo: 'Collaboratori e tipi di pratica', parole: 'collaboratori tipi pratica aggiungi colore elenco tipi',
@@ -264,6 +290,7 @@ const GUIDA = [
 <li>Sulla scadenza trovi:
 <ul>
 <li><b>💬 Avvisa</b>: manda al cliente su WhatsApp il promemoria della scadenza; resta annotato "AVVISATO il …";</li>
+<li><b>📧 Avvisa</b>: manda lo stesso promemoria per e-mail dalla casella del CAF; resta annotato "AVVISATO via e-mail il …";</li>
 <li><b>🔁 Rinnova</b>: apre una nuova pratica già compilata con i dati del cliente; scrivi la nuova scadenza e l'importo e salva. La nuova pratica prende il numero dell'anno in corso e la vecchia scadenza diventa <b>🔁 rinnovata</b>;</li>
 <li><b>Non rinnova</b>: chiude la scadenza se il cliente non prosegue.</li>
 </ul></li>
