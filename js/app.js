@@ -397,6 +397,7 @@ const TAB_LABELS = {
   contabilita: "CONTABILITA'",
   grafici: 'GRAFICI',
   caf: 'VERSAMENTI CAF',
+  spese: 'SPESE GESTIONE SEDE',
   collaboratori: 'COLLABORATORI',
   scadenze: 'SCADENZE',
   messaggi: 'MESSAGGI WHATSAPP'
@@ -829,7 +830,8 @@ async function esportaRegistroExcel(){
     { 'Voce':'Incasso totale (€)', 'Valore': incassoLordo },
     { 'Voce':'Pagamenti CAF (€)', 'Valore': versatoCaf },
     { 'Voce':'Netto: incasso − pagamenti CAF (€)', 'Valore': incasso },
-    { 'Voce':'Guadagno netto: netto − fatture (€)', 'Valore': incasso - fattureEmesse },
+    { 'Voce':'Spese gestione sede (€)', 'Valore': (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
+    { 'Voce':'Guadagno netto: netto − fatture − spese sede (€)', 'Valore': incasso - fattureEmesse - (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
     { 'Voce':'', 'Valore':'' },
     { 'Voce':'Dettaglio per collaboratore / tipo pratica', 'Valore':'' }
   ];
@@ -1107,7 +1109,7 @@ function onDatiAggiornati(){
 let AGGIORNAMENTO_IN_CORSO = false;
 let ULTIMA_FIRMA_SERVER = '';
 function firmaDati(){
-  return JSON.stringify([state.pratiche, state.versamenti, state.isee, state.clienti, state.collaboratori, state.scadenze], function(k, v){ return k.charAt(0) === '_' ? undefined : v; });
+  return JSON.stringify([state.pratiche, state.versamenti, state.isee, state.clienti, state.collaboratori, state.scadenze, state.speseSede], function(k, v){ return k.charAt(0) === '_' ? undefined : v; });
 }
 function staModificando(){
   const a = document.activeElement;
@@ -1171,6 +1173,7 @@ function showTab(btn){
   if(tab === 'scadenze') renderScadenze();
   if(tab === 'messaggi') mostraDatiCaf();
   if(tab === 'grafici') renderGrafici();
+  if(tab === 'spese' && typeof renderSpese === 'function') renderSpese();
   if(tab === 'modulistica' && typeof renderModulistica === 'function') renderModulistica();
   if(tab === 'permessi'){ renderPermessi(); if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
 }
@@ -1455,7 +1458,8 @@ function render(){
   const incassoLordo = pratAnno.reduce((a,p)=>a+Number(p.pagato||0),0);
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
   const incasso = incassoLordo - versatoCaf;
-  const differenzaIncFatt = incasso - fattureEmesse;
+  const speseSede = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(annoSel) : 0;
+  const differenzaIncFatt = incasso - fattureEmesse - speseSede;
 
   const vPrat = vedeSezioneContabilita('cont_pratiche'), vEco = vedeSezioneContabilita('cont_economici'), vBlocchi = vedeSezioneContabilita('cont_blocchi'), vGrafici = vedeSezioneContabilita('cont_grafici');
   const contExcel = document.getElementById('cont-excel');
@@ -1470,9 +1474,10 @@ function render(){
     <div class="stat c5 viola"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
     <div class="stat c5 blu"><b>${fmtEuro(versatoCaf)}</b><span>PAGAMENTI CAF</span></div>
     <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">NETTO (incasso − pagamenti CAF)</span></div>
-    ${vedeGuadagni() ? `<div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO</span></div>` : ''}` : '') + (vBlocchi ? `
+    ${vedeGuadagni() ? `<div class="stat c5" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE</span></div><div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO (meno spese sede)</span></div>` : ''}` : '') + (vBlocchi ? `
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true)}
-    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }))}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf) : '');
+    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }))}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf, speseSede) : '');
+  if(typeof renderSpese === 'function') renderSpese();
 
   const caf = document.getElementById('caf-card');
   const vlist = versAnno;
@@ -1505,7 +1510,7 @@ function render(){
       <div id="box-ch-tipi" style="margin-top:14px"><div class="chart-cap">Fatture emesse, incasso e provento per tipo di pratica</div><div class="chart-wrap"><canvas id="ch-tipi"></canvas></div></div>
       <div id="raff-tipi" style="margin-top:14px"></div>`;
   }
-  document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso − pagamenti CAF − fatture emesse): ' + fmtEuro(incasso - fattureEmesse) : '';
+  document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso − pagamenti CAF − fatture emesse − spese sede): ' + fmtEuro(incasso - fattureEmesse - speseSede) : '';
   aggiornaGrafici(fattureEmesse, incassoLordo);
   aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno) + riepilogoPerPagamento(pratAnno);
@@ -2429,7 +2434,8 @@ function aggiornaCampoFineForm(){
   }
 }
 
-function riepilogoGuadagno(pratiche, pagamentiCaf){
+function riepilogoGuadagno(pratiche, pagamentiCaf, speseSede){
+  speseSede = speseSede || 0;
   const provento = function(lista){ return lista.reduce(function(a,p){ return a + Number(p.pagato||0) - Number(p.compenso||0); }, 0); };
   const p730 = provento(pratiche.filter(e730));
   const pAltre = provento(pratiche.filter(function(p){ return !e730(p); }));
@@ -2437,8 +2443,9 @@ function riepilogoGuadagno(pratiche, pagamentiCaf){
   return '<div style="flex-basis:100%; margin-top:6px; padding:12px 16px; border-radius:12px; background:var(--card); border:2px dashed #374151; font-size:15px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px">'
     + voce('Provento 730', p730, '#1d4f91') + '<b>+</b>'
     + voce('Provento altre pratiche', pAltre, '#6b7280') + '<b>−</b>'
-    + voce('Pagamenti CAF', pagamentiCaf, '#2f7de1') + '<b>=</b>'
-    + '<span style="white-space:nowrap; background:#374151; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre - pagamentiCaf) + '</span>'
+    + voce('Pagamenti CAF', pagamentiCaf, '#2f7de1') + '<b>−</b>'
+    + voce('Spese sede', speseSede, '#b35f0c') + '<b>=</b>'
+    + '<span style="white-space:nowrap; background:#374151; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre - pagamentiCaf - speseSede) + '</span>'
     + '</div>';
 }
 

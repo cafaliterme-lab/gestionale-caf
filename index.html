@@ -243,6 +243,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .navmenu button[data-tab="messaggi"]{--tc:#128c7e}
 .navmenu button[data-tab="permessi"]{--tc:#4b5563}
 .navmenu button[data-tab="modulistica"]{--tc:#b35f0c}
+.navmenu button[data-tab="spese"]{--tc:#a0522d}
 .navmenu button.active{background:var(--tc); border-color:var(--tc); color:#fff; box-shadow:0 4px 12px color-mix(in srgb, var(--tc) 45%, transparent)}
 @media (max-width:600px){ .navmenu{grid-template-columns:repeat(2, 1fr)} .navmenu button{white-space:normal; padding:8px 8px; font-size:11.5px} }
 .tabsec{display:none}
@@ -394,6 +395,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <button type="button" data-tab="contabilita" onclick="showTab(this)">CONTABILITA'</button>
   <button type="button" data-tab="grafici" onclick="showTab(this)">GRAFICI</button>
   <button type="button" data-tab="caf" onclick="showTab(this)">VERSAMENTI CAF</button>
+  <button type="button" data-tab="spese" onclick="showTab(this)">SPESE SEDE</button>
   <button type="button" data-tab="collaboratori" onclick="showTab(this)">COLLABORATORI</button>
   <button type="button" data-tab="scadenze" onclick="showTab(this)">SCADENZE</button>
   <button type="button" data-tab="messaggi" onclick="showTab(this)">MESSAGGI</button>
@@ -421,6 +423,10 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <div class="card" id="caf-card"></div>
 <div id="list" style="display:none"></div>
 
+</section>
+
+<section class="tabsec" id="tab-spese">
+<div class="card" id="spese-card"></div>
 </section>
 
 <section class="tabsec" id="tab-grafici">
@@ -758,24 +764,25 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
 <script src="js/ocr-documento.js?v=6"></script>
-<script src="js/grafici.js?v=6"></script>
-<script src="js/stampe.js?v=7"></script>
+<script src="js/grafici.js?v=7"></script>
+<script src="js/stampe.js?v=8"></script>
 <script src="js/extra.js?v=20"></script>
 <script src="js/documenti.js?v=13"></script>
 <script src="js/installa.js?v=4"></script>
-<script src="js/guida.js?v=4"></script>
+<script src="js/guida.js?v=5"></script>
 <script src="js/scadenze.js?v=202610087"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610115"></script>
+<script src="js/data.js?v=202610116"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610154"></script>
+<script src="js/app.js?v=202610155"></script>
 <script src="js/email.js?v=1"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/ricercafatture.js?v=1"></script>
+<script src="js/spese.js?v=1"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

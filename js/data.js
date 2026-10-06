@@ -125,6 +125,16 @@ const schemas = {
     modificatoDa: 'modificato_da',
     emailInviata: 'email_inviata',
   },
+  spesaSede: {
+    id: 'id',
+    data: 'data',
+    categoria: 'categoria',
+    descrizione: 'descrizione',
+    importo: 'importo',
+    metodoPagamento: 'metodo_pagamento',
+    creatoDa: 'creato_da',
+    creatoIl: 'creato_il',
+  },
   versamento: {
     id: 'id',
     importo: 'importo',
@@ -217,6 +227,10 @@ async function caricaTutto(opzioni) {
 
     if (errV) throw new Error('Errore versamenti: ' + errV.message);
     state.versamenti = versamenti.map(v => mapFromDb(v, schemas.versamento));
+
+    // Spese gestione sede (chi non ha il permesso riceve un elenco vuoto)
+    const { data: spese, error: errSp } = await sb.from('spese_sede').select('*').order('creato_il', { ascending: false });
+    state.speseSede = errSp ? [] : (spese || []).map(s => mapFromDb(s, schemas.spesaSede));
 
     // ISEE
     const { data: isee, error: errI } = await sb
@@ -428,6 +442,28 @@ async function eliminaVersamento(id) {
     mostraErrore('Errore eliminazione versamento: ' + err.message);
     return { error: err.message };
   }
+}
+
+/**
+ * Spese gestione sede - Aggiungi / Elimina
+ */
+async function aggiungiSpesaSede(spesa) {
+  try {
+    const { data: righe, error } = await supabase.from('spese_sede').insert([mapToDb(spesa, schemas.spesaSede)]).select('id');
+    if (error) throw new Error(error.message);
+    if (!righe || !righe.length) throw new Error('Permesso negato');
+    await caricaTutto();
+    return {};
+  } catch (err) { return { error: err.message }; }
+}
+async function eliminaSpesaSede(id) {
+  try {
+    const { data: righe, error } = await supabase.from('spese_sede').delete().eq('id', id).select('id');
+    if (error) throw new Error(error.message);
+    if (!righe || !righe.length) throw new Error('Permesso negato');
+    await caricaTutto();
+    return {};
+  } catch (err) { return { error: err.message }; }
 }
 
 /**
@@ -761,6 +797,10 @@ window.data = {
   versamenti: {
     aggiungi: aggiungiVersamento,
     elimina: eliminaVersamento,
+  },
+  speseSede: {
+    aggiungi: aggiungiSpesaSede,
+    elimina: eliminaSpesaSede,
   },
   isee: {
     aggiungi: aggiungiIsee,

@@ -237,6 +237,15 @@ const GUIDA = [
   { id: 'versamenti', icona: '🏦', titolo: 'Versamenti CAF', parole: 'versamenti caf pagamenti al caf importo data causale',
     testo: `<p>In <b>VERSAMENTI CAF</b> registri i pagamenti fatti al CAF (importo, data, causale). Vengono sottratti all'incasso per calcolare il <b>netto</b> in Contabilità.</p>` },
 
+  { id: 'spese', icona: '🏢', titolo: 'Spese gestione sede (TARI, acqua, luce…)', parole: 'spese sede tari imu tasse comunali acqua luce gas affitto condominio guadagno netto',
+    testo: `
+<ul>
+<li>Nel menu <b>SPESE SEDE</b> registri i pagamenti della sede: data, <b>importo</b>, voce di spesa (TARI, IMU / tasse comunali, acqua, luce, gas, telefono, affitto, condominio, pulizie…), modo di pagamento e descrizione, poi <b>+ Aggiungi spesa</b>.</li>
+<li>Vedi l'elenco dell'anno di protocollo scelto, i totali per voce e il <b>totale spese sede</b>; con ✕ elimini una spesa sbagliata.</li>
+<li>Il totale dell'anno viene <b>tolto dal guadagno netto</b>: in Contabilità compaiono i riquadri <b>SPESE SEDE</b> e <b>GUADAGNO NETTO (meno spese sede)</b>, e lo stesso nei Grafici, nell'Excel e nella stampa della contabilità.</li>
+<li>La sezione si abilita per ogni utente in <b>Utenti e permessi</b> (voce "SPESE GESTIONE SEDE").</li>
+</ul>` },
+
   { id: 'collaboratori', icona: '🧩', titolo: 'Collaboratori e tipi di pratica', parole: 'collaboratori tipi pratica aggiungi colore elenco tipi',
     testo: `<p>In <b>COLLABORATORI</b> gestisci l'elenco dei <b>tipi di pratica</b> e dei collaboratori (es. "730 BRIGUGLIO ANTONIO"): aggiungi un nuovo tipo con <b>+ Aggiungi</b>. Ogni tipo ha il suo colore, usato nel menu a tendina, nel Registro e nei grafici.</p>` },
 
