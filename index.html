@@ -347,7 +347,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <div id="doc-msg" style="font-size:12.5px; margin-top:8px"></div>
       <div style="display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap">
         <button type="button" class="btn-add" style="margin:0" onclick="scattaDocumento()">📸 Scatta</button>
-        <label class="btn-add" style="margin:0; cursor:pointer; background:var(--line); color:var(--ink)">🖼️ Carica foto<input type="file" accept="image/*" style="display:none" onchange="caricaFotoDocumento(this)"></label>
+        <label class="btn-add" style="margin:0; cursor:pointer; background:var(--line); color:var(--ink)">📎 Carica foto o PDF<input type="file" accept="image/*,application/pdf,.pdf" style="display:none" onchange="caricaFotoDocumento(this)"></label>
         <button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="chiudiLetturaDocumento()">Annulla</button>
       </div>
       <div style="font-size:11px; color:var(--sub); margin-top:10px">Carta d'identita', tessera sanitaria o patente. L'immagine resta sul dispositivo: non viene salvata ne' inviata.</div>
@@ -766,13 +766,13 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/qrcode.js?v=1"></script>
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
-<script src="js/ocr-documento.js?v=7"></script>
+<script src="js/ocr-documento.js?v=8"></script>
 <script src="js/grafici.js?v=7"></script>
 <script src="js/stampe.js?v=9"></script>
 <script src="js/extra.js?v=20"></script>
 <script src="js/documenti.js?v=13"></script>
 <script src="js/installa.js?v=4"></script>
-<script src="js/guida.js?v=9"></script>
+<script src="js/guida.js?v=10"></script>
 <script src="js/scadenze.js?v=202610087"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>

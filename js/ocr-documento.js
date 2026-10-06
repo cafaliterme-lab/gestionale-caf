@@ -604,10 +604,37 @@ async function caricaFotoDocumento(input) {
   if (!file) return;
   fermaFotocameraDoc();
   try {
+    if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) { await leggiPdfDocumento(file); return; }
     const img = await createImageBitmap(file);
     await analizzaDocumento(img, img.width, img.height);
   } catch (e) {
-    messaggioDoc('❌ Foto non leggibile: ' + e.message, true);
+    messaggioDoc('❌ File non leggibile: ' + e.message, true);
+  }
+}
+
+// PDF (es. scansione della carta d'identita'): ogni pagina diventa un'immagine; se ci sono due pagine
+// (fronte e retro) i dati si uniscono come con "+ Leggi l'altro lato"
+const PDFJS_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+async function leggiPdfDocumento(file) {
+  messaggioDoc('Apertura del PDF...');
+  if (!window.pdfjsLib) await caricaScript(PDFJS_BASE + 'pdf.min.js');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js';
+  const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pagine = Math.min(pdf.numPages, 2);
+  for (let n = 1; n <= pagine; n++) {
+    const pagina = await pdf.getPage(n);
+    const base = pagina.getViewport({ scale: 1 });
+    // circa 2500 pixel sul lato lungo: abbastanza per leggere bene i caratteri piccoli
+    const scala = Math.min(4, 2500 / Math.max(base.width, base.height));
+    const vista = pagina.getViewport({ scale: scala });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(vista.width); canvas.height = Math.round(vista.height);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await pagina.render({ canvasContext: ctx, viewport: vista }).promise;
+    if (n === 2) { docLettura.dati = datiRevisione(); docLettura.unisci = true; }
+    messaggioDoc('Lettura della pagina ' + n + ' di ' + pagine + '...');
+    await analizzaDocumento(canvas, canvas.width, canvas.height);
   }
 }
 

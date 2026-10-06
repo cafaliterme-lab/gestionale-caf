@@ -58,7 +58,7 @@ const GUIDA = [
     testo: `
 <ol>
 <li>Premi <b>📄 Leggi documento</b> accanto al codice fiscale (per il coniuge: <b>📄 Leggi documento coniuge</b>).</li>
-<li>Fotografa o scegli l'immagine della <b>carta d'identità</b> (anche elettronica), della <b>tessera sanitaria</b> o della <b>patente</b>.</li>
+<li>Fotografa il documento, oppure premi <b>📎 Carica foto o PDF</b> e scegli un'immagine o il <b>PDF</b> della scansione della <b>carta d'identità</b> (anche elettronica), della <b>tessera sanitaria</b> o della <b>patente</b>. Se il PDF ha due pagine (fronte e retro) vengono lette tutte e due e i dati si uniscono.</li>
 <li>Il programma legge cognome, nome, data di nascita, <b>codice fiscale</b> e, se presente, la <b>scadenza del documento</b>, e li inserisce nei campi.</li>
 </ol>
 <p class="g-nota">Controlla sempre i dati letti: con foto sfocate o riflessi qualche carattere può essere sbagliato. Il codice fiscale viene comunque verificato prima del salvataggio.</p>` },
