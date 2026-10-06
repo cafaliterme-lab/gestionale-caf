@@ -1510,6 +1510,7 @@ function render(){
   aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno) + riepilogoPerPagamento(pratAnno);
   if(typeof renderElencoFPS === 'function') renderElencoFPS(pratAnno);
+  if(typeof renderRicercaFatture === 'function') renderRicercaFatture();
   if(typeof aggiornaPulsanteCUD === 'function'){ aggiornaPulsanteCUD(); if(document.getElementById('richieste-cud')) disegnaRichiesteCUD(); }
 
   const tab = document.getElementById('tabella');

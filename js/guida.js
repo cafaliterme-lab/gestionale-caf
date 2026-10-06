@@ -211,6 +211,16 @@ const GUIDA = [
 <li><b>🖨️ Stampa contabilità (Excel / PDF)</b>.</li>
 </ul>` },
 
+  { id: 'ricercafatture', icona: '🔎', titolo: 'Ricerca fatture dal… al… per tipo di pagamento', parole: 'ricerca fatture dal al periodo pagamento contanti pos bonifico incasso totale excel stampa',
+    testo: `
+<ul>
+<li>In <b>CONTABILITÀ</b>, riquadro <b>🔎 Ricerca fatture</b>: scegli <b>Dal</b> e <b>Al</b> (o i pulsanti rapidi Oggi, Questo mese, Mese scorso, Quest'anno).</li>
+<li><b>Riferimento</b>: per data di apertura, fine lavorazione o data fattura.</li>
+<li><b>Tipo di pagamento</b>: tutti, 💶 contanti, 💳 POS, 🏦 bonifico o non indicato. Puoi cercare anche per cliente o numero di fattura.</li>
+<li>In alto vedi i <b>totali</b> (fatture e incassato) divisi per tipo di pagamento, sotto l'elenco con il totale.</li>
+<li><b>📊 Excel</b> scarica l'elenco, <b>🖨️ Stampa</b> lo stampa. La ricerca vale per tutti gli anni, non solo per l'anno di protocollo scelto.</li>
+</ul>` },
+
   { id: 'stampe', icona: '🖨️', titolo: 'Stampe ed Excel', parole: 'stampa pdf excel filtri periodo tipo stato operatore cliente pagamento registro',
     testo: `
 <p>Da <b>🖨️ Stampa registro</b> o <b>🖨️ Stampa contabilità</b> si apre la finestra di stampa con i filtri:</p>
