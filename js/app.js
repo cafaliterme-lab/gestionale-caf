@@ -361,9 +361,12 @@ function elencoAnniDisponibili(){
 let annoAttivoLocale = null;
 function annoAttivo(){
   if(!annoAttivoLocale){
-    let salvato = null;
-    try{ salvato = parseInt(localStorage.getItem('protocollo-anno'), 10); }catch(e){}
-    annoAttivoLocale = salvato || Math.max(ANNO_INIZIO_PROTOCOLLO, (new Date()).getFullYear());
+    let salvato = null, sceltoNel = null;
+    try{ salvato = parseInt(localStorage.getItem('protocollo-anno'), 10); sceltoNel = parseInt(localStorage.getItem('protocollo-anno-scelto-nel'), 10); }catch(e){}
+    const oggi = (new Date()).getFullYear(), predefinito = Math.max(ANNO_INIZIO_PROTOCOLLO, oggi);
+    // a capodanno il registro passa da solo al nuovo anno (l'anno scelto prima vale fino al 31/12)
+    if(salvato && sceltoNel && sceltoNel < oggi && salvato < predefinito) salvato = null;
+    annoAttivoLocale = salvato || predefinito;
   }
   return annoAttivoLocale;
 }
@@ -389,7 +392,7 @@ function coloraSelettoreAnno(){
 function cambiaAnnoAttivo(v){
   annoAttivoLocale = parseInt(v,10);
   coloraSelettoreAnno();
-  try{ localStorage.setItem('protocollo-anno', v); }catch(e){}
+  try{ localStorage.setItem('protocollo-anno', v); localStorage.setItem('protocollo-anno-scelto-nel', String((new Date()).getFullYear())); }catch(e){}
   render();
 }
 
