@@ -35,7 +35,7 @@ const SLIDE_OPERATORE = [
     passi: ['<b>💬 WhatsApp</b>: messaggio già pronto (pratica pronta, documenti mancanti…).', '<b>📧 E-mail</b>: parte dalla casella del CAF.', '<b>🧾 Ricevuta</b>: da stampare o da mandare al cliente.'],
     disegno: tastoFinto('💬 WhatsApp', '#25d366') + tastoFinto('📧 E-mail', '#2f7de1') + tastoFinto('🧾 Ricevuta', '#374151') },
   { icona: '💬', titolo: 'Chat interna e compiti', intro: 'Per parlarsi fra colleghi senza uscire dal programma.',
-    passi: ['Premi <b>💬 Chat</b> in basso a destra, scegli a chi scrivere e premi ➤.', 'Spunta <b>📌 Compito da spuntare</b> per mandare una cosa da fare.', 'Chi la riceve la vede <b>in alto sullo schermo</b> e preme <b>✓ Fatto</b> quando l\'ha eseguita.'],
+    passi: ['Premi <b>💬 CHAT INTERNA</b> in alto (accanto all\'anno), scegli a chi scrivere e premi ➤.', 'Spunta <b>📌 Compito da spuntare</b> per mandare una cosa da fare.', 'Chi la riceve la vede <b>in alto sullo schermo</b> e preme <b>✓ Fatto</b>: a chi l\'ha mandata arriva l\'avviso <b>✅ Compito eseguito</b>.'],
     disegno: tastoFinto('💬 Chat 2', '#1d4f91') + '<span style="display:inline-block; padding:8px 12px; border-radius:12px; background:#fff7e6; border:2px solid #d4881c; color:#5c3d00; font-weight:700">📌 Manca il CUD di Rossi ' + tastoFinto('✓ Fatto', '#2f9e5f') + '</span>' },
   { icona: '🏷️', titolo: 'Gli stati delle pratiche', intro: 'Il colore dice a che punto è la pratica.',
     passi: ['⚪ <b>In arrivo</b> → 🟡 <b>In lavorazione</b> → 🔵 <b>Lavorata</b> → 🟢 <b>Pagato</b>.', 'Con documenti mancanti la pratica resta "In arrivo".', 'Per colf e badanti: 🟢 Pratica attiva e ⚫ Pratica cessata.'],

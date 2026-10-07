@@ -46,6 +46,7 @@ async function caricaChat() {
       const nuovi = CHAT.messaggi.filter(function (m) { return m.creato_il > prima && m.da_id !== auth.profilo.id && chatPerMe(m) && !m.compito; });
       if (nuovi.length && typeof avviso === 'function') avviso('💬 ' + nuovi[0].da_nome + ': ' + nuovi[0].testo.slice(0, 80));
     }
+    controllaRicevuteCompiti();
     disegnaBottoneChat();
     disegnaCompitiAVideo();
     if (CHAT.aperta) disegnaChat();
@@ -62,13 +63,16 @@ function disegnaBottoneChat() {
     b = document.createElement('button');
     b.id = 'chat-bottone';
     b.type = 'button';
-    b.onclick = function () { apriChat(); };
-    b.style.cssText = 'position:fixed; right:16px; bottom:16px; z-index:350; border:none; border-radius:999px; padding:12px 18px; background:#1d4f91; color:#fff; font-weight:800; font-size:15px; box-shadow:0 8px 24px rgba(0,0,0,.25); cursor:pointer';
-    document.body.appendChild(b);
+    b.onclick = function () { if (CHAT.aperta) chiudiChat(); else apriChat(); };
+    // in alto, accanto all'anno di protocollo (se lo spazio non c'e' resta in basso a destra)
+    const slot = document.getElementById('chat-slot');
+    b.style.cssText = slot
+      ? 'width:100%; border:none; border-radius:12px; padding:10px 16px; background:linear-gradient(90deg,#1d4f91,#00612f); color:#fff; font-weight:800; font-size:16px; box-shadow:0 6px 18px rgba(29,79,145,.3); cursor:pointer; text-align:left'
+      : 'position:fixed; right:16px; bottom:16px; z-index:350; border:none; border-radius:999px; padding:12px 18px; background:#1d4f91; color:#fff; font-weight:800; font-size:15px; box-shadow:0 8px 24px rgba(0,0,0,.25); cursor:pointer';
+    (slot || document.body).appendChild(b);
   }
   const n = chatNonLetti().length, c = chatCompitiAperti().length;
-  b.innerHTML = '💬 Chat' + (n ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 8px; margin-left:4px">' + n + '</span>' : '') + (c ? ' <span style="background:#d4881c; border-radius:999px; padding:1px 8px; margin-left:4px">📌 ' + c + '</span>' : '');
-  b.style.display = CHAT.aperta ? 'none' : '';
+  b.innerHTML = '💬 CHAT INTERNA' + (n ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 9px; margin-left:6px">' + n + ' nuov' + (n === 1 ? 'o' : 'i') + '</span>' : '') + (c ? ' <span style="background:#d4881c; border-radius:999px; padding:1px 9px; margin-left:6px">📌 ' + c + ' da fare</span>' : '') + '<span style="float:right; opacity:.85; font-size:13px">' + (CHAT.aperta ? 'chiudi ✕' : 'apri ›') + '</span>';
 }
 
 // I compiti da fare compaiono a video (in alto) finché non vengono spuntati
@@ -92,6 +96,38 @@ function disegnaCompitiAVideo() {
       + '<button type="button" onclick="apriChat(\'compiti\')" style="padding:5px 12px; background:#1d4f91; color:#fff">💬 Rispondi</button>'
       + '<button type="button" onclick="segnaCompito(\'' + m.id + '\', true)" style="padding:5px 12px; background:#2f9e5f; color:#fff; font-weight:800">✓ Fatto</button></div></div>';
   }).join('') + (lista.length > 3 ? '<div style="text-align:center; font-size:12px; background:#fff7e6; border-radius:10px; padding:4px">… e altri ' + (lista.length - 3) + ' compiti nella chat</div>' : '');
+}
+
+// Ricevuta per chi ha mandato il compito: quando un altro lo spunta come fatto compare un avviso a video
+function controllaRicevuteCompiti() {
+  const chiave = 'chat-ricevute-' + auth.profilo.id;
+  const miei = CHAT.messaggi.filter(function (m) { return m.compito && m.fatto && m.da_id === auth.profilo.id; });
+  let visti = null;
+  try { visti = JSON.parse(localStorage.getItem(chiave) || 'null'); } catch (e) { }
+  if (!Array.isArray(visti)) {   // prima volta su questo PC: non si avvisa per i compiti già fatti in passato
+    try { localStorage.setItem(chiave, JSON.stringify(miei.map(function (m) { return m.id; }))); } catch (e) { }
+    return;
+  }
+  const nuovi = miei.filter(function (m) { return visti.indexOf(m.id) < 0 && m.fatto_da && m.fatto_da.toUpperCase() !== (auth.profilo.nome || '').toUpperCase(); });
+  if (!nuovi.length) return;
+  try { localStorage.setItem(chiave, JSON.stringify(visti.concat(nuovi.map(function (m) { return m.id; })).slice(-500))); } catch (e) { }
+  mostraRicevuteCompiti(nuovi);
+}
+function mostraRicevuteCompiti(lista) {
+  let ov = document.getElementById('chat-ricevute');
+  if (ov) ov.remove();
+  ov = document.createElement('div');
+  ov.id = 'chat-ricevute';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:495; background:rgba(15,27,45,.45); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #2f9e5f; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:20px 22px; max-width:460px; width:100%">'
+    + '<div style="font-size:20px; font-weight:800; color:#2f9e5f; margin-bottom:8px">✅ Compito' + (lista.length > 1 ? 'i' : '') + ' eseguit' + (lista.length > 1 ? 'i' : 'o') + '</div>'
+    + lista.map(function (m) {
+      return '<div style="padding:8px 10px; border-radius:10px; background:#e8f6ee; margin-bottom:8px"><div style="font-size:15px; font-weight:700; white-space:pre-wrap">' + esc(m.testo) + '</div>'
+        + '<div style="font-size:12.5px; color:#1f6b40">✓ Fatto da <b>' + esc(m.fatto_da) + '</b>' + (m.fatto_il ? ' il ' + oraChat(m.fatto_il) : '') + '</div></div>';
+    }).join('')
+    + '<div style="text-align:right; margin-top:6px"><button type="button" style="background:#2f9e5f; color:#fff; font-weight:800; min-width:100px">OK</button></div></div>';
+  ov.addEventListener('click', function (e) { if (e.target === ov || e.target.tagName === 'BUTTON') ov.remove(); });
+  document.body.appendChild(ov);
 }
 
 function apriChat(scheda) {
