@@ -2041,7 +2041,7 @@ function accontiDi(anno, filtroTipo){
 }
 function totaleAcconti(anno, filtroTipo){ return accontiDi(anno, filtroTipo).reduce(function(t,a){ return t + Number(a.importo||0); }, 0); }
 // Tipi di pratica senza il tasto Acconto (non sono collaboratori che versano)
-const TIPI_SENZA_ACCONTO = ['730 FILCA','730 FPS IN CONVENZIONE','730 DECEDUTI','730 INTEGRATIVI/RETTIFICATIVI','CONTRATTI DI AFFITTO','CONTRATTI COLF E BADANTI','ISEE A PAGAMENTO','IMU','ISEE','RED','SEND','MODELLI UNICO PF','INVCIV','ADI','F24'];
+const TIPI_SENZA_ACCONTO = ['730 SEDE','730 FILCA','730 FPS IN CONVENZIONE','730 DECEDUTI','730 INTEGRATIVI/RETTIFICATIVI','CONTRATTI DI AFFITTO','CONTRATTI COLF E BADANTI','ISEE A PAGAMENTO','IMU','ISEE','RED','SEND','MODELLI UNICO PF','INVCIV','ADI','F24'];
 function haAcconti(k){ return TIPI_SENZA_ACCONTO.indexOf(String(k||'').toUpperCase().trim()) < 0; }
 function puoScrivereAcconti(){ return typeof puo === 'function' && puo('registro', true); }
 function nuovoAcconto(tipo){
