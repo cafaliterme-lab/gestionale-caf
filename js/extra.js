@@ -190,19 +190,31 @@ async function renderStoricoGlobale() {
 
 /* ---------------- Backup automatici ---------------- */
 
-const NOMI_BACKUP = { settimanale: '🗓️ Settimanale', manuale: '💾 Manuale', prima_di_svuotare: '🛡️ Prima di svuotare il registro', prima_di_importare: '🛡️ Prima di importare un backup' };
+const NOMI_BACKUP = { fine_anno: '🎆 Fine anno (31/12, conservato per sempre)', settimanale: '🗓️ Settimanale', manuale: '💾 Manuale', prima_di_svuotare: '🛡️ Prima di svuotare il registro', prima_di_importare: '🛡️ Prima di importare un backup' };
 async function renderBackup() {
   const box = document.getElementById('backup-lista');
   if (!box) return;
   sincronizzaCartellaBackup(false);
   const { data, ok } = await fetchSupabase('/rest/v1/backup_automatici?select=id,creato_il,tipo,creato_da,n_pratiche&order=creato_il.desc');
   if (!ok || !Array.isArray(data)) { box.innerHTML = '<div class="empty">Elenco dei backup non disponibile</div>'; return; }
-  box.innerHTML = data.length ? data.map(function (b) {
+  const perAnno = ultimiBackupPerAnno(data);
+  const bottoniAnno = Object.keys(perAnno).sort().reverse().map(function (anno) {
+    return '<button type="button" style="background:#1d4f91; color:#fff; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-size:13px; font-weight:700" onclick="scaricaSalvataggiAnno(' + Number(perAnno[anno].id) + ', ' + Number(anno) + ')" title="Ultimo backup del ' + anno + ' (' + esc(quandoStorico(perAnno[anno].creato_il)) + ')">⬇️ ' + nomeFileAnno(anno) + '</button>';
+  }).join(' ');
+  box.innerHTML = (bottoniAnno ? '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px"><span style="font-size:12.5px; font-weight:700">📦 Salvataggi per anno:</span>' + bottoniAnno + '</div>' : '') + (data.length ? data.map(function (b) {
     return '<div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; flex-wrap:wrap">'
       + '<span style="flex:1; min-width:200px"><b>' + esc(quandoStorico(b.creato_il)) + '</b> · ' + esc(NOMI_BACKUP[b.tipo] || b.tipo) + ' <span style="color:var(--sub)">(' + (b.n_pratiche || 0) + ' pratiche' + (b.creato_da ? ', ' + esc(b.creato_da) : '') + ')</span></span>'
       + '<button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:8px; padding:5px 12px; cursor:pointer" onclick="scaricaBackup(' + Number(b.id) + ')">⬇️ Scarica</button>'
       + '<button type="button" title="Elimina questo backup" style="background:var(--line); color:#c0392b; border:none; border-radius:8px; padding:5px 10px; cursor:pointer" onclick="eliminaBackup(' + Number(b.id) + ', \'' + esc(quandoStorico(b.creato_il)) + '\')">🗑️</button></div>';
-  }).join('') : '<div class="empty">Nessun backup ancora</div>';
+  }).join('') : '<div class="empty">Nessun backup ancora</div>');
+}
+async function scaricaSalvataggiAnno(id, anno) {
+  const f = await preparaBackup(id);
+  if (!f) { avviso('❌ Backup non trovato', true); return; }
+  const url = URL.createObjectURL(new Blob([f.testo], { type: 'application/json' }));
+  const a = document.createElement('a'); a.href = url; a.download = nomeFileAnno(anno);
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
 }
 async function eliminaBackup(id, quando) {
   if (!confirm('Eliminare il backup del ' + quando + '?\nNon si potrà recuperare.')) return;
@@ -291,41 +303,51 @@ async function dimenticaCartellaBackup() {
   renderBackup();
 }
 // Nella cartella c'e' un solo file, sempre lo stesso nome: si riscrive con il backup piu' recente
-const FILE_BACKUP_CARTELLA = 'backup-caf.json';
+// Nella cartella c'e' un file per anno, "salvataggi-2026.json": durante l'anno viene riscritto con il backup
+// piu' recente di quell'anno; finito l'anno resta com'e' (= salvataggio completo al 31 dicembre) e si passa al file nuovo
+function nomeFileAnno(anno) { return 'salvataggi-' + anno + '.json'; }
+function annoBackup(b) { return new Date(b.creato_il).getFullYear(); }
+// l'ultimo backup di ogni anno (l'elenco arriva dal piu' recente)
+function ultimiBackupPerAnno(lista) {
+  const per = {};
+  (lista || []).forEach(function (b) { const a = annoBackup(b); if (!per[a]) per[a] = b; });
+  return per;
+}
 let SINCRO_BACKUP_IN_CORSO = false;
 async function sincronizzaCartellaBackup(chiedi) {
   if (SINCRO_BACKUP_IN_CORSO) return;
   const h = await leggiCartellaBackup();
   if (!h || !(await permessoCartella(h, chiedi))) { disegnaStatoCartella(); return; }
   SINCRO_BACKUP_IN_CORSO = true;
-  let scritto = false, errore = '';
+  const scritti = []; let errore = '';
   try {
-    const { data, ok } = await fetchSupabase('/rest/v1/backup_automatici?select=id,creato_il,tipo&order=creato_il.desc&limit=1');
-    if (ok && Array.isArray(data) && data.length) {
-      const b = data[0];
-      let gia = '';
-      try { gia = localStorage.getItem('backup-cartella-copiato') || ''; } catch (e) {}
-      let esiste = true;
-      try { await h.getFileHandle(FILE_BACKUP_CARTELLA); } catch (e) { esiste = false; }
-      if (chiedi || !esiste || gia !== String(b.id) + '|' + b.creato_il) {
+    const { data, ok } = await fetchSupabase('/rest/v1/backup_automatici?select=id,creato_il,tipo&order=creato_il.desc');
+    if (ok && Array.isArray(data)) {
+      const per = ultimiBackupPerAnno(data);
+      for (const anno of Object.keys(per)) {
+        const b = per[anno], nome = nomeFileAnno(anno), chiave = 'backup-anno-' + anno;
+        let gia = '';
+        try { gia = localStorage.getItem(chiave) || ''; } catch (e) {}
+        let esiste = true;
+        try { await h.getFileHandle(nome); } catch (e) { esiste = false; }
+        if (!(chiedi || !esiste || gia !== String(b.id) + '|' + b.creato_il)) continue;
         const f = await preparaBackup(b.id);
-        if (f) {
-          const fh = await h.getFileHandle(FILE_BACKUP_CARTELLA, { create: true });
-          const w = await fh.createWritable();
-          await w.write(f.testo); await w.close();
-          scritto = true;
-          try { localStorage.setItem('backup-cartella-copiato', String(b.id) + '|' + b.creato_il); localStorage.setItem('backup-cartella-data', b.creato_il); } catch (e) {}
-        }
+        if (!f) continue;
+        const fh = await h.getFileHandle(nome, { create: true });
+        const w = await fh.createWritable();
+        await w.write(f.testo); await w.close();
+        scritti.push(nome);
+        try { localStorage.setItem(chiave, String(b.id) + '|' + b.creato_il); localStorage.setItem('backup-cartella-data-' + anno, b.creato_il); } catch (e) {}
       }
     }
   } catch (e) { errore = e.message || String(e); }
   SINCRO_BACKUP_IN_CORSO = false;
   try { localStorage.setItem('backup-cartella-ultimo', new Date().toISOString()); } catch (e) {}
   if (errore) avviso('❌ Backup nella cartella non salvato: ' + errore, true);
-  else if (scritto || chiedi) avviso('✓ ' + h.name + '/' + FILE_BACKUP_CARTELLA + (scritto ? ' aggiornato con l\'ultimo backup' : ' già aggiornato'));
+  else if (scritti.length || chiedi) avviso('✓ ' + h.name + ': ' + (scritti.length ? scritti.join(', ') + ' aggiornato' : 'salvataggi già aggiornati'));
   disegnaStatoCartella();
 }
-function dataCopiato() { try { return localStorage.getItem('backup-cartella-data') || ''; } catch (e) { return ''; } }
+function dataCopiato(anno) { try { return localStorage.getItem('backup-cartella-data-' + (anno || new Date().getFullYear())) || ''; } catch (e) { return ''; } }
 async function disegnaStatoCartella() {
   const box = document.getElementById('backup-cartella');
   if (!box) return;
@@ -338,7 +360,7 @@ async function disegnaStatoCartella() {
   if (!h) {
     box.innerHTML = '<div style="padding:10px 12px; border-radius:10px; border:2px dashed #0061fe">'
       + '<div style="font-weight:800; color:#0061fe; margin-bottom:4px">📁 Salva i backup in una cartella del PC (es. Dropbox)</div>'
-      + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">Scegli una volta la cartella, per esempio <b>Dropbox › Backup CAF</b>: il programma ci terrà un solo file, <b>backup-caf.json</b>, riscritto ogni volta con il backup più recente, e Dropbox lo porterà nel cloud.</div>'
+      + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">Scegli una volta la cartella, per esempio <b>Dropbox › Backup CAF</b>: il programma ci terrà <b>un file per anno</b>, per esempio <b>salvataggi-2026.json</b>, riscritto durante l\'anno con il backup più recente; finito l\'anno resta il salvataggio completo dell\'anno. Dropbox lo porterà nel cloud.</div>'
       + '<button type="button" style="background:#0061fe; color:#fff; border:none; border-radius:8px; padding:7px 14px; cursor:pointer; font-weight:700" onclick="scegliCartellaBackup()">📁 Scegli la cartella</button></div>';
     return;
   }
@@ -348,10 +370,10 @@ async function disegnaStatoCartella() {
   box.innerHTML = '<div style="padding:10px 12px; border-radius:10px; border:2px solid ' + (attiva ? '#1a7f37' : '#b35f0c') + '">'
     + '<div style="font-weight:800; color:' + (attiva ? '#1a7f37' : '#b35f0c') + '">📁 Cartella dei backup: ' + esc(h.name) + (attiva ? ' ✓' : '') + '</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 8px">' + (attiva
-      ? 'Qui c\'è un solo file, <b>' + FILE_BACKUP_CARTELLA + '</b>, che viene riscritto con il backup più recente quando apri il programma su questo PC (nessun file in più).' + (dataCopiato() ? ' Contiene il backup del <b>' + esc(quandoStorico(dataCopiato())) + '</b>.' : '')
+      ? 'Qui c\'è <b>un file per anno</b>: <b>' + nomeFileAnno(new Date().getFullYear()) + '</b> viene riscritto con il backup più recente quando apri il programma su questo PC; quelli degli anni passati restano come salvataggio completo dell\'anno.' + (dataCopiato() ? ' Ultimo aggiornamento: backup del <b>' + esc(quandoStorico(dataCopiato())) + '</b>.' : '')
       : 'Il browser chiede di riconfermare l\'accesso alla cartella: premi "Riattiva" e poi "Consenti".') + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap">'
-    + (attiva ? '<button type="button" style="' + stile + '" onclick="sincronizzaCartellaBackup(true)">🔄 Riscrivi ora il file</button>'
+    + (attiva ? '<button type="button" style="' + stile + '" onclick="sincronizzaCartellaBackup(true)">🔄 Aggiorna ora i salvataggi</button>'
       : '<button type="button" style="background:#b35f0c; color:#fff; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:700" onclick="sincronizzaCartellaBackup(true)">🔓 Riattiva</button>')
     + '<button type="button" style="' + stile + '" onclick="scegliCartellaBackup()">Cambia cartella</button>'
     + '<button type="button" style="' + stile + '" onclick="dimenticaCartellaBackup()">Non usare più</button></div></div>';

@@ -704,7 +704,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <div class="card">
   <div class="raff-title">🛟 Backup automatici e cartella Dropbox</div>
   <div id="backup-cartella" style="margin:0 0 12px"></div>
-  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Ogni lunedì notte il programma salva da solo una copia completa di tutti i dati (pratiche, clienti, versamenti, scadenze, impostazioni). Una copia viene fatta anche prima di svuotare il registro o di importare un backup. Si tengono le ultime 12 settimane. Con "Scarica" ottieni il file da conservare o da ricaricare con "Importa Backup".</p>
+  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Ogni lunedì notte il programma salva da solo una copia completa di tutti i dati (pratiche, clienti, versamenti, scadenze, impostazioni). Una copia viene fatta anche prima di svuotare il registro o di importare un backup. Si tengono le ultime 12 settimane; il <b>31 dicembre</b> alle 23:30 viene fatto il salvataggio di fine anno, che si conserva per sempre. Nella cartella (es. Dropbox) c'è un file per anno: <b>salvataggi-2026.json</b>, <b>salvataggi-2027.json</b>… Con "Scarica" ottieni il file da conservare o da ricaricare con "Importa Backup".</p>
   <button type="button" class="btn-add" onclick="creaBackupOra()">💾 Crea un backup adesso</button>
   <div id="backup-lista" style="margin-top:10px"></div>
 
@@ -782,10 +782,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ocr-documento.js?v=8"></script>
 <script src="js/grafici.js?v=7"></script>
 <script src="js/stampe.js?v=9"></script>
-<script src="js/extra.js?v=21"></script>
+<script src="js/extra.js?v=22"></script>
 <script src="js/documenti.js?v=13"></script>
 <script src="js/installa.js?v=4"></script>
-<script src="js/guida.js?v=11"></script>
+<script src="js/guida.js?v=12"></script>
 <script src="js/scadenze.js?v=202610087"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>

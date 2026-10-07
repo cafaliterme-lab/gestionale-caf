@@ -321,7 +321,9 @@ const GUIDA = [
 <ul>
 <li>Ogni <b>lunedì notte</b> il programma salva da solo un backup completo; si tengono le ultime 12 settimane. Viene fatto anche prima di svuotare il registro o importare un backup.</li>
 <li><b>💾 Crea un backup adesso</b> ne fa uno subito; <b>⬇️ Scarica</b> scarica il file; <b>🗑️</b> lo elimina.</li>
-<li><b>📁 Scegli la cartella</b> (es. Dropbox › Backup CAF, con Chrome o Edge sul PC): il programma tiene lì un solo file <b>backup-caf.json</b>, riscritto con il backup più recente; Dropbox lo porta nel cloud.</li>
+<li><b>📁 Scegli la cartella</b> (es. Dropbox › Backup CAF, con Chrome o Edge sul PC): il programma tiene lì <b>un file per anno</b>, per esempio <b>salvataggi-2026.json</b>. Durante l'anno il file viene riscritto con il backup più recente; finito l'anno resta com'è, cioè il <b>salvataggio completo dell'anno</b>, e dal 1° gennaio si comincia <b>salvataggi-2027.json</b>. Dropbox li porta nel cloud.</li>
+<li>Il <b>31 dicembre alle 23:30</b> il programma fa da solo il <b>salvataggio di fine anno</b> (🎆), che resta sul server per sempre.</li>
+<li>In <b>Backup automatici</b> ci sono anche i pulsanti <b>⬇️ salvataggi-2026.json</b>… per scaricare a mano il salvataggio di ogni anno.</li>
 <li><b>Esporta Backup (JSON)</b> / <b>Esporta Registro (Excel)</b> e <b>Importa Backup</b> per ripristinare.</li>
 <li><b>Cancellare un solo anno</b> (solo amministratore, in Utenti e permessi → Zona pericolosa → <b>🗓️ Cancella un solo anno</b>): scegli l'anno e cosa cancellare (pratiche dei registri 730 e AP, versamenti CAF, spese sede, scadenze), poi scrivi l'anno per confermare. Prima viene fatto da solo un backup completo; l'archivio clienti non viene toccato.</li>
 </ul>` },
