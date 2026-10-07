@@ -102,3 +102,68 @@ async function salvaTipiPratica() {
   render();
   avviso('✓ Tipi di pratica salvati');
 }
+
+/* ---------------- Etichette del menu (nome e colore di ogni tasto) ---------------- */
+
+const MENU_PREDEFINITO = {};
+(function () {
+  document.querySelectorAll('.navmenu button[data-tab]').forEach(function (b) {
+    MENU_PREDEFINITO[b.dataset.tab] = { testo: b.textContent.replace(/ /g, ' ').trim(), colore: (getComputedStyle(b).getPropertyValue('--tc') || '#1d4f91').trim() };
+  });
+})();
+let MENU_IN_MODIFICA = null;
+
+function etichetteMenu() {
+  try { return JSON.parse(IMPOSTAZIONI.etichette_menu || '{}') || {}; } catch (e) { return {}; }
+}
+function etichettaMenu(tab) {
+  const e = etichetteMenu()[tab] || {}, d = MENU_PREDEFINITO[tab] || {};
+  return { testo: e.testo || d.testo || tab, colore: e.colore || d.colore || '#1d4f91' };
+}
+function applicaEtichetteMenu() {
+  Object.keys(MENU_PREDEFINITO).forEach(function (tab) {
+    const b = document.querySelector('.navmenu button[data-tab="' + tab + '"]');
+    if (!b) return;
+    const e = etichettaMenu(tab);
+    b.textContent = e.testo;
+    b.style.setProperty('--tc', e.colore);
+    if (typeof TAB_LABELS !== 'undefined' && TAB_LABELS[tab]) TAB_LABELS[tab] = e.testo.toUpperCase();
+  });
+}
+
+function renderEtichetteMenu(ricarica) {
+  const wrap = document.getElementById('menu-etichette');
+  if (!wrap) return;
+  if (!auth.profilo || auth.profilo.ruolo !== 'admin') { wrap.innerHTML = ''; return; }
+  if (ricarica || !MENU_IN_MODIFICA) MENU_IN_MODIFICA = Object.keys(MENU_PREDEFINITO).map(function (tab) { return Object.assign({ tab: tab }, etichettaMenu(tab)); });
+  wrap.innerHTML = MENU_IN_MODIFICA.map(function (m, i) {
+    const d = MENU_PREDEFINITO[m.tab];
+    return '<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding:8px; border-radius:10px; border:1px solid var(--line); margin-bottom:6px; border-left:8px solid ' + esc(m.colore) + '">'
+      + '<input type="color" value="' + esc(m.colore) + '" title="Colore del tasto" onchange="MENU_IN_MODIFICA[' + i + '].colore=this.value; renderEtichetteMenu()" style="width:42px; height:34px; padding:2px; flex:none">'
+      + '<input value="' + esc(m.testo) + '" oninput="MENU_IN_MODIFICA[' + i + '].testo=this.value" style="flex:1; min-width:180px; font-weight:700">'
+      + '<span style="font-size:12px; color:var(--sub)">originale: ' + esc(d.testo) + '</span>'
+      + '<button type="button" title="Torna al nome e colore originali" onclick="MENU_IN_MODIFICA[' + i + '].testo=MENU_PREDEFINITO[\'' + m.tab + '\'].testo; MENU_IN_MODIFICA[' + i + '].colore=MENU_PREDEFINITO[\'' + m.tab + '\'].colore; renderEtichetteMenu()" style="padding:4px 10px">↺ Originale</button>'
+      + '</div>';
+  }).join('')
+    + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">'
+    + '<button type="button" class="btn-add" style="margin-top:0; background:#2f9e5f" onclick="salvaEtichetteMenu()">💾 Salva etichette del menu</button>'
+    + '<button type="button" class="btn-add" style="margin-top:0; background:var(--line); color:var(--ink)" onclick="renderEtichetteMenu(true)">Annulla modifiche</button></div>';
+}
+
+async function salvaEtichetteMenu() {
+  const cfg = {};
+  for (const m of MENU_IN_MODIFICA) {
+    const testo = String(m.testo || '').trim();
+    if (!testo) { avviso('❌ Il tasto "' + MENU_PREDEFINITO[m.tab].testo + '" non può restare senza nome', true); return; }
+    const d = MENU_PREDEFINITO[m.tab];
+    if (testo !== d.testo || m.colore !== d.colore) cfg[m.tab] = { testo: testo, colore: m.colore };
+  }
+  const valore = JSON.stringify(cfg);
+  const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valore, aggiornato_il: new Date().toISOString() }).eq('chiave', 'etichette_menu').select('chiave');
+  if (error || !righe || !righe.length) { avviso('❌ Etichette non salvate' + (error ? ': ' + error.message : ''), true); return; }
+  IMPOSTAZIONI.etichette_menu = valore;
+  applicaEtichetteMenu();
+  renderEtichetteMenu(true);
+  if (typeof renderPermessi === 'function') renderPermessi();
+  avviso('✓ Etichette del menu salvate');
+}

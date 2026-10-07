@@ -1195,7 +1195,7 @@ function showTab(btn){
   if(tab === 'grafici') renderGrafici();
   if(tab === 'spese' && typeof renderSpese === 'function') renderSpese();
   if(tab === 'modulistica' && typeof renderModulistica === 'function') renderModulistica();
-  if(tab === 'permessi'){ renderPermessi(); if(typeof renderTipiPratica === 'function') renderTipiPratica(true); if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
+  if(tab === 'permessi'){ renderPermessi(); if(typeof renderTipiPratica === 'function'){ renderTipiPratica(true); renderEtichetteMenu(true); } if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
 }
 function renderCollaboratori(){
   const wrap = document.getElementById('coll-lista');
@@ -2730,6 +2730,7 @@ async function caricaImpostazioni(){
     if(error || !Array.isArray(righe)) return;
     IMPOSTAZIONI = {};
     righe.forEach(function(r){ IMPOSTAZIONI[r.chiave] = r.valore || ''; });
+    if(typeof applicaEtichetteMenu === 'function') applicaEtichetteMenu();
     mostraDatiCaf();
     render(); // importi FPS nell'elenco della contabilita'
   }catch(e){ console.error('impostazioni', e); }
