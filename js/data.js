@@ -126,6 +126,7 @@ const schemas = {
     modificatoDa: 'modificato_da',
     emailInviata: 'email_inviata',
     saldataCollaboratore: 'saldata_collaboratore',
+    trasferitaIn: 'trasferita_in',
   },
   acconto: {
     id: 'id',

@@ -27,7 +27,7 @@ function renderMorosi() {
   const lista = q ? tutti.filter(function (p) { return (String(p.nome || '') + ' ' + formattaProtocolloTesto(p) + ' ' + (p.telefono || '')).toUpperCase().indexOf(q) >= 0; }) : tutti;
   const tot = tutti.reduce(function (t, p) { return t + residuoPratica(p); }, 0);
   const sola = document.body.classList.contains('sola-lettura');
-  box.innerHTML = '<details class="grp" style="--gc:#c0392b" ' + (MOROSI.aperto ? 'open' : '') + ' ontoggle="MOROSI.aperto=this.open">'
+  box.innerHTML = (typeof avvisoTrasferimentoColfHTML === 'function' ? avvisoTrasferimentoColfHTML() : '') + '<details class="grp" style="--gc:#c0392b" ' + (MOROSI.aperto ? 'open' : '') + ' ontoggle="MOROSI.aperto=this.open">'
     + '<summary style="background:#c0392b; color:#fff; background-image:none"><span class="grp-name">💸 TABULATO MOROSI ' + nomeAnnoMorosi(MOROSI.anno) + '</span><span class="grp-n">' + tutti.length + '</span><span class="grp-soldi">Da pagare<br>' + fmtEuro(tot) + '</span></summary>'
     + '<div class="grp-b" style="padding-top:10px">'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px">'
