@@ -31,6 +31,11 @@ const STATI = {
 const STATI_SOLO_COLF = ['pratica_attiva','pratica_cessata'];
 // Stati che per i contratti colf e badanti non servono e non si mostrano
 const STATI_NON_COLF = ['da_lavorare_scansionata','filca_non_paga','fps_non_paga','lavorata','lavorata_da_fatturare','non_paga','rinuncia_compilazione','pagato_da_ritirare'];
+// Stato proposto all'apertura di una nuova pratica di quel tipo (scelto dall'amministratore)
+function statoInizialeTipo(tipo){
+  const k = tipo ? tipoConfig(tipo).statoIniziale : '';
+  return k && STATI[k] && statoVisibile(k, tipo) ? k : '';
+}
 function statoVisibilePredefinito(k, tipo){
   return eColf(tipo) ? STATI_NON_COLF.indexOf(k) < 0 : STATI_SOLO_COLF.indexOf(k) < 0;
 }
@@ -1195,7 +1200,7 @@ function pickChip(containerId, selectId, val){
     if(lbl && chip){ lbl.innerHTML = chip.innerHTML; }
     dd.classList.remove('open');
   }
-  if(containerId === 'f-tipo-btns'){ coloraTriggerTipo(); aggiornaCampoFineForm(); applicaFatturaAutomatica(val); if(typeof mostraImportiFPSModulo === 'function') mostraImportiFPSModulo(val); }
+  if(containerId === 'f-tipo-btns'){ coloraTriggerTipo(); aggiornaCampoFineForm(); const si = statoInizialeTipo(val); if(si) pickChip('f-stato-btns','f-stato', si); applicaFatturaAutomatica(val); if(typeof mostraImportiFPSModulo === 'function') mostraImportiFPSModulo(val); }
   if(containerId === 'f-stato-btns'){ coloraTriggerStato(); const df = document.getElementById('f-data-fine'); if(df && !eColf(document.getElementById('f-tipo').value)) df.value = val === 'lavorata' ? todayIT() : ''; }
 }
 function showTab(btn){

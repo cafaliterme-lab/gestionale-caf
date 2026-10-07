@@ -10,7 +10,7 @@ function contaPraticheTipo(n) { return (state.pratiche || []).filter(function (p
 function caricaTipiInModifica() {
   TIPI_IN_MODIFICA = getTipiList().map(function (n) {
     const st = tipoConfig(n).stati;
-    return { nome: n, originale: n, colore: coloreCollaboratore(n), acconto: haAcconti(n), soldi: conSoldi(n), stati: Array.isArray(st) ? st.slice() : null };
+    return { nome: n, originale: n, colore: coloreCollaboratore(n), acconto: haAcconti(n), soldi: conSoldi(n), stati: Array.isArray(st) ? st.slice() : null, statoIniziale: tipoConfig(n).statoIniziale || '' };
   });
 }
 
@@ -28,7 +28,7 @@ function renderTipiPratica(ricarica) {
       + '<span style="font-size:12px; color:var(--sub); white-space:nowrap">' + n + ' pratiche' + (protetto ? ' · 🔒' : '') + '</span>'
       + '<label class="chk" style="white-space:nowrap"><input type="checkbox" ' + (t.soldi ? 'checked' : '') + ' onchange="TIPI_IN_MODIFICA[' + i + '].soldi=this.checked"> € Fatture e incasso</label>'
       + '<label class="chk" style="white-space:nowrap"><input type="checkbox" ' + (t.acconto ? 'checked' : '') + ' onchange="TIPI_IN_MODIFICA[' + i + '].acconto=this.checked"> 💰 Tasto Acconto</label>'
-      + '<button type="button" onclick="scegliStatiTipo(' + i + ')" title="Stati che si possono scegliere per questo tipo" style="padding:4px 10px; white-space:nowrap">🏷️ Stati (' + statiDelTipo(t).length + ')</button>'
+      + '<button type="button" onclick="scegliStatiTipo(' + i + ')" title="Stati che si possono scegliere per questo tipo" style="padding:4px 10px; white-space:nowrap">🏷️ Stati (' + statiDelTipo(t).length + ')' + (t.statoIniziale && STATI[t.statoIniziale] ? ' ⭐ ' + esc(STATI[t.statoIniziale].l) : '') + '</button>'
       + '<span style="display:flex; gap:4px; margin-left:auto">'
       + '<button type="button" title="Sposta su" onclick="spostaTipo(' + i + ',-1)" ' + (i === 0 ? 'disabled' : '') + ' style="padding:4px 10px">↑</button>'
       + '<button type="button" title="Sposta giù" onclick="spostaTipo(' + i + ',1)" ' + (i === TIPI_IN_MODIFICA.length - 1 ? 'disabled' : '') + ' style="padding:4px 10px">↓</button>'
@@ -63,6 +63,7 @@ function scegliStatiTipo(i) {
     + '<div style="overflow:auto; flex:1">' + Object.keys(STATI).map(function (k) {
       return '<label class="chk" style="padding:6px 4px; border-bottom:1px solid var(--line)"><input type="checkbox" class="st-chk" value="' + k + '" ' + (scelti.indexOf(k) >= 0 ? 'checked' : '') + '> <span class="dot" style="background:' + STATI[k].c + '"></span>' + esc(STATI[k].l) + '</label>';
     }).join('') + '</div>'
+    + '<div style="margin-top:10px"><label>⭐ Stato all\'apertura di una nuova pratica</label><select id="st-iniziale">' + '<option value="">In arrivo (come sempre)</option>' + Object.keys(STATI).map(function (k) { return '<option value="' + k + '"' + (t.statoIniziale === k ? ' selected' : '') + '>' + STATI[k].e + ' ' + esc(STATI[k].l) + '</option>'; }).join('') + '</select></div>'
     + '<div style="display:flex; gap:8px; justify-content:space-between; flex-wrap:wrap; margin-top:12px"><button type="button" data-azione="predefiniti" style="padding:6px 12px">↺ Predefiniti</button>'
     + '<span style="display:flex; gap:8px"><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Annulla</button><button type="button" data-azione="si" style="background:#2f9e5f; color:#fff; font-weight:800">OK</button></span></div></div>';
   document.body.appendChild(ov);
@@ -70,10 +71,13 @@ function scegliStatiTipo(i) {
     const b = e.target.closest('button[data-azione]');
     if (!b && e.target !== ov) return;
     if (!b || b.dataset.azione === 'no') { ov.remove(); return; }
-    if (b.dataset.azione === 'predefiniti') { t.stati = null; ov.remove(); renderTipiPratica(); return; }
+    if (b.dataset.azione === 'predefiniti') { t.stati = null; t.statoIniziale = ''; ov.remove(); renderTipiPratica(); return; }
     const sel = Array.from(ov.querySelectorAll('.st-chk')).filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
     if (!sel.length) { alert('Scegli almeno uno stato'); return; }
+    const ini = document.getElementById('st-iniziale').value;
+    if (ini && sel.indexOf(ini) < 0) { alert('Lo stato all\'apertura deve essere tra quelli spuntati'); return; }
     t.stati = sel;
+    t.statoIniziale = ini;
     ov.remove();
     renderTipiPratica();
   });
@@ -99,7 +103,7 @@ function aggiungiTipo() {
   const v = (inp.value || '').trim().toUpperCase().replace(/\s+/g, ' ');
   if (!v) return;
   if (TIPI_IN_MODIFICA.some(function (t) { return t.nome === v; })) { avviso('❌ Il tipo "' + v + '" esiste già', true); return; }
-  TIPI_IN_MODIFICA.push({ nome: v, originale: '', colore: coloreCollaboratore(v), acconto: tipoE730Nome(v), soldi: true, stati: null });
+  TIPI_IN_MODIFICA.push({ nome: v, originale: '', colore: coloreCollaboratore(v), acconto: tipoE730Nome(v), soldi: true, stati: null, statoIniziale: '' });
   renderTipiPratica();
 }
 
@@ -125,7 +129,7 @@ async function salvaTipiPratica() {
   }
 
   const cfg = {};
-  lista.forEach(function (t) { cfg[t.nome] = { colore: t.colore, acconto: !!t.acconto, soldi: !!t.soldi }; if (Array.isArray(t.stati)) cfg[t.nome].stati = t.stati; });
+  lista.forEach(function (t) { cfg[t.nome] = { colore: t.colore, acconto: !!t.acconto, soldi: !!t.soldi }; if (Array.isArray(t.stati)) cfg[t.nome].stati = t.stati; if (t.statoIniziale) cfg[t.nome].statoIniziale = t.statoIniziale; });
   const valore = JSON.stringify(cfg);
   const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valore, aggiornato_il: new Date().toISOString() }).eq('chiave', 'tipi_config').select('chiave');
   if (error || !righe || !righe.length) { avviso('❌ Etichette non salvate' + (error ? ': ' + error.message : ''), true); return; }
