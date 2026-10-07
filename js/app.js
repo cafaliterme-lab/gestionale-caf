@@ -1216,7 +1216,7 @@ function showTab(btn){
   if(tab === 'grafici') renderGrafici();
   if(tab === 'spese' && typeof renderSpese === 'function') renderSpese();
   if(tab === 'modulistica' && typeof renderModulistica === 'function') renderModulistica();
-  if(tab === 'permessi'){ renderPermessi(); if(typeof renderTipiPratica === 'function'){ renderTipiPratica(true); renderEtichetteMenu(true); renderStatiPratica(true); } if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
+  if(tab === 'permessi'){ renderPermessi(); if(typeof renderPresenze === 'function') renderPresenze(); if(typeof renderTipiPratica === 'function'){ renderTipiPratica(true); renderEtichetteMenu(true); renderStatiPratica(true); } if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
 }
 function renderCollaboratori(){
   const wrap = document.getElementById('coll-lista');

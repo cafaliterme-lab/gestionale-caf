@@ -311,14 +311,14 @@ const GUIDA = [
 <li>L'amministratore può importare clienti da file <b>CSV</b> (Utenti e permessi → Importa Clienti da CSV).</li>
 </ul>` },
 
-  { id: 'utenti', icona: '👥', titolo: 'Utenti, ruoli e permessi (amministratore)', parole: 'utenti permessi ruolo amministratore operatore consultazione nuovo utente password invia accesso',
+  { id: 'utenti', icona: '👥', titolo: 'Utenti, ruoli e permessi (amministratore)', parole: 'collegato collegati online accessi ultimo collegamento presenza utenti permessi ruolo amministratore operatore consultazione nuovo utente password invia accesso',
     testo: `
 <ul>
 <li>In <b>UTENTI E PERMESSI</b> l'amministratore crea un <b>nuovo utente</b> (nome, e-mail, password, ruolo: operatore, consultazione o amministratore).</li>
 <li>Per ogni utente sceglie quali <b>sezioni</b> vede e se può modificare; poi <b>💾 Salva permessi</b>.</li>
 <li><b>Invia accesso</b> prepara il messaggio con link, e-mail e password da mandare su WhatsApp o per e-mail (anche Aruba Webmail).</li>
 <li>In <b>La mia password</b> ognuno può cambiare la propria password.</li>
-</ul>` },
+</ul><p><b>🟢 Chi è collegato</b>: in cima a Utenti e permessi vedi per ogni utente se è <b>collegato adesso</b> (programma aperto negli ultimi 3 minuti), da quanto tempo, l'<b>ultimo collegamento</b> (data, ora e "x min fa") e il dispositivo (💻 PC o 📱 telefono). Sotto, <b>📋 Ultimi accessi</b> elenca gli ultimi 30 collegamenti con entrata, ultima attività e durata. L'elenco si aggiorna da solo ogni minuto o col tasto 🔄 Aggiorna.</p>` },
 
   { id: 'backup', icona: '🛟', titolo: 'Backup e cartella Dropbox', parole: 'backup copia sicurezza dropbox cartella ripristino importa esporta json excel elimina',
     testo: `
