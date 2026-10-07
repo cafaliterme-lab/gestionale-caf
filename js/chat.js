@@ -23,6 +23,8 @@ function chatSegnaLetti() {
 }
 function chatPerMe(m) { return !m.a_id || m.a_id === auth.profilo.id; }
 function chatCompitiAperti() { return CHAT.messaggi.filter(function (m) { return m.compito && !m.fatto && chatPerMe(m); }); }
+// compiti che ho mandato ad altri e che non sono ancora stati fatti
+function chatCompitiInviatiAperti() { return CHAT.messaggi.filter(function (m) { return m.compito && !m.fatto && m.da_id === auth.profilo.id && m.a_id && m.a_id !== auth.profilo.id; }); }
 function chatNonLetti() {
   const l = chatLetti();
   return CHAT.messaggi.filter(function (m) { return m.da_id !== auth.profilo.id && chatPerMe(m) && (!l || m.creato_il > l); });
@@ -75,7 +77,12 @@ function disegnaBottoneChat() {
     (slot || document.body).appendChild(b);
   }
   const n = chatNonLetti().length, c = chatCompitiAperti().length, sol = chatCompitiAperti().filter(function (m) { return giorniRitardo(m) >= 1; }).length;
-  b.innerHTML = '💬 CHAT INTERNA' + (n ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">' + n + ' nuov' + (n === 1 ? 'o' : 'i') + '</span>' : '') + (c ? ' <span style="background:#d4881c; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">📌 ' + c + ' da fare</span>' : '') + (sol ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">⏰ ' + sol + ' sollecit' + (sol === 1 ? 'o' : 'i') + '</span>' : '') + '<span style="float:right; opacity:.85; font-size:13px">' + (CHAT.aperta ? 'chiudi ✕' : 'apri ›') + '</span>';
+  const inv = chatCompitiInviatiAperti().length;
+  // il contatore cambia colore per un attimo quando aumenta o diminuisce
+  const tot = c + inv;
+  if (CHAT.ultimoTot != null && CHAT.ultimoTot !== tot) { b.style.transition = 'box-shadow .3s'; b.style.boxShadow = '0 0 0 4px ' + (tot > CHAT.ultimoTot ? '#d4881c' : '#2f9e5f'); setTimeout(function () { b.style.boxShadow = '0 6px 18px rgba(29,79,145,.3)'; }, 1500); }
+  CHAT.ultimoTot = tot;
+  b.innerHTML = '💬 CHAT INTERNA' + (n ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">' + n + ' nuov' + (n === 1 ? 'o' : 'i') + '</span>' : '') + (c ? ' <span style="background:#d4881c; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">📌 ' + c + ' da fare</span>' : '') + (inv ? ' <span style="background:#6b7280; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px" title="Compiti che hai mandato e non sono ancora stati fatti">📤 ' + inv + ' in attesa</span>' : '') + (sol ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">⏰ ' + sol + ' sollecit' + (sol === 1 ? 'o' : 'i') + '</span>' : '') + '<span style="float:right; opacity:.85; font-size:13px">' + (CHAT.aperta ? 'chiudi ✕' : 'apri ›') + '</span>';
 }
 
 // I compiti da fare compaiono a video (in alto) finché non vengono spuntati
@@ -137,6 +144,18 @@ function mostraRicevuteCompiti(lista) {
   document.body.appendChild(ov);
 }
 
+// Riepilogo numerico dei compiti: sale quando se ne inseriscono, scende quando vengono fatti
+function contatoreCompitiHTML() {
+  const perMe = chatCompitiAperti().length, inviati = chatCompitiInviatiAperti().length;
+  const oggi = new Date().toDateString();
+  const fattiOggi = CHAT.messaggi.filter(function (m) { return m.compito && m.fatto && m.fatto_il && new Date(m.fatto_il).toDateString() === oggi && (chatPerMe(m) || m.da_id === auth.profilo.id); }).length;
+  const casella = function (n, t, col) { return '<div style="flex:1; text-align:center; padding:6px 4px; border-radius:10px; background:' + col + '; color:#fff"><div style="font-size:20px; font-weight:900; line-height:1.1">' + n + '</div><div style="font-size:10.5px; font-weight:700; text-transform:uppercase">' + t + '</div></div>'; };
+  return '<div style="display:flex; gap:6px; padding:8px 10px; background:var(--card); border-bottom:1px solid var(--line)">'
+    + casella(perMe, 'Da fare per te', perMe ? '#d4881c' : '#8a8f98')
+    + casella(inviati, 'Inviati in attesa', inviati ? '#6b7280' : '#8a8f98')
+    + casella(fattiOggi, 'Fatti oggi', fattiOggi ? '#2f9e5f' : '#8a8f98') + '</div>';
+}
+
 function apriChat(scheda) {
   CHAT.aperta = true;
   if (scheda) CHAT.scheda = scheda;
@@ -174,6 +193,7 @@ function disegnaChat() {
   ov.innerHTML = '<div style="background:linear-gradient(90deg,#1d4f91,#00612f); color:#fff; padding:10px 12px 0">'
     + '<div style="display:flex; justify-content:space-between; align-items:center"><b style="font-size:16px">💬 Chat interna</b><button type="button" onclick="chiudiChat()" style="background:rgba(255,255,255,.2); color:#fff; border:none; border-radius:999px; padding:4px 12px; cursor:pointer">✕</button></div>'
     + '<div style="display:flex; margin-top:6px">' + scheda('chat', '💬 Messaggi') + scheda('compiti', '📌 Da fare' + (aperti.length ? ' (' + aperti.length + ')' : '')) + '</div></div>'
+    + contatoreCompitiHTML()
     + '<div id="chat-lista" style="flex:1; overflow-y:auto; padding:10px; background:var(--bg); display:flex; flex-direction:column; gap:8px">'
     + (lista.length ? lista.map(function (m) {
       const mio = m.da_id === io;
