@@ -1979,16 +1979,52 @@ function apriChatWhatsApp(num, testo, dopo){
   const modo = modoWhatsAppPC();
   if(!modo){ scegliModoWhatsAppPC(function(){ apriChatWhatsApp(num, testo, dopo); }); return; }
   if(modo === 'app'){
+    // se l'app WhatsApp per PC non c'e' il clic non fa nulla: dopo 6 secondi senza che si apra niente si avvisa (c'e' il tempo di rispondere ad "Apri WhatsApp?" del browser)
+    let partita = false;
+    const segna = function(){ partita = true; };
+    window.addEventListener('blur', segna, { once: true });
     const a = document.createElement('a');
     a.href = 'whatsapp://send?' + (num ? 'phone=' + num + (t ? '&' : '') : '') + (t ? 'text=' + t : '');
     document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){
+      window.removeEventListener('blur', segna);
+      if(!partita && document.visibilityState === 'visible' && document.hasFocus()) popupAppWhatsAppNonAperta(num, testo);
+    }, 6000);
   } else if(modo === 'copia'){
     copiaTestoWhatsApp(testo);
     if(!dopo) popupMessaggioCopiato(num);
   } else {
-    window.open('https://web.whatsapp.com/send?' + (num ? 'phone=' + num + (t ? '&' : '') : '') + (t ? 'text=' + t : ''), '_blank');
+    // sempre la stessa scheda di WhatsApp Web aperta dal programma (non una nuova a ogni messaggio)
+    window.open('https://web.whatsapp.com/send?' + (num ? 'phone=' + num + (t ? '&' : '') : '') + (t ? 'text=' + t : ''), 'whatsapp_caf');
   }
   if(dopo) dopo(modo);
+}
+function popupAppWhatsAppNonAperta(num, testo){
+  const vecchio = document.getElementById('popup-wa-app'); if(vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-wa-app';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:490; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #d4881c; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:20px 22px; max-width:460px; width:100%">'
+    + '<div style="font-size:19px; font-weight:800; color:#b35f0c; margin-bottom:6px">⚠️ L\'app WhatsApp per PC non si è aperta</div>'
+    + '<div style="font-size:13.5px; margin-bottom:12px">Su questo computer è scelto l\'invio con l\'<b>app WhatsApp per PC</b>, ma l\'app non risponde (forse non è installata). Scegli come mandare il messaggio:</div>'
+    + '<button type="button" data-m="web" style="display:block; width:100%; margin-bottom:8px; background:#25d366; color:#fff; font-weight:800">🌐 Usa WhatsApp Web (scheda del browser)</button>'
+    + '<button type="button" data-m="copia" style="display:block; width:100%; margin-bottom:8px; background:#1d4f91; color:#fff; font-weight:800">📋 Copia il messaggio e lo incollo io</button>'
+    + '<div style="font-size:12px; color:var(--sub); margin:4px 0 10px">La scelta resta per questo PC; si cambia dal tasto ⚙️ accanto ai messaggi WhatsApp.</div>'
+    + '<div style="text-align:right"><button type="button" data-m="" style="background:var(--line); color:var(--ink)">Chiudi</button></div></div>';
+  ov.addEventListener('click', function(e){
+    const b = e.target.closest('button[data-m]');
+    if(!b && e.target !== ov) return;
+    ov.remove();
+    if(b && b.dataset.m){ impostaModoWhatsAppPC(b.dataset.m); apriChatWhatsApp(num, testo); if(typeof disegnaInvioMultiplo === 'function') disegnaInvioMultiplo(); }
+  });
+  document.body.appendChild(ov);
+}
+function rigaModoWhatsAppPC(){
+  if(eDispositivoMobile()) return '';
+  const nomi = { copia: '📋 copia il messaggio', app: '💻 app WhatsApp per PC', web: '🌐 WhatsApp Web' };
+  return '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:12.5px; padding:6px 10px; border-radius:10px; background:var(--bg); margin-bottom:10px">'
+    + '<span>Invio da questo PC: <b>' + (nomi[modoWhatsAppPC()] || 'da scegliere') + '</b></span>'
+    + '<button type="button" onclick="scegliModoWhatsAppPC(function(){ if(typeof disegnaInvioMultiplo === \'function\') disegnaInvioMultiplo(); })" style="padding:4px 10px; font-size:12px">⚙️ Cambia</button></div>';
 }
 function copiaTestoWhatsApp(testo){
   const ripiego = function(){ const ta = document.createElement('textarea'); ta.value = testo || ''; ta.style.cssText = 'position:fixed; opacity:0'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }catch(e){} ta.remove(); };
@@ -3069,6 +3105,7 @@ function disegnaInvioMultiplo(){
     const prossimo = st.coda[st.pos];
     corpo = '<div style="font-size:18px; font-weight:800; margin-bottom:2px">💬 Invio in corso: ' + Math.min(st.pos, tot) + ' di ' + tot + '</div>'
       + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">Per ogni cliente si apre WhatsApp con il messaggio già scritto: premi Invio in WhatsApp, poi torna qui e clicca il cliente successivo.</div>'
+      + rigaModoWhatsAppPC()
       + (prossimo
           ? '<button type="button" style="display:block; width:100%; background:#25d366; color:#fff; font-size:16px; padding:14px" onclick="inviaProssimoMultiplo()">💬 Apri WhatsApp per ' + esc(nomeProprio(prossimo.nome)) + ' (' + (st.pos + 1) + '/' + tot + ')</button>'
             + '<div style="text-align:right; margin-top:6px"><button type="button" style="background:none; color:var(--sub); font-size:12.5px; padding:4px 0" onclick="INVIO_MULTIPLO.pos++; disegnaInvioMultiplo()">Salta questo cliente ›</button></div>'
