@@ -280,7 +280,7 @@ function aggiornaStoricoForm(){
   }
   const totFatt = lista.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const totPag = lista.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
-  box.innerHTML = '<div class="raff-title">Storico pratiche di '+esc(nomeCompleto)+(dataNascita ? ' <span class="sub2">nato/a il '+esc(dataNascita)+'</span>' : '')+'</div>'
+  box.innerHTML = (typeof avvisoMorosoHTML === 'function' ? avvisoMorosoHTML(lista) : '') + '<div class="raff-title">Storico pratiche di '+esc(nomeCompleto)+(dataNascita ? ' <span class="sub2">nato/a il '+esc(dataNascita)+'</span>' : '')+'</div>'
     + '<div class="meta" style="margin:0 0 8px">'+lista.length+' pratiche · Fatturato: '+fmtEuro(totFatt)+' · Pagato: '+fmtEuro(totPag)+'</div>'
     + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>N. protocollo</th><th>Data</th><th>Tipo</th><th>Stato</th><th>Fattura</th><th>Pagato</th><th>Inserita da</th></tr></thead><tbody>'
     + lista.map(function(p){
@@ -1443,6 +1443,7 @@ function filtra(lista){
 
 function render(){
   if(typeof renderGrafici === 'function') renderGrafici();
+  if(typeof renderMorosi === 'function') renderMorosi();
   const list = document.getElementById('gruppi'); const oldList = document.getElementById('list'); if(oldList) oldList.innerHTML = '';
   const summary = document.getElementById('summary');
   initSelettoreAnno();

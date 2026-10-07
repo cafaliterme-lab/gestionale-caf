@@ -286,6 +286,8 @@ const GUIDA = [
 <li>Le scadenze vicine compaiono nel <b>riquadro arancione 🔔</b> a destra finché non le segni come <b>Fatta</b>; il numero compare anche sul pulsante SCADENZE.</li>
 </ol>` },
 
+  { id: 'morosi', icona: '💸', titolo: 'Tabulato morosi (chi deve ancora pagare)', parole: 'morosi moroso tabulato debiti arretrati da pagare anno precedente pagato saldo ricorda whatsapp',
+    testo: `<p>In cima al <b>REGISTRO DI PROTOCOLLO</b> c'è la barra rossa <b>💸 TABULATO MOROSI</b> con l'anno precedente (si può scegliere anche un altro anno): elenca le pratiche con <b>fattura più alta del pagato</b>, con quanto manca da pagare e il totale. Sono escluse le pratiche annullate, le rinunce e, se non spunti <b>Includi pratiche dei collaboratori</b>, quelle dei collaboratori.</p><ul><li><b>✓ Pagato</b>: scrivi l'importo (già proposto quanto manca) e il tipo di pagamento: il pagamento viene registrato nella <b>pratica dell'anno precedente</b> (pagato, tipo di pagamento, nota "Pagato arretrato…") e, se è saldata, lo stato diventa Pagato. Il cliente sparisce dal tabulato.</li><li><b>💬</b> manda un promemoria su WhatsApp al cliente.</li><li><b>🖨️ Stampa</b> il tabulato.</li></ul><p>Quando inserisci una nuova pratica, se il cliente ha ancora qualcosa da pagare degli anni precedenti, sopra lo <b>storico del cliente</b> compare un riquadro rosso <b>⚠️ Deve ancora pagare…</b> con il tasto ✓ Pagato.</p><p>Attenzione: l'incasso arretrato conta nella contabilità dell'anno della pratica (es. 2026), non in quella dell'anno nuovo.</p>` },
   { id: 'colf', icona: '🧹', titolo: 'Colf e badanti: scadenza, avviso e rinnovo', parole: 'colf badanti pratica attiva cessata stato scadenza assistenza rinnova non rinnova avvisa whatsapp anno successivo',
     testo: `
 <ul>
