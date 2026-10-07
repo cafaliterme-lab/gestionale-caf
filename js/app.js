@@ -31,9 +31,15 @@ const STATI = {
 const STATI_SOLO_COLF = ['pratica_attiva','pratica_cessata'];
 // Stati che per i contratti colf e badanti non servono e non si mostrano
 const STATI_NON_COLF = ['da_lavorare_scansionata','filca_non_paga','fps_non_paga','lavorata','lavorata_da_fatturare','non_paga','rinuncia_compilazione','pagato_da_ritirare'];
+function statoVisibilePredefinito(k, tipo){
+  return eColf(tipo) ? STATI_NON_COLF.indexOf(k) < 0 : STATI_SOLO_COLF.indexOf(k) < 0;
+}
+// L'amministratore può scegliere gli stati di ogni tipo (Utenti e permessi → Tipi di pratica → 🏷️ Stati)
 function statoVisibile(k, tipo, sel){
   if(k === sel) return true;
-  return eColf(tipo) ? STATI_NON_COLF.indexOf(k) < 0 : STATI_SOLO_COLF.indexOf(k) < 0;
+  const scelti = tipo ? tipoConfig(tipo).stati : null;
+  if(Array.isArray(scelti)) return scelti.indexOf(k) >= 0;
+  return statoVisibilePredefinito(k, tipo);
 }
 const TIPI_DEFAULT = ["730 SEDE","730 BRIGUGLIO ANTONIO","730 CAMINITI ANTONIO","730 CAMINITI LUIGI","730 RICCA AGATINO","730 FILCA","730 FPS IN CONVENZIONE","730 CRISAFULLI ROBERTO","730 FARAONE ARTURO","730 DECEDUTI","730 INTEGRATIVI/RETTIFICATIVI","730 TRIOLO CARMELA","730 DI BELLA SANTINO","CONTRATTI DI AFFITTO","CONTRATTI COLF E BADANTI","ISEE A PAGAMENTO","IMU","SUCCESSIONI","ISEE","SEND","MODELLI UNICO PF","RED","INVCIV","ADI","F24"];
 let NOMI_OPERATORI = [];
@@ -2601,7 +2607,10 @@ function aggiornaStatiColfForm(){
     const k = Object.keys(STATI)[i];
     b.style.display = statoVisibile(k, tipo) ? '' : 'none';
   });
-  if(!statoVisibile(sel.value, tipo)) pickChip('f-stato-btns', 'f-stato', 'arrivo');
+  if(!statoVisibile(sel.value, tipo)){
+    const primo = statoVisibile('arrivo', tipo) ? 'arrivo' : (Object.keys(STATI).find(function(k){ return statoVisibile(k, tipo); }) || 'arrivo');
+    pickChip('f-stato-btns', 'f-stato', primo);
+  }
 }
 function aggiornaCampoFineForm(){
   aggiornaStatiColfForm();

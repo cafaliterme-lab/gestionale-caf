@@ -9,7 +9,8 @@ function contaPraticheTipo(n) { return (state.pratiche || []).filter(function (p
 
 function caricaTipiInModifica() {
   TIPI_IN_MODIFICA = getTipiList().map(function (n) {
-    return { nome: n, originale: n, colore: coloreCollaboratore(n), acconto: haAcconti(n), soldi: conSoldi(n) };
+    const st = tipoConfig(n).stati;
+    return { nome: n, originale: n, colore: coloreCollaboratore(n), acconto: haAcconti(n), soldi: conSoldi(n), stati: Array.isArray(st) ? st.slice() : null };
   });
 }
 
@@ -27,6 +28,7 @@ function renderTipiPratica(ricarica) {
       + '<span style="font-size:12px; color:var(--sub); white-space:nowrap">' + n + ' pratiche' + (protetto ? ' · 🔒' : '') + '</span>'
       + '<label class="chk" style="white-space:nowrap"><input type="checkbox" ' + (t.soldi ? 'checked' : '') + ' onchange="TIPI_IN_MODIFICA[' + i + '].soldi=this.checked"> € Fatture e incasso</label>'
       + '<label class="chk" style="white-space:nowrap"><input type="checkbox" ' + (t.acconto ? 'checked' : '') + ' onchange="TIPI_IN_MODIFICA[' + i + '].acconto=this.checked"> 💰 Tasto Acconto</label>'
+      + '<button type="button" onclick="scegliStatiTipo(' + i + ')" title="Stati che si possono scegliere per questo tipo" style="padding:4px 10px; white-space:nowrap">🏷️ Stati (' + statiDelTipo(t).length + ')</button>'
       + '<span style="display:flex; gap:4px; margin-left:auto">'
       + '<button type="button" title="Sposta su" onclick="spostaTipo(' + i + ',-1)" ' + (i === 0 ? 'disabled' : '') + ' style="padding:4px 10px">↑</button>'
       + '<button type="button" title="Sposta giù" onclick="spostaTipo(' + i + ',1)" ' + (i === TIPI_IN_MODIFICA.length - 1 ? 'disabled' : '') + ' style="padding:4px 10px">↓</button>'
@@ -41,6 +43,40 @@ function renderTipiPratica(ricarica) {
     + '<button type="button" class="btn-add" style="margin-top:0; background:#2f9e5f" onclick="salvaTipiPratica()">💾 Salva tipi di pratica</button>'
     + '<button type="button" class="btn-add" style="margin-top:0; background:var(--line); color:var(--ink)" onclick="renderTipiPratica(true)">Annulla modifiche</button></div>'
     + '<div style="font-size:12px; color:var(--sub); margin-top:8px">🔒 = tipo usato da funzioni particolari (importi FILCA/FPS, scadenze colf, tipo predefinito): puoi cambiare colore e opzioni ma non il nome. Rinominando un tipo, tutte le sue pratiche e i suoi acconti prendono il nuovo nome; il numero di protocollo non cambia.</div>';
+}
+
+// Stati scelti per un tipo nella finestra (se mai impostati: quelli predefiniti del programma)
+function statiDelTipo(t) {
+  if (Array.isArray(t.stati)) return t.stati.filter(function (k) { return STATI[k]; });
+  return Object.keys(STATI).filter(function (k) { return statoVisibilePredefinito(k, t.originale || t.nome); });
+}
+function scegliStatiTipo(i) {
+  const t = TIPI_IN_MODIFICA[i];
+  const scelti = statiDelTipo(t);
+  const vecchio = document.getElementById('popup-stati-tipo'); if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-stati-tipo';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid ' + esc(t.colore) + '; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:18px 20px; max-width:460px; width:100%; max-height:92vh; display:flex; flex-direction:column">'
+    + '<div style="font-size:18px; font-weight:800">🏷️ Stati per ' + esc(t.nome) + '</div>'
+    + '<div style="font-size:13px; color:var(--sub); margin:2px 0 10px">Spunta gli stati che si possono scegliere per questo tipo di pratica. Una pratica che ha già uno stato tolto lo mantiene finché non lo cambi.</div>'
+    + '<div style="overflow:auto; flex:1">' + Object.keys(STATI).map(function (k) {
+      return '<label class="chk" style="padding:6px 4px; border-bottom:1px solid var(--line)"><input type="checkbox" class="st-chk" value="' + k + '" ' + (scelti.indexOf(k) >= 0 ? 'checked' : '') + '> <span class="dot" style="background:' + STATI[k].c + '"></span>' + esc(STATI[k].l) + '</label>';
+    }).join('') + '</div>'
+    + '<div style="display:flex; gap:8px; justify-content:space-between; flex-wrap:wrap; margin-top:12px"><button type="button" data-azione="predefiniti" style="padding:6px 12px">↺ Predefiniti</button>'
+    + '<span style="display:flex; gap:8px"><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Annulla</button><button type="button" data-azione="si" style="background:#2f9e5f; color:#fff; font-weight:800">OK</button></span></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-azione]');
+    if (!b && e.target !== ov) return;
+    if (!b || b.dataset.azione === 'no') { ov.remove(); return; }
+    if (b.dataset.azione === 'predefiniti') { t.stati = null; ov.remove(); renderTipiPratica(); return; }
+    const sel = Array.from(ov.querySelectorAll('.st-chk')).filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
+    if (!sel.length) { alert('Scegli almeno uno stato'); return; }
+    t.stati = sel;
+    ov.remove();
+    renderTipiPratica();
+  });
 }
 
 function spostaTipo(i, d) {
@@ -63,7 +99,7 @@ function aggiungiTipo() {
   const v = (inp.value || '').trim().toUpperCase().replace(/\s+/g, ' ');
   if (!v) return;
   if (TIPI_IN_MODIFICA.some(function (t) { return t.nome === v; })) { avviso('❌ Il tipo "' + v + '" esiste già', true); return; }
-  TIPI_IN_MODIFICA.push({ nome: v, originale: '', colore: coloreCollaboratore(v), acconto: tipoE730Nome(v), soldi: true });
+  TIPI_IN_MODIFICA.push({ nome: v, originale: '', colore: coloreCollaboratore(v), acconto: tipoE730Nome(v), soldi: true, stati: null });
   renderTipiPratica();
 }
 
@@ -89,7 +125,7 @@ async function salvaTipiPratica() {
   }
 
   const cfg = {};
-  lista.forEach(function (t) { cfg[t.nome] = { colore: t.colore, acconto: !!t.acconto, soldi: !!t.soldi }; });
+  lista.forEach(function (t) { cfg[t.nome] = { colore: t.colore, acconto: !!t.acconto, soldi: !!t.soldi }; if (Array.isArray(t.stati)) cfg[t.nome].stati = t.stati; });
   const valore = JSON.stringify(cfg);
   const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valore, aggiornato_il: new Date().toISOString() }).eq('chiave', 'tipi_config').select('chiave');
   if (error || !righe || !righe.length) { avviso('❌ Etichette non salvate' + (error ? ': ' + error.message : ''), true); return; }
