@@ -1642,10 +1642,10 @@ function render(){
     const open = aperti[k] === true;
     const col = coloreCollaboratore(k);
     const schedeAperte = aperti[k + '|schede'] === true || items.some(function(p){ return p._editing || p._confirmDelete || p._editingFattura; });
-    return '<details class="grp" data-k="' + esc(k) + '" ' + (open ? 'open' : '') + ' ontoggle="gToggle(this)">'
+    return '<details class="grp" data-k="' + esc(k) + '" style="--gc:' + col + '" ' + (open ? 'open' : '') + ' ontoggle="gToggle(this)">'
       + '<summary style="background:' + col + '; background-image:none"><span class="grp-name">' + esc(k) + '</span><span class="grp-n">' + sommaPeso(items) + '</span>'
-      + '<span style="margin-left:auto; font-size:12.5px; font-weight:700; opacity:.95">Fatture ' + fmtEuro(fe) + ' · Incasso ' + fmtEuro(inc) + '</span></summary>'
-      + '<div class="grp-b">' + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items)
+      + (senzaSoldi(k, fe, inc) ? '' : '<span class="grp-soldi">Fatture ' + fmtEuro(fe) + '<br>Incasso ' + fmtEuro(inc) + '</span>') + '</summary>'
+      + '<div class="grp-b">' + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items, k)
       + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 Schede complete delle pratiche (' + items.length + ') – per modificare, ricevuta, WhatsApp…</summary>'
         + items.map(cardHTML).join('') + '</details>' : '') + '</div></details>';
   }).join('');
@@ -2083,7 +2083,26 @@ async function rimuoviAcconto(id){
   render();
 }
 // Contabilita' del singolo collaboratore / tipo di pratica (dentro il suo gruppo nel registro)
+// Tipi di pratica gratuiti: niente fatture/incasso (a meno che non ci siano importi inseriti)
+const TIPI_SENZA_SOLDI = ['ADI','INVCIV','RED','SEND','ISEE'];
+function senzaSoldi(k, fatt, inc){
+  return TIPI_SENZA_SOLDI.indexOf(String(k||'').toUpperCase().trim()) >= 0 && !Number(fatt) && !Number(inc)
+    && !accontiDi(annoAttivo(), function(t){ return t === k; }).length;
+}
+function bottoneStampaCollaboratore(k){
+  return '<button type="button" onclick="stampaCollaboratore(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#374151; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer">🖨️ Stampa</button>';
+}
 function contabilitaCollaboratoreHTML(k, items){
+  const fatt0 = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
+  const inc0 = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+  if(items.length && senzaSoldi(k, fatt0, inc0)){
+    const colS = coloreCollaboratore(k);
+    const tileS = function(colore, valore, etichetta){ return '<div style="flex:1; min-width:110px; padding:8px 10px; border-radius:10px; background:' + colore + '; color:#fff; text-align:center"><div style="font-size:17px; font-weight:800">' + valore + '</div><div style="font-size:10.5px; font-weight:700; opacity:.92; text-transform:uppercase">' + etichetta + '</div></div>'; };
+    const daFareS = sommaPeso(items.filter(eDaLavorare));
+    return '<div style="margin-bottom:10px; padding:10px; border-radius:12px; border:2px solid ' + colS + '">'
+      + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><b style="color:' + colS + '">📊 ' + esc(k) + ' – ' + annoAttivo() + '</b>' + bottoneStampaCollaboratore(k) + '</div>'
+      + '<div style="display:flex; gap:6px; flex-wrap:wrap">' + tileS('#1d4f91', sommaPeso(items), 'Pratiche') + tileS('#2f9e5f', sommaPeso(items.filter(eLavorata)), 'Lavorate') + tileS(daFareS ? '#e57373' : '#8a8f98', daFareS, 'Da lavorare') + '</div></div>';
+  }
   if(!items.length && !accontiDi(annoAttivo(), function(t){ return t === k; }).length) return (puoScrivereAcconti() ? '<div style="margin-bottom:8px"><button type="button" onclick="nuovoAcconto(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">+ 💰 Acconto</button></div>' : '');
   const fatt = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const accLista = accontiDi(annoAttivo(), function(t){ return t === k; });
@@ -2098,7 +2117,7 @@ function contabilitaCollaboratoreHTML(k, items){
     return '<div style="flex:1; min-width:110px; padding:8px 10px; border-radius:10px; background:' + colore + '; color:#fff; text-align:center"><div style="font-size:17px; font-weight:800">' + valore + '</div><div style="font-size:10.5px; font-weight:700; opacity:.92; text-transform:uppercase">' + etichetta + '</div></div>';
   };
   return '<div style="margin-bottom:10px; padding:10px; border-radius:12px; border:2px solid ' + col + '">'
-    + '<div style="font-weight:800; color:' + col + '; margin-bottom:8px">📊 Contabilità ' + esc(k) + ' – ' + annoAttivo() + '</div>'
+    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><b style="color:' + col + '">📊 Contabilità ' + esc(k) + ' – ' + annoAttivo() + '</b>' + bottoneStampaCollaboratore(k) + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap">'
     + tile('#1d4f91', n, 'Pratiche')
     + tile('#2f9e5f', lav, 'Lavorate')
@@ -2119,15 +2138,31 @@ function contabilitaCollaboratoreHTML(k, items){
     + '</div></div>';
 }
 // Elenco compatto di tutte le pratiche del collaboratore
-function tabellaPraticheGruppoHTML(items){
+function tabellaPraticheGruppoHTML(items, k){
   if(!items.length) return '<div class="empty">Nessuna pratica</div>';
   const ord = items.slice().sort(function(a,b){ return a.numero - b.numero; });
-  return '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>N.</th><th>Data</th><th>Cliente</th><th>Stato</th><th>Fattura</th><th>Pagato</th><th>Pagamento</th><th></th></tr></thead><tbody>'
+  const soldi = !senzaSoldi(k || (items[0] && items[0].tipo), items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0), items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0));
+  return '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>N.</th><th>Data</th><th>Cliente</th><th>Stato</th>' + (soldi ? '<th>Fattura</th><th>Pagato</th><th>Pagamento</th>' : '') + '<th></th></tr></thead><tbody>'
     + ord.map(function(p){
       return '<tr><td class="n">' + formattaProtocollo(p) + '</td><td>' + esc(p.data || '-') + '</td><td class="wrap">' + esc((p.nome || '-').toUpperCase()) + (p.congiunta ? '<div class="sub2">+ ' + esc(p.congiunta) + '</div>' : '') + '</td>'
-        + '<td><span style="white-space:nowrap">' + pallino(p.stato) + esc(statoLabel(p.stato)) + '</span></td><td>' + fmtEuro(p.compenso) + '</td><td><b>' + fmtEuro(p.pagato) + '</b></td><td>' + esc(p.metodoPagamento || '-') + '</td>'
+        + '<td><span style="white-space:nowrap">' + pallino(p.stato) + esc(statoLabel(p.stato)) + '</span></td>' + (soldi ? '<td>' + fmtEuro(p.compenso) + '</td><td><b>' + fmtEuro(p.pagato) + '</b></td><td>' + esc(p.metodoPagamento || '-') + '</td>' : '')
         + '<td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella(\'' + p.id + '\')">Apri</button></td></tr>';
     }).join('') + '</tbody></table></div>';
+}
+// Stampa della contabilita' e delle pratiche di un solo collaboratore / tipo (anno scelto)
+function stampaCollaboratore(k){
+  const anno = annoAttivo();
+  const items = state.pratiche.filter(function(p){ return (p.tipo || 'SENZA TIPO') === k && annoPratica(p) === anno; });
+  const w = window.open('', '_blank');
+  if(!w){ alert('Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito.'); return; }
+  const riquadro = contabilitaCollaboratoreHTML(k, items).replace(/<button[\s\S]*?<\/button>/g, '');
+  const tabella = tabellaPraticheGruppoHTML(items, k).replace(/<td><button[\s\S]*?<\/button><\/td>/g, '<td></td>');
+  w.document.open();
+  w.document.write('<!doctype html><html lang="it"><head><meta charset="utf-8"><title>' + esc(k) + ' ' + anno + '</title><style>@page{size:A4 landscape; margin:10mm} body{font-family:Arial,Helvetica,sans-serif; font-size:11.5px; color:#0f1b2d; --sub:#5b6b82; --line:#e3e8ef; -webkit-print-color-adjust:exact; print-color-adjust:exact} h1{font-size:16px; color:#1d4f91; margin:0 0 6px} table{width:100%; border-collapse:collapse; margin-top:8px} th,td{border:1px solid #cfd8e3; padding:4px 6px; text-align:left} th{background:#1d4f91; color:#fff} th:last-child,td:last-child{display:none} .sub2{font-size:10px; color:#5b6b82} .barra button{padding:8px 16px; margin:0 6px 10px 0} @media print{.barra{display:none}}</style></head><body>'
+    + '<div class="barra"><button onclick="window.print()">🖨️ Stampa / Salva come PDF</button><button onclick="window.close()">Chiudi</button></div>'
+    + '<h1>CAF CISL Alì Terme – ' + esc(k) + ' – anno ' + anno + '</h1><div style="margin-bottom:8px; color:#5b6b82">Stampato il ' + new Date().toLocaleDateString('it-IT') + ' · ' + sommaPeso(items) + ' pratiche (le congiunte valgono 2)</div>'
+    + riquadro + tabella + '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>');
+  w.document.close();
 }
 function apriPraticaDaTabella(id){
   const p = state.pratiche.find(function(x){ return x.id===id; });
