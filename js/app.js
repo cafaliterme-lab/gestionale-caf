@@ -842,7 +842,7 @@ async function esportaRegistroExcel(){
     const fe = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
     const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
     const accK = totaleAcconti(anno, function(t){ return t === k; });
-    contabRighe.push({ 'Voce': k + ' (' + items.length + ' pratiche)', 'Valore': 'Fatture ' + fe.toFixed(2) + ' € · Incasso ' + inc.toFixed(2) + ' €' + (accK ? ' · Pagamenti effettuati ' + accK.toFixed(2) + ' € · Differenza (incasso − pagamenti) ' + (inc - accK).toFixed(2) + ' €' : '') });
+    contabRighe.push({ 'Voce': k + ' (' + items.length + ' pratiche)', 'Valore': 'Fatture ' + fe.toFixed(2) + ' € · Incasso ' + inc.toFixed(2) + ' €' + (accK ? ' · Pagamenti effettuati ' + accK.toFixed(2) + ' € · Da incassare (incasso − pagamenti) ' + (inc - accK).toFixed(2) + ' €' : '') });
   });
 
   const wb = XLSX.utils.book_new();
@@ -2123,9 +2123,9 @@ function contabilitaCollaboratoreHTML(k, items){
     + tile(daFare ? '#e57373' : '#8a8f98', daFare, 'Da lavorare')
     + tile('#2f9e5f', fmtEuro(fatt), 'Fatture emesse')
     + tile('#8e5bd6', fmtEuro(inc), 'Incasso')
-    + tile(daIncassare ? '#d4881c' : '#8a8f98', fmtEuro(daIncassare), 'Da incassare')
+    + tile(daIncassare ? '#d4881c' : '#8a8f98', fmtEuro(daIncassare), 'Non pagato dai clienti (fatture − incasso)')
     + tile('#0e7c86', fmtEuro(acc), 'Pagamenti effettuati')
-    + tile('#374151', fmtEuro(inc - acc), 'Differenza (incasso − pagamenti)')
+    + tile((inc - acc) > 0 ? '#c0392b' : '#374151', fmtEuro(inc - acc), 'Da incassare (incasso − pagamenti)')
     + tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'Prezzo medio')
     + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:12.5px">'
