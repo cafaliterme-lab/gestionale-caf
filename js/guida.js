@@ -193,6 +193,8 @@ const GUIDA = [
 <p>Prima dell'invio si apre una finestra dove controlli e modifichi <b>destinatario, oggetto e testo</b>; poi <b>📤 Invia e-mail</b>. Se il cliente non ha l'e-mail salvata, scrivila lì: viene salvata nella pratica e nell'archivio. Sulla pratica resta scritto <b>"📧 E-mail inviata: … il GG/MM/AAAA"</b>.</p>
 <p class="g-nota">Gli utenti in sola consultazione non possono inviare e-mail.</p>` },
 
+  { id: 'chat', icona: '💬', titolo: 'Chat interna e compiti da spuntare', parole: 'chat messaggi interni compiti da fare avvisi spunta fatto federica angelo colleghi',
+    testo: `<p>In basso a destra c'è il tasto <b>💬 Chat</b>: è una chat fra gli utenti del programma (per esempio Angelo e Federica). Il numero rosso dice quanti messaggi nuovi ci sono, quello arancione 📌 quanti compiti sono ancora da fare.</p><ul><li>Scegli a chi scrivere (<b>👥 A tutti</b> o una persona), scrivi e premi <b>➤</b> (o Invio).</li><li>Spunta <b>📌 Compito da spuntare</b> per mandare una cosa da fare (es. "Manca il CUD di Rossi"): a chi la riceve compare <b>in alto sullo schermo</b> un riquadro arancione con <b>✓ Fatto</b>, <b>💬 Rispondi</b> e <b>Più tardi</b>, e resta finché qualcuno non la spunta.</li><li>Nella scheda <b>📌 Da fare</b> trovi tutti i compiti: quelli fatti mostrano chi li ha spuntati e quando; con <b>↺ Da rifare</b> tornano aperti.</li><li>I tuoi messaggi si possono eliminare con ✕.</li></ul><p>I messaggi arrivano da soli ogni 15 secondi circa; i messaggi a una persona li vedono solo lei e chi li ha scritti.</p>` },
   { id: 'messaggi', icona: '🗨️', titolo: 'Sezione Messaggi: dati del CAF e modelli', parole: 'messaggi dati caf indirizzo telefono email orari modelli predefinito stella segnaposto',
     testo: `
 <ul>

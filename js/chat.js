@@ -1,0 +1,176 @@
+/* ---------------- Chat interna e compiti da spuntare (fra gli utenti del programma) ---------------- */
+// Tasto 💬 in basso a destra: messaggi a tutti o a una persona; i "📌 compiti" restano in evidenza
+// sullo schermo di chi li riceve finché qualcuno non li spunta come fatti.
+
+let CHAT = { messaggi: [], utenti: [], aperta: false, scheda: 'chat', ultimoVisto: null, avvisati: {} };
+
+function chatLetti() { try { return localStorage.getItem('chat-letti-' + ((auth.profilo || {}).id || '')) || ''; } catch (e) { return ''; } }
+function chatSegnaLetti() {
+  const ultimo = CHAT.messaggi.length ? CHAT.messaggi[0].creato_il : '';
+  try { if (ultimo) localStorage.setItem('chat-letti-' + auth.profilo.id, ultimo); } catch (e) { }
+}
+function chatPerMe(m) { return !m.a_id || m.a_id === auth.profilo.id; }
+function chatCompitiAperti() { return CHAT.messaggi.filter(function (m) { return m.compito && !m.fatto && chatPerMe(m); }); }
+function chatNonLetti() {
+  const l = chatLetti();
+  return CHAT.messaggi.filter(function (m) { return m.da_id !== auth.profilo.id && chatPerMe(m) && (!l || m.creato_il > l); });
+}
+function oraChat(iso) {
+  const d = new Date(iso), oggi = new Date();
+  const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === oggi.toDateString() ? ora : d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + ' ' + ora;
+}
+
+async function caricaChat() {
+  if (typeof auth === 'undefined' || !auth.profilo) { disegnaBottoneChat(); disegnaCompitiAVideo(); return; }
+  // cambio di utente sullo stesso PC: si riparte da zero
+  if (CHAT.chi !== auth.profilo.id) { CHAT = { messaggi: [], utenti: [], aperta: false, scheda: 'chat', avvisati: {}, chi: auth.profilo.id }; const p = document.getElementById('chat-pannello'); if (p) p.remove(); }
+  try {
+    const r = await fetchSupabase('/rest/v1/messaggi_interni?select=*&order=creato_il.desc&limit=300', 'GET');
+    if (!r.ok || !Array.isArray(r.data)) return;
+    const prima = CHAT.messaggi.length ? CHAT.messaggi[0].creato_il : null;
+    CHAT.messaggi = r.data;
+    if (!CHAT.utenti.length) {
+      const u = await fetchSupabase('/rest/v1/rpc/elenco_utenti', 'POST', {});
+      if (u.ok && Array.isArray(u.data)) CHAT.utenti = u.data;
+    }
+    // messaggio nuovo arrivato mentre la chat è chiusa: avviso a video
+    if (prima && !CHAT.aperta) {
+      const nuovi = CHAT.messaggi.filter(function (m) { return m.creato_il > prima && m.da_id !== auth.profilo.id && chatPerMe(m) && !m.compito; });
+      if (nuovi.length && typeof avviso === 'function') avviso('💬 ' + nuovi[0].da_nome + ': ' + nuovi[0].testo.slice(0, 80));
+    }
+    disegnaBottoneChat();
+    disegnaCompitiAVideo();
+    if (CHAT.aperta) disegnaChat();
+  } catch (e) { /* la chat non deve bloccare il lavoro */ }
+}
+setInterval(function () { if (document.visibilityState === 'visible') caricaChat(); }, 15000);
+setTimeout(caricaChat, 3000);
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') caricaChat(); });
+
+function disegnaBottoneChat() {
+  let b = document.getElementById('chat-bottone');
+  if (typeof auth === 'undefined' || !auth.profilo) { if (b) b.remove(); return; }
+  if (!b) {
+    b = document.createElement('button');
+    b.id = 'chat-bottone';
+    b.type = 'button';
+    b.onclick = function () { apriChat(); };
+    b.style.cssText = 'position:fixed; right:16px; bottom:16px; z-index:350; border:none; border-radius:999px; padding:12px 18px; background:#1d4f91; color:#fff; font-weight:800; font-size:15px; box-shadow:0 8px 24px rgba(0,0,0,.25); cursor:pointer';
+    document.body.appendChild(b);
+  }
+  const n = chatNonLetti().length, c = chatCompitiAperti().length;
+  b.innerHTML = '💬 Chat' + (n ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 8px; margin-left:4px">' + n + '</span>' : '') + (c ? ' <span style="background:#d4881c; border-radius:999px; padding:1px 8px; margin-left:4px">📌 ' + c + '</span>' : '');
+  b.style.display = CHAT.aperta ? 'none' : '';
+}
+
+// I compiti da fare compaiono a video (in alto) finché non vengono spuntati
+function disegnaCompitiAVideo() {
+  let box = document.getElementById('chat-compiti-video');
+  if (typeof auth === 'undefined' || !auth.profilo) { if (box) box.remove(); return; }
+  const lista = chatCompitiAperti().filter(function (m) { return !CHAT.avvisati[m.id]; });
+  if (!lista.length || CHAT.aperta) { if (box) box.remove(); return; }
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'chat-compiti-video';
+    box.style.cssText = 'position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:360; width:min(560px, calc(100vw - 24px)); display:flex; flex-direction:column; gap:8px';
+    document.body.appendChild(box);
+  }
+  box.innerHTML = lista.slice(0, 3).map(function (m) {
+    return '<div style="background:#fff7e6; color:#5c3d00; border:2px solid #d4881c; border-radius:14px; padding:10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.2)">'
+      + '<div style="font-size:12px; font-weight:700">📌 Compito da ' + esc(m.da_nome) + (m.a_id ? '' : ' (per tutti)') + ' · ' + oraChat(m.creato_il) + '</div>'
+      + '<div style="font-size:15px; font-weight:700; margin:4px 0 8px; white-space:pre-wrap">' + esc(m.testo) + '</div>'
+      + '<div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end">'
+      + '<button type="button" onclick="CHAT.avvisati[\'' + m.id + '\']=true; disegnaCompitiAVideo()" style="padding:5px 12px; background:var(--line); color:#333">Più tardi</button>'
+      + '<button type="button" onclick="apriChat(\'compiti\')" style="padding:5px 12px; background:#1d4f91; color:#fff">💬 Rispondi</button>'
+      + '<button type="button" onclick="segnaCompito(\'' + m.id + '\', true)" style="padding:5px 12px; background:#2f9e5f; color:#fff; font-weight:800">✓ Fatto</button></div></div>';
+  }).join('') + (lista.length > 3 ? '<div style="text-align:center; font-size:12px; background:#fff7e6; border-radius:10px; padding:4px">… e altri ' + (lista.length - 3) + ' compiti nella chat</div>' : '');
+}
+
+function apriChat(scheda) {
+  CHAT.aperta = true;
+  if (scheda) CHAT.scheda = scheda;
+  let ov = document.getElementById('chat-pannello');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'chat-pannello';
+    ov.style.cssText = 'position:fixed; right:16px; bottom:16px; z-index:370; width:min(420px, calc(100vw - 32px)); height:min(620px, calc(100vh - 32px)); background:var(--card); color:var(--ink); border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.35); display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--line)';
+    document.body.appendChild(ov);
+  }
+  disegnaChat();
+  chatSegnaLetti();
+  disegnaBottoneChat();
+  disegnaCompitiAVideo();
+  setTimeout(function () { const t = document.getElementById('chat-testo'); if (t) t.focus(); }, 50);
+}
+function chiudiChat() {
+  CHAT.aperta = false;
+  const ov = document.getElementById('chat-pannello'); if (ov) ov.remove();
+  disegnaBottoneChat();
+  disegnaCompitiAVideo();
+}
+
+function disegnaChat() {
+  const ov = document.getElementById('chat-pannello');
+  if (!ov) return;
+  const io = auth.profilo.id;
+  const bozza = document.getElementById('chat-testo') ? document.getElementById('chat-testo').value : '';
+  const dest = document.getElementById('chat-a') ? document.getElementById('chat-a').value : '';
+  const comp = document.getElementById('chat-compito') ? document.getElementById('chat-compito').checked : false;
+  const compiti = CHAT.messaggi.filter(function (m) { return m.compito; });
+  const aperti = compiti.filter(function (m) { return !m.fatto; });
+  const lista = CHAT.scheda === 'compiti' ? compiti.slice().sort(function (a, b) { return (a.fatto - b.fatto) || (a.creato_il < b.creato_il ? 1 : -1); }) : CHAT.messaggi.slice().reverse();
+  const scheda = function (k, t) { return '<button type="button" onclick="CHAT.scheda=\'' + k + '\'; disegnaChat()" style="flex:1; padding:8px; border:none; border-bottom:3px solid ' + (CHAT.scheda === k ? '#fff' : 'transparent') + '; background:none; color:#fff; font-weight:800; cursor:pointer">' + t + '</button>'; };
+  ov.innerHTML = '<div style="background:linear-gradient(90deg,#1d4f91,#00612f); color:#fff; padding:10px 12px 0">'
+    + '<div style="display:flex; justify-content:space-between; align-items:center"><b style="font-size:16px">💬 Chat interna</b><button type="button" onclick="chiudiChat()" style="background:rgba(255,255,255,.2); color:#fff; border:none; border-radius:999px; padding:4px 12px; cursor:pointer">✕</button></div>'
+    + '<div style="display:flex; margin-top:6px">' + scheda('chat', '💬 Messaggi') + scheda('compiti', '📌 Da fare' + (aperti.length ? ' (' + aperti.length + ')' : '')) + '</div></div>'
+    + '<div id="chat-lista" style="flex:1; overflow-y:auto; padding:10px; background:var(--bg); display:flex; flex-direction:column; gap:8px">'
+    + (lista.length ? lista.map(function (m) {
+      const mio = m.da_id === io;
+      const verso = m.a_id ? (mio ? '→ ' + esc(m.a_nome || '') : '→ te') : '→ tutti';
+      return '<div style="align-self:' + (mio ? 'flex-end' : 'flex-start') + '; max-width:85%; background:' + (m.compito ? (m.fatto ? '#e8f6ee' : '#fff7e6') : (mio ? '#dcf2ff' : 'var(--card)')) + '; border:1px solid ' + (m.compito && !m.fatto ? '#d4881c' : 'var(--line)') + '; border-radius:12px; padding:7px 10px; color:#0f1b2d">'
+        + '<div style="font-size:11px; color:#5b6b82; font-weight:700">' + (mio ? 'Tu' : esc(m.da_nome)) + ' ' + verso + ' · ' + oraChat(m.creato_il) + '</div>'
+        + (m.compito ? '<div style="font-size:11px; font-weight:800; color:' + (m.fatto ? '#2f9e5f' : '#b35f0c') + '">' + (m.fatto ? '✓ FATTO da ' + esc(m.fatto_da) + (m.fatto_il ? ' · ' + oraChat(m.fatto_il) : '') : '📌 COMPITO DA FARE') + '</div>' : '')
+        + '<div style="font-size:14px; white-space:pre-wrap; word-break:break-word">' + esc(m.testo) + '</div>'
+        + '<div style="display:flex; gap:6px; justify-content:flex-end; margin-top:4px">'
+        + (m.compito ? (m.fatto ? '<button type="button" onclick="segnaCompito(\'' + m.id + '\', false)" style="padding:2px 8px; font-size:11px">↺ Da rifare</button>' : '<button type="button" onclick="segnaCompito(\'' + m.id + '\', true)" style="padding:3px 10px; font-size:12px; background:#2f9e5f; color:#fff; font-weight:800">✓ Fatto</button>') : '')
+        + (mio ? '<button type="button" title="Elimina" onclick="eliminaMessaggioChat(\'' + m.id + '\')" style="padding:2px 8px; font-size:11px; background:none; color:#c0392b">✕</button>' : '')
+        + '</div></div>';
+    }).join('') : '<div style="text-align:center; color:var(--sub); margin-top:30px">' + (CHAT.scheda === 'compiti' ? 'Nessun compito' : 'Nessun messaggio: scrivi il primo!') + '</div>')
+    + '</div>'
+    + '<div style="padding:8px 10px; border-top:1px solid var(--line)">'
+    + '<div style="display:flex; gap:6px; align-items:center; margin-bottom:6px; flex-wrap:wrap">'
+    + '<select id="chat-a" style="width:auto; flex:1; padding:5px 8px; font-size:13px"><option value="">👥 A tutti</option>'
+    + CHAT.utenti.filter(function (u) { return u.id !== io; }).map(function (u) { return '<option value="' + u.id + '"' + (u.id === dest ? ' selected' : '') + '>👤 ' + esc(u.nome) + '</option>'; }).join('') + '</select>'
+    + '<label class="chk" style="font-size:13px; white-space:nowrap"><input type="checkbox" id="chat-compito" ' + (comp || CHAT.scheda === 'compiti' ? 'checked' : '') + '> 📌 Compito da spuntare</label></div>'
+    + '<div style="display:flex; gap:6px"><textarea id="chat-testo" rows="2" placeholder="Scrivi un messaggio…" style="flex:1; resize:none; font-size:14px" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){ event.preventDefault(); inviaMessaggioChat(); }">' + esc(bozza) + '</textarea>'
+    + '<button type="button" onclick="inviaMessaggioChat()" style="background:#1d4f91; color:#fff; font-weight:800; padding:0 14px">➤</button></div></div>';
+  const l = document.getElementById('chat-lista');
+  if (l && CHAT.scheda === 'chat') l.scrollTop = l.scrollHeight;
+}
+
+async function inviaMessaggioChat() {
+  const t = document.getElementById('chat-testo');
+  const testo = (t.value || '').trim();
+  if (!testo) return;
+  const a = document.getElementById('chat-a').value || null;
+  const compito = document.getElementById('chat-compito').checked;
+  t.value = '';
+  const r = await fetchSupabase('/rest/v1/messaggi_interni', 'POST', { testo: testo.slice(0, 2000), a_id: a, compito: compito }, { 'Prefer': 'return=minimal' });
+  if (!r.ok) { t.value = testo; avviso('❌ Messaggio non inviato', true); return; }
+  await caricaChat();
+  chatSegnaLetti();
+  disegnaBottoneChat();
+}
+async function segnaCompito(id, fatto) {
+  const r = await fetchSupabase('/rest/v1/messaggi_interni?id=eq.' + id, 'PATCH', { fatto: fatto }, { 'Prefer': 'return=minimal' });
+  if (!r.ok) { avviso('❌ Non salvato', true); return; }
+  if (fatto) avviso('✓ Compito segnato come fatto');
+  await caricaChat();
+}
+async function eliminaMessaggioChat(id) {
+  if (!confirm('Eliminare questo messaggio?')) return;
+  const r = await fetchSupabase('/rest/v1/messaggi_interni?id=eq.' + id, 'DELETE', null, { 'Prefer': 'return=minimal' });
+  if (!r.ok) { avviso('❌ Non eliminato', true); return; }
+  await caricaChat();
+}
