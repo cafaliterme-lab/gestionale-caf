@@ -3,7 +3,7 @@
 const MOROSI = { anno: null, annoBase: null, collaboratori: false, cerca: '', aperto: false };
 
 function residuoPratica(p) { return Math.max(0, Math.round((Number(p.compenso || 0) - Number(p.pagato || 0)) * 100) / 100); }
-function eMorosa(p) { return !p.annullata && p.stato !== 'rinuncia_compilazione' && residuoPratica(p) > 0; }
+function eMorosa(p) { return !p.annullata && p.stato !== 'rinuncia_compilazione' && !p.saldataCollaboratore && residuoPratica(p) > 0; }
 
 function morosiAnno(anno, conCollaboratori) {
   return (state.pratiche || []).filter(function (p) {
@@ -141,37 +141,38 @@ function stampaMorosi() {
   w.document.close();
 }
 
-/* ---------------- Pagamento cumulativo delle pratiche di un collaboratore ---------------- */
-// Elenco delle pratiche non saldate del collaboratore (anno di protocollo e precedenti) con le spunte:
-// quelle scelte diventano pagate per l'intero importo della fattura.
+/* ---------------- Pratiche dei collaboratori saldate tramite il collaboratore ---------------- */
+// Il collaboratore regola i conti con gli acconti: qui si spuntano le pratiche da togliere dai morosi
+// SENZA toccare fattura, pagato, incasso o stato (la contabilità resta quella degli incassi e degli acconti).
 function pagamentoCumulativo(k) {
-  const lista = (state.pratiche || []).filter(function (p) { return (p.tipo || 'SENZA TIPO') === k && annoPratica(p) <= annoAttivo() && eMorosa(p); })
-    .sort(function (a, b) { return (annoPratica(a) - annoPratica(b)) || (a.numero - b.numero); });
-  if (!lista.length) { avviso('✓ Tutte le pratiche di ' + k + ' risultano già pagate'); return; }
+  const lista = (state.pratiche || []).filter(function (p) {
+    return (p.tipo || 'SENZA TIPO') === k && annoPratica(p) <= annoAttivo() && !p.annullata && p.stato !== 'rinuncia_compilazione' && residuoPratica(p) > 0;
+  }).sort(function (a, b) { return (annoPratica(a) - annoPratica(b)) || (a.numero - b.numero); });
+  if (!lista.length) { avviso('✓ Nessuna pratica di ' + k + ' risulta da pagare'); return; }
   const vecchio = document.getElementById('popup-cumulativo'); if (vecchio) vecchio.remove();
   const ov = document.createElement('div');
   ov.id = 'popup-cumulativo';
   ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #2f9e5f; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:18px 20px; max-width:680px; width:100%; max-height:92vh; display:flex; flex-direction:column">'
-    + '<div style="font-size:19px; font-weight:800; color:#2f9e5f">✓ Pagamento cumulativo</div>'
-    + '<div style="font-size:13px; color:var(--sub); margin:2px 0 10px">' + esc(k) + ' – spunta le pratiche pagate: diventano pagate per l\'intero importo della fattura.</div>'
+    + '<div style="font-size:19px; font-weight:800; color:#2f9e5f">✓ Togli dai morosi</div>'
+    + '<div style="font-size:13px; color:var(--sub); margin:2px 0 10px">' + esc(k) + ' – le pratiche spuntate risultano <b>saldate tramite il collaboratore</b> e non escono più nel tabulato morosi. Fattura, pagato, incasso, acconti e stato <b>non cambiano</b>. Togliendo la spunta la pratica torna tra i morosi.</div>'
     + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px"><button type="button" data-tutte="1" style="padding:5px 12px">☑ Seleziona tutte</button><button type="button" data-tutte="0" style="padding:5px 12px">☐ Nessuna</button></div>'
     + '<div style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px">'
     + lista.map(function (p) {
       return '<label style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); cursor:pointer; margin:0">'
-        + '<input type="checkbox" class="cum-chk" value="' + p.id + '" checked style="width:auto; margin:0">'
-        + '<span style="flex:1"><b>' + formattaProtocollo(p) + '</b> · ' + esc(p.data || '') + ' · ' + esc((p.nome || '').toUpperCase()) + '<span class="sub2"> · ' + esc(statoLabel(p.stato)) + '</span></span>'
-        + '<span style="white-space:nowrap; text-align:right">fattura ' + fmtEuro(p.compenso) + (Number(p.pagato) ? '<div class="sub2">già pagato ' + fmtEuro(p.pagato) + '</div>' : '') + '<div><b style="color:#c0392b">' + fmtEuro(residuoPratica(p)) + '</b></div></span></label>';
+        + '<input type="checkbox" class="cum-chk" value="' + p.id + '" ' + (p.saldataCollaboratore ? 'checked' : '') + ' style="width:auto; margin:0">'
+        + '<span style="flex:1"><b>' + formattaProtocollo(p) + '</b> · ' + esc(p.data || '') + ' · ' + esc((p.nome || '').toUpperCase()) + '<span class="sub2"> · ' + esc(statoLabel(p.stato)) + '</span>'
+        + (p.saldataCollaboratore ? '<div class="sub2" style="color:#2f9e5f">✓ già tolta dai morosi il ' + esc(p.saldataCollaboratore) + '</div>' : '') + '</span>'
+        + '<span style="white-space:nowrap; text-align:right">fattura ' + fmtEuro(p.compenso) + '<div class="sub2">pagato ' + fmtEuro(p.pagato) + '</div></span></label>';
     }).join('') + '</div>'
-    + '<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px"><label style="margin:0">Pagamento <select id="cum-metodo" style="width:auto">' + METODI_PAGAMENTO.map(function (m) { return '<option' + (m === 'CONTANTI' ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select></label>'
-    + '<span id="cum-totale" style="margin-left:auto; font-weight:800"></span></div>'
+    + '<div id="cum-totale" style="margin-top:10px; font-weight:800; text-align:right"></div>'
     + '<div id="cum-esito" style="font-size:13px; margin-top:6px"></div>'
-    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px"><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Annulla</button><button type="button" data-azione="si" style="background:#2f9e5f; color:#fff; font-weight:800">💾 Segna come pagate</button></div></div>';
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px"><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Annulla</button><button type="button" data-azione="si" style="background:#2f9e5f; color:#fff; font-weight:800">💾 Salva</button></div></div>';
   document.body.appendChild(ov);
-  const scelte = function () { return Array.from(ov.querySelectorAll('.cum-chk')).filter(function (c) { return c.checked; }).map(function (c) { return lista.find(function (p) { return p.id === c.value; }); }); };
+  const spuntata = function (p) { const c = ov.querySelector('.cum-chk[value="' + p.id + '"]'); return !!(c && c.checked); };
   const aggiornaTotale = function () {
-    const sel = scelte();
-    document.getElementById('cum-totale').innerHTML = sel.length + ' pratiche · totale <span style="color:#2f9e5f">' + fmtEuro(sel.reduce(function (t, p) { return t + residuoPratica(p); }, 0)) + '</span>';
+    const n = lista.filter(spuntata).length;
+    document.getElementById('cum-totale').textContent = n + ' di ' + lista.length + ' pratiche fuori dai morosi';
   };
   aggiornaTotale();
   ov.addEventListener('change', aggiornaTotale);
@@ -181,23 +182,22 @@ function pagamentoCumulativo(k) {
     const b = e.target.closest('button[data-azione]');
     if (!b && e.target !== ov) return;
     if (!b || b.dataset.azione === 'no') { ov.remove(); return; }
-    const sel = scelte();
+    // si salvano solo le pratiche cambiate
+    const cambiate = lista.filter(function (p) { return spuntata(p) !== !!p.saldataCollaboratore; });
     const esito = document.getElementById('cum-esito');
-    if (!sel.length) { esito.innerHTML = '<b style="color:#c0392b">Spunta almeno una pratica</b>'; return; }
-    const metodo = document.getElementById('cum-metodo').value;
+    if (!cambiate.length) { ov.remove(); return; }
     b.disabled = true;
     let fatte = 0;
-    for (const p of sel) {
-      const campi = { pagato: Number(p.compenso || 0), metodoPagamento: metodo };
-      if (['da_pagare', 'non_paga', 'lavorata', 'lavorata_da_fatturare', 'filca_non_paga', 'fps_non_paga'].indexOf(p.stato) >= 0) campi.stato = 'pagato';
-      esito.textContent = 'Salvataggio ' + (fatte + 1) + ' di ' + sel.length + '…';
-      const { data: righe, error } = await supabase.from('pratiche').update(praticaToDb(campi)).eq('id', p.id).select('id');
-      if (error || !righe || !righe.length) { esito.innerHTML = '<b style="color:#c0392b">❌ Pratica ' + formattaProtocolloTesto(p) + ' non salvata' + (error ? ': ' + esc(error.message) : '') + '. Salvate ' + fatte + ' di ' + sel.length + '.</b>'; b.disabled = false; break; }
-      Object.assign(p, campi);
+    for (const p of cambiate) {
+      const valore = spuntata(p) ? todayIT() : '';
+      esito.textContent = 'Salvataggio ' + (fatte + 1) + ' di ' + cambiate.length + '…';
+      const { data: righe, error } = await supabase.from('pratiche').update({ saldata_collaboratore: valore }).eq('id', p.id).select('id');
+      if (error || !righe || !righe.length) { esito.innerHTML = '<b style="color:#c0392b">❌ Pratica ' + formattaProtocolloTesto(p) + ' non salvata' + (error ? ': ' + esc(error.message) : '') + '. Salvate ' + fatte + ' di ' + cambiate.length + '.</b>'; b.disabled = false; break; }
+      p.saldataCollaboratore = valore;
       fatte++;
     }
     if (typeof caricaTutto === 'function') await caricaTutto();
-    if (fatte === sel.length) { ov.remove(); avviso('✓ ' + fatte + ' pratiche di ' + k + ' segnate come pagate'); }
+    if (fatte === cambiate.length) { ov.remove(); avviso('✓ Elenco dei morosi di ' + k + ' aggiornato'); }
     render();
   });
 }
