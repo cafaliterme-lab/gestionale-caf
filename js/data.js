@@ -126,6 +126,16 @@ const schemas = {
     modificatoDa: 'modificato_da',
     emailInviata: 'email_inviata',
   },
+  acconto: {
+    id: 'id',
+    tipo: 'tipo',
+    data: 'data',
+    importo: 'importo',
+    metodoPagamento: 'metodo_pagamento',
+    note: 'note',
+    creatoDa: 'creato_da',
+    creatoIl: 'creato_il',
+  },
   spesaSede: {
     id: 'id',
     data: 'data',
@@ -238,6 +248,10 @@ async function caricaTutto(opzioni) {
     // Spese gestione sede (chi non ha il permesso riceve un elenco vuoto)
     const { data: spese, error: errSp } = await sb.from('spese_sede').select('*').order('creato_il', { ascending: false });
     state.speseSede = errSp ? [] : (spese || []).map(s => mapFromDb(s, schemas.spesaSede));
+
+    // Acconti dei collaboratori (entrate non legate a una singola pratica)
+    const { data: acc, error: errAcc } = await sb.from('acconti').select('*').order('creato_il', { ascending: false });
+    state.acconti = errAcc ? [] : (acc || []).map(a => mapFromDb(a, schemas.acconto));
 
     // ISEE
     const { data: isee, error: errI } = await sb
@@ -457,6 +471,24 @@ async function eliminaVersamento(id) {
 async function aggiungiSpesaSede(spesa) {
   try {
     const { data: righe, error } = await supabase.from('spese_sede').insert([mapToDb(spesa, schemas.spesaSede)]).select('id');
+    if (error) throw new Error(error.message);
+    if (!righe || !righe.length) throw new Error('Permesso negato');
+    await caricaTutto();
+    return {};
+  } catch (err) { return { error: err.message }; }
+}
+async function aggiungiAcconto(acconto) {
+  try {
+    const { data: righe, error } = await supabase.from('acconti').insert([mapToDb(acconto, schemas.acconto)]).select('id');
+    if (error) throw new Error(error.message);
+    if (!righe || !righe.length) throw new Error('Permesso negato');
+    await caricaTutto();
+    return {};
+  } catch (err) { return { error: err.message }; }
+}
+async function eliminaAcconto(id) {
+  try {
+    const { data: righe, error } = await supabase.from('acconti').delete().eq('id', id).select('id');
     if (error) throw new Error(error.message);
     if (!righe || !righe.length) throw new Error('Permesso negato');
     await caricaTutto();
@@ -815,6 +847,10 @@ window.data = {
   versamenti: {
     aggiungi: aggiungiVersamento,
     elimina: eliminaVersamento,
+  },
+  acconti: {
+    aggiungi: aggiungiAcconto,
+    elimina: eliminaAcconto,
   },
   speseSede: {
     aggiungi: aggiungiSpesaSede,

@@ -812,7 +812,7 @@ async function esportaRegistroExcel(){
   const nomiGruppi = getTipiList().concat(Object.keys(gruppi).filter(function(k){ return getTipiList().indexOf(k) < 0; }));
 
   const fattureEmesse = tutte.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
-  const incassoLordo = tutte.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+  const incassoLordo = tutte.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0) + totaleAcconti(anno);
   const versAnno = (state.versamenti||[]).filter(function(v){ return annoDiData(v.data) === anno; });
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
   const incasso = incassoLordo - versatoCaf;
@@ -828,7 +828,8 @@ async function esportaRegistroExcel(){
     { 'Voce':'Da lavorare', 'Valore': daLavorare },
     { 'Voce':'Rinuncia alla compilazione', 'Valore': rinunce },
     { 'Voce':'Fatture emesse (€)', 'Valore': fattureEmesse },
-    { 'Voce':'Incasso totale (€)', 'Valore': incassoLordo },
+    { 'Voce':'Incasso totale (€) – compresi acconti', 'Valore': incassoLordo },
+    { 'Voce':'di cui acconti collaboratori (€)', 'Valore': totaleAcconti(anno) },
     { 'Voce':'Pagamenti CAF (€)', 'Valore': versatoCaf },
     { 'Voce':'Netto: incasso − pagamenti CAF (€)', 'Valore': incasso },
     { 'Voce':'Spese gestione sede (€)', 'Valore': (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
@@ -840,7 +841,7 @@ async function esportaRegistroExcel(){
     const items = gruppi[k] || [];
     if(!items.length) return;
     const fe = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
-    const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+    const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0) + totaleAcconti(anno, function(t){ return t === k; });
     contabRighe.push({ 'Voce': k + ' (' + items.length + ' pratiche)', 'Valore': 'Fatture ' + fe.toFixed(2) + ' € · Incasso ' + inc.toFixed(2) + ' €' });
   });
 
@@ -1110,7 +1111,7 @@ function onDatiAggiornati(){
 let AGGIORNAMENTO_IN_CORSO = false;
 let ULTIMA_FIRMA_SERVER = '';
 function firmaDati(){
-  return JSON.stringify([state.pratiche, state.versamenti, state.isee, state.clienti, state.collaboratori, state.scadenze, state.speseSede], function(k, v){ return k.charAt(0) === '_' ? undefined : v; });
+  return JSON.stringify([state.pratiche, state.versamenti, state.isee, state.clienti, state.collaboratori, state.scadenze, state.speseSede, state.acconti], function(k, v){ return k.charAt(0) === '_' ? undefined : v; });
 }
 function staModificando(){
   const a = document.activeElement;
@@ -1464,7 +1465,8 @@ function render(){
   const conti = conteggi730(pratAnno);
   const tot = conti.tot, daLavorare = conti.daFare, lavorate = conti.lav;
   const fattureEmesse = pratAnno.reduce((a,p)=>a+Number(p.compenso||0),0);
-  const incassoLordo = pratAnno.reduce((a,p)=>a+Number(p.pagato||0),0);
+  const accontiAnno = totaleAcconti(annoSel);
+  const incassoLordo = pratAnno.reduce((a,p)=>a+Number(p.pagato||0),0) + accontiAnno;
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
   const incasso = incassoLordo - versatoCaf;
   const speseSede = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(annoSel) : 0;
@@ -1480,12 +1482,12 @@ function render(){
     <div class="stat c3" style="background:#2f9e5f; border-color:#2f9e5f; color:#fff"><b>${lavorate}</b><span style="color:rgba(255,255,255,.92); font-weight:600">730 LAVORATE</span></div>
     <div class="stat c3" style="background:#e57373; border-color:#e57373; color:#fff"><b>${daLavorare}</b><span style="color:rgba(255,255,255,.95); font-weight:600">730 DA LAVORARE</span></div>` : '') + (vEco ? `
     <div class="stat c5 verde"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE</span></div>
-    <div class="stat c5 viola"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
+    <div class="stat c5 viola"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE${accontiAnno ? ' (di cui acconti ' + fmtEuro(accontiAnno) + ')' : ''}</span></div>
     <div class="stat c5 blu"><b>${fmtEuro(versatoCaf)}</b><span>PAGAMENTI CAF</span></div>
     <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">NETTO (incasso − pagamenti CAF)</span></div>
     ${vedeGuadagni() ? `<div class="stat c5" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE</span></div>${typeof debitoAngelo === 'function' && debitoAngelo().totale ? `<div class="stat c5" style="background:#8e5bd6; border-color:#8e5bd6; color:#fff"><b>${fmtEuro(debitoAngelo().totale)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">DA RESTITUIRE AD ANGELO</span></div>` : ''}<div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO (meno spese sede)</span></div>` : ''}` : '') + (vBlocchi ? `
-    ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true)}
-    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }))}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf, speseSede) : '');
+    ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true, totaleAcconti(annoSel, tipoE730))}
+    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }), false, totaleAcconti(annoSel, function(t){ return !tipoE730(t); }))}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf, speseSede, annoSel) : '');
   if(typeof renderSpese === 'function') renderSpese();
 
   const caf = document.getElementById('caf-card');
@@ -1636,7 +1638,7 @@ function render(){
     const items = visibili.filter(function(p){ return (p.tipo || 'SENZA TIPO') === k; });
     if(inRicerca && !items.length) return '';
     const fe = items.reduce(function(a,p){ return a + Number(p.compenso||0); }, 0);
-    const inc = items.reduce(function(a,p){ return a + Number(p.pagato||0); }, 0);
+    const inc = items.reduce(function(a,p){ return a + Number(p.pagato||0); }, 0) + (inRicerca ? 0 : totaleAcconti(annoAttivo(), function(t){ return t === k; }));
     const open = aperti[k] === true;
     const col = coloreCollaboratore(k);
     const schedeAperte = aperti[k + '|schede'] === true || items.some(function(p){ return p._editing || p._confirmDelete || p._editingFattura; });
@@ -2033,11 +2035,60 @@ async function cambiaStato(id, stato){
   render();
 }
 
+// Acconti dei collaboratori: entrano nell'incasso del collaboratore e in quello generale (anno della data dell'acconto)
+function tipoE730(t){ return e730({ tipo: t }); }
+function accontiDi(anno, filtroTipo){
+  return (state.acconti || []).filter(function(a){ return annoDiData(a.data) === anno && (!filtroTipo || filtroTipo(a.tipo)); });
+}
+function totaleAcconti(anno, filtroTipo){ return accontiDi(anno, filtroTipo).reduce(function(t,a){ return t + Number(a.importo||0); }, 0); }
+function puoScrivereAcconti(){ return typeof puo === 'function' && puo('registro', true); }
+function nuovoAcconto(tipo){
+  const vecchio = document.getElementById('popup-acconto'); if(vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-acconto';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #8e5bd6; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:20px 22px; max-width:440px; width:100%">'
+    + '<div style="font-size:19px; font-weight:800; color:#8e5bd6">💰 Nuovo acconto</div><div style="font-size:13px; color:var(--sub); margin:2px 0 12px">' + esc(tipo) + '</div>'
+    + '<div class="grid" style="gap:8px"><div><label>Data</label><input id="ac-data" value="' + todayIT() + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>'
+    + '<div><label>Importo (€)</label><input id="ac-importo" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800"></div>'
+    + '<div><label>Pagamento</label><select id="ac-metodo">' + METODI_PAGAMENTO.map(function(m){ return '<option' + (m === 'CONTANTI' ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select></div>'
+    + '<div><label>Note</label><input id="ac-note" placeholder="Facoltative"></div></div>'
+    + '<div id="ac-esito" style="font-size:13px; margin-top:6px"></div>'
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px"><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Annulla</button><button type="button" data-azione="si" style="background:#8e5bd6; color:#fff; font-weight:800">💾 Registra acconto</button></div></div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){ const i = document.getElementById('ac-importo'); if(i) i.focus(); }, 50);
+  ov.addEventListener('click', async function(e){
+    const b = e.target.closest('button[data-azione]');
+    if(!b && e.target !== ov) return;
+    if(!b || b.dataset.azione === 'no'){ ov.remove(); return; }
+    const dataA = document.getElementById('ac-data').value.trim(), imp = parseImporto(document.getElementById('ac-importo').value);
+    const esito = document.getElementById('ac-esito');
+    if(!parseDataIT(dataA)){ esito.innerHTML = '<b style="color:#c0392b">Data nel formato GG/MM/AAAA</b>'; return; }
+    if(!imp || imp <= 0){ esito.innerHTML = '<b style="color:#c0392b">Scrivi l\'importo dell\'acconto</b>'; return; }
+    b.disabled = true;
+    const r = await data.acconti.aggiungi({ tipo: tipo, data: dataA, importo: imp, metodoPagamento: document.getElementById('ac-metodo').value, note: document.getElementById('ac-note').value.trim() });
+    if(r.error){ b.disabled = false; esito.innerHTML = '<b style="color:#c0392b">❌ ' + esc(r.error) + '</b>'; return; }
+    ov.remove();
+    aperti[tipo] = true;
+    avviso('💰 Acconto di ' + fmtEuro(imp) + ' registrato per ' + tipo);
+    render();
+  });
+}
+async function rimuoviAcconto(id){
+  const a = (state.acconti||[]).find(function(x){ return x.id === id; });
+  if(!a || !confirm('Eliminare l\'acconto di ' + fmtEuro(a.importo) + ' del ' + a.data + ' (' + a.tipo + ')?')) return;
+  const r = await data.acconti.elimina(id);
+  if(r.error){ avviso('❌ ' + r.error, true); return; }
+  avviso('✓ Acconto eliminato');
+  render();
+}
 // Contabilita' del singolo collaboratore / tipo di pratica (dentro il suo gruppo nel registro)
 function contabilitaCollaboratoreHTML(k, items){
-  if(!items.length) return '';
+  if(!items.length && !accontiDi(annoAttivo(), function(t){ return t === k; }).length) return (puoScrivereAcconti() ? '<div style="margin-bottom:8px"><button type="button" onclick="nuovoAcconto(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">+ 💰 Acconto</button></div>' : '');
   const fatt = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
-  const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+  const accLista = accontiDi(annoAttivo(), function(t){ return t === k; });
+  const acc = accLista.reduce(function(t,a){ return t + Number(a.importo||0); }, 0);
+  const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0) + acc;
   const n = sommaPeso(items);
   const lav = sommaPeso(items.filter(eLavorata)), daFare = sommaPeso(items.filter(eDaLavorare));
   const daIncassare = Math.max(0, fatt - inc);
@@ -2053,13 +2104,18 @@ function contabilitaCollaboratoreHTML(k, items){
     + tile('#2f9e5f', lav, 'Lavorate')
     + tile(daFare ? '#e57373' : '#8a8f98', daFare, 'Da lavorare')
     + tile('#2f9e5f', fmtEuro(fatt), 'Fatture emesse')
-    + tile('#8e5bd6', fmtEuro(inc), 'Incasso')
+    + tile('#8e5bd6', fmtEuro(inc), 'Incasso' + (acc ? ' (di cui acconti ' + fmtEuro(acc) + ')' : ''))
     + tile(daIncassare ? '#d4881c' : '#8a8f98', fmtEuro(daIncassare), 'Da incassare')
     + (vedeGuadagni() ? tile('#374151', fmtEuro(inc - fatt), 'Provento') : '')
     + tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'Prezzo medio')
     + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:12.5px">'
     + METODI_PAGAMENTO.concat(pag[''].n ? [''] : []).map(function(m){ return '<span style="padding:3px 10px; border-radius:999px; background:var(--line)">' + ({ CONTANTI:'💶 Contanti', POS:'💳 POS', BONIFICO:'🏦 Bonifico' }[m] || '❔ Non indicato') + ': <b>' + fmtEuro(pag[m].inc) + '</b> (' + pag[m].n + ')</span>'; }).join('')
+    + '</div>'
+    + '<div style="margin-top:10px; padding-top:8px; border-top:1px dashed var(--line)">'
+    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap"><b style="color:#8e5bd6">💰 Acconti ' + annoAttivo() + ': ' + fmtEuro(acc) + '</b>'
+    + (puoScrivereAcconti() ? '<button type="button" onclick="nuovoAcconto(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer">+ 💰 Acconto</button>' : '') + '</div>'
+    + (accLista.length ? accLista.map(function(a){ return '<div style="display:flex; justify-content:space-between; gap:8px; font-size:13px; padding:4px 0; border-bottom:1px solid var(--line)"><span>' + esc(a.data) + (a.metodoPagamento ? ' · ' + esc(a.metodoPagamento) : '') + (a.note ? ' · ' + esc(a.note) : '') + (a.creatoDa ? ' <span style="color:var(--sub)">(' + esc(a.creatoDa) + ')</span>' : '') + '</span><span><b>' + fmtEuro(a.importo) + '</b>' + (puoScrivereAcconti() ? ' <button onclick="rimuoviAcconto(\'' + a.id + '\')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-weight:700" title="Elimina">✕</button>' : '') + '</span></div>'; }).join('') : '<div style="font-size:12.5px; color:var(--sub)">Nessun acconto registrato</div>')
     + '</div></div>';
 }
 // Elenco compatto di tutte le pratiche del collaboratore
@@ -2361,9 +2417,9 @@ function conteggi730(pratiche){
   const daFare = sommaPeso(l.filter(eDaLavorare)), lav = sommaPeso(l.filter(eLavorata));
   return { tot: sommaPeso(l), daFare: daFare, lav: lav, rinunce: sommaPeso(l) - daFare - lav };
 }
-function bloccoIntroito(titolo, colore, lista, conMedia){
+function bloccoIntroito(titolo, colore, lista, conMedia, acconti){
   const fatt = lista.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
-  const inc = lista.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+  const inc = lista.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0) + Number(acconti||0);
   const n = sommaPeso(lista);
   const tile = function(bg, valore, etichetta){
     return '<div class="stat '+(conMedia?'c5':'c4')+'" style="background:'+bg+'; border-color:'+bg+'; color:#fff"><b>'+valore+'</b><span style="color:rgba(255,255,255,.92); font-weight:600; letter-spacing:.03em">'+etichetta+'</span></div>';
@@ -2371,7 +2427,7 @@ function bloccoIntroito(titolo, colore, lista, conMedia){
   return '<div style="flex-basis:100%; margin-top:10px; padding:8px 14px; border-radius:10px; background:'+colore+'; color:#fff; font-size:15px; font-weight:800; letter-spacing:.04em">'+esc(titolo)+'</div>'
     + tile(colore, n, 'PRATICHE')
     + tile('#2f9e5f', fmtEuro(fatt), 'FATTURE EMESSE')
-    + tile('#8e5bd6', fmtEuro(inc), 'INCASSO')
+    + tile('#8e5bd6', fmtEuro(inc), 'INCASSO' + (acconti ? ' (di cui acconti ' + fmtEuro(acconti) + ')' : ''))
     + (vedeGuadagni() ? tile('#374151', fmtEuro(inc-fatt), 'PROVENTO (INCASSO − FATTURE)') : '')
     + (conMedia ? tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'PREZZO MEDIO (FATTURE ÷ PRATICHE)') : '');
 }
@@ -2493,11 +2549,11 @@ function aggiornaCampoFineForm(){
   }
 }
 
-function riepilogoGuadagno(pratiche, pagamentiCaf, speseSede){
+function riepilogoGuadagno(pratiche, pagamentiCaf, speseSede, anno){
   speseSede = speseSede || 0;
   const provento = function(lista){ return lista.reduce(function(a,p){ return a + Number(p.pagato||0) - Number(p.compenso||0); }, 0); };
-  const p730 = provento(pratiche.filter(e730));
-  const pAltre = provento(pratiche.filter(function(p){ return !e730(p); }));
+  const p730 = provento(pratiche.filter(e730)) + (anno ? totaleAcconti(anno, tipoE730) : 0);
+  const pAltre = provento(pratiche.filter(function(p){ return !e730(p); })) + (anno ? totaleAcconti(anno, function(t){ return !tipoE730(t); }) : 0);
   const voce = function(testo, valore, colore){ return '<span style="white-space:nowrap"><span style="color:var(--sub); font-weight:600">'+testo+'</span> <b style="color:'+colore+'">'+fmtEuro(valore)+'</b></span>'; };
   return '<div style="flex-basis:100%; margin-top:6px; padding:12px 16px; border-radius:12px; background:var(--card); border:2px dashed #374151; font-size:15px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px">'
     + voce('Provento 730', p730, '#1d4f91') + '<b>+</b>'

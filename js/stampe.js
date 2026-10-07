@@ -101,7 +101,7 @@ function descrizioneFiltri() {
 
 function riepilogoStampa(lista) {
   const fatt = lista.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
-  const inc = lista.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);
+  let inc = lista.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);
   const l730 = lista.filter(e730), altre = lista.filter(function (p) { return !e730(p); });
   const voci = [
     ['Pratiche (congiunte valgono 2)', sommaPeso(lista), false],
@@ -114,6 +114,8 @@ function riepilogoStampa(lista) {
   METODI_PAGAMENTO.forEach(function (m) { voci.push(['Incasso ' + (m === 'POS' ? 'POS' : m.toLowerCase()), perPag[m].inc, true]); });
   if (perPag[''].inc) voci.push(['Incasso senza tipo di pagamento', perPag[''].inc, true]);
   if (stampaSuTotale()) {
+    const acc = typeof totaleAcconti === 'function' ? totaleAcconti(STAMPA.anno) : 0;
+    if (acc) { inc += acc; voci.push(['Acconti collaboratori (compresi nell\'incasso)', acc, true]); voci[2][1] = inc; }
     const caf = versamentiFiltrati().reduce(function (t, v) { return t + Number(v.importo || 0); }, 0);
     voci.push(['Pagamenti CAF', caf, true]);
     voci.push(['Netto (incasso − pagamenti CAF)', inc - caf, true]);

@@ -71,7 +71,7 @@ function renderGrafici() {
   const pratAnno = (state.pratiche || []).filter(function (p) { return annoPratica(p) === anno; });
   const versAnno = (state.versamenti || []).filter(function (v) { return annoDiData(v.data) === anno; });
   const fatture = sommaCampo(pratAnno, 'compenso');
-  const incasso = sommaCampo(pratAnno, 'pagato');
+  const incasso = sommaCampo(pratAnno, 'pagato') + (typeof totaleAcconti === 'function' ? totaleAcconti(anno) : 0);
   const caf = sommaCampo(versAnno, 'importo');
   const speseSedeAnno = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0;
   document.getElementById('grafici-avviso').textContent = pratAnno.length ? '' : 'Nessuna pratica nel ' + anno + ': scegli un altro anno in "Anno di protocollo".';
