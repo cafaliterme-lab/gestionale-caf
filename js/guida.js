@@ -125,7 +125,7 @@ const GUIDA = [
 <li>Usa la <b>barra di ricerca</b> (nome, numero, tipo, telefono…) e il filtro <b>per stato</b>.</li>
 <li>Puoi cambiare lo <b>stato</b> direttamente dal menu nella riga.</li>
 <li><b>Apri</b> porta alla scheda completa della pratica; <b>🧾</b> stampa la ricevuta.</li>
-<li>Più sotto le pratiche sono raggruppate <b>per tipo</b>, con la scheda completa di ognuna.</li>
+<li>Più sotto le pratiche sono raggruppate <b>per tipo / collaboratore</b> (730 SEDE, 730 RICCA AGATINO, 730 BRIGUGLIO, 730 FARAONE…). Sulla barra colorata vedi il numero di pratiche, le fatture e l'incasso; <b>cliccandola</b> si apre:<ul><li>la <b>📊 contabilità del collaboratore</b> per l'anno scelto: pratiche, lavorate, da lavorare, fatture emesse, incasso, <b>da incassare</b>, provento, prezzo medio e incasso per tipo di pagamento (contanti, POS, bonifico);</li><li>l'<b>elenco di tutte le sue pratiche</b> (protocollo, data, cliente, stato, fattura, pagato, pagamento) con <b>Apri</b>;</li><li><b>📋 Schede complete delle pratiche</b> per modificarle, stampare la ricevuta, mandare WhatsApp o e-mail.</li></ul>Ogni pratica conta sia nella contabilità generale sia in quella del suo collaboratore.</li>
 </ul>` },
 
   { id: 'stati', icona: '🏷️', titolo: 'Stati (etichette) delle pratiche', parole: 'stato etichetta in arrivo lavorazione scansionata da pagare lavorata fatturare pagato ritirare non paga rinuncia',
