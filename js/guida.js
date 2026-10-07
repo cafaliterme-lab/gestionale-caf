@@ -300,7 +300,7 @@ const GUIDA = [
 <li><b>Non rinnova</b>: chiude la scadenza se il cliente non prosegue.</li>
 </ul></li>
 <li>Cliente e scadenza passano all'anno successivo; la pratica resta nel registro dell'anno in cui è stata fatta.</li>
-</ul><p><b>Stato della pratica colf e badanti</b>: solo per questo tipo compaiono due stati in più, <b>🟢 Pratica attiva</b> e <b>⚫ Pratica cessata</b>. Con <b>Rinnova</b> la nuova pratica parte già come "Pratica attiva". Se metti <b>Pratica cessata</b>, la scadenza dell'assistenza viene tolta dal calendario (non arrivano più avvisi); se la rimetti attiva, la scadenza torna.</p>` },
+</ul><p><b>Stato della pratica colf e badanti</b>: per questo tipo si possono scegliere solo <b>In arrivo, In lavorazione, Da pagare, Pagato, 🟢 Pratica attiva</b> e <b>⚫ Pratica cessata</b> (gli altri stati non compaiono; una pratica che ha già un altro stato lo mantiene finché non lo cambi). Con <b>Rinnova</b> la nuova pratica parte già come "Pratica attiva". Se metti <b>Pratica cessata</b>, la scadenza dell'assistenza viene tolta dal calendario (non arrivano più avvisi); se la rimetti attiva, la scadenza torna.</p>` },
 
   { id: 'archivio', icona: '🗂️', titolo: 'Archivio clienti (anagrafica) e nuovo cliente da documento', parole: 'archivio clienti anagrafica cerca telefono email importa csv elimina cliente nuovo cliente documento ocr scansione senza pratica',
     testo: `

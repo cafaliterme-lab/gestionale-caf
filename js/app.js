@@ -29,7 +29,12 @@ const STATI = {
 };
 // Stati che si vedono solo per i contratti colf e badanti
 const STATI_SOLO_COLF = ['pratica_attiva','pratica_cessata'];
-function statoVisibile(k, tipo, sel){ return k === sel || STATI_SOLO_COLF.indexOf(k) < 0 || eColf(tipo); }
+// Stati che per i contratti colf e badanti non servono e non si mostrano
+const STATI_NON_COLF = ['da_lavorare_scansionata','filca_non_paga','fps_non_paga','lavorata','lavorata_da_fatturare','non_paga','rinuncia_compilazione','pagato_da_ritirare'];
+function statoVisibile(k, tipo, sel){
+  if(k === sel) return true;
+  return eColf(tipo) ? STATI_NON_COLF.indexOf(k) < 0 : STATI_SOLO_COLF.indexOf(k) < 0;
+}
 const TIPI_DEFAULT = ["730 SEDE","730 BRIGUGLIO ANTONIO","730 CAMINITI ANTONIO","730 CAMINITI LUIGI","730 RICCA AGATINO","730 FILCA","730 FPS IN CONVENZIONE","730 CRISAFULLI ROBERTO","730 FARAONE ARTURO","730 DECEDUTI","730 INTEGRATIVI/RETTIFICATIVI","730 TRIOLO CARMELA","730 DI BELLA SANTINO","CONTRATTI DI AFFITTO","CONTRATTI COLF E BADANTI","ISEE A PAGAMENTO","IMU","SUCCESSIONI","ISEE","SEND","MODELLI UNICO PF","RED","INVCIV","ADI","F24"];
 let NOMI_OPERATORI = [];
 function getTipiList(){ return (state.collaboratori && state.collaboratori.length) ? state.collaboratori : TIPI_DEFAULT; }
@@ -1252,7 +1257,8 @@ function coloraTriggerTipo(){
 }
 function initStatoBtns(){
   const sel = document.getElementById('f-stato');
-  sel.innerHTML = statoOptions('arrivo', 'CONTRATTI COLF E BADANTI'); // tutti gli stati: i chip non validi per il tipo si nascondono
+  // tutti gli stati: i chip non validi per il tipo scelto si nascondono
+  sel.innerHTML = Object.keys(STATI).map(function(k){ return '<option value="'+k+'"'+(k==='arrivo'?' selected':'')+'>'+STATI[k].e+' '+STATI[k].l+'</option>'; }).join('');
   renderChips('f-stato-btns','f-stato', Object.keys(STATI), function(k){ return STATI[k].l; }, function(k){ return k; }, null, function(k){ return STATI[k].c; });
   Array.from(document.getElementById('f-stato-btns').children).forEach(function(b, i){
     const col = STATI[Object.keys(STATI)[i]].c;
