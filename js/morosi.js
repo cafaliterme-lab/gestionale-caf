@@ -7,8 +7,11 @@ function eMorosa(p) { return !p.annullata && p.stato !== 'rinuncia_compilazione'
 
 function morosiAnno(anno, conCollaboratori) {
   return (state.pratiche || []).filter(function (p) {
-    return annoPratica(p) === anno && eMorosa(p) && (conCollaboratori || typeof haAcconti !== 'function' || !haAcconti(p.tipo));
-  }).sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || '')); });
+    // anno 0 = tutti gli anni precedenti a quello di protocollo
+    return (anno ? annoPratica(p) === anno : annoPratica(p) < annoAttivo()) && eMorosa(p) && (conCollaboratori || typeof haAcconti !== 'function' || !haAcconti(p.tipo));
+  }).sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || '')) || (annoPratica(a) - annoPratica(b)); });
+}
+function nomeAnnoMorosi(a) { return a ? String(a) : 'TUTTI GLI ANNI';
 }
 
 function renderMorosi() {
@@ -18,22 +21,22 @@ function renderMorosi() {
   // segue sempre l'anno di protocollo: nel 2027 mostra i morosi 2026, nel 2028 quelli 2027…
   if (MOROSI.anno == null || MOROSI.annoBase !== annoAttivo()) { MOROSI.anno = annoPrec; MOROSI.annoBase = annoAttivo(); }
   const anni = Array.from(new Set((state.pratiche || []).map(annoPratica).filter(function (a) { return a < annoAttivo(); }))).sort(function (a, b) { return b - a; });
-  if (anni.indexOf(MOROSI.anno) < 0) anni.unshift(MOROSI.anno);
+  if (MOROSI.anno && anni.indexOf(MOROSI.anno) < 0) anni.unshift(MOROSI.anno);
   const tutti = morosiAnno(MOROSI.anno, MOROSI.collaboratori);
   const q = MOROSI.cerca.trim().toUpperCase();
   const lista = q ? tutti.filter(function (p) { return (String(p.nome || '') + ' ' + formattaProtocolloTesto(p) + ' ' + (p.telefono || '')).toUpperCase().indexOf(q) >= 0; }) : tutti;
   const tot = tutti.reduce(function (t, p) { return t + residuoPratica(p); }, 0);
   const sola = document.body.classList.contains('sola-lettura');
   box.innerHTML = '<details class="grp" style="--gc:#c0392b" ' + (MOROSI.aperto ? 'open' : '') + ' ontoggle="MOROSI.aperto=this.open">'
-    + '<summary style="background:#c0392b; color:#fff; background-image:none"><span class="grp-name">💸 TABULATO MOROSI ' + MOROSI.anno + '</span><span class="grp-n">' + tutti.length + '</span><span class="grp-soldi">Da pagare<br>' + fmtEuro(tot) + '</span></summary>'
+    + '<summary style="background:#c0392b; color:#fff; background-image:none"><span class="grp-name">💸 TABULATO MOROSI ' + nomeAnnoMorosi(MOROSI.anno) + '</span><span class="grp-n">' + tutti.length + '</span><span class="grp-soldi">Da pagare<br>' + fmtEuro(tot) + '</span></summary>'
     + '<div class="grp-b" style="padding-top:10px">'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px">'
-    + '<label style="margin:0">Anno <select onchange="MOROSI.anno=Number(this.value); renderMorosi()" style="width:auto">' + anni.map(function (a) { return '<option' + (a === MOROSI.anno ? ' selected' : '') + '>' + a + '</option>'; }).join('') + '</select></label>'
+    + '<label style="margin:0">Anno <select onchange="MOROSI.anno=Number(this.value); renderMorosi()" style="width:auto">' + anni.map(function (a) { return '<option value="' + a + '"' + (a === MOROSI.anno ? ' selected' : '') + '>' + a + '</option>'; }).join('') + '<option value="0"' + (!MOROSI.anno ? ' selected' : '') + '>Tutti gli anni</option></select></label>'
     + '<input type="search" placeholder="Cerca cliente, protocollo, telefono…" value="' + esc(MOROSI.cerca) + '" oninput="MOROSI.cerca=this.value; renderMorosiLista()" style="flex:1; min-width:200px">'
     + '<label class="chk"><input type="checkbox" ' + (MOROSI.collaboratori ? 'checked' : '') + ' onchange="MOROSI.collaboratori=this.checked; renderMorosi()"> Includi pratiche dei collaboratori</label>'
     + '<button type="button" onclick="stampaMorosi()" style="background:#374151; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">🖨️ Stampa</button>'
     + '</div>'
-    + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:6px">Pratiche del ' + MOROSI.anno + ' con fattura più alta del pagato (escluse annullate e rinunce' + (MOROSI.collaboratori ? '' : ' e, se non spunti la casella, quelle dei collaboratori') + '). Quando il cliente paga premi <b>✓ Pagato</b>: l\'incasso viene scritto nella sua pratica del ' + MOROSI.anno + '.</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:6px">Pratiche ' + (MOROSI.anno ? 'del ' + MOROSI.anno : 'di tutti gli anni precedenti al ' + annoAttivo()) + ' con fattura più alta del pagato (escluse annullate e rinunce' + (MOROSI.collaboratori ? '' : ' e, se non spunti la casella, quelle dei collaboratori') + '). Quando il cliente paga premi <b>✓ Pagato</b>: l\'incasso viene scritto nella pratica dell\'anno a cui si riferisce.</div>'
     + '<div id="morosi-lista">' + tabellaMorosiHTML(lista, sola) + '</div>'
     + '</div></details>';
 }
@@ -131,9 +134,9 @@ function stampaMorosi() {
   const tot = lista.reduce(function (t, p) { return t + residuoPratica(p); }, 0);
   const tabella = tabellaMorosiHTML(lista, true).replace(/<button[\s\S]*?<\/button>/g, '');
   w.document.open();
-  w.document.write('<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Morosi ' + MOROSI.anno + '</title><style>@page{size:A4 landscape; margin:10mm} body{font-family:Arial,Helvetica,sans-serif; font-size:11.5px; color:#0f1b2d; -webkit-print-color-adjust:exact; print-color-adjust:exact} h1{font-size:16px; color:#c0392b; margin:0 0 4px} table{width:100%; border-collapse:collapse; margin-top:8px} th,td{border:1px solid #cfd8e3; padding:4px 6px; text-align:left} th{background:#c0392b; color:#fff} th:last-child,td:last-child{display:none} .sub2{font-size:10px; color:#5b6b82} .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px} .barra button{padding:8px 16px; margin:0 6px 10px 0} @media print{.barra{display:none}}</style></head><body>'
+  w.document.write('<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Morosi ' + nomeAnnoMorosi(MOROSI.anno) + '</title><style>@page{size:A4 landscape; margin:10mm} body{font-family:Arial,Helvetica,sans-serif; font-size:11.5px; color:#0f1b2d; -webkit-print-color-adjust:exact; print-color-adjust:exact} h1{font-size:16px; color:#c0392b; margin:0 0 4px} table{width:100%; border-collapse:collapse; margin-top:8px} th,td{border:1px solid #cfd8e3; padding:4px 6px; text-align:left} th{background:#c0392b; color:#fff} th:last-child,td:last-child{display:none} .sub2{font-size:10px; color:#5b6b82} .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px} .barra button{padding:8px 16px; margin:0 6px 10px 0} @media print{.barra{display:none}}</style></head><body>'
     + '<div class="barra"><button onclick="window.print()">🖨️ Stampa / Salva come PDF</button><button onclick="window.close()">Chiudi</button></div>'
-    + '<h1>CAF CISL Alì Terme – Tabulato morosi ' + MOROSI.anno + '</h1><div style="color:#5b6b82">Stampato il ' + new Date().toLocaleDateString('it-IT') + ' · ' + lista.length + ' pratiche · totale da pagare <b>' + fmtEuro(tot) + '</b>' + (MOROSI.collaboratori ? ' · comprese le pratiche dei collaboratori' : '') + '</div>'
+    + '<h1>CAF CISL Alì Terme – Tabulato morosi ' + (MOROSI.anno || 'di tutti gli anni') + '</h1><div style="color:#5b6b82">Stampato il ' + new Date().toLocaleDateString('it-IT') + ' · ' + lista.length + ' pratiche · totale da pagare <b>' + fmtEuro(tot) + '</b>' + (MOROSI.collaboratori ? ' · comprese le pratiche dei collaboratori' : '') + '</div>'
     + tabella + '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>');
   w.document.close();
 }
