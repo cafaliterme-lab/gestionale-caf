@@ -2040,6 +2040,9 @@ function accontiDi(anno, filtroTipo){
   return (state.acconti || []).filter(function(a){ return annoDiData(a.data) === anno && (!filtroTipo || filtroTipo(a.tipo)); });
 }
 function totaleAcconti(anno, filtroTipo){ return accontiDi(anno, filtroTipo).reduce(function(t,a){ return t + Number(a.importo||0); }, 0); }
+// Tipi di pratica senza il tasto Acconto (non sono collaboratori che versano)
+const TIPI_SENZA_ACCONTO = ['730 FILCA','730 FPS IN CONVENZIONE','730 DECEDUTI','730 INTEGRATIVI/RETTIFICATIVI','CONTRATTI DI AFFITTO','CONTRATTI COLF E BADANTI','ISEE A PAGAMENTO','IMU','ISEE','RED','SEND','MODELLI UNICO PF','INVCIV','ADI','F24'];
+function haAcconti(k){ return TIPI_SENZA_ACCONTO.indexOf(String(k||'').toUpperCase().trim()) < 0; }
 function puoScrivereAcconti(){ return typeof puo === 'function' && puo('registro', true); }
 function nuovoAcconto(tipo){
   const vecchio = document.getElementById('popup-acconto'); if(vecchio) vecchio.remove();
@@ -2102,10 +2105,11 @@ function contabilitaCollaboratoreHTML(k, items){
       + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><b style="color:' + colS + '">📊 ' + esc(k) + ' – ' + annoAttivo() + '</b>' + bottoneStampaCollaboratore(k) + '</div>'
       + '<div style="display:flex; gap:6px; flex-wrap:wrap">' + tileS('#1d4f91', sommaPeso(items), 'Pratiche') + tileS('#2f9e5f', sommaPeso(items.filter(eLavorata)), 'Lavorate') + tileS(daFareS ? '#e57373' : '#8a8f98', daFareS, 'Da lavorare') + '</div></div>';
   }
-  if(!items.length && !accontiDi(annoAttivo(), function(t){ return t === k; }).length) return (puoScrivereAcconti() ? '<div style="margin-bottom:8px"><button type="button" onclick="nuovoAcconto(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">+ 💰 Acconto</button></div>' : '');
+  if(!items.length && !accontiDi(annoAttivo(), function(t){ return t === k; }).length) return (puoScrivereAcconti() && haAcconti(k) ? '<div style="margin-bottom:8px"><button type="button" onclick="nuovoAcconto(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">+ 💰 Acconto</button></div>' : '');
   const fatt = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const accLista = accontiDi(annoAttivo(), function(t){ return t === k; });
   const acc = accLista.reduce(function(t,a){ return t + Number(a.importo||0); }, 0);
+  const conAcc = haAcconti(k) || accLista.length > 0;
   const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
   const n = sommaPeso(items);
   const lav = sommaPeso(items.filter(eLavorata)), daFare = sommaPeso(items.filter(eDaLavorare));
@@ -2122,18 +2126,18 @@ function contabilitaCollaboratoreHTML(k, items){
     + tile(daFare ? '#e57373' : '#8a8f98', daFare, 'Da lavorare')
     + tile('#2f9e5f', fmtEuro(fatt), 'Fatture emesse')
     + tile('#8e5bd6', fmtEuro(inc), 'Incasso')
-    + tile('#0e7c86', fmtEuro(acc), 'Pagamenti effettuati')
-    + tile((inc - acc) > 0 ? '#c0392b' : '#374151', fmtEuro(inc - acc), 'Da incassare (incasso − pagamenti)')
+    + (conAcc ? tile('#0e7c86', fmtEuro(acc), 'Pagamenti effettuati')
+    + tile((inc - acc) > 0 ? '#c0392b' : '#374151', fmtEuro(inc - acc), 'Da incassare (incasso − pagamenti)') : '')
     + tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'Prezzo medio')
     + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:12.5px">'
     + METODI_PAGAMENTO.concat(pag[''].n ? [''] : []).map(function(m){ return '<span style="padding:3px 10px; border-radius:999px; background:var(--line)">' + ({ CONTANTI:'💶 Contanti', POS:'💳 POS', BONIFICO:'🏦 Bonifico' }[m] || '❔ Non indicato') + ': <b>' + fmtEuro(pag[m].inc) + '</b> (' + pag[m].n + ')</span>'; }).join('')
     + '</div>'
-    + '<div style="margin-top:10px; padding-top:8px; border-top:1px dashed var(--line)">'
+    + (!conAcc ? '</div>' : '<div style="margin-top:10px; padding-top:8px; border-top:1px dashed var(--line)">'
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap"><b style="color:#0e7c86">💰 Pagamenti effettuati (acconti) ' + annoAttivo() + ': ' + fmtEuro(acc) + '</b>'
-    + (puoScrivereAcconti() ? '<button type="button" onclick="nuovoAcconto(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer">+ 💰 Acconto</button>' : '') + '</div>'
+    + (puoScrivereAcconti() && haAcconti(k) ? '<button type="button" onclick="nuovoAcconto(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer">+ 💰 Acconto</button>' : '') + '</div>'
     + (accLista.length ? accLista.map(function(a){ return '<div style="display:flex; justify-content:space-between; gap:8px; font-size:13px; padding:4px 0; border-bottom:1px solid var(--line)"><span>' + esc(a.data) + (a.metodoPagamento ? ' · ' + esc(a.metodoPagamento) : '') + (a.note ? ' · ' + esc(a.note) : '') + (a.creatoDa ? ' <span style="color:var(--sub)">(' + esc(a.creatoDa) + ')</span>' : '') + '</span><span><b>' + fmtEuro(a.importo) + '</b>' + (puoScrivereAcconti() ? ' <button onclick="rimuoviAcconto(\'' + a.id + '\')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-weight:700" title="Elimina">✕</button>' : '') + '</span></div>'; }).join('') : '<div style="font-size:12.5px; color:var(--sub)">Nessun acconto registrato</div>')
-    + '</div></div>';
+    + '</div></div>');
 }
 // Elenco compatto di tutte le pratiche del collaboratore
 function tabellaPraticheGruppoHTML(items, k){
