@@ -42,10 +42,8 @@ async function caricaChat() {
     if (!r.ok || !Array.isArray(r.data)) return;
     const prima = CHAT.messaggi.length ? CHAT.messaggi[0].creato_il : null;
     CHAT.messaggi = r.data;
-    if (!CHAT.utenti.length) {
-      const u = await fetchSupabase('/rest/v1/rpc/elenco_utenti', 'POST', {});
-      if (u.ok && Array.isArray(u.data)) CHAT.utenti = u.data;
-    }
+    const u = await fetchSupabase('/rest/v1/rpc/elenco_utenti', 'POST', {});
+    if (u.ok && Array.isArray(u.data)) CHAT.utenti = u.data;
     // messaggio nuovo arrivato mentre la chat è chiusa: avviso a video
     if (prima && !CHAT.aperta) {
       const nuovi = CHAT.messaggi.filter(function (m) { return m.creato_il > prima && m.da_id !== auth.profilo.id && chatPerMe(m) && !m.compito; });
@@ -191,6 +189,7 @@ function disegnaChat() {
     }).join('') : '<div style="text-align:center; color:var(--sub); margin-top:30px">' + (CHAT.scheda === 'compiti' ? 'Nessun compito' : 'Nessun messaggio: scrivi il primo!') + '</div>')
     + '</div>'
     + '<div style="padding:8px 10px; border-top:1px solid var(--line)">'
+    + (CHAT.utenti.filter(function (u) { return u.id !== io; }).length ? '' : '<div style="font-size:12px; color:#c0392b; font-weight:700; margin-bottom:6px">⚠️ Nessun altro utente può usare la chat: ' + (auth.profilo.ruolo === 'admin' ? 'accendila in Utenti e permessi (💬 Chat interna → Attiva per tutti) e controlla che l\'utente abbia la spunta "Abilitata".' : 'chiedi all\'amministratore di attivarla.') + '</div>')
     + '<div style="display:flex; gap:6px; align-items:center; margin-bottom:6px; flex-wrap:wrap">'
     + '<select id="chat-a" style="width:auto; flex:1; padding:5px 8px; font-size:13px"><option value="">👥 A tutti</option>'
     + CHAT.utenti.filter(function (u) { return u.id !== io; }).map(function (u) { return '<option value="' + u.id + '"' + (u.id === dest ? ' selected' : '') + '>👤 ' + esc(u.nome) + '</option>'; }).join('') + '</select>'
