@@ -3,7 +3,7 @@
  * Ogni capitolo ha titolo, parole chiave e testo; la lente cerca in tutto e evidenzia le parole trovate.
  */
 const GUIDA = [
-  { id: 'inizio', icona: '🚀', titolo: 'Primi passi: accesso e schermata principale', parole: 'login accesso password entrare utente esci cambia utente anno protocollo menu orologio qr',
+  { id: 'inizio', icona: '🚀', titolo: 'Primi passi: accesso e schermata principale', parole: 'password dimenticata recupero codice login accesso password entrare utente esci cambia utente anno protocollo menu orologio qr',
     testo: `
 <p>Il programma si apre dal browser (consigliati <b>Chrome</b> o <b>Edge</b>) all'indirizzo <b>gestionale-caf.vercel.app</b>, oppure dall'icona <b>CAF CISL</b> se l'hai installato come app.</p>
 <ol>
@@ -13,7 +13,7 @@ const GUIDA = [
 <li>Il <b>menu</b> colorato porta alle varie sezioni: Inserimento anagrafica, Registro di protocollo, Contabilità, Grafici, Versamenti CAF, Spese sede, Collaboratori, Scadenze, Messaggi, Modulistica, Utenti e permessi (solo amministratore).</li>
 <li>In alto a destra: <b>📲 Installa app</b>, <b>📖 Guida</b>, <b>Cambia utente</b> e <b>🚪 Esci dal programma</b>.</li>
 </ol>
-<p class="g-nota">I dati sono salvati online: quello che inserisce un operatore lo vedono subito anche gli altri, su PC e telefono. Il programma si aggiorna da solo ogni pochi secondi.</p><p><b>🎞️ Guida a slide</b>: in alto in questa finestra c'è il tasto per la guida a schermate, da sfogliare con ◀ ▶ (o con le frecce della tastiera, o scorrendo col dito). L'amministratore vede anche <b>🔐 Guida amministratore</b>, con le funzioni riservate (utenti, permessi, tipi di pratica, backup).</p>` },
+<p class="g-nota">I dati sono salvati online: quello che inserisce un operatore lo vedono subito anche gli altri, su PC e telefono. Il programma si aggiorna da solo ogni pochi secondi.</p><p><b>🎞️ Guida a slide</b>: in alto in questa finestra c'è il tasto per la guida a schermate, da sfogliare con ◀ ▶ (o con le frecce della tastiera, o scorrendo col dito). L'amministratore vede anche <b>🔐 Guida amministratore</b>, con le funzioni riservate (utenti, permessi, tipi di pratica, backup).</p><p><b>🔑 Password dimenticata?</b>: nella schermata di accesso, sotto Accedi. Scrivi la tua e-mail e premi <b>📧 Mandami il codice</b>: arriva un'e-mail dalla casella del CAF con un <b>codice di 6 cifre</b> (vale 15 minuti; controlla anche lo spam). Scrivi il codice e due volte la nuova password e premi <b>💾 Cambia password</b>, poi accedi. Se il codice non arriva, l'amministratore può cambiarti la password da Utenti e permessi.</p>` },
 
   { id: 'contatori', icona: '🔢', titolo: 'I contatori in alto', parole: 'contatori totale pratiche lavorate da lavorare operatore congiunta vale 2 730 rinuncia',
     testo: `

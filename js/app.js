@@ -447,6 +447,57 @@ function trovaUtente(id){
   return getUtenti().find(function(u){ return u.id === id; });
 }
 // Login con Supabase Auth (email + password)
+// Recupero password: codice di 6 cifre mandato per e-mail dalla casella del CAF (funzione "recupera-password" sul server)
+function apriRecuperoPassword(){
+  const box = document.getElementById('recupero-pwd');
+  if(!box) return;
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  const e = document.getElementById('login-email'), r = document.getElementById('rec-email');
+  if(e && r && !r.value) r.value = e.value.trim();
+}
+async function chiamaRecupero(corpo){
+  const res = await fetch(SUPABASE_URL + '/functions/v1/recupera-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+    body: JSON.stringify(corpo)
+  });
+  let dati = {};
+  try{ dati = await res.json(); }catch(e){}
+  if(!res.ok || dati.error) throw new Error(dati.error || ('Errore ' + res.status));
+  return dati;
+}
+async function inviaCodiceRecupero(){
+  const email = document.getElementById('rec-email').value.trim().toLowerCase();
+  const msg = document.getElementById('rec-msg'), btn = document.getElementById('rec-invia');
+  if(!emailValida(email)){ msg.innerHTML = '<b style="color:#c0392b">Scrivi la tua e-mail</b>'; return; }
+  btn.disabled = true; msg.textContent = 'Invio del codice…';
+  try{
+    await chiamaRecupero({ azione: 'invia', email: email });
+    msg.innerHTML = '<b style="color:#2f9e5f">✓ Se l\'e-mail è registrata nel programma, tra poco ti arriva il codice (controlla anche lo spam).</b>';
+    document.getElementById('rec-passo2').style.display = 'block';
+    setTimeout(function(){ const c = document.getElementById('rec-codice'); if(c) c.focus(); }, 50);
+  }catch(e){ msg.innerHTML = '<b style="color:#c0392b">❌ ' + esc(e.message) + '</b>'; }
+  btn.disabled = false;
+}
+async function cambiaPasswordRecupero(){
+  const email = document.getElementById('rec-email').value.trim().toLowerCase();
+  const codice = document.getElementById('rec-codice').value.replace(/\D/g,'');
+  const p1 = document.getElementById('rec-pwd1').value, p2 = document.getElementById('rec-pwd2').value;
+  const msg = document.getElementById('rec-msg');
+  if(codice.length !== 6){ msg.innerHTML = '<b style="color:#c0392b">Il codice ha 6 cifre</b>'; return; }
+  if(p1.length < 6){ msg.innerHTML = '<b style="color:#c0392b">La nuova password deve avere almeno 6 caratteri</b>'; return; }
+  if(p1 !== p2){ msg.innerHTML = '<b style="color:#c0392b">Le due password non sono uguali</b>'; return; }
+  msg.textContent = 'Salvataggio…';
+  try{
+    await chiamaRecupero({ azione: 'cambia', email: email, codice: codice, password: p1 });
+    document.getElementById('recupero-pwd').style.display = 'none';
+    const e = document.getElementById('login-email'), pw = document.getElementById('login-pwd');
+    if(e) e.value = email;
+    if(pw){ pw.value = ''; pw.focus(); }
+    const lm = document.getElementById('login-msg');
+    if(lm){ lm.style.display = 'block'; lm.style.color = '#2f9e5f'; lm.textContent = '✓ Password cambiata: ora accedi con la nuova password.'; }
+  }catch(e){ msg.innerHTML = '<b style="color:#c0392b">❌ ' + esc(e.message) + '</b>'; }
+}
 function renderLogin(){
   const wrap = document.getElementById('login-lista');
   if(!wrap) return;
@@ -461,6 +512,21 @@ function renderLogin(){
       <input type="password" id="login-pwd" placeholder="Password" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:10px; font-size:14px" onkeydown="if(event.key==='Enter') confermaLogin()">
 
       <button type="button" class="login-btn" style="background:var(--accent); color:var(--accent-ink); border:none; width:100%; margin-bottom:8px" onclick="confermaLogin()">🔓 Accedi</button>
+      <div style="text-align:center; margin:-2px 0 10px"><a href="#" onclick="apriRecuperoPassword(); return false" style="font-size:13px; font-weight:700; color:#1d4f91">🔑 Password dimenticata?</a></div>
+      <div id="recupero-pwd" style="display:none; border:2px solid #1d4f91; border-radius:12px; padding:12px; margin-bottom:12px; background:color-mix(in srgb, #1d4f91 6%, var(--card))">
+        <div style="font-weight:800; color:#1d4f91; margin-bottom:6px">🔑 Recupero password</div>
+        <div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">1) Scrivi la tua e-mail e premi <b>Mandami il codice</b>. 2) Scrivi il codice di 6 cifre arrivato per e-mail e la nuova password.</div>
+        <input type="email" id="rec-email" placeholder="tuo@email.com" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:8px; font-size:14px">
+        <button type="button" class="login-btn" id="rec-invia" style="background:#1d4f91; color:#fff; border:none; width:100%; margin-bottom:8px" onclick="inviaCodiceRecupero()">📧 Mandami il codice</button>
+        <div id="rec-passo2" style="display:none">
+          <input type="text" id="rec-codice" inputmode="numeric" maxlength="6" placeholder="Codice di 6 cifre" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:8px; font-size:18px; letter-spacing:4px; text-align:center">
+          <input type="password" id="rec-pwd1" placeholder="Nuova password (almeno 6 caratteri)" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:8px; font-size:14px">
+          <input type="password" id="rec-pwd2" placeholder="Ripeti la nuova password" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:8px; font-size:14px">
+          <button type="button" class="login-btn" style="background:#2f9e5f; color:#fff; border:none; width:100%; margin-bottom:6px" onclick="cambiaPasswordRecupero()">💾 Cambia password</button>
+        </div>
+        <div id="rec-msg" style="font-size:13px; margin-top:4px"></div>
+        <div style="font-size:12px; color:var(--sub); margin-top:6px">Se il codice non arriva (controlla anche lo spam), chiedi all'amministratore di cambiarti la password.</div>
+      </div>
       <button type="button" class="login-btn" style="background:var(--line); color:var(--ink); border:none; width:100%; margin-bottom:10px" onclick="toggleCreaAccount()">➕ Crea nuovo account</button>
 
       <div id="crea-account" style="display:none; border-top:1px solid var(--line); padding-top:12px; margin-top:12px">
