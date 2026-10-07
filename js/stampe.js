@@ -101,7 +101,7 @@ function descrizioneFiltri() {
 
 function riepilogoStampa(lista) {
   const fatt = lista.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
-  let inc = lista.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);
+  const inc = lista.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);
   const l730 = lista.filter(e730), altre = lista.filter(function (p) { return !e730(p); });
   const voci = [
     ['Pratiche (congiunte valgono 2)', sommaPeso(lista), false],
@@ -115,12 +115,12 @@ function riepilogoStampa(lista) {
   if (perPag[''].inc) voci.push(['Incasso senza tipo di pagamento', perPag[''].inc, true]);
   if (stampaSuTotale()) {
     const acc = typeof totaleAcconti === 'function' ? totaleAcconti(STAMPA.anno) : 0;
-    if (acc) { inc += acc; voci.push(['Acconti collaboratori (compresi nell\'incasso)', acc, true]); voci[2][1] = inc; }
+    if (acc) voci.push(['Pagamenti collaboratori (acconti)', acc, true]);
     const caf = versamentiFiltrati().reduce(function (t, v) { return t + Number(v.importo || 0); }, 0);
     voci.push(['Pagamenti CAF', caf, true]);
-    voci.push(['Netto (incasso − pagamenti CAF)', inc - caf, true]);
+    voci.push([acc ? 'Netto (incasso + pagamenti collaboratori − pagamenti CAF)' : 'Netto (incasso − pagamenti CAF)', inc + acc - caf, true]);
     const spese = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(STAMPA.anno) : 0;
-    if (vedeGuadagni()) { voci.push(['Spese gestione sede', spese, true]); voci.push(['Guadagno netto (netto − fatture − spese sede)', inc - caf - fatt - spese, true]); }
+    if (vedeGuadagni()) { voci.push(['Spese gestione sede', spese, true]); voci.push(['Guadagno netto (netto − fatture − spese sede)', inc + acc - caf - fatt - spese, true]); }
   } else if (vedeGuadagni()) {
     voci.push(['Provento (incasso − fatture)', inc - fatt, true]);
   }

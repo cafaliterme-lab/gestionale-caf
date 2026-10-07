@@ -812,10 +812,11 @@ async function esportaRegistroExcel(){
   const nomiGruppi = getTipiList().concat(Object.keys(gruppi).filter(function(k){ return getTipiList().indexOf(k) < 0; }));
 
   const fattureEmesse = tutte.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
-  const incassoLordo = tutte.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0) + totaleAcconti(anno);
+  const incassoLordo = tutte.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+  const accontiAnno = totaleAcconti(anno);
   const versAnno = (state.versamenti||[]).filter(function(v){ return annoDiData(v.data) === anno; });
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
-  const incasso = incassoLordo - versatoCaf;
+  const incasso = incassoLordo + accontiAnno - versatoCaf;
   const DA_LAVORARE = ['arrivo','lavorazione','da_lavorare_scansionata'];
   const daLavorare = sommaPeso(tutte.filter(function(p){ return DA_LAVORARE.indexOf(p.stato)>=0; }));
   const rinunce = sommaPeso(tutte.filter(function(p){ return p.stato==='rinuncia_compilazione'; }));
@@ -828,10 +829,10 @@ async function esportaRegistroExcel(){
     { 'Voce':'Da lavorare', 'Valore': daLavorare },
     { 'Voce':'Rinuncia alla compilazione', 'Valore': rinunce },
     { 'Voce':'Fatture emesse (€)', 'Valore': fattureEmesse },
-    { 'Voce':'Incasso totale (€) – compresi acconti', 'Valore': incassoLordo },
-    { 'Voce':'di cui acconti collaboratori (€)', 'Valore': totaleAcconti(anno) },
+    { 'Voce':'Incasso totale pratiche (€)', 'Valore': incassoLordo },
+    { 'Voce':'Pagamenti collaboratori – acconti (€)', 'Valore': accontiAnno },
     { 'Voce':'Pagamenti CAF (€)', 'Valore': versatoCaf },
-    { 'Voce':'Netto: incasso − pagamenti CAF (€)', 'Valore': incasso },
+    { 'Voce':'Netto: incasso + pagamenti collaboratori − pagamenti CAF (€)', 'Valore': incasso },
     { 'Voce':'Spese gestione sede (€)', 'Valore': (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
     { 'Voce':'Guadagno netto: netto − fatture − spese sede (€)', 'Valore': incasso - fattureEmesse - (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
     { 'Voce':'', 'Valore':'' },
@@ -1467,9 +1468,9 @@ function render(){
   const tot = conti.tot, daLavorare = conti.daFare, lavorate = conti.lav;
   const fattureEmesse = pratAnno.reduce((a,p)=>a+Number(p.compenso||0),0);
   const accontiAnno = totaleAcconti(annoSel);
-  const incassoLordo = pratAnno.reduce((a,p)=>a+Number(p.pagato||0),0) + accontiAnno;
+  const incassoLordo = pratAnno.reduce((a,p)=>a+Number(p.pagato||0),0);
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
-  const incasso = incassoLordo - versatoCaf;
+  const incasso = incassoLordo + accontiAnno - versatoCaf;
   const speseSede = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(annoSel) : 0;
   const differenzaIncFatt = incasso - fattureEmesse - speseSede;
 
@@ -1483,9 +1484,10 @@ function render(){
     <div class="stat c3" style="background:#2f9e5f; border-color:#2f9e5f; color:#fff"><b>${lavorate}</b><span style="color:rgba(255,255,255,.92); font-weight:600">730 LAVORATE</span></div>
     <div class="stat c3" style="background:#e57373; border-color:#e57373; color:#fff"><b>${daLavorare}</b><span style="color:rgba(255,255,255,.95); font-weight:600">730 DA LAVORARE</span></div>` : '') + (vEco ? `
     <div class="stat c5 verde"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE</span></div>
-    <div class="stat c5 viola"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE${accontiAnno ? ' (di cui acconti ' + fmtEuro(accontiAnno) + ')' : ''}</span></div>
+    <div class="stat c5 viola"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
+    ${accontiAnno ? `<div class="stat c5" style="background:#0e7c86; border-color:#0e7c86; color:#fff"><b>${fmtEuro(accontiAnno)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">PAGAMENTI COLLABORATORI</span></div>` : ''}
     <div class="stat c5 blu"><b>${fmtEuro(versatoCaf)}</b><span>PAGAMENTI CAF</span></div>
-    <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">NETTO (incasso − pagamenti CAF)</span></div>
+    <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">NETTO (incasso${accontiAnno ? ' + pagamenti collaboratori' : ''} − pagamenti CAF)</span></div>
     ${vedeGuadagni() ? `<div class="stat c5" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE</span></div>${typeof debitoAngelo === 'function' && debitoAngelo().totale ? `<div class="stat c5" style="background:#8e5bd6; border-color:#8e5bd6; color:#fff"><b>${fmtEuro(debitoAngelo().totale)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">DA RESTITUIRE AD ANGELO</span></div>` : ''}<div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO (meno spese sede)</span></div>` : ''}` : '') + (vBlocchi ? `
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true, totaleAcconti(annoSel, tipoE730))}
     ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }), false, totaleAcconti(annoSel, function(t){ return !tipoE730(t); }))}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf, speseSede, annoSel) : '');
@@ -1522,7 +1524,7 @@ function render(){
       <div id="box-ch-tipi" style="margin-top:14px"><div class="chart-cap">Fatture emesse, incasso e provento per tipo di pratica</div><div class="chart-wrap"><canvas id="ch-tipi"></canvas></div></div>
       <div id="raff-tipi" style="margin-top:14px"></div>`;
   }
-  document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso − pagamenti CAF − fatture emesse − spese sede): ' + fmtEuro(incasso - fattureEmesse - speseSede) : '';
+  document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso + pagamenti collaboratori − pagamenti CAF − fatture emesse − spese sede): ' + fmtEuro(incasso - fattureEmesse - speseSede) : '';
   aggiornaGrafici(fattureEmesse, incassoLordo);
   aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno) + riepilogoPerPagamento(pratAnno);
@@ -2457,7 +2459,8 @@ function conteggi730(pratiche){
 }
 function bloccoIntroito(titolo, colore, lista, conMedia, acconti){
   const fatt = lista.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
-  const inc = lista.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0) + Number(acconti||0);
+  const inc = lista.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+  acconti = Number(acconti||0);
   const n = sommaPeso(lista);
   const tile = function(bg, valore, etichetta){
     return '<div class="stat '+(conMedia?'c5':'c4')+'" style="background:'+bg+'; border-color:'+bg+'; color:#fff"><b>'+valore+'</b><span style="color:rgba(255,255,255,.92); font-weight:600; letter-spacing:.03em">'+etichetta+'</span></div>';
@@ -2465,8 +2468,9 @@ function bloccoIntroito(titolo, colore, lista, conMedia, acconti){
   return '<div style="flex-basis:100%; margin-top:10px; padding:8px 14px; border-radius:10px; background:'+colore+'; color:#fff; font-size:15px; font-weight:800; letter-spacing:.04em">'+esc(titolo)+'</div>'
     + tile(colore, n, 'PRATICHE')
     + tile('#2f9e5f', fmtEuro(fatt), 'FATTURE EMESSE')
-    + tile('#8e5bd6', fmtEuro(inc), 'INCASSO' + (acconti ? ' (di cui acconti ' + fmtEuro(acconti) + ')' : ''))
-    + (vedeGuadagni() ? tile('#374151', fmtEuro(inc-fatt), 'PROVENTO (INCASSO − FATTURE)') : '')
+    + tile('#8e5bd6', fmtEuro(inc), 'INCASSO')
+    + (acconti ? tile('#0e7c86', fmtEuro(acconti), 'PAGAMENTI COLLABORATORI') : '')
+    + (vedeGuadagni() ? tile('#374151', fmtEuro(inc+acconti-fatt), acconti ? 'PROVENTO (INCASSO + PAGAMENTI − FATTURE)' : 'PROVENTO (INCASSO − FATTURE)') : '')
     + (conMedia ? tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'PREZZO MEDIO (FATTURE ÷ PRATICHE)') : '');
 }
 
@@ -2599,6 +2603,7 @@ function riepilogoGuadagno(pratiche, pagamentiCaf, speseSede, anno){
     + voce('Pagamenti CAF', pagamentiCaf, '#2f7de1') + '<b>−</b>'
     + voce('Spese sede', speseSede, '#b35f0c') + '<b>=</b>'
     + '<span style="white-space:nowrap; background:#374151; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre - pagamentiCaf - speseSede) + '</span>'
+    + (anno && totaleAcconti(anno) ? '<span style="flex-basis:100%; font-size:12px; color:var(--sub)">(i proventi comprendono i pagamenti dei collaboratori: ' + fmtEuro(totaleAcconti(anno)) + ')</span>' : '')
     + '</div>';
 }
 
