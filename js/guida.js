@@ -13,7 +13,7 @@ const GUIDA = [
 <li>Il <b>menu</b> colorato porta alle varie sezioni: Inserimento anagrafica, Registro di protocollo, Contabilità, Grafici, Versamenti CAF, Spese sede, Collaboratori, Scadenze, Messaggi, Modulistica, Utenti e permessi (solo amministratore).</li>
 <li>In alto a destra: <b>📲 Installa app</b>, <b>📖 Guida</b>, <b>Cambia utente</b> e <b>🚪 Esci dal programma</b>.</li>
 </ol>
-<p class="g-nota">I dati sono salvati online: quello che inserisce un operatore lo vedono subito anche gli altri, su PC e telefono. Il programma si aggiorna da solo ogni pochi secondi.</p>` },
+<p class="g-nota">I dati sono salvati online: quello che inserisce un operatore lo vedono subito anche gli altri, su PC e telefono. Il programma si aggiorna da solo ogni pochi secondi.</p><p><b>🎞️ Guida a slide</b>: in alto in questa finestra c'è il tasto per la guida a schermate, da sfogliare con ◀ ▶ (o con le frecce della tastiera, o scorrendo col dito). L'amministratore vede anche <b>🔐 Guida amministratore</b>, con le funzioni riservate (utenti, permessi, tipi di pratica, backup).</p>` },
 
   { id: 'contatori', icona: '🔢', titolo: 'I contatori in alto', parole: 'contatori totale pratiche lavorate da lavorare operatore congiunta vale 2 730 rinuncia',
     testo: `
@@ -367,6 +367,12 @@ const GUIDA = [
 </ul>` },
 ];
 
+// Capitoli riservati all'amministratore: gli altri utenti non li vedono
+const GUIDA_SOLO_ADMIN = ['tipi-etichette', 'utenti', 'backup'];
+function guidaVisibile() {
+  const admin = auth.profilo && auth.profilo.ruolo === 'admin';
+  return GUIDA.filter(function (c) { return admin || GUIDA_SOLO_ADMIN.indexOf(c.id) < 0; });
+}
 function apriGuida(cerca) {
   let ov = document.getElementById('guida-programma');
   if (ov) ov.remove();
@@ -376,7 +382,10 @@ function apriGuida(cerca) {
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; max-width:860px; width:100%; height:min(92vh, 900px); display:flex; flex-direction:column; box-shadow:0 20px 50px rgba(0,0,0,.35); overflow:hidden">'
     + '<div style="padding:14px 16px 10px; border-bottom:1px solid var(--line); background:linear-gradient(90deg,#1d4f91,#00612f); color:#fff">'
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px"><div style="font-size:19px; font-weight:800">📖 GUIDA DEL PROGRAMMA</div>'
-    + '<button type="button" onclick="chiudiGuida()" style="background:rgba(255,255,255,.18); color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:700; cursor:pointer">Chiudi ✕</button></div>'
+    + '<span style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end">'
+    + '<button type="button" onclick="apriSlide(\'operatore\')" style="background:#fff; color:#1d4f91; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">🎞️ Guida a slide</button>'
+    + (auth.profilo && auth.profilo.ruolo === 'admin' ? '<button type="button" onclick="apriSlide(\'admin\')" style="background:#111827; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">🔐 Guida amministratore</button>' : '')
+    + '<button type="button" onclick="chiudiGuida()" style="background:rgba(255,255,255,.18); color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:700; cursor:pointer">Chiudi ✕</button></span></div>'
     + '<div style="position:relative; margin-top:10px"><span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:16px">🔍</span>'
     + '<input id="guida-cerca" type="search" placeholder="Cerca nella guida: es. codice fiscale, CUD, rinnova, backup…" autocomplete="off" style="width:100%; padding:10px 12px 10px 38px; border-radius:999px; border:none; font-size:15px; color:#0f1b2d; background:#fff" oninput="filtraGuida(this.value)"></div>'
     + '<div id="guida-esito" style="font-size:12px; margin-top:6px; opacity:.9"></div></div>'
@@ -407,7 +416,7 @@ function evidenziaGuida(html, parole) {
 }
 function filtraGuida(q) {
   const parole = normalizzaGuida(q).split(/\s+/).filter(function (p) { return p.length > 1; });
-  const trovati = GUIDA.filter(function (c) {
+  const trovati = guidaVisibile().filter(function (c) {
     if (!parole.length) return true;
     const dove = normalizzaGuida(c.titolo + ' ' + c.parole + ' ' + testoSemplice(c.testo));
     return parole.every(function (p) { return dove.indexOf(p) >= 0; });
@@ -415,7 +424,7 @@ function filtraGuida(q) {
   // per evidenziare servono le parole come scritte (con accenti): si usano quelle digitate
   const daEvidenziare = String(q || '').trim().split(/\s+/).filter(function (p) { return p.length > 1; });
   const esito = document.getElementById('guida-esito');
-  if (esito) esito.textContent = parole.length ? (trovati.length ? trovati.length + (trovati.length === 1 ? ' capitolo trovato' : ' capitoli trovati') : 'Nessun risultato: prova con un\'altra parola (es. "pratica", "WhatsApp", "stampa")') : GUIDA.length + ' capitoli · scrivi una parola per cercare';
+  if (esito) esito.textContent = parole.length ? (trovati.length ? trovati.length + (trovati.length === 1 ? ' capitolo trovato' : ' capitoli trovati') : 'Nessun risultato: prova con un\'altra parola (es. "pratica", "WhatsApp", "stampa")') : guidaVisibile().length + ' capitoli · scrivi una parola per cercare';
   document.getElementById('guida-indice').innerHTML = trovati.map(function (c) {
     return '<a href="#" onclick="vaiCapitoloGuida(\'' + c.id + '\'); return false" style="display:block; padding:6px 8px; border-radius:8px; color:var(--ink); text-decoration:none">' + c.icona + ' ' + esc(c.titolo) + '</a>';
   }).join('');
