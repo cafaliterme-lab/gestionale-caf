@@ -1,6 +1,6 @@
 /* ---------------- Tabulato morosi (pratiche degli anni precedenti non ancora pagate) ---------------- */
 
-const MOROSI = { anno: null, collaboratori: false, cerca: '', aperto: false };
+const MOROSI = { anno: null, annoBase: null, collaboratori: false, cerca: '', aperto: false };
 
 function residuoPratica(p) { return Math.max(0, Math.round((Number(p.compenso || 0) - Number(p.pagato || 0)) * 100) / 100); }
 function eMorosa(p) { return !p.annullata && p.stato !== 'rinuncia_compilazione' && residuoPratica(p) > 0; }
@@ -15,7 +15,8 @@ function renderMorosi() {
   const box = document.getElementById('morosi-box');
   if (!box) return;
   const annoPrec = annoAttivo() - 1;
-  if (MOROSI.anno == null) MOROSI.anno = annoPrec;
+  // segue sempre l'anno di protocollo: nel 2027 mostra i morosi 2026, nel 2028 quelli 2027…
+  if (MOROSI.anno == null || MOROSI.annoBase !== annoAttivo()) { MOROSI.anno = annoPrec; MOROSI.annoBase = annoAttivo(); }
   const anni = Array.from(new Set((state.pratiche || []).map(annoPratica).filter(function (a) { return a < annoAttivo(); }))).sort(function (a, b) { return b - a; });
   if (anni.indexOf(MOROSI.anno) < 0) anni.unshift(MOROSI.anno);
   const tutti = morosiAnno(MOROSI.anno, MOROSI.collaboratori);
