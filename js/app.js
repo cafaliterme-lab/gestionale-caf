@@ -2486,13 +2486,7 @@ async function cercaDoppione(anno, nome, tipo, codiceFiscale, escludiId){
   return trovato ? serieDi(trovato) + '-' + String(trovato.numero).padStart(4,'0') + '/' + anno : null;
 }
 
-function e730Predefinito(tipo){ return /^730\b/.test(String(tipo||'').toUpperCase()); }
-// In quale blocco della contabilita' va il tipo (SOLO 730 / ALTRE PRATICHE): lo puo' scegliere l'amministratore.
-// La numerazione del protocollo (730-… / AP-…) non cambia.
-function e730(p){
-  const c = typeof tipoConfig === 'function' ? tipoConfig(p.tipo).contabilita : '';
-  return c === '730' ? true : c === 'altre' ? false : e730Predefinito(p.tipo);
-}
+function e730(p){ return /^730\b/.test(String(p.tipo||'').toUpperCase()); }
 // Stati: "da lavorare" finche' la pratica non e' stata lavorata; dopo (anche pagata o da pagare) conta come lavorata
 const STATI_DA_LAVORARE = ['arrivo','lavorazione','da_lavorare_scansionata'];
 function eDaLavorare(p){ return STATI_DA_LAVORARE.indexOf(p.stato) >= 0; }

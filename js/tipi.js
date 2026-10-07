@@ -10,7 +10,7 @@ function contaPraticheTipo(n) { return (state.pratiche || []).filter(function (p
 function caricaTipiInModifica() {
   TIPI_IN_MODIFICA = getTipiList().map(function (n) {
     const st = tipoConfig(n).stati;
-    return { nome: n, originale: n, colore: coloreCollaboratore(n), acconto: haAcconti(n), soldi: conSoldi(n), stati: Array.isArray(st) ? st.slice() : null, statoIniziale: tipoConfig(n).statoIniziale || '', contabilita: e730({ tipo: n }) ? '730' : 'altre' };
+    return { nome: n, originale: n, colore: coloreCollaboratore(n), acconto: haAcconti(n), soldi: conSoldi(n), stati: Array.isArray(st) ? st.slice() : null, statoIniziale: tipoConfig(n).statoIniziale || '' };
   });
 }
 
@@ -28,7 +28,6 @@ function renderTipiPratica(ricarica) {
       + '<span style="font-size:12px; color:var(--sub); white-space:nowrap">' + n + ' pratiche' + (protetto ? ' · 🔒' : '') + '</span>'
       + '<label class="chk" style="white-space:nowrap"><input type="checkbox" ' + (t.soldi ? 'checked' : '') + ' onchange="TIPI_IN_MODIFICA[' + i + '].soldi=this.checked"> € Fatture e incasso</label>'
       + '<label class="chk" style="white-space:nowrap"><input type="checkbox" ' + (t.acconto ? 'checked' : '') + ' onchange="TIPI_IN_MODIFICA[' + i + '].acconto=this.checked"> 💰 Tasto Acconto</label>'
-      + '<label style="margin:0; white-space:nowrap; font-size:12.5px">Contabilità <select onchange="TIPI_IN_MODIFICA[' + i + '].contabilita=this.value" style="width:auto; padding:4px 6px; font-size:12.5px"><option value="730"' + (t.contabilita === '730' ? ' selected' : '') + '>SOLO 730</option><option value="altre"' + (t.contabilita !== '730' ? ' selected' : '') + '>ALTRE PRATICHE</option></select></label>'
       + '<button type="button" onclick="scegliStatiTipo(' + i + ')" title="Stati che si possono scegliere per questo tipo" style="padding:4px 10px; white-space:nowrap">🏷️ Stati (' + statiDelTipo(t).length + ')' + (t.statoIniziale && STATI[t.statoIniziale] ? ' ⭐ ' + esc(STATI[t.statoIniziale].l) : '') + '</button>'
       + '<span style="display:flex; gap:4px; margin-left:auto">'
       + '<button type="button" title="Sposta su" onclick="spostaTipo(' + i + ',-1)" ' + (i === 0 ? 'disabled' : '') + ' style="padding:4px 10px">↑</button>'
@@ -104,7 +103,7 @@ function aggiungiTipo() {
   const v = (inp.value || '').trim().toUpperCase().replace(/\s+/g, ' ');
   if (!v) return;
   if (TIPI_IN_MODIFICA.some(function (t) { return t.nome === v; })) { avviso('❌ Il tipo "' + v + '" esiste già', true); return; }
-  TIPI_IN_MODIFICA.push({ nome: v, originale: '', colore: coloreCollaboratore(v), acconto: tipoE730Nome(v), soldi: true, stati: null, statoIniziale: '', contabilita: tipoE730Nome(v) ? '730' : 'altre' });
+  TIPI_IN_MODIFICA.push({ nome: v, originale: '', colore: coloreCollaboratore(v), acconto: tipoE730Nome(v), soldi: true, stati: null, statoIniziale: '' });
   renderTipiPratica();
 }
 
@@ -130,7 +129,7 @@ async function salvaTipiPratica() {
   }
 
   const cfg = {};
-  lista.forEach(function (t) { cfg[t.nome] = { colore: t.colore, acconto: !!t.acconto, soldi: !!t.soldi }; if (Array.isArray(t.stati)) cfg[t.nome].stati = t.stati; if (t.statoIniziale) cfg[t.nome].statoIniziale = t.statoIniziale; if (t.contabilita && t.contabilita !== (e730Predefinito(t.nome) ? '730' : 'altre')) cfg[t.nome].contabilita = t.contabilita; });
+  lista.forEach(function (t) { cfg[t.nome] = { colore: t.colore, acconto: !!t.acconto, soldi: !!t.soldi }; if (Array.isArray(t.stati)) cfg[t.nome].stati = t.stati; if (t.statoIniziale) cfg[t.nome].statoIniziale = t.statoIniziale; });
   const valore = JSON.stringify(cfg);
   const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valore, aggiornato_il: new Date().toISOString() }).eq('chiave', 'tipi_config').select('chiave');
   if (error || !righe || !righe.length) { avviso('❌ Etichette non salvate' + (error ? ': ' + error.message : ''), true); return; }
