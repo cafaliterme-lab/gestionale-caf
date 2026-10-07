@@ -2083,7 +2083,7 @@ async function rimuoviAcconto(id){
 }
 // Contabilita' del singolo collaboratore / tipo di pratica (dentro il suo gruppo nel registro)
 // Tipi di pratica gratuiti: niente fatture/incasso (a meno che non ci siano importi inseriti)
-const TIPI_SENZA_SOLDI = ['ADI','INVCIV','RED','SEND','ISEE'];
+const TIPI_SENZA_SOLDI = ['ADI','INVCIV','RED','ISEE'];
 function senzaSoldi(k, fatt, inc){
   return TIPI_SENZA_SOLDI.indexOf(String(k||'').toUpperCase().trim()) >= 0 && !Number(fatt) && !Number(inc)
     && !accontiDi(annoAttivo(), function(t){ return t === k; }).length;
