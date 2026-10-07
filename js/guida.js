@@ -286,7 +286,7 @@ const GUIDA = [
 <li>Le scadenze vicine compaiono nel <b>riquadro arancione 🔔</b> a destra finché non le segni come <b>Fatta</b>; il numero compare anche sul pulsante SCADENZE.</li>
 </ol>` },
 
-  { id: 'colf', icona: '🧹', titolo: 'Colf e badanti: scadenza, avviso e rinnovo', parole: 'colf badanti scadenza assistenza rinnova non rinnova avvisa whatsapp anno successivo',
+  { id: 'colf', icona: '🧹', titolo: 'Colf e badanti: scadenza, avviso e rinnovo', parole: 'colf badanti pratica attiva cessata stato scadenza assistenza rinnova non rinnova avvisa whatsapp anno successivo',
     testo: `
 <ul>
 <li>Per <b>CONTRATTI COLF E BADANTI</b> al posto della fine lavorazione scrivi la <b>Scadenza assistenza</b>: viene creata da sola nel calendario con avviso 15 giorni prima.</li>
@@ -298,7 +298,7 @@ const GUIDA = [
 <li><b>Non rinnova</b>: chiude la scadenza se il cliente non prosegue.</li>
 </ul></li>
 <li>Cliente e scadenza passano all'anno successivo; la pratica resta nel registro dell'anno in cui è stata fatta.</li>
-</ul>` },
+</ul><p><b>Stato della pratica colf e badanti</b>: solo per questo tipo compaiono due stati in più, <b>🟢 Pratica attiva</b> e <b>⚫ Pratica cessata</b>. Con <b>Rinnova</b> la nuova pratica parte già come "Pratica attiva". Se metti <b>Pratica cessata</b>, la scadenza dell'assistenza viene tolta dal calendario (non arrivano più avvisi); se la rimetti attiva, la scadenza torna.</p>` },
 
   { id: 'archivio', icona: '🗂️', titolo: 'Archivio clienti (anagrafica) e nuovo cliente da documento', parole: 'archivio clienti anagrafica cerca telefono email importa csv elimina cliente nuovo cliente documento ocr scansione senza pratica',
     testo: `

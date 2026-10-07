@@ -206,6 +206,7 @@ function rinnovaScadenza(id) {
   metti('f-tel-fisso', p.telefonoFisso);
   metti('f-doc-scad', p.documentoScadenza);
   if (getTipiList().indexOf('CONTRATTI COLF E BADANTI') >= 0) pickChip('f-tipo-btns', 'f-tipo', 'CONTRATTI COLF E BADANTI');
+  if (STATI.pratica_attiva) pickChip('f-stato-btns', 'f-stato', 'pratica_attiva');
   metti('f-data-fine', '');
   metti('f-note', 'Rinnovo assistenza (scadenza del ' + dataIT(s.data) + ')');
   if (typeof coloraScadenzaDocumento === 'function') coloraScadenzaDocumento();

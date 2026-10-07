@@ -23,15 +23,20 @@ const STATI = {
   non_paga:{l:'Non paga', c:'#d63b3b', e:'🔴'},
   pagato:{l:'Pagato', c:'#2f9e5f', e:'🟢'},
   pagato_da_ritirare:{l:'Pagato da ritirare', c:'#2f9e5f', e:'🟢'},
-  rinuncia_compilazione:{l:'Rinuncia alla compilazione', c:'#374151', e:'⚫'}
+  rinuncia_compilazione:{l:'Rinuncia alla compilazione', c:'#374151', e:'⚫'},
+  pratica_attiva:{l:'Pratica attiva', c:'#1f8a70', e:'🟢'},
+  pratica_cessata:{l:'Pratica cessata', c:'#6b7280', e:'⚫'}
 };
+// Stati che si vedono solo per i contratti colf e badanti
+const STATI_SOLO_COLF = ['pratica_attiva','pratica_cessata'];
+function statoVisibile(k, tipo, sel){ return k === sel || STATI_SOLO_COLF.indexOf(k) < 0 || eColf(tipo); }
 const TIPI_DEFAULT = ["730 SEDE","730 BRIGUGLIO ANTONIO","730 CAMINITI ANTONIO","730 CAMINITI LUIGI","730 RICCA AGATINO","730 FILCA","730 FPS IN CONVENZIONE","730 CRISAFULLI ROBERTO","730 FARAONE ARTURO","730 DECEDUTI","730 INTEGRATIVI/RETTIFICATIVI","730 TRIOLO CARMELA","730 DI BELLA SANTINO","CONTRATTI DI AFFITTO","CONTRATTI COLF E BADANTI","ISEE A PAGAMENTO","IMU","SUCCESSIONI","ISEE","SEND","MODELLI UNICO PF","RED","INVCIV","ADI","F24"];
 let NOMI_OPERATORI = [];
 function getTipiList(){ return (state.collaboratori && state.collaboratori.length) ? state.collaboratori : TIPI_DEFAULT; }
 Object.defineProperty(window, 'TIPI', { get: function(){ return getTipiList(); } });
 function statoLabel(s){ return (STATI[s]||{}).l || s; }
 function pallino(s){ return '<span class="dot" style="background:'+((STATI[s]||{}).c||'#8a8f98')+'"></span>'; }
-function statoOptions(sel){ return Object.keys(STATI).map(k=>'<option value="'+k+'"'+(k===sel?' selected':'')+'>'+STATI[k].e+' '+STATI[k].l+'</option>').join(''); }
+function statoOptions(sel, tipo){ return Object.keys(STATI).filter(k=>statoVisibile(k, tipo, sel)).map(k=>'<option value="'+k+'"'+(k===sel?' selected':'')+'>'+STATI[k].e+' '+STATI[k].l+'</option>').join(''); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 function tipoOptions(sel){
   const list = (sel && TIPI.indexOf(sel)<0) ? [sel].concat(TIPI) : TIPI;
@@ -1247,7 +1252,7 @@ function coloraTriggerTipo(){
 }
 function initStatoBtns(){
   const sel = document.getElementById('f-stato');
-  sel.innerHTML = statoOptions('arrivo');
+  sel.innerHTML = statoOptions('arrivo', 'CONTRATTI COLF E BADANTI'); // tutti gli stati: i chip non validi per il tipo si nascondono
   renderChips('f-stato-btns','f-stato', Object.keys(STATI), function(k){ return STATI[k].l; }, function(k){ return k; }, null, function(k){ return STATI[k].c; });
   Array.from(document.getElementById('f-stato-btns').children).forEach(function(b, i){
     const col = STATI[Object.keys(STATI)[i]].c;
@@ -1260,6 +1265,7 @@ function initStatoBtns(){
   const lbl = document.getElementById('f-stato-dd-label');
   if(lbl && chip){ lbl.innerHTML = chip.innerHTML; }
   coloraTriggerStato();
+  aggiornaStatiColfForm();
 }
 function coloraTriggerStato(){
   const trig = document.querySelector('#f-stato-dd .chip-dd-trigger');
@@ -1551,7 +1557,7 @@ function render(){
               <td>${eColf(p.tipo) ? (p.scadenzaAssistenza ? '<span title="Scadenza assistenza" style="color:#c0392b; font-weight:700">⏰ '+esc(p.scadenzaAssistenza)+'</span>' : '-') : (esc(p.dataFine)||'-')}</td>
               <td class="wrap">${(p.nome||'-').toUpperCase()}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}${typeof segnaliDocumentiHTML === 'function' ? segnaliDocumentiHTML(p) : ''}</td>
               <td class="wrap">${p.tipo||'-'}</td>
-              <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select></td>
+              <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato, p.tipo)}</select></td>
               <td>${formattaInserimento(p)}${ultimaModifica(p) ? '<div class="sub2" title="Ultima modifica">✏️ ' + ultimaModifica(p) + '</div>' : ''}</td>
               <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)} <button type="button" title="Ricevuta da consegnare al cliente" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer" onclick="stampaRicevuta('${p.id}')">🧾</button></td>
             </tr>`;
@@ -1629,7 +1635,7 @@ function render(){
         </div>
       ` : `
       <div class="row-actions">
-        <select class="stato-tab-sel" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato)}</select>
+        <select class="stato-tab-sel" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato, p.tipo)}</select>
         ${bottoneWhatsApp(p)}
         <button onclick="modifica('${p.id}')">Modifica</button>
         <button onclick="stampaRicevuta('${p.id}')" title="Ricevuta da consegnare al cliente">🧾 Ricevuta</button>
@@ -2578,7 +2584,18 @@ async function eliminaClienteArchivio(id, ctx){
 
 function eColf(tipo){ return String(tipo||'').toUpperCase() === 'CONTRATTI COLF E BADANTI'; }
 // Nel modulo: per colf e badanti il campo "Fine lavorazione" diventa "Scadenza assistenza", da compilare a mano
+// Nel modulo i chip "Pratica attiva / cessata" compaiono solo per colf e badanti
+function aggiornaStatiColfForm(){
+  const cont = document.getElementById('f-stato-btns'), sel = document.getElementById('f-stato'), tipo = (document.getElementById('f-tipo')||{}).value;
+  if(!cont || !sel) return;
+  Array.from(cont.children).forEach(function(b, i){
+    const k = Object.keys(STATI)[i];
+    b.style.display = statoVisibile(k, tipo) ? '' : 'none';
+  });
+  if(!statoVisibile(sel.value, tipo)) pickChip('f-stato-btns', 'f-stato', 'arrivo');
+}
 function aggiornaCampoFineForm(){
+  aggiornaStatiColfForm();
   const inp = document.getElementById('f-data-fine');
   const lbl = document.getElementById('f-data-fine-lbl');
   if(!inp || !lbl) return;
