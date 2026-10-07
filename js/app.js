@@ -771,7 +771,17 @@ async function esportaBackupJSON(){
   }catch(e){ console.error('esportazione backup', e); }
 }
 const PALETTE_COLLABORATORI = ['#1d4f91','#2f9e5f','#c0392b','#8e5bd6','#d98b1e','#2f9e9e','#b5486b','#5a6b3b','#3b6fa0','#a0522d','#5e4fa2','#1f8a70','#c2622f','#4a6b8a','#9c3f7a'];
+// Impostazioni dei tipi di pratica decise dall'amministratore (colore, acconto, fatture/incasso)
+let _tipiCfgTesto = null, _tipiCfg = {};
+function tipiConfig(){
+  const t = (typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI.tipi_config) || '{}';
+  if(t !== _tipiCfgTesto){ _tipiCfgTesto = t; try{ _tipiCfg = JSON.parse(t) || {}; }catch(e){ _tipiCfg = {}; } }
+  return _tipiCfg;
+}
+function tipoConfig(k){ return tipiConfig()[String(k||'').toUpperCase().trim()] || {}; }
 function coloreCollaboratore(nome){
+  const cfg = tipoConfig(nome);
+  if(cfg.colore) return cfg.colore;
   let h = 0;
   const s = String(nome||'');
   for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) >>> 0; }
@@ -1185,7 +1195,7 @@ function showTab(btn){
   if(tab === 'grafici') renderGrafici();
   if(tab === 'spese' && typeof renderSpese === 'function') renderSpese();
   if(tab === 'modulistica' && typeof renderModulistica === 'function') renderModulistica();
-  if(tab === 'permessi'){ renderPermessi(); if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
+  if(tab === 'permessi'){ renderPermessi(); if(typeof renderTipiPratica === 'function') renderTipiPratica(true); if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
 }
 function renderCollaboratori(){
   const wrap = document.getElementById('coll-lista');
@@ -2042,7 +2052,8 @@ function accontiDi(anno, filtroTipo){
 function totaleAcconti(anno, filtroTipo){ return accontiDi(anno, filtroTipo).reduce(function(t,a){ return t + Number(a.importo||0); }, 0); }
 // Tipi di pratica senza il tasto Acconto (non sono collaboratori che versano)
 const TIPI_SENZA_ACCONTO = ['730 SEDE','730 FILCA','730 FPS IN CONVENZIONE','730 DECEDUTI','730 INTEGRATIVI/RETTIFICATIVI','CONTRATTI DI AFFITTO','CONTRATTI COLF E BADANTI','ISEE A PAGAMENTO','IMU','ISEE','RED','SEND','MODELLI UNICO PF','INVCIV','ADI','F24'];
-function haAcconti(k){ return TIPI_SENZA_ACCONTO.indexOf(String(k||'').toUpperCase().trim()) < 0; }
+function haAccontiPredefinito(k){ return TIPI_SENZA_ACCONTO.indexOf(String(k||'').toUpperCase().trim()) < 0; }
+function haAcconti(k){ const c = tipoConfig(k); return typeof c.acconto === 'boolean' ? c.acconto : haAccontiPredefinito(k); }
 function puoScrivereAcconti(){ return typeof puo === 'function' && puo('registro', true); }
 function nuovoAcconto(tipo){
   const vecchio = document.getElementById('popup-acconto'); if(vecchio) vecchio.remove();
@@ -2087,8 +2098,10 @@ async function rimuoviAcconto(id){
 // Contabilita' del singolo collaboratore / tipo di pratica (dentro il suo gruppo nel registro)
 // Tipi di pratica gratuiti: niente fatture/incasso (a meno che non ci siano importi inseriti)
 const TIPI_SENZA_SOLDI = ['ADI','INVCIV','RED','ISEE'];
+function soldiPredefinito(k){ return TIPI_SENZA_SOLDI.indexOf(String(k||'').toUpperCase().trim()) < 0; }
+function conSoldi(k){ const c = tipoConfig(k); return typeof c.soldi === 'boolean' ? c.soldi : soldiPredefinito(k); }
 function senzaSoldi(k, fatt, inc){
-  return TIPI_SENZA_SOLDI.indexOf(String(k||'').toUpperCase().trim()) >= 0 && !Number(fatt) && !Number(inc)
+  return !conSoldi(k) && !Number(fatt) && !Number(inc)
     && !accontiDi(annoAttivo(), function(t){ return t === k; }).length;
 }
 function bottoneStampaCollaboratore(k){
