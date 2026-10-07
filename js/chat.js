@@ -11,6 +11,11 @@ function chatAbilitataQui() {
   if (u.ruolo === 'admin') return true;
   return (typeof IMPOSTAZIONI === 'undefined' || IMPOSTAZIONI.chat_attiva !== 'no') && !(u.tabs && u.tabs.chat === false);
 }
+// Sollecito: un compito non fatto entro un giorno diventa rosso e ricompare a video
+function giorniRitardo(m) {
+  if (!m.compito || m.fatto) return 0;
+  return Math.floor((Date.now() - new Date(m.creato_il).getTime()) / 86400000);
+}
 function chatLetti() { try { return localStorage.getItem('chat-letti-' + ((auth.profilo || {}).id || '')) || ''; } catch (e) { return ''; } }
 function chatSegnaLetti() {
   const ultimo = CHAT.messaggi.length ? CHAT.messaggi[0].creato_il : '';
@@ -71,15 +76,17 @@ function disegnaBottoneChat() {
       : 'position:fixed; right:16px; bottom:16px; z-index:350; border:none; border-radius:999px; padding:12px 18px; background:#1d4f91; color:#fff; font-weight:800; font-size:15px; box-shadow:0 8px 24px rgba(0,0,0,.25); cursor:pointer';
     (slot || document.body).appendChild(b);
   }
-  const n = chatNonLetti().length, c = chatCompitiAperti().length;
-  b.innerHTML = '💬 CHAT INTERNA' + (n ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 9px; margin-left:6px">' + n + ' nuov' + (n === 1 ? 'o' : 'i') + '</span>' : '') + (c ? ' <span style="background:#d4881c; border-radius:999px; padding:1px 9px; margin-left:6px">📌 ' + c + ' da fare</span>' : '') + '<span style="float:right; opacity:.85; font-size:13px">' + (CHAT.aperta ? 'chiudi ✕' : 'apri ›') + '</span>';
+  const n = chatNonLetti().length, c = chatCompitiAperti().length, sol = chatCompitiAperti().filter(function (m) { return giorniRitardo(m) >= 1; }).length;
+  b.innerHTML = '💬 CHAT INTERNA' + (n ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">' + n + ' nuov' + (n === 1 ? 'o' : 'i') + '</span>' : '') + (c ? ' <span style="background:#d4881c; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">📌 ' + c + ' da fare</span>' : '') + (sol ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">⏰ ' + sol + ' sollecit' + (sol === 1 ? 'o' : 'i') + '</span>' : '') + '<span style="float:right; opacity:.85; font-size:13px">' + (CHAT.aperta ? 'chiudi ✕' : 'apri ›') + '</span>';
 }
 
 // I compiti da fare compaiono a video (in alto) finché non vengono spuntati
 function disegnaCompitiAVideo() {
   let box = document.getElementById('chat-compiti-video');
   if (typeof auth === 'undefined' || !auth.profilo || !chatAbilitataQui()) { if (box) box.remove(); return; }
-  const lista = chatCompitiAperti().filter(function (m) { return !CHAT.avvisati[m.id]; });
+  // "Più tardi" nasconde il compito; se è un sollecito (più di un giorno) ricompare dopo un'ora
+  const lista = chatCompitiAperti().filter(function (m) { const t = CHAT.avvisati[m.id]; return !t || (giorniRitardo(m) >= 1 && Date.now() - t > 60 * 60000); })
+    .sort(function (a, b) { return giorniRitardo(b) - giorniRitardo(a); });
   if (!lista.length || CHAT.aperta) { if (box) box.remove(); return; }
   if (!box) {
     box = document.createElement('div');
@@ -88,11 +95,13 @@ function disegnaCompitiAVideo() {
     document.body.appendChild(box);
   }
   box.innerHTML = lista.slice(0, 3).map(function (m) {
-    return '<div style="background:#fff7e6; color:#5c3d00; border:2px solid #d4881c; border-radius:14px; padding:10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.2)">'
+    const g = giorniRitardo(m);
+    return '<div style="background:' + (g ? '#fdecea' : '#fff7e6') + '; color:' + (g ? '#7f1d1d' : '#5c3d00') + '; border:' + (g ? '3px solid #c0392b' : '2px solid #d4881c') + '; border-radius:14px; padding:10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.2)">'
+      + (g ? '<div style="font-size:13px; font-weight:900; color:#c0392b; letter-spacing:.03em">⏰ SOLLECITO – non ancora fatto da ' + g + (g === 1 ? ' giorno' : ' giorni') + '</div>' : '')
       + '<div style="font-size:12px; font-weight:700">📌 Compito da ' + esc(m.da_nome) + (m.a_id ? '' : ' (per tutti)') + ' · ' + oraChat(m.creato_il) + '</div>'
       + '<div style="font-size:15px; font-weight:700; margin:4px 0 8px; white-space:pre-wrap">' + esc(m.testo) + '</div>'
       + '<div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end">'
-      + '<button type="button" onclick="CHAT.avvisati[\'' + m.id + '\']=true; disegnaCompitiAVideo()" style="padding:5px 12px; background:var(--line); color:#333">Più tardi</button>'
+      + '<button type="button" onclick="CHAT.avvisati[\'' + m.id + '\']=Date.now(); disegnaCompitiAVideo()" style="padding:5px 12px; background:var(--line); color:#333">Più tardi</button>'
       + '<button type="button" onclick="apriChat(\'compiti\')" style="padding:5px 12px; background:#1d4f91; color:#fff">💬 Rispondi</button>'
       + '<button type="button" onclick="segnaCompito(\'' + m.id + '\', true)" style="padding:5px 12px; background:#2f9e5f; color:#fff; font-weight:800">✓ Fatto</button></div></div>';
   }).join('') + (lista.length > 3 ? '<div style="text-align:center; font-size:12px; background:#fff7e6; border-radius:10px; padding:4px">… e altri ' + (lista.length - 3) + ' compiti nella chat</div>' : '');
@@ -173,7 +182,7 @@ function disegnaChat() {
       const verso = m.a_id ? (mio ? '→ ' + esc(m.a_nome || '') : '→ te') : '→ tutti';
       return '<div style="align-self:' + (mio ? 'flex-end' : 'flex-start') + '; max-width:85%; background:' + (m.compito ? (m.fatto ? '#e8f6ee' : '#fff7e6') : (mio ? '#dcf2ff' : 'var(--card)')) + '; border:1px solid ' + (m.compito && !m.fatto ? '#d4881c' : 'var(--line)') + '; border-radius:12px; padding:7px 10px; color:#0f1b2d">'
         + '<div style="font-size:11px; color:#5b6b82; font-weight:700">' + (mio ? 'Tu' : esc(m.da_nome)) + ' ' + verso + ' · ' + oraChat(m.creato_il) + '</div>'
-        + (m.compito ? '<div style="font-size:11px; font-weight:800; color:' + (m.fatto ? '#2f9e5f' : '#b35f0c') + '">' + (m.fatto ? '✓ FATTO da ' + esc(m.fatto_da) + (m.fatto_il ? ' · ' + oraChat(m.fatto_il) : '') : '📌 COMPITO DA FARE') + '</div>' : '')
+        + (m.compito ? '<div style="font-size:11px; font-weight:800; color:' + (m.fatto ? '#2f9e5f' : (giorniRitardo(m) ? '#c0392b' : '#b35f0c')) + '">' + (m.fatto ? '✓ FATTO da ' + esc(m.fatto_da) + (m.fatto_il ? ' · ' + oraChat(m.fatto_il) : '') : (giorniRitardo(m) ? '⏰ SOLLECITO: da fare da ' + giorniRitardo(m) + (giorniRitardo(m) === 1 ? ' giorno' : ' giorni') : '📌 COMPITO DA FARE')) + '</div>' : '')
         + '<div style="font-size:14px; white-space:pre-wrap; word-break:break-word">' + esc(m.testo) + '</div>'
         + '<div style="display:flex; gap:6px; justify-content:flex-end; margin-top:4px">'
         + (m.compito ? (m.fatto ? '<button type="button" onclick="segnaCompito(\'' + m.id + '\', false)" style="padding:2px 8px; font-size:11px">↺ Da rifare</button>' : '<button type="button" onclick="segnaCompito(\'' + m.id + '\', true)" style="padding:3px 10px; font-size:12px; background:#2f9e5f; color:#fff; font-weight:800">✓ Fatto</button>') : '')
