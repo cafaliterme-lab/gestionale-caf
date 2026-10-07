@@ -841,8 +841,9 @@ async function esportaRegistroExcel(){
     const items = gruppi[k] || [];
     if(!items.length) return;
     const fe = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
-    const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0) + totaleAcconti(anno, function(t){ return t === k; });
-    contabRighe.push({ 'Voce': k + ' (' + items.length + ' pratiche)', 'Valore': 'Fatture ' + fe.toFixed(2) + ' € · Incasso ' + inc.toFixed(2) + ' €' });
+    const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+    const accK = totaleAcconti(anno, function(t){ return t === k; });
+    contabRighe.push({ 'Voce': k + ' (' + items.length + ' pratiche)', 'Valore': 'Fatture ' + fe.toFixed(2) + ' € · Incasso ' + inc.toFixed(2) + ' €' + (accK ? ' · Pagamenti effettuati ' + accK.toFixed(2) + ' € · Provento ' + (accK - fe).toFixed(2) + ' €' : '') });
   });
 
   const wb = XLSX.utils.book_new();
@@ -1638,13 +1639,14 @@ function render(){
     const items = visibili.filter(function(p){ return (p.tipo || 'SENZA TIPO') === k; });
     if(inRicerca && !items.length) return '';
     const fe = items.reduce(function(a,p){ return a + Number(p.compenso||0); }, 0);
-    const inc = items.reduce(function(a,p){ return a + Number(p.pagato||0); }, 0) + (inRicerca ? 0 : totaleAcconti(annoAttivo(), function(t){ return t === k; }));
+    const inc = items.reduce(function(a,p){ return a + Number(p.pagato||0); }, 0);
+    const accK = inRicerca ? 0 : totaleAcconti(annoAttivo(), function(t){ return t === k; });
     const open = aperti[k] === true;
     const col = coloreCollaboratore(k);
     const schedeAperte = aperti[k + '|schede'] === true || items.some(function(p){ return p._editing || p._confirmDelete || p._editingFattura; });
     return '<details class="grp" data-k="' + esc(k) + '" style="--gc:' + col + '" ' + (open ? 'open' : '') + ' ontoggle="gToggle(this)">'
       + '<summary style="background:' + col + '; background-image:none"><span class="grp-name">' + esc(k) + '</span><span class="grp-n">' + sommaPeso(items) + '</span>'
-      + (senzaSoldi(k, fe, inc) ? '' : '<span class="grp-soldi">Fatture ' + fmtEuro(fe) + '<br>Incasso ' + fmtEuro(inc) + '</span>') + '</summary>'
+      + (senzaSoldi(k, fe, inc) ? '' : '<span class="grp-soldi">Fatture ' + fmtEuro(fe) + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + '</span>') + '</summary>'
       + '<div class="grp-b">' + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items, k)
       + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 Schede complete delle pratiche (' + items.length + ') – per modificare, ricevuta, WhatsApp…</summary>'
         + items.map(cardHTML).join('') + '</details>' : '') + '</div></details>';
@@ -2107,7 +2109,7 @@ function contabilitaCollaboratoreHTML(k, items){
   const fatt = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const accLista = accontiDi(annoAttivo(), function(t){ return t === k; });
   const acc = accLista.reduce(function(t,a){ return t + Number(a.importo||0); }, 0);
-  const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0) + acc;
+  const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
   const n = sommaPeso(items);
   const lav = sommaPeso(items.filter(eLavorata)), daFare = sommaPeso(items.filter(eDaLavorare));
   const daIncassare = Math.max(0, fatt - inc);
@@ -2123,16 +2125,17 @@ function contabilitaCollaboratoreHTML(k, items){
     + tile('#2f9e5f', lav, 'Lavorate')
     + tile(daFare ? '#e57373' : '#8a8f98', daFare, 'Da lavorare')
     + tile('#2f9e5f', fmtEuro(fatt), 'Fatture emesse')
-    + tile('#8e5bd6', fmtEuro(inc), 'Incasso' + (acc ? ' (di cui acconti ' + fmtEuro(acc) + ')' : ''))
+    + tile('#8e5bd6', fmtEuro(inc), 'Incasso')
     + tile(daIncassare ? '#d4881c' : '#8a8f98', fmtEuro(daIncassare), 'Da incassare')
-    + (vedeGuadagni() ? tile('#374151', fmtEuro(inc - fatt), 'Provento') : '')
+    + tile('#0e7c86', fmtEuro(acc), 'Pagamenti effettuati')
+    + (vedeGuadagni() ? tile('#374151', fmtEuro(acc - fatt), 'Provento (pagamenti − fatture)') : '')
     + tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'Prezzo medio')
     + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:12.5px">'
     + METODI_PAGAMENTO.concat(pag[''].n ? [''] : []).map(function(m){ return '<span style="padding:3px 10px; border-radius:999px; background:var(--line)">' + ({ CONTANTI:'💶 Contanti', POS:'💳 POS', BONIFICO:'🏦 Bonifico' }[m] || '❔ Non indicato') + ': <b>' + fmtEuro(pag[m].inc) + '</b> (' + pag[m].n + ')</span>'; }).join('')
     + '</div>'
     + '<div style="margin-top:10px; padding-top:8px; border-top:1px dashed var(--line)">'
-    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap"><b style="color:#8e5bd6">💰 Acconti ' + annoAttivo() + ': ' + fmtEuro(acc) + '</b>'
+    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap"><b style="color:#0e7c86">💰 Pagamenti effettuati (acconti) ' + annoAttivo() + ': ' + fmtEuro(acc) + '</b>'
     + (puoScrivereAcconti() ? '<button type="button" onclick="nuovoAcconto(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer">+ 💰 Acconto</button>' : '') + '</div>'
     + (accLista.length ? accLista.map(function(a){ return '<div style="display:flex; justify-content:space-between; gap:8px; font-size:13px; padding:4px 0; border-bottom:1px solid var(--line)"><span>' + esc(a.data) + (a.metodoPagamento ? ' · ' + esc(a.metodoPagamento) : '') + (a.note ? ' · ' + esc(a.note) : '') + (a.creatoDa ? ' <span style="color:var(--sub)">(' + esc(a.creatoDa) + ')</span>' : '') + '</span><span><b>' + fmtEuro(a.importo) + '</b>' + (puoScrivereAcconti() ? ' <button onclick="rimuoviAcconto(\'' + a.id + '\')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-weight:700" title="Elimina">✕</button>' : '') + '</span></div>'; }).join('') : '<div style="font-size:12.5px; color:var(--sub)">Nessun acconto registrato</div>')
     + '</div></div>';
