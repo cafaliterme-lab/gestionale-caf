@@ -2109,7 +2109,6 @@ function contabilitaCollaboratoreHTML(k, items){
   const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
   const n = sommaPeso(items);
   const lav = sommaPeso(items.filter(eLavorata)), daFare = sommaPeso(items.filter(eDaLavorare));
-  const daIncassare = Math.max(0, fatt - inc);
   const pag = datiPerPagamento(items);
   const col = coloreCollaboratore(k);
   const tile = function(colore, valore, etichetta){
@@ -2123,7 +2122,6 @@ function contabilitaCollaboratoreHTML(k, items){
     + tile(daFare ? '#e57373' : '#8a8f98', daFare, 'Da lavorare')
     + tile('#2f9e5f', fmtEuro(fatt), 'Fatture emesse')
     + tile('#8e5bd6', fmtEuro(inc), 'Incasso')
-    + tile(daIncassare ? '#d4881c' : '#8a8f98', fmtEuro(daIncassare), 'Non pagato dai clienti (fatture − incasso)')
     + tile('#0e7c86', fmtEuro(acc), 'Pagamenti effettuati')
     + tile((inc - acc) > 0 ? '#c0392b' : '#374151', fmtEuro(inc - acc), 'Da incassare (incasso − pagamenti)')
     + tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'Prezzo medio')
