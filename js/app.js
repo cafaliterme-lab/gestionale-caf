@@ -1369,7 +1369,7 @@ function aggiungiVersamento(){
   if(msg) msg.style.display = 'none';
   const impRaw = document.getElementById('vc-importo').value;
   const imp = parseImporto(impRaw);
-  const dat = document.getElementById('vc-data').value;
+  const dat = document.getElementById('vc-data').value.trim() || todayIT();
   const caus = document.getElementById('vc-causale').value.trim();
   if(!impRaw || !(imp > 0) || isNaN(imp)){
     if(msg){ msg.textContent = '⚠️ Inserisci un importo valido, es. 50,00'; msg.style.display = 'block'; }
@@ -1377,7 +1377,7 @@ function aggiungiVersamento(){
   }
   const nuovoVers = { importo:imp, data:dat, causale:caus };
   document.getElementById('vc-importo').value='';
-  document.getElementById('vc-data').value='';
+  document.getElementById('vc-data').value=todayIT();
   document.getElementById('vc-causale').value='';
   // Usa la nuova API data.js
   data.versamenti.aggiungi(nuovoVers);
@@ -1525,11 +1525,14 @@ function render(){
 
   const caf = document.getElementById('caf-card');
   const vlist = versAnno;
+  // la data del versamento si compila da sola con la data di oggi (si può cambiare)
+  const vcPrima = document.getElementById('vc-data');
+  const vcData = (vcPrima && vcPrima.value.trim()) || todayIT();
   caf.innerHTML = `
     <div class="raff-title">Versamenti al CAF Regionale</div>
     <div class="grid">
       <div><label>Importo (€)</label><input id="vc-importo" type="text" inputmode="decimal" placeholder="0,00"></div>
-      <div><label>Data</label><input id="vc-data" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
+      <div><label>Data</label><input id="vc-data" value="${vcData}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
       <div class="full"><label>Causale</label><input id="vc-causale" placeholder="Facoltativo"></div>
     </div>
     <div style="text-align:left"><button class="btn-add" onclick="aggiungiVersamento()">+ Aggiungi versamento</button></div>
