@@ -72,7 +72,6 @@ function renderGrafici() {
   const versAnno = (state.versamenti || []).filter(function (v) { return annoDiData(v.data) === anno; });
   const fatture = sommaCampo(pratAnno, 'compenso');
   const incasso = sommaCampo(pratAnno, 'pagato');
-  const acconti = typeof totaleAcconti === 'function' ? totaleAcconti(anno) : 0;
   const caf = sommaCampo(versAnno, 'importo');
   const speseSedeAnno = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0;
   document.getElementById('grafici-avviso').textContent = pratAnno.length ? '' : 'Nessuna pratica nel ' + anno + ': scegli un altro anno in "Anno di protocollo".';
@@ -81,8 +80,8 @@ function renderGrafici() {
   disegna('gr-economico', {
     type: 'bar',
     data: {
-      labels: ['Fatture emesse', 'Incasso totale', 'Pagamenti collaboratori', 'Pagamenti CAF', 'Netto'].concat(vedeGuadagni() ? ['Spese sede', 'Guadagno netto'] : []),
-      datasets: [{ data: [fatture, incasso, acconti, caf, incasso + acconti - caf].concat(vedeGuadagni() ? [speseSedeAnno, incasso + acconti - caf - fatture - speseSedeAnno] : []), backgroundColor: [COL_FATTURE, COL_INCASSO, '#0e7c86', COL_CAF, COL_NETTO, '#b35f0c', COL_GUADAGNO], borderRadius: 6, maxBarThickness: 56 }],
+      labels: ['Fatture emesse', 'Incasso totale', 'Pagamenti CAF', 'Netto'].concat(vedeGuadagni() ? ['Spese sede', 'Guadagno netto'] : []),
+      datasets: [{ data: [fatture, incasso, caf, incasso - caf].concat(vedeGuadagni() ? [speseSedeAnno, incasso - caf - fatture - speseSedeAnno] : []), backgroundColor: [COL_FATTURE, COL_INCASSO, COL_CAF, COL_NETTO, '#b35f0c', COL_GUADAGNO], borderRadius: 6, maxBarThickness: 56 }],
     },
     options: opzioniBase(true, false, false),
   });

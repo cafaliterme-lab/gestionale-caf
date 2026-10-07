@@ -114,13 +114,11 @@ function riepilogoStampa(lista) {
   METODI_PAGAMENTO.forEach(function (m) { voci.push(['Incasso ' + (m === 'POS' ? 'POS' : m.toLowerCase()), perPag[m].inc, true]); });
   if (perPag[''].inc) voci.push(['Incasso senza tipo di pagamento', perPag[''].inc, true]);
   if (stampaSuTotale()) {
-    const acc = typeof totaleAcconti === 'function' ? totaleAcconti(STAMPA.anno) : 0;
-    if (acc) voci.push(['Pagamenti collaboratori (acconti)', acc, true]);
     const caf = versamentiFiltrati().reduce(function (t, v) { return t + Number(v.importo || 0); }, 0);
     voci.push(['Pagamenti CAF', caf, true]);
-    voci.push([acc ? 'Netto (incasso + pagamenti collaboratori − pagamenti CAF)' : 'Netto (incasso − pagamenti CAF)', inc + acc - caf, true]);
+    voci.push(['Netto (incasso − pagamenti CAF)', inc - caf, true]);
     const spese = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(STAMPA.anno) : 0;
-    if (vedeGuadagni()) { voci.push(['Spese gestione sede', spese, true]); voci.push(['Guadagno netto (netto − fatture − spese sede)', inc + acc - caf - fatt - spese, true]); }
+    if (vedeGuadagni()) { voci.push(['Spese gestione sede', spese, true]); voci.push(['Guadagno netto (netto − fatture − spese sede)', inc - caf - fatt - spese, true]); }
   } else if (vedeGuadagni()) {
     voci.push(['Provento (incasso − fatture)', inc - fatt, true]);
   }
