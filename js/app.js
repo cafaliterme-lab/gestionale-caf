@@ -2112,7 +2112,9 @@ function senzaSoldi(k, fatt, inc){
     && !accontiDi(annoAttivo(), function(t){ return t === k; }).length;
 }
 function bottoneStampaCollaboratore(k){
-  return '<button type="button" onclick="stampaCollaboratore(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#374151; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer">🖨️ Stampa</button>';
+  const kk = k.replace(/'/g, "\\'");
+  return (haAcconti(k) && puoScrivereAcconti() ? '<button type="button" onclick="pagamentoCumulativo(\'' + kk + '\')" style="background:#2f9e5f; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer; margin-right:6px">✓ Pagamento cumulativo</button>' : '')
+    + '<button type="button" onclick="stampaCollaboratore(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#374151; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer">🖨️ Stampa</button>';
 }
 function contabilitaCollaboratoreHTML(k, items){
   const fatt0 = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
