@@ -1051,6 +1051,7 @@ async function renderPermessi(){
       + '<div id="perm-'+u.id+'-tabs"'+(ruoloAttuale==='admin' ? ' style="display:none"' : '')+'>'
       + righeTab
       + '<div class="perm-row" style="margin-top:6px; border-top:2px solid var(--line); padding-top:12px"><span>🗑 Elimina clienti dall\'archivio</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="elimina_clienti" '+(tabs.elimina_clienti?'checked':'')+' id="perm-'+u.id+'-elimcli"> Consentito</label></div>'
+      + '<div class="perm-row"><span>💬 Chat interna e compiti</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="chat" '+(tabs.chat!==false?'checked':'')+' id="perm-'+u.id+'-chat"> Abilitata</label></div>'
       + '</div>'
       + '<div class="perm-row"><span>Nuova password</span><span style="display:flex; gap:6px"><input type="password" id="pwd-'+u.id+'" placeholder="Lascia vuoto per non cambiarla" style="width:160px; padding:6px 8px; font-size:12.5px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink)"><button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer" onclick="cambiaPasswordUtente(&quot;'+u.id+'&quot;, document.getElementById(&quot;pwd-'+u.id+'&quot;).value, { nome: &quot;'+esc(u.nome)+'&quot;, email: &quot;'+esc(u.email||'')+'&quot;, ruolo: &quot;'+ruoloAttuale+'&quot; })">Salva</button></span></div>'
       + '<div class="perm-row"><span></span><button type="button" style="background:none; border:none; color:#c0392b; font-weight:700; cursor:pointer" onclick="rimuoviUtente(&quot;'+u.id+'&quot;)">Elimina utente</button></div>'
@@ -1058,9 +1059,19 @@ async function renderPermessi(){
   }).join('');
 
   const buttonHtml = '<div style="margin-top:12px; text-align:left"><button type="button" class="btn-add" onclick="salvaPermessi()">💾 Salva permessi</button></div>';
-  wrap.innerHTML = cardsHtml + buttonHtml;
+  const chatHtml = '<div class="perm-row" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:var(--bg); border:1px solid var(--line)"><span><b>💬 Chat interna</b> <span style="font-size:12px; color:var(--sub)">(il tasto in basso a destra; per ogni utente si può togliere qui sotto)</span></span>'
+    + '<label class="chk"><input type="checkbox" ' + (IMPOSTAZIONI.chat_attiva !== 'no' ? 'checked' : '') + ' onchange="impostaChatAttiva(this.checked)"> Attiva per tutti</label></div>';
+  wrap.innerHTML = chatHtml + cardsHtml + buttonHtml;
 }
 
+async function impostaChatAttiva(si){
+  const valore = si ? 'si' : 'no';
+  const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valore, aggiornato_il: new Date().toISOString() }).eq('chiave', 'chat_attiva').select('chiave');
+  if(error || !righe || !righe.length){ avviso('❌ Non salvato' + (error ? ': ' + error.message : ''), true); return; }
+  IMPOSTAZIONI.chat_attiva = valore;
+  avviso(si ? '✓ Chat interna attiva' : '✓ Chat interna disattivata per gli operatori (l\'amministratore la vede sempre)');
+  if(typeof caricaChat === 'function') caricaChat();
+}
 async function salvaPermessi(){
   try {
     const checks = document.querySelectorAll('.perm-check');

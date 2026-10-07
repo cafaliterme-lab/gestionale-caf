@@ -4,6 +4,13 @@
 
 let CHAT = { messaggi: [], utenti: [], aperta: false, scheda: 'chat', ultimoVisto: null, avvisati: {} };
 
+// L'amministratore la usa sempre; gli altri se è attiva (Utenti e permessi) e se non gli è stata tolta
+function chatAbilitataQui() {
+  const u = auth.profilo;
+  if (!u) return false;
+  if (u.ruolo === 'admin') return true;
+  return (typeof IMPOSTAZIONI === 'undefined' || IMPOSTAZIONI.chat_attiva !== 'no') && !(u.tabs && u.tabs.chat === false);
+}
 function chatLetti() { try { return localStorage.getItem('chat-letti-' + ((auth.profilo || {}).id || '')) || ''; } catch (e) { return ''; } }
 function chatSegnaLetti() {
   const ultimo = CHAT.messaggi.length ? CHAT.messaggi[0].creato_il : '';
@@ -22,7 +29,7 @@ function oraChat(iso) {
 }
 
 async function caricaChat() {
-  if (typeof auth === 'undefined' || !auth.profilo) { disegnaBottoneChat(); disegnaCompitiAVideo(); return; }
+  if (typeof auth === 'undefined' || !auth.profilo || !chatAbilitataQui()) { chiudiChat(); disegnaBottoneChat(); disegnaCompitiAVideo(); return; }
   // cambio di utente sullo stesso PC: si riparte da zero
   if (CHAT.chi !== auth.profilo.id) { CHAT = { messaggi: [], utenti: [], aperta: false, scheda: 'chat', avvisati: {}, chi: auth.profilo.id }; const p = document.getElementById('chat-pannello'); if (p) p.remove(); }
   try {
@@ -50,7 +57,7 @@ document.addEventListener('visibilitychange', function () { if (document.visibil
 
 function disegnaBottoneChat() {
   let b = document.getElementById('chat-bottone');
-  if (typeof auth === 'undefined' || !auth.profilo) { if (b) b.remove(); return; }
+  if (typeof auth === 'undefined' || !auth.profilo || !chatAbilitataQui()) { if (b) b.remove(); return; }
   if (!b) {
     b = document.createElement('button');
     b.id = 'chat-bottone';
@@ -67,7 +74,7 @@ function disegnaBottoneChat() {
 // I compiti da fare compaiono a video (in alto) finché non vengono spuntati
 function disegnaCompitiAVideo() {
   let box = document.getElementById('chat-compiti-video');
-  if (typeof auth === 'undefined' || !auth.profilo) { if (box) box.remove(); return; }
+  if (typeof auth === 'undefined' || !auth.profilo || !chatAbilitataQui()) { if (box) box.remove(); return; }
   const lista = chatCompitiAperti().filter(function (m) { return !CHAT.avvisati[m.id]; });
   if (!lista.length || CHAT.aperta) { if (box) box.remove(); return; }
   if (!box) {
