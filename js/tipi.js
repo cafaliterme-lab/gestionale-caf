@@ -167,3 +167,105 @@ async function salvaEtichetteMenu() {
   if (typeof renderPermessi === 'function') renderPermessi();
   avviso('✓ Etichette del menu salvate');
 }
+
+/* ---------------- Stati delle pratiche (nome, colore, pallino; stati nuovi) ---------------- */
+
+const STATI_PREDEFINITI = JSON.parse(JSON.stringify(STATI));
+const EMOJI_STATI = ['⚪', '🟡', '🟤', '🟠', '🔴', '🔵', '🟣', '🟢', '⚫'];
+let STATI_IN_MODIFICA = null;
+
+function statiConfig() {
+  try { return JSON.parse(IMPOSTAZIONI.stati_config || '{}') || {}; } catch (e) { return {}; }
+}
+function applicaStati() {
+  const cfg = statiConfig();
+  // tolgo gli stati aggiunti in precedenza e rimetto quelli di partenza
+  Object.keys(STATI).forEach(function (k) { if (!STATI_PREDEFINITI[k]) delete STATI[k]; });
+  Object.keys(STATI_PREDEFINITI).forEach(function (k) { STATI[k] = Object.assign({}, STATI_PREDEFINITI[k]); });
+  const base = ['arrivo', 'lavorazione', 'da_lavorare_scansionata'];
+  STATI_DA_LAVORARE.length = 0; base.forEach(function (k) { STATI_DA_LAVORARE.push(k); });
+  STATI_IN_LAVORAZIONE.length = 0; base.forEach(function (k) { STATI_IN_LAVORAZIONE.push(k); });
+  Object.keys(cfg).forEach(function (k) {
+    const c = cfg[k] || {};
+    if (!STATI[k] && !c.nuovo) return;
+    STATI[k] = { l: c.l || (STATI[k] || {}).l || k, c: c.c || (STATI[k] || {}).c || '#8a8f98', e: c.e || (STATI[k] || {}).e || '⚪' };
+    if (c.nuovo && c.daLavorare) { STATI_DA_LAVORARE.push(k); STATI_IN_LAVORAZIONE.push(k); }
+  });
+  if (typeof initStatoBtns === 'function' && document.getElementById('f-stato')) {
+    const sel = document.getElementById('f-stato'), v = sel.value;
+    try { initStatoBtns(); if (v && STATI[v]) { sel.value = v; pickChip('f-stato-btns', 'f-stato', v); coloraTriggerStato(); } } catch (e) { console.error('stati', e); }
+  }
+}
+
+function contaPraticheStato(k) { return (state.pratiche || []).filter(function (p) { return p.stato === k; }).length; }
+
+function renderStatiPratica(ricarica) {
+  const wrap = document.getElementById('stati-etichette');
+  if (!wrap) return;
+  if (!auth.profilo || auth.profilo.ruolo !== 'admin') { wrap.innerHTML = ''; return; }
+  if (ricarica || !STATI_IN_MODIFICA) {
+    const cfg = statiConfig();
+    STATI_IN_MODIFICA = Object.keys(STATI).map(function (k) {
+      return { k: k, l: STATI[k].l, c: STATI[k].c, e: STATI[k].e, nuovo: !STATI_PREDEFINITI[k], daLavorare: STATI_DA_LAVORARE.indexOf(k) >= 0 };
+    });
+  }
+  wrap.innerHTML = STATI_IN_MODIFICA.map(function (s, i) {
+    const d = STATI_PREDEFINITI[s.k];
+    return '<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding:8px; border-radius:10px; border:1px solid var(--line); margin-bottom:6px; border-left:8px solid ' + esc(s.c) + '">'
+      + '<input type="color" value="' + esc(s.c) + '" title="Colore dello stato" onchange="STATI_IN_MODIFICA[' + i + '].c=this.value; renderStatiPratica()" style="width:42px; height:34px; padding:2px; flex:none">'
+      + '<select title="Pallino" onchange="STATI_IN_MODIFICA[' + i + '].e=this.value" style="width:auto; flex:none">' + EMOJI_STATI.map(function (e) { return '<option' + (e === s.e ? ' selected' : '') + '>' + e + '</option>'; }).join('') + '</select>'
+      + '<input value="' + esc(s.l) + '" oninput="STATI_IN_MODIFICA[' + i + '].l=this.value" style="flex:1; min-width:180px; font-weight:700">'
+      + '<span style="font-size:12px; color:var(--sub); white-space:nowrap">' + contaPraticheStato(s.k) + ' pratiche' + (d ? ' · originale: ' + esc(d.l) : ' · stato aggiunto') + '</span>'
+      + (s.nuovo
+        ? '<label class="chk" style="white-space:nowrap"><input type="checkbox" ' + (s.daLavorare ? 'checked' : '') + ' onchange="STATI_IN_MODIFICA[' + i + '].daLavorare=this.checked"> Conta come "da lavorare"</label>'
+          + '<button type="button" title="Elimina" onclick="eliminaStato(' + i + ')" style="padding:4px 10px; background:#c0392b; color:#fff; border:none; margin-left:auto">✕</button>'
+        : '<button type="button" onclick="STATI_IN_MODIFICA[' + i + '].l=STATI_PREDEFINITI[\'' + s.k + '\'].l; STATI_IN_MODIFICA[' + i + '].c=STATI_PREDEFINITI[\'' + s.k + '\'].c; STATI_IN_MODIFICA[' + i + '].e=STATI_PREDEFINITI[\'' + s.k + '\'].e; renderStatiPratica()" style="padding:4px 10px; margin-left:auto">↺ Originale</button>')
+      + '</div>';
+  }).join('')
+    + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center">'
+    + '<input id="stato-nuovo" placeholder="Nuovo stato, es. In attesa del cliente" style="flex:1; min-width:220px" onkeydown="if(event.key===\'Enter\'){ aggiungiStato(); }">'
+    + '<button type="button" class="btn-add" style="margin-top:0" onclick="aggiungiStato()">+ Aggiungi stato</button></div>'
+    + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">'
+    + '<button type="button" class="btn-add" style="margin-top:0; background:#2f9e5f" onclick="salvaStatiPratica()">💾 Salva stati delle pratiche</button>'
+    + '<button type="button" class="btn-add" style="margin-top:0; background:var(--line); color:var(--ink)" onclick="renderStatiPratica(true)">Annulla modifiche</button></div>'
+    + '<div style="font-size:12px; color:var(--sub); margin-top:8px">Gli stati di partenza si possono rinominare e colorare ma non eliminare, perché il programma li usa nei conteggi. Gli stati aggiunti da te contano come "lavorate", oppure come "da lavorare" se metti la spunta; si possono eliminare solo se nessuna pratica li usa.</div>';
+}
+
+function aggiungiStato() {
+  const inp = document.getElementById('stato-nuovo');
+  const l = (inp.value || '').trim();
+  if (!l) return;
+  if (STATI_IN_MODIFICA.some(function (s) { return s.l.toLowerCase() === l.toLowerCase(); })) { avviso('❌ Lo stato "' + l + '" esiste già', true); return; }
+  let k = 'x_' + l.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30);
+  while (STATI_IN_MODIFICA.some(function (s) { return s.k === k; })) k += '_';
+  STATI_IN_MODIFICA.push({ k: k, l: l, c: '#2f9e9e', e: '🔵', nuovo: true, daLavorare: false });
+  renderStatiPratica();
+}
+
+function eliminaStato(i) {
+  const s = STATI_IN_MODIFICA[i];
+  const n = contaPraticheStato(s.k);
+  if (n) { avviso('❌ Lo stato "' + s.l + '" è usato da ' + n + ' pratiche: cambia prima il loro stato', true); return; }
+  if (!confirm('Eliminare lo stato "' + s.l + '"?')) return;
+  STATI_IN_MODIFICA.splice(i, 1);
+  renderStatiPratica();
+}
+
+async function salvaStatiPratica() {
+  const cfg = {};
+  for (const s of STATI_IN_MODIFICA) {
+    const l = String(s.l || '').trim();
+    if (!l) { avviso('❌ C\'è uno stato senza nome', true); return; }
+    const d = STATI_PREDEFINITI[s.k];
+    if (s.nuovo) cfg[s.k] = { l: l, c: s.c, e: s.e, nuovo: true, daLavorare: !!s.daLavorare };
+    else if (l !== d.l || s.c !== d.c || s.e !== d.e) cfg[s.k] = { l: l, c: s.c, e: s.e };
+  }
+  const valore = JSON.stringify(cfg);
+  const { data: righe, error } = await supabase.from('impostazioni').update({ valore: valore, aggiornato_il: new Date().toISOString() }).eq('chiave', 'stati_config').select('chiave');
+  if (error || !righe || !righe.length) { avviso('❌ Stati non salvati' + (error ? ': ' + error.message : ''), true); return; }
+  IMPOSTAZIONI.stati_config = valore;
+  applicaStati();
+  renderStatiPratica(true);
+  render();
+  avviso('✓ Stati delle pratiche salvati');
+}

@@ -826,7 +826,7 @@ async function esportaRegistroExcel(){
   const versAnno = (state.versamenti||[]).filter(function(v){ return annoDiData(v.data) === anno; });
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
   const incasso = incassoLordo - versatoCaf;
-  const DA_LAVORARE = ['arrivo','lavorazione','da_lavorare_scansionata'];
+  const DA_LAVORARE = STATI_DA_LAVORARE;
   const daLavorare = sommaPeso(tutte.filter(function(p){ return DA_LAVORARE.indexOf(p.stato)>=0; }));
   const rinunce = sommaPeso(tutte.filter(function(p){ return p.stato==='rinuncia_compilazione'; }));
   const lavorate = sommaPeso(tutte) - daLavorare - rinunce;
@@ -1195,7 +1195,7 @@ function showTab(btn){
   if(tab === 'grafici') renderGrafici();
   if(tab === 'spese' && typeof renderSpese === 'function') renderSpese();
   if(tab === 'modulistica' && typeof renderModulistica === 'function') renderModulistica();
-  if(tab === 'permessi'){ renderPermessi(); if(typeof renderTipiPratica === 'function'){ renderTipiPratica(true); renderEtichetteMenu(true); } if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
+  if(tab === 'permessi'){ renderPermessi(); if(typeof renderTipiPratica === 'function'){ renderTipiPratica(true); renderEtichetteMenu(true); renderStatiPratica(true); } if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
 }
 function renderCollaboratori(){
   const wrap = document.getElementById('coll-lista');
@@ -2731,6 +2731,7 @@ async function caricaImpostazioni(){
     IMPOSTAZIONI = {};
     righe.forEach(function(r){ IMPOSTAZIONI[r.chiave] = r.valore || ''; });
     if(typeof applicaEtichetteMenu === 'function') applicaEtichetteMenu();
+    if(typeof applicaStati === 'function') applicaStati();
     mostraDatiCaf();
     render(); // importi FPS nell'elenco della contabilita'
   }catch(e){ console.error('impostazioni', e); }
