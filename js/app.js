@@ -1441,32 +1441,6 @@ function rimuoviIsee(id){
   // Usa la nuova API data.js
   data.isee.elimina(id);
 }
-function aggiungiVersamento(){
-  const msg = document.getElementById('caf-msg');
-  if(msg) msg.style.display = 'none';
-  const impRaw = document.getElementById('vc-importo').value;
-  const imp = parseImporto(impRaw);
-  const dat = document.getElementById('vc-data').value.trim() || todayIT();
-  const caus = document.getElementById('vc-causale').value.trim();
-  if(!impRaw || !(imp > 0) || isNaN(imp)){
-    if(msg){ msg.textContent = '⚠️ Inserisci un importo valido, es. 50,00'; msg.style.display = 'block'; }
-    return;
-  }
-  const dal = (document.getElementById('vc-dal').value || '').trim(), al = (document.getElementById('vc-al').value || '').trim();
-  if(dal && al && Number(dal) > Number(al)){
-    if(msg){ msg.textContent = '⚠️ Il numero "dalla fattura" deve essere più piccolo di "alla fattura"'; msg.style.display = 'block'; }
-    return;
-  }
-  const nuovoVers = { importo:imp, data:dat, causale:caus, fatturaDal: dal, fatturaAl: al };
-  document.getElementById('vc-dal').value='';
-  document.getElementById('vc-al').value='';
-  document.getElementById('vc-suggerimento').innerHTML='';
-  document.getElementById('vc-importo').value='';
-  document.getElementById('vc-data').value=todayIT();
-  document.getElementById('vc-causale').value='';
-  // Usa la nuova API data.js
-  data.versamenti.aggiungi(nuovoVers);
-}
 // Con "dalla fattura n. … alla n. …" si vede quanto fanno quelle fatture (anno di protocollo), da usare come importo
 function numeroFatturaPratica(p){ const m = /\d+/.exec(String(p.numFattura || '')); return m ? Number(m[0]) : null; }
 function suggerimentoVersamento(){
@@ -1625,34 +1599,7 @@ function render(){
     ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }))}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf, speseSede) : '');
   if(typeof renderSpese === 'function') renderSpese();
 
-  const caf = document.getElementById('caf-card');
-  const vlist = versAnno;
-  // la data del versamento si compila da sola con la data di oggi (si può cambiare)
-  const vcPrima = document.getElementById('vc-data');
-  const vcData = (vcPrima && vcPrima.value.trim()) || todayIT();
-  // gli altri campi scritti restano anche quando la pagina si aggiorna
-  const vcVal = function(id){ const el = document.getElementById(id); return el ? esc(el.value) : ''; };
-  const vcImp = vcVal('vc-importo'), vcCaus = vcVal('vc-causale'), vcDal = vcVal('vc-dal'), vcAl = vcVal('vc-al');
-  caf.innerHTML = `
-    <div class="raff-title">Versamenti al CAF Regionale</div>
-    <div class="grid">
-      <div><label>Dalla fattura n.</label><input id="vc-dal" value="${vcDal}" placeholder="Es. 1" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,''); suggerimentoVersamento()"></div>
-      <div><label>Alla fattura n.</label><input id="vc-al" value="${vcAl}" placeholder="Es. 50" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,''); suggerimentoVersamento()"></div>
-      <div class="full" id="vc-suggerimento" style="font-size:12.5px"></div>
-      <div><label>Importo (€)</label><input id="vc-importo" type="text" inputmode="decimal" placeholder="0,00" value="${vcImp}"></div>
-      <div><label>Data del versamento</label><input id="vc-data" value="${vcData}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
-      <div class="full"><label>Causale</label><input id="vc-causale" placeholder="Facoltativo" value="${vcCaus}"></div>
-    </div>
-    <div style="text-align:left"><button class="btn-add" onclick="aggiungiVersamento()">+ Aggiungi versamento</button></div>
-    <div id="caf-msg" style="color:#c0392b; font-size:12px; margin:4px 0 8px; display:none"></div>
-    ${vlist.length ? vlist.map(v => `
-      <div class="caf-row">
-        <span>${v.data||'-'} ${v.causale ? '· '+esc(v.causale) : ''}${v.fatturaDal || v.fatturaAl ? '<div class="sub2">🧾 Fatture dal n. ' + esc(v.fatturaDal || '…') + ' al n. ' + esc(v.fatturaAl || '…') + '</div>' : ''}</span>
-        <span>${fmtEuro(v.importo)} <button onclick="rimuoviVersamento('${v.id}')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-weight:700;margin-left:6px">✕</button></span>
-      </div>`).join('') : '<div class="empty">Nessun versamento registrato</div>'}
-    <div class="caf-tot"><span>Totale versato</span><span>${fmtEuro(versatoCaf)}</span></div>
-  `;
-  suggerimentoVersamento();
+  if(typeof renderVersamentiCaf === 'function') renderVersamentiCaf(versAnno, versatoCaf);
 
   const raff = document.getElementById('raffronto');
   if(!document.getElementById('ch-stati')){
