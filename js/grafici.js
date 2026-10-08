@@ -116,7 +116,7 @@ function renderGrafici() {
       datasets: [
         { label: 'Fatture emesse', data: d.tipi.map(function (t) { return d.righe[t].fatt; }), backgroundColor: COL_FATTURE, borderRadius: 6, maxBarThickness: 16 },
         { label: 'Incasso', data: d.tipi.map(function (t) { return d.righe[t].inc; }), backgroundColor: COL_INCASSO, borderRadius: 6, maxBarThickness: 16 },
-      ].concat(vedeGuadagni() ? [{ label: 'Provento', data: d.tipi.map(function (t) { return d.righe[t].inc - d.righe[t].fatt; }), backgroundColor: COL_GUADAGNO, borderRadius: 6, maxBarThickness: 16 }] : []),
+      ].concat(vedeGuadagni() ? [{ label: 'Guadagno netto', data: d.tipi.map(function (t) { return d.righe[t].inc - d.righe[t].fatt; }), backgroundColor: COL_GUADAGNO, borderRadius: 6, maxBarThickness: 16 }] : []),
     },
     options: opzioniBase(true, false, true),
   });
