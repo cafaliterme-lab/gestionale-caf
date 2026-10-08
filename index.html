@@ -462,8 +462,9 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Incasso: 730 e altre pratiche</div><div class="chart-wrap" id="gr-730-wrap" style="height:260px"><canvas id="gr-730"></canvas></div></div>
   <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Pratiche aperte per mese</div><div class="chart-wrap" id="gr-mesi-wrap" style="height:260px"><canvas id="gr-mesi"></canvas></div></div>
   <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Fatture emesse e incasso per mese</div><div class="chart-wrap" id="gr-mesi-euro-wrap" style="height:260px"><canvas id="gr-mesi-euro"></canvas></div></div>
-  <div class="card" style="grid-column:1/-1"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Fatture emesse, incasso e provento per tipo di pratica</div><div class="chart-wrap" id="gr-tipi-euro-wrap" style="height:260px"><canvas id="gr-tipi-euro"></canvas></div></div>
-  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Pratiche inserite e lavorate per operatore</div><div class="chart-wrap" id="gr-operatori-wrap" style="height:260px"><canvas id="gr-operatori"></canvas></div></div>
+  <div class="card" style="grid-column:1/-1"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Fatture emesse, incasso e guadagno netto per tipo di pratica</div><div class="chart-wrap" id="gr-tipi-euro-wrap" style="height:260px"><canvas id="gr-tipi-euro"></canvas></div></div>
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:#1d4f91">730 (tutti i tipi 730): inserite e lavorate per operatore</div><div class="chart-wrap" id="gr-operatori-wrap" style="height:260px"><canvas id="gr-operatori"></canvas></div></div>
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:#0e8a8a">Altre pratiche (non 730): inserite e lavorate per operatore</div><div class="chart-wrap" id="gr-operatori-ap-wrap" style="height:260px"><canvas id="gr-operatori-ap"></canvas></div></div>
   <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Confronto tra anni: fatture emesse e incasso</div><div class="chart-wrap" id="gr-anni-wrap" style="height:260px"><canvas id="gr-anni"></canvas></div></div>
 </div>
 </section>
@@ -821,7 +822,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
 <script src="js/ocr-documento.js?v=8"></script>
-<script src="js/grafici.js?v=18"></script>
+<script src="js/grafici.js?v=19"></script>
 <script src="js/stampe.js?v=19"></script>
 <script src="js/extra.js?v=22"></script>
 <script src="js/documenti.js?v=13"></script>

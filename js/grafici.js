@@ -159,28 +159,32 @@ function renderGrafici() {
     options: opzioniCiambella(true),
   });
 
-  // 8. Pratiche lavorate per operatore
-  const perOp = {};
-  (typeof NOMI_OPERATORI !== 'undefined' ? NOMI_OPERATORI : []).forEach(function (n) { perOp[String(n).toUpperCase()] = { tot: 0, lav: 0 }; });
-  pratAnno.forEach(function (p) {
-    const chi = (p.inseritoDa || '').toUpperCase();
-    if (!chi) return;
-    const r = perOp[chi] || (perOp[chi] = { tot: 0, lav: 0 });
-    r.tot += pesoPratica(p);
-    if (eLavorata(p)) r.lav += pesoPratica(p);
-  });
-  const operatori = Object.keys(perOp).sort();
-  disegna('gr-operatori', {
-    type: 'bar',
-    data: {
-      labels: operatori,
-      datasets: [
-        { label: 'Inserite', data: operatori.map(function (o) { return perOp[o].tot; }), backgroundColor: '#9aa3ae', borderRadius: 6, maxBarThickness: 40 },
-        { label: 'Lavorate', data: operatori.map(function (o) { return perOp[o].lav; }), backgroundColor: COL_FATTURE, borderRadius: 6, maxBarThickness: 40 },
-      ],
-    },
-    options: opzioniBase(false, false, true),
-  });
+  // 8. Pratiche inserite e lavorate per operatore: un grafico per i 730 (tutti i tipi 730) e uno per le altre pratiche
+  const graficoOperatori = function (idCanvas, lista, colInserite, colLavorate) {
+    const perOp = {};
+    (typeof NOMI_OPERATORI !== 'undefined' ? NOMI_OPERATORI : []).forEach(function (n) { perOp[String(n).toUpperCase()] = { tot: 0, lav: 0 }; });
+    lista.forEach(function (p) {
+      const chi = (p.inseritoDa || '').toUpperCase();
+      if (!chi) return;
+      const r = perOp[chi] || (perOp[chi] = { tot: 0, lav: 0 });
+      r.tot += pesoPratica(p);
+      if (eLavorata(p)) r.lav += pesoPratica(p);
+    });
+    const operatori = Object.keys(perOp).sort();
+    disegna(idCanvas, {
+      type: 'bar',
+      data: {
+        labels: operatori,
+        datasets: [
+          { label: 'Inserite', data: operatori.map(function (o) { return perOp[o].tot; }), backgroundColor: colInserite, borderRadius: 6, maxBarThickness: 40 },
+          { label: 'Lavorate', data: operatori.map(function (o) { return perOp[o].lav; }), backgroundColor: colLavorate, borderRadius: 6, maxBarThickness: 40 },
+        ],
+      },
+      options: opzioniBase(false, false, true),
+    });
+  };
+  graficoOperatori('gr-operatori', pratAnno.filter(e730), '#7fa6d9', '#1d4f91');
+  graficoOperatori('gr-operatori-ap', pratAnno.filter(function (p) { return !e730(p); }), '#7cc8c8', '#0e8a8a');
 
   // 9. Confronto tra anni
   const anni = Array.from(new Set((state.pratiche || []).map(annoPratica))).sort();
