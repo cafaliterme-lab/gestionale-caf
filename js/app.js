@@ -1639,6 +1639,9 @@ function render(){
   aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno) + riepilogoPerPagamento(pratAnno);
   if(typeof renderElencoFPS === 'function') renderElencoFPS(pratAnno);
+  const sitBox = document.getElementById('situazione-data');
+  if(sitBox) sitBox.style.display = vedeSezioneContabilita('cont_economici') ? '' : 'none';
+  if(typeof renderSituazioneData === 'function') renderSituazioneData();
   if(typeof renderRicercaFatture === 'function') renderRicercaFatture();
   if(typeof aggiornaPulsanteCUD === 'function'){ aggiornaPulsanteCUD(); if(document.getElementById('richieste-cud')) disegnaRichiesteCUD(); }
 
