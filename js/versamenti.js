@@ -74,9 +74,34 @@ function renderVersamentiCaf(vlist, versatoCaf) {
     }).join('') : '<div class="empty">Nessun versamento registrato</div>')
     + '<div class="caf-tot"><span>Totale fatture coperte dai versamenti</span><span>' + fmtEuro(versatoCaf) + '</span></div>'
     + '<div class="caf-tot" style="font-size:13px; opacity:.85"><span>di cui versato con bollettino (dopo spese e bonifici detratti)</span><span>' + fmtEuro(vlist.reduce(function (t, v) { return t + (v.versato != null && v.versato !== '' ? Number(v.versato) : Number(v.importo || 0) - Number(v.cassa || 0) - Number(v.bonifico || 0)); }, 0)) + '</span></div>'
+    + quadraturaCassaHTML(versatoCaf)
     + impostazioniVersamentoHTML();
   suggerimentoVersamento();
   totaleVersamentoForm();
+}
+
+// Quadratura della cassa dell'anno: incassato − versato al CAF − spese sede = soldi in cassa,
+// e il controllo che torni con guadagno netto + fatture ancora da versare
+function quadraturaCassaHTML(versatoCaf) {
+  const anno = typeof annoAttivo === 'function' ? annoAttivo() : null;
+  const prat = (state.pratiche || []).filter(function (p) { return !p.annullata && (!anno || typeof annoPratica !== 'function' || annoPratica(p) === anno); });
+  const fatt = prat.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
+  const inc = prat.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);
+  const spese = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0;
+  const cassa = inc - versatoCaf - spese, guad = inc - fatt - spese, daVers = fatt - versatoCaf;
+  const senzaFatt = prat.filter(function (p) { return Number(p.pagato || 0) > 0 && !Number(p.compenso || 0); });
+  const riga = function (t, v, seg, forte) { return '<div style="display:flex; justify-content:space-between; gap:10px; padding:3px 0' + (forte ? '; border-top:2px solid var(--line); margin-top:4px; padding-top:6px; font-weight:800' : '') + '"><span>' + (seg ? '<b style="display:inline-block; width:14px">' + seg + '</b>' : '') + t + '</span><b>' + fmtEuro(v) + '</b></div>'; };
+  return '<details open style="margin-top:14px; border:2px solid #1d4f91; border-radius:12px; padding:10px 12px"><summary style="cursor:pointer; font-weight:800; color:#1d4f91">⚖️ Quadratura cassa ' + (anno || '') + '</summary>'
+    + '<div style="font-size:13.5px; margin-top:6px">'
+    + riga('Incassato dalle pratiche', inc, '')
+    + riga('Versato al CAF (fatture coperte)', versatoCaf, '−')
+    + riga('Spese sede pagate', spese, '−')
+    + riga('SOLDI IN CASSA', cassa, '=', true)
+    + '<div style="margin-top:8px; font-size:12.5px; color:var(--sub)">Controllo: guadagno netto <b>' + fmtEuro(guad) + '</b> + fatture ancora da versare al CAF <b style="color:' + (daVers > 0.004 ? '#c0392b' : 'inherit') + '">' + fmtEuro(daVers) + '</b> = <b>' + fmtEuro(guad + daVers) + '</b> ' + (Math.abs(guad + daVers - cassa) < 0.01 ? '✅ torna con la cassa' : '❌ non torna') + '</div>'
+    + (daVers > 0.004 ? '<div style="margin-top:4px; font-size:12.5px; color:#c0392b">In cassa ci sono ' + fmtEuro(daVers) + ' di fatture non ancora versate al CAF: non sono guadagno.</div>' : '')
+    + (daVers < -0.004 ? '<div style="margin-top:4px; font-size:12.5px; color:#c0392b">Hai versato ' + fmtEuro(-daVers) + ' in più delle fatture registrate: controlla i numeri e gli importi delle fatture nelle pratiche.</div>' : '')
+    + (senzaFatt.length ? '<div style="margin-top:4px; font-size:12.5px; color:#b35f0c">' + senzaFatt.length + (senzaFatt.length === 1 ? ' pratica pagata non ha' : ' pratiche pagate non hanno') + ' l\'importo della fattura (' + senzaFatt.map(function (p) { return esc(p.nome || '') + ' ' + fmtEuro(p.pagato); }).join(', ') + '): tutto l\'incasso conta come guadagno.</div>' : '')
+    + '</div></details>';
 }
 
 // Spese della sede già detratte in un versamento (si possono usare di nuovo: serve solo per ricordarlo)

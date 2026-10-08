@@ -929,7 +929,7 @@ async function esportaRegistroExcel(){
     { 'Voce':'Fatture emesse (€)', 'Valore': fattureEmesse },
     { 'Voce':'Incasso totale (€)', 'Valore': incassoLordo },
     { 'Voce':'Versamenti CAF (€)', 'Valore': versatoCaf },
-    { 'Voce':'Netto: incasso − versamenti CAF (€)', 'Valore': incasso },
+    { 'Voce':'Soldi in cassa: incasso − versamenti CAF − spese sede (€)', 'Valore': incasso - (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
     { 'Voce':'Spese gestione sede (€)', 'Valore': (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
     { 'Voce':'Guadagno netto: incasso − fatture − spese sede (€)', 'Valore': incassoLordo - fattureEmesse - (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
     { 'Voce':'', 'Valore':'' },
@@ -1594,7 +1594,7 @@ function render(){
     <div class="stat c5 verde"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE</span></div>
     <div class="stat c5 viola"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
     <div class="stat c5 blu"><b>${fmtEuro(versatoCaf)}</b><span>VERSAMENTI CAF</span></div>
-    <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">NETTO (incasso − versamenti CAF)</span></div>
+    <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso - speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SOLDI IN CASSA (incasso − versamenti CAF − spese sede)</span></div>
     ${vedeGuadagni() ? `<div class="stat c5" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE</span></div>${typeof debitoAngelo === 'function' && debitoAngelo().totale ? `<div class="stat c5" style="background:#8e5bd6; border-color:#8e5bd6; color:#fff"><b>${fmtEuro(debitoAngelo().totale)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">DA RESTITUIRE AD ANGELO</span></div>` : ''}<div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO (meno spese sede)</span></div>` : ''}` : '') + (vBlocchi ? `
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true, 'GUADAGNO NETTO 730')}
     ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#0e8a8a', pratAnno.filter(function(p){ return !e730(p); }), false, 'GUADAGNO NETTO ALTRE PRATICHE')}
