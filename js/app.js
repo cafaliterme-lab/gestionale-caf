@@ -894,6 +894,7 @@ function rigaPratica(p){
     'Pagato (€)': Number(p.pagato)||0,
     'Pagamento': p.metodoPagamento||'',
     'N. Fattura': p.numFattura||'',
+    'Data fattura': p.dataFattura||'',
     'Inserito da': p.inseritoDa||'',
     'Note': p.note||''
   };
@@ -1674,7 +1675,7 @@ function render(){
       ${typeof documentoCardHTML === 'function' ? documentoCardHTML(p) : ''}
       ${typeof documentiCardHTML === 'function' ? documentiCardHTML(p) : ''}
       ${storicoClienteHTML(p)}
-      ${p.numFattura ? `<div class="meta">Fattura n. ${esc(p.numFattura)}</div>` : ''}
+      ${p.numFattura || p.dataFattura ? `<div class="meta">Fattura${p.numFattura ? ' n. ' + esc(p.numFattura) : ''}${p.dataFattura ? ' del ' + esc(p.dataFattura) : ''}</div>` : ''}
       ${p.emailInviata ? `<div class="meta" style="color:#1d4f91">📧 E-mail inviata: ${esc(p.emailInviata)}</div>` : ''}
       ${ultimaModifica(p) ? `<div class="meta" style="color:var(--sub)">✏️ Ultima modifica: <b>${ultimaModifica(p)}</b></div>` : ''}
       ${p.whatsappInviato ? `<div class="meta" style="color:#1a9e4b">💬 Avvisato su WhatsApp il ${esc(p.whatsappInviato)}</div>` : ''}
@@ -1700,7 +1701,8 @@ function render(){
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
           <div><label>Pagato effettivo (€)</label><div style="display:flex; gap:6px"><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0"><select id="e-met-${p.id}" title="Tipo di pagamento" style="width:auto; flex:0 0 auto">${metodoOptions(p.metodoPagamento)}</select></div></div>
-          <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}"></div>
+          <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}" oninput="var d=document.getElementById('e-df-${p.id}'); if(this.value.trim() && d && !d.value.trim()) d.value=todayIT();"></div>
+          <div><label>Data fattura</label><input id="e-df-${p.id}" value="${esc(p.dataFattura)}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
           <div class="full"><label>Note</label><input id="e-note-${p.id}" value="${esc(p.note)}"></div>
         </div>
         <div class="row-actions">
@@ -2327,6 +2329,7 @@ async function salvaModifica(id){
   var cc = g('e-congcognome').trim().toUpperCase();
   var cn = g('e-congnome').trim().toUpperCase();
   const numFattura = g('e-nf').trim();
+  const dataFattura = g('e-df').trim();
   const cognomeTit = g('e-cognome').trim().toUpperCase();
   const nomeTit = g('e-nomeproprio').trim().toUpperCase();
   if(!cognomeTit && !nomeTit){ avviso('❌ Inserisci il cognome del contribuente.', true); return; }
@@ -2347,13 +2350,18 @@ async function salvaModifica(id){
     pagato: parseImporto(g('e-pag')) || '',
     metodoPagamento: g('e-met'),
     numFattura: numFattura,
+    dataFattura: dataFattura,
     documentoScadenza: g('e-docscad').trim(),
     note: g('e-note').trim(),
-    fatt: (numFattura || p.dataFattura) ? 'fatturata' : 'dafatturare'
+    fatt: (numFattura || dataFattura) ? 'fatturata' : 'dafatturare'
   };
   if(campi.email && !emailValida(campi.email)){ popupErroreCampo('E-mail non valida', 'L\'indirizzo <b>' + esc(campi.email) + '</b> non è corretto.', 'e-email-' + id); return; }
   if(!campi.telefono && !campi.telefonoFisso){
     avviso('❌ Inserisci almeno un numero di telefono: cellulare o telefono fisso.', true);
+    return;
+  }
+  if(campi.dataFattura && !parseDataIT(campi.dataFattura)){
+    avviso('❌ La data della fattura deve essere nel formato GG/MM/AAAA.', true);
     return;
   }
   if(campi.documentoScadenza && !parseDataIT(campi.documentoScadenza)){
