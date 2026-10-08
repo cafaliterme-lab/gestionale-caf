@@ -72,7 +72,8 @@ function renderVersamentiCaf(vlist, versatoCaf) {
         + (puoEliminareVersamenti() ? '<div><button type="button" onclick="rimuoviVersamento(\'' + v.id + '\')" title="Elimina questo versamento" style="margin-top:4px; padding:3px 10px; font-size:12px; background:#fdecea; color:#c0392b; border:1px solid #c0392b; border-radius:999px; font-weight:700; cursor:pointer">🗑️ Elimina</button></div>' : '')
         + '</span></div>';
     }).join('') : '<div class="empty">Nessun versamento registrato</div>')
-    + '<div class="caf-tot"><span>Totale versato</span><span>' + fmtEuro(versatoCaf) + '</span></div>'
+    + '<div class="caf-tot"><span>Totale fatture coperte dai versamenti</span><span>' + fmtEuro(versatoCaf) + '</span></div>'
+    + '<div class="caf-tot" style="font-size:13px; opacity:.85"><span>di cui versato con bollettino (dopo spese e bonifici detratti)</span><span>' + fmtEuro(vlist.reduce(function (t, v) { return t + (v.versato != null && v.versato !== '' ? Number(v.versato) : Number(v.importo || 0) - Number(v.cassa || 0) - Number(v.bonifico || 0)); }, 0)) + '</span></div>'
     + impostazioniVersamentoHTML();
   suggerimentoVersamento();
   totaleVersamentoForm();
@@ -265,6 +266,9 @@ function aggiungiVersamento() {
   if (f.elenco.some(function (r) { return !r.importo; })) return errore('In una delle spese da detrarre manca l\'importo');
   if (f.bonifici.some(function (r) { return !r.importo; })) return errore('In uno dei bonifici manca l\'importo');
   if (f.bonifici.some(function (r) { return !r.nome; })) return errore('In uno dei bonifici manca chi l\'ha fatto');
+  const dalN = Number((document.getElementById('vc-dal').value || '').trim()), alN = Number((document.getElementById('vc-al').value || '').trim());
+  const fuori = f.bonifici.filter(function (r) { const n = parseInt(r.fattura, 10); return dalN && alN && n && (n < dalN || n > alN); });
+  if (fuori.length && !confirm('Attenzione: ' + fuori.map(function (r) { return r.nome + ' (fattura n. ' + r.fattura + ')'; }).join(', ') + ' non rientra nelle fatture dal n. ' + dalN + ' al n. ' + alN + ' di questo versamento.\n\nDetraggo lo stesso il bonifico?')) return;
   if (f.versato < 0) return errore('Spese e bonifici da detrarre sono più alti dell\'importo delle fatture');
   const dal = (document.getElementById('vc-dal').value || '').trim(), al = (document.getElementById('vc-al').value || '').trim();
   if (dal && al && Number(dal) > Number(al)) return errore('Il numero "dalla fattura" deve essere più piccolo di "alla fattura"');
@@ -321,7 +325,7 @@ function numeroInLettere(n) {
     if (x < 20) return u[x];
     let dec = d[Math.floor(x / 10)], un = x % 10;
     if (un === 1 || un === 8) dec = dec.slice(0, -1);
-    return dec + (un === 3 ? 'tré' : u[un]);
+    return dec + u[un];
   };
   const sotto1000 = function (x) {
     const c = Math.floor(x / 100), r = x % 100;
@@ -335,7 +339,7 @@ function numeroInLettere(n) {
   if (mil) s += mil === 1 ? 'unmilione' : sotto1000(mil) + 'milioni';
   if (mig) s += mig === 1 ? 'mille' : sotto1000(mig) + 'mila';
   s += sotto1000(resto);
-  return s;
+  return s.length > 3 && /tre$/.test(s) ? s.slice(0, -3) + 'tré' : s;
 }
 function importoInLettere(v) {
   const cent = Math.round(Number(v || 0) * 100);

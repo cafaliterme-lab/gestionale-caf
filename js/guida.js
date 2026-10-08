@@ -269,7 +269,7 @@ const GUIDA = [
 </ul>
 <p><b>Effetto sul guadagno</b></p>
 <ul>
-<li>Il totale delle spese dell'anno viene <b>tolto dal guadagno netto</b>: in Contabilità compaiono <b>SPESE SEDE</b> e <b>GUADAGNO NETTO (meno spese sede)</b>, e lo stesso nei Grafici, nell'Excel e nella stampa della contabilità.</li>
+<li>Il totale delle spese dell'anno viene <b>tolto dal guadagno netto</b>: in Contabilità compaiono <b>SPESE SEDE</b> e <b>GUADAGNO NETTO (meno spese sede)</b>, e lo stesso nei Grafici, nell'Excel e nella stampa della contabilità. Il <b>guadagno netto</b> si calcola così: <b>incasso totale − versamenti CAF − spese sede</b> (le fatture non si tolgono una seconda volta, perché il versamento al CAF è proprio il pagamento delle fatture).</li>
 <li>Il rimborso ad Angelo <b>non cambia</b> il guadagno: la spesa è già tolta una volta.</li>
 <li>Le spese contano nell'anno della loro data di pagamento: scegli l'anno giusto in "Anno di protocollo".</li>
 <li>Con ✕ elimini una spesa sbagliata. La sezione si abilita per ogni utente in <b>Utenti e permessi</b> (voce "SPESE GESTIONE SEDE").</li>

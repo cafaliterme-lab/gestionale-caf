@@ -81,7 +81,7 @@ function renderGrafici() {
     type: 'bar',
     data: {
       labels: ['Fatture emesse', 'Incasso totale', 'Versamenti CAF', 'Netto'].concat(vedeGuadagni() ? ['Spese sede', 'Guadagno netto'] : []),
-      datasets: [{ data: [fatture, incasso, caf, incasso - caf].concat(vedeGuadagni() ? [speseSedeAnno, incasso - caf - fatture - speseSedeAnno] : []), backgroundColor: [COL_FATTURE, COL_INCASSO, COL_CAF, COL_NETTO, '#b35f0c', COL_GUADAGNO], borderRadius: 6, maxBarThickness: 56 }],
+      datasets: [{ data: [fatture, incasso, caf, incasso - caf].concat(vedeGuadagni() ? [speseSedeAnno, incasso - caf - speseSedeAnno] : []), backgroundColor: [COL_FATTURE, COL_INCASSO, COL_CAF, COL_NETTO, '#b35f0c', COL_GUADAGNO], borderRadius: 6, maxBarThickness: 56 }],
     },
     options: opzioniBase(true, false, false),
   });

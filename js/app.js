@@ -930,7 +930,7 @@ async function esportaRegistroExcel(){
     { 'Voce':'Versamenti CAF (€)', 'Valore': versatoCaf },
     { 'Voce':'Netto: incasso − versamenti CAF (€)', 'Valore': incasso },
     { 'Voce':'Spese gestione sede (€)', 'Valore': (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
-    { 'Voce':'Guadagno netto: netto − fatture − spese sede (€)', 'Valore': incasso - fattureEmesse - (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
+    { 'Voce':'Guadagno netto: incasso − versamenti CAF − spese sede (€)', 'Valore': incasso - (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
     { 'Voce':'', 'Valore':'' },
     { 'Voce':'Dettaglio per collaboratore / tipo pratica', 'Valore':'' }
   ];
@@ -1576,7 +1576,8 @@ function render(){
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
   const incasso = incassoLordo - versatoCaf;
   const speseSede = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(annoSel) : 0;
-  const differenzaIncFatt = incasso - fattureEmesse - speseSede;
+  // guadagno = incasso − versamenti CAF − spese sede (il versamento è già il pagamento delle fatture: non si tolgono due volte)
+  const differenzaIncFatt = incasso - speseSede;
 
   const vPrat = vedeSezioneContabilita('cont_pratiche'), vEco = vedeSezioneContabilita('cont_economici'), vBlocchi = vedeSezioneContabilita('cont_blocchi'), vGrafici = vedeSezioneContabilita('cont_grafici');
   const contExcel = document.getElementById('cont-excel');
@@ -1610,7 +1611,7 @@ function render(){
       <div id="box-ch-tipi" style="margin-top:14px"><div class="chart-cap">Fatture emesse, incasso e provento per tipo di pratica</div><div class="chart-wrap"><canvas id="ch-tipi"></canvas></div></div>
       <div id="raff-tipi" style="margin-top:14px"></div>`;
   }
-  document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso − versamenti CAF − fatture emesse − spese sede): ' + fmtEuro(incasso - fattureEmesse - speseSede) : '';
+  document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso − versamenti CAF − spese sede): ' + fmtEuro(incasso - speseSede) : '';
   aggiornaGrafici(fattureEmesse, incassoLordo);
   aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno) + riepilogoPerPagamento(pratAnno);
@@ -2364,6 +2365,7 @@ async function salvaModifica(id){
     avviso('❌ La data della fattura deve essere nel formato GG/MM/AAAA.', true);
     return;
   }
+  if(campi.dataFattura && typeof dataNum === 'function' && dataNum(campi.dataFattura) > dataNum(todayIT()) && !confirm('La data della fattura (' + campi.dataFattura + ') è dopo oggi. Salvo lo stesso?')) return;
   if(campi.documentoScadenza && !parseDataIT(campi.documentoScadenza)){
     avviso('❌ La scadenza del documento deve essere nel formato GG/MM/AAAA.', true);
     return;
@@ -2741,16 +2743,13 @@ function aggiornaCampoFineForm(){
 
 function riepilogoGuadagno(pratiche, pagamentiCaf, speseSede){
   speseSede = speseSede || 0;
-  const provento = function(lista){ return lista.reduce(function(a,p){ return a + Number(p.pagato||0) - Number(p.compenso||0); }, 0); };
-  const p730 = provento(pratiche.filter(e730));
-  const pAltre = provento(pratiche.filter(function(p){ return !e730(p); }));
+  const incasso = pratiche.reduce(function(a,p){ return a + Number(p.pagato||0); }, 0);
   const voce = function(testo, valore, colore){ return '<span style="white-space:nowrap"><span style="color:var(--sub); font-weight:600">'+testo+'</span> <b style="color:'+colore+'">'+fmtEuro(valore)+'</b></span>'; };
   return '<div style="flex-basis:100%; margin-top:6px; padding:12px 16px; border-radius:12px; background:var(--card); border:2px dashed #374151; font-size:15px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px">'
-    + voce('Provento 730', p730, '#1d4f91') + '<b>+</b>'
-    + voce('Provento altre pratiche', pAltre, '#6b7280') + '<b>−</b>'
+    + voce('Incasso totale', incasso, '#8e5bd6') + '<b>−</b>'
     + voce('Versamenti CAF', pagamentiCaf, '#2f7de1') + '<b>−</b>'
     + voce('Spese sede', speseSede, '#b35f0c') + '<b>=</b>'
-    + '<span style="white-space:nowrap; background:#374151; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre - pagamentiCaf - speseSede) + '</span>'
+    + '<span style="white-space:nowrap; background:#374151; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(incasso - pagamentiCaf - speseSede) + '</span>'
     + '</div>';
 }
 
