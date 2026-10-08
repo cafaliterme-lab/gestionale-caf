@@ -60,7 +60,8 @@ function rigaSpesaHTML(s) {
       + (scrivi ? ' <button type="button" onclick="confermaSpesaContabilita(\'' + s.id + '\', false)" style="background:none; border:none; color:var(--sub); font-size:11px; cursor:pointer; text-decoration:underline">annulla</button>' : '')
     : (scrivi ? '<button type="button" onclick="confermaSpesaContabilita(\'' + s.id + '\', true)" style="background:#d4881c; color:#fff; border:none; border-radius:999px; padding:4px 12px; font-size:12px; font-weight:800; cursor:pointer">③ ✔ Conferma: già inserita in contabilità</button>' : passo(3, 'Da inserire in contabilità', false));
   return '<div style="padding:9px 10px; border:1px solid var(--line); border-left:5px solid ' + (s.inContabilita ? '#1a7f37' : '#d4881c') + '; border-radius:10px; margin-bottom:7px">'
-    + '<div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap"><span>' + esc(s.data || '-') + ' · <b>' + esc(s.categoria || '') + '</b>' + (s.descrizione ? ' · ' + esc(s.descrizione) : '') + '</span>'
+    + '<div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap"><span>' + esc(s.data || '-') + ' · <b>' + esc(s.categoria || '') + '</b>' + (s.descrizione ? ' · ' + esc(s.descrizione) : '')
+    + (function () { const v = typeof speseGiaDetratte === 'function' ? speseGiaDetratte()[s.id] : null; return v ? ' <span style="font-size:11.5px; color:#1d4f91; font-weight:700">· 🏦 detratta nel versamento CAF del ' + esc(v.data || '') + '</span>' : ''; })() + '</span>'
     + '<span><b>' + fmtEuro(s.importo) + '</b>' + (scrivi ? ' <button onclick="rimuoviSpesa(\'' + s.id + '\')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-weight:700;margin-left:6px" title="Elimina">✕</button>' : '') + '</span></div>'
     + '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px">'
     + passo(1, 'Registrata', true, '#1d4f91') + freccia

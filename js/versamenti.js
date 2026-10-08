@@ -4,6 +4,7 @@
 // già compilato e del bollettino postale compilato.
 
 const RIGHE_CASSA = 5;
+let VC_SPESE = [];   // per ogni riga delle spese: id della spesa sede scelta (se presa dall'elenco)
 
 function datiVersamento() {
   let d = {};
@@ -29,10 +30,11 @@ function renderVersamentiCaf(vlist, versatoCaf) {
     + '<div><label>Alla fattura n.</label><input id="vc-al" value="' + val('vc-al') + '" placeholder="Es. 50" inputmode="numeric" oninput="this.value=this.value.replace(/\\D/g,\'\'); suggerimentoVersamento()"></div>'
     + '<div class="full" id="vc-suggerimento" style="font-size:12.5px"></div>'
     + '<div class="full"><label>Importo delle fatture €</label>' + campoImp('vc-importo', val('vc-importo')) + '</div>'
-    + '<div class="full"><label>Spese pagate per conto del CAF da detrarre (condominio, TARI, acqua…)</label>'
+    + '<div class="full"><div style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; flex-wrap:wrap"><label style="margin:0">Spese pagate per conto del CAF da detrarre (condominio, TARI, acqua…)</label>'
+    + '<button type="button" onclick="scegliSpeseDaDetrarre()" style="padding:4px 12px; font-size:12.5px; background:#a0522d; color:#fff; border:none; border-radius:999px; font-weight:700; margin-bottom:4px">📥 Prendi da Spese sede</button></div>'
     + cassaRighe.map(function (r, i) {
       return '<div style="display:flex; gap:6px; margin-bottom:4px"><span style="width:18px; padding-top:9px; color:var(--sub)">' + (i + 1) + '.</span>'
-        + '<input id="vc-cd' + i + '" value="' + r.d + '" placeholder="Descrizione (es. TARI 2026, condominio settembre)" style="flex:1">'
+        + '<input id="vc-cd' + i + '" value="' + r.d + '" oninput="VC_SPESE[' + i + ']=null" placeholder="Descrizione (es. TARI 2026, condominio settembre)" style="flex:1">'
         + '<input id="vc-ci' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:110px"></div>';
     }).join('') + '</div>'
     + '<div class="full" id="vc-totale" style="font-size:15px"></div>'
@@ -60,12 +62,55 @@ function renderVersamentiCaf(vlist, versatoCaf) {
   totaleVersamentoForm();
 }
 
+// Spese della sede già detratte in un versamento (per non usarle due volte)
+function speseGiaDetratte() {
+  const m = {};
+  (state.versamenti || []).forEach(function (v) { (Array.isArray(v.cassaElenco) ? v.cassaElenco : []).forEach(function (r) { if (r.spesaId) m[r.spesaId] = v; }); });
+  return m;
+}
+function scegliSpeseDaDetrarre() {
+  const usate = speseGiaDetratte();
+  const giaNelModulo = VC_SPESE.filter(Boolean);
+  const lista = (state.speseSede || []).filter(function (sp) { return !usate[sp.id] && giaNelModulo.indexOf(sp.id) < 0; })
+    .sort(function (a, b) { return (dataNum(b.data) || 0) - (dataNum(a.data) || 0); });
+  if (!lista.length) { avviso('Nessuna spesa della sede da detrarre: sono già state usate tutte, o non ce ne sono (sezione SPESE SEDE)'); return; }
+  const vecchio = document.getElementById('popup-spese-vers'); if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-spese-vers';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #a0522d; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:18px 20px; max-width:560px; width:100%; max-height:90vh; display:flex; flex-direction:column">'
+    + '<div style="font-size:18px; font-weight:800; color:#a0522d">📥 Spese della sede da detrarre</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 10px">Spunta le spese pagate per conto del CAF (al massimo ' + RIGHE_CASSA + ' righe). Quelle già detratte in un altro versamento non compaiono.</div>'
+    + '<div style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px">' + lista.map(function (sp) {
+      return '<label style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); margin:0; cursor:pointer"><input type="checkbox" class="spv-chk" value="' + sp.id + '" style="width:auto; margin:0">'
+        + '<span style="flex:1">' + esc(sp.data || '') + ' · <b>' + esc(sp.categoria || '') + '</b>' + (sp.descrizione ? ' · ' + esc(sp.descrizione) : '') + '</span><b>' + fmtEuro(sp.importo) + '</b></label>';
+    }).join('') + '</div>'
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px"><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Annulla</button><button type="button" data-azione="si" style="background:#a0522d; color:#fff; font-weight:800">Aggiungi al versamento</button></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-azione]');
+    if (!b && e.target !== ov) return;
+    if (!b || b.dataset.azione === 'no') { ov.remove(); return; }
+    const scelte = Array.from(ov.querySelectorAll('.spv-chk')).filter(function (c) { return c.checked; }).map(function (c) { return lista.find(function (sp) { return sp.id === c.value; }); });
+    const libere = [];
+    for (let i = 0; i < RIGHE_CASSA; i++) if (!document.getElementById('vc-cd' + i).value.trim() && !document.getElementById('vc-ci' + i).value.trim()) libere.push(i);
+    if (scelte.length > libere.length) { alert('Ci sono solo ' + libere.length + ' righe libere: togli qualche spunta.'); return; }
+    scelte.forEach(function (sp, k) {
+      const i = libere[k];
+      document.getElementById('vc-cd' + i).value = (sp.categoria || '') + (sp.descrizione ? ' – ' + sp.descrizione : '') + ' (' + (sp.data || '') + ')';
+      document.getElementById('vc-ci' + i).value = Number(sp.importo || 0).toFixed(2).replace('.', ',');
+      VC_SPESE[i] = sp.id;
+    });
+    ov.remove();
+    totaleVersamentoForm();
+  });
+}
 function letturaFormVersamento() {
   const num = function (id) { const el = document.getElementById(id); const v = el ? parseImporto(el.value) : 0; return v > 0 ? v : 0; };
   const elenco = [];
   for (let i = 0; i < RIGHE_CASSA; i++) {
     const d = (document.getElementById('vc-cd' + i).value || '').trim(), imp = num('vc-ci' + i);
-    if (d || imp) elenco.push({ descrizione: d, importo: imp });
+    if (d || imp) elenco.push(VC_SPESE[i] ? { descrizione: d, importo: imp, spesaId: VC_SPESE[i] } : { descrizione: d, importo: imp });
   }
   // importo delle fatture − spese pagate per conto del CAF = quanto si versa col bollettino
   const fatture = num('vc-importo');
@@ -99,6 +144,7 @@ function aggiungiVersamento() {
   };
   ['vc-dal', 'vc-al', 'vc-importo', 'vc-causale'].forEach(function (id) { document.getElementById(id).value = ''; });
   for (let i = 0; i < RIGHE_CASSA; i++) { document.getElementById('vc-cd' + i).value = ''; document.getElementById('vc-ci' + i).value = ''; }
+  VC_SPESE = [];
   document.getElementById('vc-data').value = todayIT();
   document.getElementById('vc-suggerimento').innerHTML = '';
   totaleVersamentoForm();
