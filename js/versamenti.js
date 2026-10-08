@@ -261,30 +261,172 @@ function stampaModuloVersamento(id) {
     '@page{size:A4; margin:14mm} .foglio{max-width:180mm} .testa{text-align:center; font-size:12px; border-bottom:2px solid #1d4f91; padding-bottom:8px} h1{text-align:center; font-size:20px; letter-spacing:.08em; margin:14px 0} table{width:100%; border-collapse:collapse} .dati th{width:42%; text-align:left; background:#eef3fa; font-size:12px} .dati th,.dati td{border:1px solid #9aa8bb; padding:7px 9px; font-size:14px} .sotto{margin:14px 0 4px; font-weight:bold; font-size:13px} .elenco td{border-bottom:1px solid #9aa8bb; padding:8px 6px; font-size:13px; height:18px} .nota{font-size:11px; margin-top:14px} .firme{display:flex; justify-content:space-between; margin-top:40px; font-size:13px}');
 }
 
-/* --- Bollettino postale (conto corrente) compilato: ricevuta + attestazione --- */
+/* --- Bollettino postale TD 123 compilato sul modulo vero (modelli/bollettino-td123.jpg) ---
+   Il modulo è la scansione a 200 dpi del bollettino in bianco: 2625 × 805 punti = 333,4 × 102,2 mm.
+   Tutte le posizioni qui sotto sono in punti della scansione (1 punto = 0,127 mm).
+   Si stampa in due modi: su foglio bianco A4 con il disegno del bollettino (un po' rimpicciolito)
+   oppure solo il testo, a grandezza reale, sul bollettino di carta messo nella stampante. */
+const BOLL = {
+  larg: 2625, alt: 805,
+  // parte 1 (attestazione) e parte 2 (ricevuta di versamento): uguali, la seconda spostata di 656 punti
+  sinistra: {
+    cc: { x: 190, y: 72, n: 12, passo: 35 },
+    euro: { x: 190, y: 145, n: 10, passo: 35 },
+    lettere: { x: 105, x2: 628, y: 234 },
+    intestato: { x: 130, x2: 628, y: 273 },
+    causale: [{ x: 32, x2: 622, y: 328 }, { x: 32, x2: 622, y: 368 }],
+    eseguito: { x: 132, x2: 628, y: 696 },
+    via: { x: 125, x2: 628, y: 736 },
+    cap: { x: 58, x2: 192, y: 776 },
+    localita: { x: 288, x2: 628, y: 776 }
+  },
+  spostamentoParte2: 656,
+  // parte 3 (ricevuta di accredito): caselle una lettera ciascuna
+  destra: {
+    cc: { x: 1591, y: 72, n: 12, passo: 35 },
+    euro: { x: 2238, y: 72, n: 10, passo: 35 },
+    lettere: { x: 1715, x2: 2585, y: 166 },
+    intestato: [{ x: 1384, y: 190, n: 34, passo: 34.85 }, { x: 1384, y: 233, n: 34, passo: 34.85 }],
+    causale: [{ x: 1392, x2: 2585, y: 330 }, { x: 1392, x2: 2585, y: 370 }],
+    eseguito: [{ x: 1771, y: 408, n: 23, passo: 34.73 }, { x: 1771, y: 450, n: 23, passo: 34.73 }],
+    via: [{ x: 1771, y: 515, n: 23, passo: 34.73 }],
+    cap: { x: 1772, y: 579, n: 5, passo: 34.6 },
+    localita: { x: 1982, y: 579, n: 17, passo: 34.53 }
+  },
+  casella: { larg: 31, alt: 38 }
+};
+
 function stampaBollettino(id) {
   const v = cercaVersamento(id);
   if (!v) return;
   const d = datiVersamento();
   if (!d.cc && !confirm('Non è stato impostato il numero di conto corrente postale (⚙️ Dati per il modulo e il bollettino, in fondo ai versamenti). Stampo lo stesso con lo spazio vuoto?')) return;
   const versato = v.versato != null && v.versato !== '' ? Number(v.versato) : Number(v.importo || 0) - Number(v.pos || 0) - Number(v.cassa || 0);
-  const euro = versato.toFixed(2).replace('.', ',');
-  const lettere = importoInLettere(versato);
-  const causale = causaleVersamento(v, d);
-  const parte = function (titolo, larga) {
-    return '<div class="parte' + (larga ? ' larga' : '') + '">'
-      + '<div class="riga1"><span class="logo">BancoPosta</span><span class="tit">' + titolo + '</span></div>'
-      + '<div class="riga2"><span class="et">sul C/C n.</span><span class="box cc">' + esc(d.cc || '') + '</span><span class="et">di Euro</span><span class="box eur">' + euro + '</span></div>'
-      + (larga ? '<div class="campo"><span class="et">IMPORTO IN LETTERE</span><span class="val">' + esc(lettere) + '</span></div>' : '')
-      + '<div class="campo"><span class="et">INTESTATO A</span><span class="val">' + esc(d.intestatario || '') + '</span></div>'
-      + '<div class="campo"><span class="et">CAUSALE</span><span class="val">' + esc(causale) + '</span></div>'
-      + '<div class="campo"><span class="et">ESEGUITO DA</span><span class="val">' + esc(d.eseguito || '') + '</span></div>'
-      + '<div class="campo"><span class="et">VIA - PIAZZA</span><span class="val">' + esc(d.indirizzo || '') + '</span></div>'
-      + '<div class="campo"><span class="et">CAP</span><span class="val" style="flex:0 0 22mm">' + esc(d.cap || '') + '</span><span class="et">LOCALITÀ</span><span class="val">' + esc(d.localita || '') + '</span></div>'
-      + '<div class="bollo">BOLLO DELL\'UFFICIO POSTALE</div></div>';
+  if (!(versato > 0) && !confirm('L\'importo da versare è ' + fmtEuro(versato) + '. Stampo lo stesso il bollettino?')) return;
+  const cent = Math.round(Math.max(0, versato) * 100);
+  const intero = String(Math.floor(cent / 100)), decimali = String(cent % 100).padStart(2, '0');
+  const dati = {
+    cc: String(d.cc || '').replace(/\D/g, ''),
+    lettere: importoInLettere(Math.max(0, versato)),
+    intestato: d.intestatario || '', causale: causaleVersamento(v, d),
+    eseguito: d.eseguito || '', via: d.indirizzo || '', cap: String(d.cap || '').replace(/\s/g, ''), localita: d.localita || ''
   };
-  finestraStampa('Bollettino postale ' + (v.data || ''),
-    '<div class="boll">' + parte('RICEVUTA DI VERSAMENTO', false) + parte('CONTI CORRENTI POSTALI – Ricevuta di accredito', true) + '</div>'
-    + '<p style="font-size:11px; color:#555; margin-top:6mm">Data ' + esc(v.data || '') + ' · Importo in lettere: ' + esc(lettere) + ' euro</p>',
-    '@page{size:A4 landscape; margin:10mm} .boll{display:flex; border:2px solid #1f5fa8; width:270mm; min-height:100mm; font-size:12px} .parte{flex:0 0 90mm; border-right:2px dashed #1f5fa8; padding:4mm; position:relative} .parte.larga{flex:1; border-right:none} .riga1{display:flex; justify-content:space-between; color:#1f5fa8; font-weight:bold; margin-bottom:3mm} .logo{background:#ffd200; color:#1f5fa8; padding:1px 6px; border-radius:3px} .riga2{display:flex; align-items:center; gap:2mm; margin-bottom:3mm; flex-wrap:wrap} .et{font-size:9px; color:#1f5fa8; font-weight:bold; white-space:nowrap} .box{border:1.5px solid #1f5fa8; padding:2px 6px; font-family:Courier New,monospace; font-size:15px; font-weight:bold; min-width:28mm; letter-spacing:2px} .box.eur{min-width:24mm; text-align:right} .campo{display:flex; align-items:flex-end; gap:2mm; border-bottom:1px solid #1f5fa8; padding:2.2mm 0 1mm} .val{flex:1; font-family:Courier New,monospace; font-size:13px; font-weight:bold; text-transform:uppercase} .bollo{position:absolute; right:4mm; bottom:3mm; width:30mm; height:16mm; border:1px dashed #1f5fa8; font-size:7px; color:#1f5fa8; text-align:center; padding-top:1mm}');
+  const mm = function (p) { return (p * 25.4 / 200).toFixed(2) + 'mm'; };
+  const pezzi = [];
+  // una lettera per casella
+  const caselle = function (c, testo, allineaDestra) {
+    const t = String(testo || '').toUpperCase().slice(0, c.n).split('');
+    const inizio = allineaDestra ? c.n - t.length : 0;
+    t.forEach(function (ch, i) {
+      if (ch === ' ') return;
+      pezzi.push('<span class="car" style="left:' + mm(c.x + (inizio + i) * c.passo) + '; top:' + mm(c.y) + '">' + esc(ch) + '</span>');
+    });
+  };
+  // testo che va a capo sulle righe di caselle (senza spezzare le parole se si può)
+  const caselleSuRighe = function (righe, testo) {
+    let resto = String(testo || '').toUpperCase().replace(/\s+/g, ' ').trim();
+    righe.forEach(function (r) {
+      if (!resto) return;
+      let parte = resto.slice(0, r.n);
+      if (resto.length > r.n) { const sp = parte.lastIndexOf(' '); if (sp > r.n / 2) parte = parte.slice(0, sp); }
+      caselle(r, parte);
+      resto = resto.slice(parte.length).trim();
+    });
+  };
+  // testo scritto su una riga (si rimpicciolisce se è lungo)
+  const riga = function (r, testo, dx) {
+    const t = String(testo || '').toUpperCase().trim();
+    if (!t) return;
+    const largMm = (r.x2 - r.x) * 25.4 / 200;
+    const corpo = Math.min(3.3, largMm / (t.length * 0.62));
+    pezzi.push('<span class="riga" style="left:' + mm(r.x + (dx || 0)) + '; top:' + mm(r.y) + '; width:' + largMm.toFixed(2) + 'mm; font-size:' + corpo.toFixed(2) + 'mm">' + esc(t) + '</span>');
+  };
+  // testo lungo diviso su più righe (la causale)
+  const righeMultiple = function (righe, testo, dx) {
+    const parole = String(testo || '').toUpperCase().split(/\s+/).filter(Boolean);
+    const capienza = function (r) { return Math.floor((r.x2 - r.x) * 25.4 / 200 / (3.3 * 0.62)); };
+    const linee = righe.map(function () { return ''; });
+    let k = 0;
+    parole.forEach(function (p) {
+      if (k < righe.length - 1 && linee[k] && (linee[k] + ' ' + p).length > capienza(righe[k])) k++;
+      linee[k] = linee[k] ? linee[k] + ' ' + p : p;
+    });
+    linee.forEach(function (l, i) { riga(righe[i], l, dx); });
+  };
+
+  const s = BOLL.sinistra;
+  [0, BOLL.spostamentoParte2].forEach(function (dx) {
+    caselle({ x: s.cc.x + dx, y: s.cc.y, n: s.cc.n, passo: s.cc.passo }, dati.cc, true);
+    caselle({ x: s.euro.x + dx, y: s.euro.y, n: 8, passo: s.euro.passo }, intero, true);
+    caselle({ x: s.euro.x + dx + 8 * s.euro.passo, y: s.euro.y, n: 2, passo: s.euro.passo }, decimali);
+    riga(s.lettere, dati.lettere, dx);
+    riga(s.intestato, dati.intestato, dx);
+    righeMultiple(s.causale, dati.causale, dx);
+    riga(s.eseguito, dati.eseguito, dx);
+    riga(s.via, dati.via, dx);
+    riga(s.cap, dati.cap, dx);
+    riga(s.localita, dati.localita, dx);
+  });
+  const r3 = BOLL.destra;
+  caselle(r3.cc, dati.cc, true);
+  caselle({ x: r3.euro.x, y: r3.euro.y, n: 8, passo: r3.euro.passo }, intero, true);
+  caselle({ x: r3.euro.x + 8 * r3.euro.passo, y: r3.euro.y, n: 2, passo: r3.euro.passo }, decimali);
+  riga(r3.lettere, dati.lettere);
+  caselleSuRighe(r3.intestato, dati.intestato);
+  righeMultiple(r3.causale, dati.causale);
+  caselleSuRighe(r3.eseguito, dati.eseguito);
+  caselleSuRighe(r3.via, dati.via);
+  caselle(r3.cap, dati.cap);
+  caselleSuRighe([r3.localita], dati.localita);
+
+  const sfondo = new URL('modelli/bollettino-td123.jpg', location.href).href;
+  const W = mm(BOLL.larg), H = mm(BOLL.alt);
+  const scalaA4 = (287 / (BOLL.larg * 25.4 / 200)).toFixed(4);
+  const w = window.open('', '_blank');
+  if (!w) { alert('Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito.'); return; }
+  w.document.open();
+  w.document.write('<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Bollettino postale ' + esc(v.data || '') + '</title>'
+    + '<style>'
+    + 'body{margin:0; font-family:Arial,Helvetica,sans-serif; color:#111; background:#e9edf2; -webkit-print-color-adjust:exact; print-color-adjust:exact}'
+    + '.barra{padding:10px 12px; background:#fff; border-bottom:1px solid #ccd5e0; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; font-size:14px}'
+    + '.barra button{padding:8px 16px; font-size:14px; border-radius:999px; border:1px solid #1d4f91; background:#fff; color:#1d4f91; cursor:pointer}'
+    + '.barra button.princ{background:#1d4f91; color:#fff; font-weight:700}'
+    + '.barra label{display:flex; align-items:center; gap:6px} .barra input[type=number]{width:60px; padding:4px}'
+    + '.nota{flex-basis:100%; font-size:12px; color:#555; margin:0}'
+    + '.area{padding:12px; overflow:auto}'
+    + '.contenitore{width:calc(' + W + ' * var(--scala)); height:calc(' + H + ' * var(--scala)); background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.18)}'
+    + '.boll{position:relative; width:' + W + '; height:' + H + '; transform-origin:0 0; transform:scale(var(--scala)) translate(var(--dx), var(--dy)); background:url("' + sfondo + '") 0 0 / 100% 100% no-repeat}'
+    + 'body.solo-testo .boll{background:none}'
+    + '.car{position:absolute; width:' + mm(BOLL.casella.larg) + '; height:' + mm(BOLL.casella.alt) + '; line-height:' + mm(BOLL.casella.alt) + '; text-align:center; font-family:"Courier New",Courier,monospace; font-weight:bold; font-size:4.1mm; color:#000}'
+    + '.riga{position:absolute; transform:translateY(-100%); white-space:nowrap; overflow:hidden; font-family:"Courier New",Courier,monospace; font-weight:bold; line-height:1.15; color:#000}'
+    + ':root{--scala:1; --dx:0mm; --dy:0mm}'
+    + 'body.a4{--scala:' + scalaA4 + '}'
+    + '@media print{body{background:none} .barra{display:none} .area{padding:0} .contenitore{box-shadow:none}}'
+    + '</style>'
+    + '<style id="pagina-a4">@page{size:A4 landscape; margin:5mm}</style>'
+    + '<style id="pagina-reale" media="not all">@page{size:' + W + ' ' + H + '; margin:0}</style>'
+    + '</head><body class="a4">'
+    + '<div class="barra">'
+    + '<button class="princ" onclick="window.print()">🖨️ Stampa / Salva come PDF</button>'
+    + '<label><input type="radio" name="modo" value="a4" checked onchange="modo(this.value)"> Su foglio bianco A4 (con il disegno del bollettino)</label>'
+    + '<label><input type="radio" name="modo" value="vero" onchange="modo(this.value)"> Solo i dati, sul bollettino di carta</label>'
+    + '<span id="regola" style="display:none; gap:12px"><label>Sposta → <input type="number" id="dx" step="0.5" value="0" oninput="sposta()"> mm</label><label>↓ <input type="number" id="dy" step="0.5" value="0" oninput="sposta()"> mm</label></span>'
+    + '<button onclick="window.close()">Chiudi</button>'
+    + '<p class="nota" id="nota-a4">Il bollettino è leggermente rimpicciolito per entrare nel foglio A4.</p>'
+    + '<p class="nota" id="nota-vero" style="display:none">Metti il bollettino in bianco nel cassetto manuale della stampante e scegli il formato carta 333 × 102 mm (personalizzato), scala 100%. Se la scritta esce spostata, correggi con "Sposta" e riprova su un foglio di prova.</p>'
+    + '</div>'
+    + '<div class="area"><div class="contenitore"><div class="boll">' + pezzi.join('') + '</div></div></div>'
+    + '<script>'
+    + 'function leggi(k){try{return localStorage.getItem(k)}catch(e){return null}}'
+    + 'function salva(k,v){try{localStorage.setItem(k,v)}catch(e){}}'
+    + 'function sposta(){var x=parseFloat(document.getElementById("dx").value)||0,y=parseFloat(document.getElementById("dy").value)||0;'
+    + 'document.documentElement.style.setProperty("--dx",x+"mm");document.documentElement.style.setProperty("--dy",y+"mm");salva("bollettino_dx",x);salva("bollettino_dy",y);}'
+    + 'function modo(m){var vero=m==="vero";document.body.className=vero?"solo-testo":"a4";'
+    + 'document.getElementById("pagina-a4").media=vero?"not all":"all";document.getElementById("pagina-reale").media=vero?"all":"not all";'
+    + 'document.getElementById("regola").style.display=vero?"flex":"none";document.getElementById("nota-a4").style.display=vero?"none":"";document.getElementById("nota-vero").style.display=vero?"":"none";'
+    + 'if(vero){document.getElementById("dx").value=leggi("bollettino_dx")||0;document.getElementById("dy").value=leggi("bollettino_dy")||0;sposta();}'
+    + 'else{document.documentElement.style.setProperty("--dx","0mm");document.documentElement.style.setProperty("--dy","0mm");}salva("bollettino_modo",m);}'
+    + 'if(leggi("bollettino_modo")==="vero"){document.querySelector("input[value=vero]").checked=true;modo("vero");}'
+    + '<\/script></body></html>');
+  w.document.close();
 }
