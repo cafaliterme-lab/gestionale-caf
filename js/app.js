@@ -930,7 +930,7 @@ async function esportaRegistroExcel(){
     { 'Voce':'Versamenti CAF (€)', 'Valore': versatoCaf },
     { 'Voce':'Netto: incasso − versamenti CAF (€)', 'Valore': incasso },
     { 'Voce':'Spese gestione sede (€)', 'Valore': (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
-    { 'Voce':'Guadagno netto: incasso − fatture − versamenti CAF − spese sede (€)', 'Valore': incassoLordo - fattureEmesse - versatoCaf - (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
+    { 'Voce':'Guadagno netto: incasso − fatture − spese sede (€)', 'Valore': incassoLordo - fattureEmesse - (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
     { 'Voce':'', 'Valore':'' },
     { 'Voce':'Dettaglio per collaboratore / tipo pratica', 'Valore':'' }
   ];
@@ -1576,8 +1576,9 @@ function render(){
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
   const incasso = incassoLordo - versatoCaf;
   const speseSede = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(annoSel) : 0;
-  // guadagno netto = incasso totale − fatture emesse − versamenti CAF − spese sede (come deciso dal titolare)
-  const differenzaIncFatt = incassoLordo - fattureEmesse - versatoCaf - speseSede;
+  // guadagno netto = incasso totale − fatture emesse − spese sede (= guadagno 730 + guadagno altre pratiche − spese).
+  // I versamenti CAF non si tolgono: pagano le fatture già tolte (il netto in cassa è incasso − versamenti)
+  const differenzaIncFatt = incassoLordo - fattureEmesse - speseSede;
 
   const vPrat = vedeSezioneContabilita('cont_pratiche'), vEco = vedeSezioneContabilita('cont_economici'), vBlocchi = vedeSezioneContabilita('cont_blocchi'), vGrafici = vedeSezioneContabilita('cont_grafici');
   const contExcel = document.getElementById('cont-excel');
@@ -1611,7 +1612,7 @@ function render(){
       <div id="box-ch-tipi" style="margin-top:14px"><div class="chart-cap">Fatture emesse, incasso e guadagno netto per tipo di pratica</div><div class="chart-wrap"><canvas id="ch-tipi"></canvas></div></div>
       <div id="raff-tipi" style="margin-top:14px"></div>`;
   }
-  document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso totale − fatture emesse − versamenti CAF − spese sede): ' + fmtEuro(incassoLordo - fattureEmesse - versatoCaf - speseSede) : '';
+  document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso totale − fatture emesse − spese sede): ' + fmtEuro(incassoLordo - fattureEmesse - speseSede) : '';
   aggiornaGrafici(fattureEmesse, incassoLordo);
   aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno) + riepilogoPerPagamento(pratAnno);
@@ -2750,9 +2751,9 @@ function riepilogoGuadagno(pratiche, pagamentiCaf, speseSede){
   return '<div style="flex-basis:100%; margin-top:6px; padding:12px 16px; border-radius:12px; background:var(--card); border:2px dashed #374151; font-size:15px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px">'
     + voce('Guadagno netto 730', p730, '#1d4f91') + '<b>+</b>'
     + voce('Guadagno netto altre pratiche', pAltre, '#6b7280') + '<b>−</b>'
-    + voce('Versamenti CAF', pagamentiCaf, '#2f7de1') + '<b>−</b>'
     + voce('Spese sede', speseSede, '#b35f0c') + '<b>=</b>'
-    + '<span style="white-space:nowrap; background:#374151; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre - pagamentiCaf - speseSede) + '</span>'
+    + '<span style="white-space:nowrap; background:#374151; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre - speseSede) + '</span>'
+    + (function(){ const daVers = pratiche.reduce(function(a,p){ return a + Number(p.compenso||0); }, 0) - pagamentiCaf; return '<div style="flex-basis:100%; font-size:12.5px; color:var(--sub)">Fatture ancora da versare al CAF: <b style="color:' + (daVers > 0.004 ? '#c0392b' : 'inherit') + '">' + fmtEuro(daVers) + '</b> (fatture emesse − versamenti CAF). I versamenti non cambiano il guadagno: cambiano solo il netto in cassa.</div>'; })()
     + '</div>';
 }
 
