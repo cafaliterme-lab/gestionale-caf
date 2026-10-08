@@ -118,7 +118,7 @@ function riepilogoStampa(lista) {
     voci.push(['Versamenti CAF', caf, true]);
     voci.push(['Netto (incasso − versamenti CAF)', inc - caf, true]);
     const spese = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(STAMPA.anno) : 0;
-    if (vedeGuadagni()) { voci.push(['Spese gestione sede', spese, true]); voci.push(['Guadagno netto (proventi = incasso − fatture, meno spese sede)', inc - fatt - spese, true]); }
+    if (vedeGuadagni()) { voci.push(['Spese gestione sede', spese, true]); voci.push(['Guadagno netto (incasso − fatture − versamenti CAF − spese sede)', inc - fatt - caf - spese, true]); }
   } else if (vedeGuadagni()) {
     voci.push(['Provento (incasso − fatture)', inc - fatt, true]);
   }
