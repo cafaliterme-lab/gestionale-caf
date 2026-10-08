@@ -54,7 +54,7 @@ function renderVersamentiCaf(vlist, versatoCaf) {
         + '<button type="button" onclick="stampaModuloVersamento(\'' + v.id + '\')" style="padding:3px 10px; font-size:12px; background:#1d4f91; color:#fff; border:none; border-radius:999px">🖨️ Modulo trasmissione</button>'
         + '<button type="button" onclick="stampaBollettino(\'' + v.id + '\')" style="padding:3px 10px; font-size:12px; background:#d98b1e; color:#fff; border:none; border-radius:999px">📮 Bollettino postale</button></div></span>'
         + '<span style="white-space:nowrap; text-align:right"><b>' + fmtEuro(v.importo) + '</b>'
-        + (auth.profilo && auth.profilo.ruolo === 'admin' ? '<div><button type="button" onclick="rimuoviVersamento(\'' + v.id + '\')" title="Elimina questo versamento (solo amministratore)" style="margin-top:4px; padding:3px 10px; font-size:12px; background:#fdecea; color:#c0392b; border:1px solid #c0392b; border-radius:999px; font-weight:700; cursor:pointer">🗑️ Elimina</button></div>' : '')
+        + (puoEliminareVersamenti() ? '<div><button type="button" onclick="rimuoviVersamento(\'' + v.id + '\')" title="Elimina questo versamento" style="margin-top:4px; padding:3px 10px; font-size:12px; background:#fdecea; color:#c0392b; border:1px solid #c0392b; border-radius:999px; font-weight:700; cursor:pointer">🗑️ Elimina</button></div>' : '')
         + '</span></div>';
     }).join('') : '<div class="empty">Nessun versamento registrato</div>')
     + '<div class="caf-tot"><span>Totale versato</span><span>' + fmtEuro(versatoCaf) + '</span></div>'
@@ -106,9 +106,10 @@ function scegliSpeseDaDetrarre() {
     totaleVersamentoForm();
   });
 }
-// Eliminazione di un versamento: solo l'amministratore, con conferma
+// Eliminazione di un versamento: amministratore e operatori che possono scrivere nei Versamenti CAF, con conferma
+function puoEliminareVersamenti() { return typeof puo === 'function' ? puo('caf', true) : !!(auth.profilo && auth.profilo.ruolo === 'admin'); }
 async function rimuoviVersamento(id) {
-  if (!auth.profilo || auth.profilo.ruolo !== 'admin') { avviso('❌ Solo l\'amministratore può eliminare i versamenti', true); return; }
+  if (!puoEliminareVersamenti()) { avviso('❌ Non hai il permesso di eliminare i versamenti', true); return; }
   const v = cercaVersamento(id);
   if (!v) return;
   if (!confirm('Eliminare il versamento del ' + (v.data || '') + ' di ' + fmtEuro(v.importo) + (v.fatturaDal || v.fatturaAl ? ' (fatture dal n. ' + (v.fatturaDal || '…') + ' al n. ' + (v.fatturaAl || '…') + ')' : '') + '?\n\nL\'operazione non si può annullare.')) return;
