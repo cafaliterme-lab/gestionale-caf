@@ -43,7 +43,11 @@ async function caricaChat() {
     const r = await fetchSupabase('/rest/v1/messaggi_interni?select=*&order=creato_il.desc&limit=300', 'GET');
     if (!r.ok || !Array.isArray(r.data)) return;
     const prima = CHAT.messaggi.length ? CHAT.messaggi[0].creato_il : null;
-    CHAT.messaggi = r.data;
+    // messaggi che ho tolto dalla mia chat (gli altri li vedono ancora)
+    const n = await fetchSupabase('/rest/v1/messaggi_nascosti?select=messaggio_id', 'GET');
+    if (n.ok && Array.isArray(n.data)) CHAT.nascosti = n.data.map(function (x) { return x.messaggio_id; });
+    const nasc = CHAT.nascosti || [];
+    CHAT.messaggi = r.data.filter(function (m) { return nasc.indexOf(m.id) < 0; });
     const u = await fetchSupabase('/rest/v1/rpc/elenco_utenti', 'POST', {});
     if (u.ok && Array.isArray(u.data)) CHAT.utenti = u.data;
     // messaggio nuovo arrivato mentre la chat è chiusa: avviso a video
@@ -191,7 +195,7 @@ function disegnaChat() {
   const lista = CHAT.scheda === 'compiti' ? compiti.slice().sort(function (a, b) { return (a.fatto - b.fatto) || (a.creato_il < b.creato_il ? 1 : -1); }) : CHAT.messaggi.slice().reverse();
   const scheda = function (k, t) { return '<button type="button" onclick="CHAT.scheda=\'' + k + '\'; disegnaChat()" style="flex:1; padding:8px; border:none; border-bottom:3px solid ' + (CHAT.scheda === k ? '#fff' : 'transparent') + '; background:none; color:#fff; font-weight:800; cursor:pointer">' + t + '</button>'; };
   ov.innerHTML = '<div style="background:linear-gradient(90deg,#1d4f91,#00612f); color:#fff; padding:10px 12px 0">'
-    + '<div style="display:flex; justify-content:space-between; align-items:center"><b style="font-size:16px">💬 Chat interna</b><button type="button" onclick="chiudiChat()" style="background:rgba(255,255,255,.2); color:#fff; border:none; border-radius:999px; padding:4px 12px; cursor:pointer">✕</button></div>'
+    + '<div style="display:flex; justify-content:space-between; align-items:center"><b style="font-size:16px">💬 Chat interna</b><span style="display:flex; gap:6px"><button type="button" onclick="pulisciChat()" title="Togli dalla tua chat tutti i messaggi (i compiti ancora da fare restano)" style="background:rgba(255,255,255,.2); color:#fff; border:none; border-radius:999px; padding:4px 12px; cursor:pointer; font-size:13px">🧹 Pulisci</button><button type="button" onclick="chiudiChat()" style="background:rgba(255,255,255,.2); color:#fff; border:none; border-radius:999px; padding:4px 12px; cursor:pointer">✕</button></span></div>'
     + '<div style="display:flex; margin-top:6px">' + scheda('chat', '💬 Messaggi') + scheda('compiti', '📌 Da fare' + (aperti.length ? ' (' + aperti.length + ')' : '')) + '</div></div>'
     + contatoreCompitiHTML()
     + '<div id="chat-lista" style="flex:1; overflow-y:auto; padding:10px; background:var(--bg); display:flex; flex-direction:column; gap:8px">'
@@ -204,7 +208,7 @@ function disegnaChat() {
         + '<div style="font-size:14px; white-space:pre-wrap; word-break:break-word">' + esc(m.testo) + '</div>'
         + '<div style="display:flex; gap:6px; justify-content:flex-end; margin-top:4px">'
         + (m.compito ? (m.fatto ? '<button type="button" onclick="segnaCompito(\'' + m.id + '\', false)" style="padding:2px 8px; font-size:11px">↺ Da rifare</button>' : '<button type="button" onclick="segnaCompito(\'' + m.id + '\', true)" style="padding:3px 10px; font-size:12px; background:#2f9e5f; color:#fff; font-weight:800">✓ Fatto</button>') : '')
-        + (mio ? '<button type="button" title="Elimina" onclick="eliminaMessaggioChat(\'' + m.id + '\')" style="padding:2px 8px; font-size:11px; background:none; color:#c0392b">✕</button>' : '')
+        + (mio || !(m.compito && !m.fatto) ? '<button type="button" title="Elimina" onclick="eliminaMessaggioChat(\'' + m.id + '\')" style="padding:2px 8px; font-size:11px; background:none; color:#c0392b">🗑️</button>' : '')
         + '</div></div>';
     }).join('') : '<div style="text-align:center; color:var(--sub); margin-top:30px">' + (CHAT.scheda === 'compiti' ? 'Nessun compito' : 'Nessun messaggio: scrivi il primo!') + '</div>')
     + '</div>'
@@ -239,9 +243,51 @@ async function segnaCompito(id, fatto) {
   if (fatto) avviso('✓ Compito segnato come fatto');
   await caricaChat();
 }
-async function eliminaMessaggioChat(id) {
-  if (!confirm('Eliminare questo messaggio?')) return;
-  const r = await fetchSupabase('/rest/v1/messaggi_interni?id=eq.' + id, 'DELETE', null, { 'Prefer': 'return=minimal' });
+// Elimina un messaggio: il mio lo posso cancellare per tutti o solo dalla mia chat; quello di un altro lo tolgo solo dalla mia
+function eliminaMessaggioChat(id) {
+  const m = CHAT.messaggi.find(function (x) { return x.id === id; });
+  if (!m) return;
+  const mio = m.da_id === auth.profilo.id, admin = auth.profilo.ruolo === 'admin';
+  const vecchio = document.getElementById('chat-elimina'); if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'chat-elimina';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:490; background:rgba(15,27,45,.45); display:flex; align-items:center; justify-content:center; padding:16px';
+  const tasto = function (az, testo, col) { return '<button type="button" data-az="' + az + '" style="width:100%; margin-top:8px; padding:10px; border:none; border-radius:10px; font-weight:800; cursor:pointer; background:' + col + '; color:#fff">' + testo + '</button>'; };
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; padding:18px 20px; max-width:380px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,.3)">'
+    + '<div style="font-size:17px; font-weight:800; margin-bottom:6px">🗑️ Eliminare il messaggio?</div>'
+    + '<div style="font-size:13px; color:var(--sub); white-space:pre-wrap; max-height:90px; overflow:hidden; border-left:3px solid var(--line); padding-left:8px">' + esc(m.testo) + '</div>'
+    + tasto('me', 'Togli solo dalla mia chat', '#1d4f91')
+    + (mio || admin ? tasto('tutti', 'Elimina per tutti', '#c0392b') : '<div style="font-size:12px; color:var(--sub); margin-top:6px">Gli altri continueranno a vederlo.</div>')
+    + '<button type="button" data-az="no" style="width:100%; margin-top:8px; padding:9px; border-radius:10px; background:none; border:1px solid var(--line); color:var(--ink); cursor:pointer">Annulla</button></div>';
+  ov.addEventListener('click', async function (e) {
+    const az = e.target.getAttribute && e.target.getAttribute('data-az');
+    if (e.target !== ov && !az) return;
+    ov.remove();
+    if (az === 'me') await nascondiMessaggiChat([id]);
+    else if (az === 'tutti') {
+      const r = await fetchSupabase('/rest/v1/messaggi_interni?id=eq.' + id, 'DELETE', null, { 'Prefer': 'return=minimal' });
+      if (!r.ok) { avviso('❌ Non eliminato', true); return; }
+      avviso('✓ Messaggio eliminato per tutti');
+      await caricaChat();
+    }
+  });
+  document.body.appendChild(ov);
+}
+async function nascondiMessaggiChat(ids) {
+  if (!ids.length) return;
+  const r = await fetchSupabase('/rest/v1/messaggi_nascosti', 'POST', ids.map(function (i) { return { messaggio_id: i }; }), { 'Prefer': 'return=minimal,resolution=ignore-duplicates' });
   if (!r.ok) { avviso('❌ Non eliminato', true); return; }
-  await caricaChat();
+  CHAT.nascosti = (CHAT.nascosti || []).concat(ids);
+  CHAT.messaggi = CHAT.messaggi.filter(function (m) { return ids.indexOf(m.id) < 0; });
+  avviso(ids.length === 1 ? '✓ Messaggio tolto dalla tua chat' : '✓ ' + ids.length + ' messaggi tolti dalla tua chat');
+  disegnaBottoneChat();
+  disegnaCompitiAVideo();
+  if (CHAT.aperta) disegnaChat();
+}
+// Svuota la mia chat in un colpo solo (i compiti ancora da fare per me restano)
+function pulisciChat() {
+  const ids = CHAT.messaggi.filter(function (m) { return !(m.compito && !m.fatto && chatPerMe(m)); }).map(function (m) { return m.id; });
+  if (!ids.length) { avviso('Non ci sono messaggi da togliere'); return; }
+  if (!confirm('Togliere dalla tua chat ' + (ids.length === 1 ? 'il messaggio' : 'tutti i ' + ids.length + ' messaggi') + '?\nI compiti ancora da fare restano. Gli altri utenti continuano a vedere i messaggi.')) return;
+  nascondiMessaggiChat(ids);
 }
