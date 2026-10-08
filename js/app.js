@@ -1452,12 +1452,31 @@ function aggiungiVersamento(){
     if(msg){ msg.textContent = '⚠️ Inserisci un importo valido, es. 50,00'; msg.style.display = 'block'; }
     return;
   }
-  const nuovoVers = { importo:imp, data:dat, causale:caus };
+  const dal = (document.getElementById('vc-dal').value || '').trim(), al = (document.getElementById('vc-al').value || '').trim();
+  if((dal && !parseDataIT(dal)) || (al && !parseDataIT(al))){
+    if(msg){ msg.textContent = '⚠️ Scrivi le date delle fatture nel formato GG/MM/AAAA'; msg.style.display = 'block'; }
+    return;
+  }
+  const nuovoVers = { importo:imp, data:dat, causale:caus, fatturaDal: dal, fatturaAl: al };
+  document.getElementById('vc-dal').value='';
+  document.getElementById('vc-al').value='';
+  document.getElementById('vc-suggerimento').innerHTML='';
   document.getElementById('vc-importo').value='';
   document.getElementById('vc-data').value=todayIT();
   document.getElementById('vc-causale').value='';
   // Usa la nuova API data.js
   data.versamenti.aggiungi(nuovoVers);
+}
+// Con "Fatture dal… al…" compilate si vede quanto fanno le fatture pagate di quel periodo, da usare come importo
+function suggerimentoVersamento(){
+  const box = document.getElementById('vc-suggerimento');
+  if(!box) return;
+  const dal = dataNum(document.getElementById('vc-dal').value.trim()), al = dataNum(document.getElementById('vc-al').value.trim());
+  if(!dal || !al){ box.innerHTML = ''; return; }
+  const lista = (state.pratiche || []).filter(function(p){ const n = dataNum(p.data); return !p.annullata && Number(p.pagato || 0) > 0 && n != null && n >= dal && n <= al; });
+  const tot = lista.reduce(function(t, p){ return t + Number(p.compenso || 0); }, 0);
+  box.innerHTML = '🧾 Fatture pagate in questo periodo (per data di apertura): <b>' + fmtEuro(tot) + '</b> · ' + lista.length + ' pratiche'
+    + (tot ? ' <button type="button" onclick="document.getElementById(\'vc-importo\').value=\'' + tot.toFixed(2).replace('.', ',') + '\'" style="padding:3px 10px; font-size:12px; margin-left:6px">Usa come importo</button>' : '');
 }
 function rimuoviVersamento(id){
   // Usa la nuova API data.js
@@ -1605,22 +1624,29 @@ function render(){
   // la data del versamento si compila da sola con la data di oggi (si può cambiare)
   const vcPrima = document.getElementById('vc-data');
   const vcData = (vcPrima && vcPrima.value.trim()) || todayIT();
+  // gli altri campi scritti restano anche quando la pagina si aggiorna
+  const vcVal = function(id){ const el = document.getElementById(id); return el ? esc(el.value) : ''; };
+  const vcImp = vcVal('vc-importo'), vcCaus = vcVal('vc-causale'), vcDal = vcVal('vc-dal'), vcAl = vcVal('vc-al');
   caf.innerHTML = `
     <div class="raff-title">Versamenti al CAF Regionale</div>
     <div class="grid">
-      <div><label>Importo (€)</label><input id="vc-importo" type="text" inputmode="decimal" placeholder="0,00"></div>
-      <div><label>Data</label><input id="vc-data" value="${vcData}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
-      <div class="full"><label>Causale</label><input id="vc-causale" placeholder="Facoltativo"></div>
+      <div><label>Fatture dal</label><input id="vc-dal" value="${vcDal}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this); suggerimentoVersamento()"></div>
+      <div><label>Fatture al</label><input id="vc-al" value="${vcAl}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this); suggerimentoVersamento()"></div>
+      <div class="full" id="vc-suggerimento" style="font-size:12.5px"></div>
+      <div><label>Importo (€)</label><input id="vc-importo" type="text" inputmode="decimal" placeholder="0,00" value="${vcImp}"></div>
+      <div><label>Data del versamento</label><input id="vc-data" value="${vcData}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
+      <div class="full"><label>Causale</label><input id="vc-causale" placeholder="Facoltativo" value="${vcCaus}"></div>
     </div>
     <div style="text-align:left"><button class="btn-add" onclick="aggiungiVersamento()">+ Aggiungi versamento</button></div>
     <div id="caf-msg" style="color:#c0392b; font-size:12px; margin:4px 0 8px; display:none"></div>
     ${vlist.length ? vlist.map(v => `
       <div class="caf-row">
-        <span>${v.data||'-'} ${v.causale ? '· '+esc(v.causale) : ''}</span>
+        <span>${v.data||'-'} ${v.causale ? '· '+esc(v.causale) : ''}${v.fatturaDal || v.fatturaAl ? '<div class="sub2">🧾 Fatture dal ' + esc(v.fatturaDal || '…') + ' al ' + esc(v.fatturaAl || '…') + '</div>' : ''}</span>
         <span>${fmtEuro(v.importo)} <button onclick="rimuoviVersamento('${v.id}')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-weight:700;margin-left:6px">✕</button></span>
       </div>`).join('') : '<div class="empty">Nessun versamento registrato</div>'}
     <div class="caf-tot"><span>Totale versato</span><span>${fmtEuro(versatoCaf)}</span></div>
   `;
+  suggerimentoVersamento();
 
   const raff = document.getElementById('raffronto');
   if(!document.getElementById('ch-stati')){
@@ -1639,8 +1665,6 @@ function render(){
   aggiornaGraficoTipi(pratAnno);
   document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno) + riepilogoPerPagamento(pratAnno);
   if(typeof renderElencoFPS === 'function') renderElencoFPS(pratAnno);
-  const sitBox = document.getElementById('situazione-data');
-  if(sitBox) sitBox.style.display = vedeSezioneContabilita('cont_economici') ? '' : 'none';
   if(typeof renderSituazioneData === 'function') renderSituazioneData();
   if(typeof renderRicercaFatture === 'function') renderRicercaFatture();
   if(typeof aggiornaPulsanteCUD === 'function'){ aggiornaPulsanteCUD(); if(document.getElementById('richieste-cud')) disegnaRichiesteCUD(); }

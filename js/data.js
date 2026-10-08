@@ -159,6 +159,8 @@ const schemas = {
     importo: 'importo',
     data: 'data',
     causale: 'causale',
+    fatturaDal: 'fattura_dal',
+    fatturaAl: 'fattura_al',
     creatoDa: 'creato_da',
     creatoIl: 'creato_il',
   },

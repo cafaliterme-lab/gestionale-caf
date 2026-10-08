@@ -214,7 +214,7 @@ const GUIDA = [
 <li><b>🔎 Ricerca fatture</b> dal… al… con il tipo di pagamento (vedi il capitolo dedicato).</li>
 <li>I riquadri <b>SPESE SEDE</b>, <b>GUADAGNO NETTO (meno spese sede)</b> e, se c'è, <b>DA RESTITUIRE AD ANGELO</b>.</li>
 <li><b>🖨️ Stampa contabilità (Excel / PDF)</b>.</li>
-</ul><p><b>⚖️ Situazione alla data</b>: subito sotto i riquadri, scegli <b>Dal</b> e <b>Fino al</b> (già proposto dall'inizio dell'anno a oggi) e vedi le <b>fatture pagate</b> (fatture delle pratiche che hanno un pagamento; sotto c'è anche il totale emesso), gli <b>introiti</b> (incassato) e i <b>versamenti al CAF</b> del periodo, con le differenze <b>Introiti − fatture pagate</b>, <b>Introiti − versamenti</b> (soldi rimasti dopo i versamenti) e <b>Fatture pagate − versamenti</b>. Sotto c'è il dettaglio <b>mese per mese</b> con i totali progressivi; verde = positivo, rosso = negativo. Il tasto 🖨️ Stampa la stampa o salva in PDF.</p>` },
+</ul>` },
 
   { id: 'ricercafatture', icona: '🔎', titolo: 'Ricerca fatture dal… al… per tipo di pagamento', parole: 'ricerca fatture dal al periodo pagamento contanti pos bonifico incasso totale excel stampa',
     testo: `
@@ -239,8 +239,8 @@ const GUIDA = [
   { id: 'grafici', icona: '📊', titolo: 'Grafici', parole: 'grafici statistiche andamento mese operatore confronto anni',
     testo: `<p>In <b>GRAFICI</b> trovi per l'anno scelto: riepilogo economico, pratiche per stato e per tipo, incasso 730 e altre, pratiche aperte e incasso per mese, provento per tipo, pratiche per operatore e il <b>confronto tra anni</b>.</p>` },
 
-  { id: 'versamenti', icona: '🏦', titolo: 'Versamenti CAF', parole: 'versamenti caf pagamenti al caf importo data causale',
-    testo: `<p>In <b>VERSAMENTI CAF</b> registri i pagamenti fatti al CAF (importo, data, causale). Vengono sottratti all'incasso per calcolare il <b>netto</b> in Contabilità.</p>` },
+  { id: 'versamenti', icona: '🏦', titolo: 'Versamenti CAF', parole: 'fatture dal al periodo situazione alla data differenza introiti versamenti caf pagamenti al caf importo data causale',
+    testo: `<p>In <b>VERSAMENTI CAF</b> registri i pagamenti fatti al CAF (importo, data, causale). Vengono sottratti all'incasso per calcolare il <b>netto</b> in Contabilità.</p><p><b>🧾 Fatture dal… al…</b>: quando registri un versamento al CAF Regionale scrivi anche il periodo delle fatture che stai pagando. Appena le due date sono scritte compare quanto fanno le <b>fatture pagate</b> di quel periodo, con il tasto <b>Usa come importo</b>. Nell'elenco dei versamenti, sotto ognuno, resta scritto "Fatture dal … al …". La <b>data del versamento</b> si compila da sola con oggi.</p><p><b>⚖️ Situazione alla data</b>: sotto l'elenco dei versamenti, scegli <b>Dal</b> e <b>Fino al</b> (già proposto dall'inizio dell'anno a oggi) e vedi le <b>fatture pagate</b> (fatture delle pratiche che hanno un pagamento; sotto c'è anche il totale emesso), gli <b>introiti</b> (incassato) e i <b>versamenti al CAF</b> del periodo, con le differenze <b>Introiti − fatture pagate</b>, <b>Introiti − versamenti</b> (soldi rimasti dopo i versamenti) e <b>Fatture pagate − versamenti</b>. Sotto c'è il dettaglio <b>mese per mese</b> con i totali progressivi; verde = positivo, rosso = negativo. Il tasto 🖨️ Stampa la stampa o salva in PDF.</p>` },
 
   { id: 'spese', icona: '🏢', titolo: 'Spese gestione sede (TARI, acqua, luce…)', parole: 'spese sede tari imu tasse comunali acqua luce gas affitto condominio guadagno netto conferma contabilita passaggi prelevati angelo restituiti restituire anticipati',
     testo: `

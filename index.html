@@ -428,6 +428,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 
 <section class="tabsec" id="tab-caf">
 <div class="card" id="caf-card"></div>
+<div class="card" id="situazione-data"></div>
 <div id="list" style="display:none"></div>
 
 </section>
@@ -458,7 +459,6 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
   <button type="button" onclick="apriStampa('contabilita')" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border:none; border-radius:999px; background:var(--accent); color:var(--accent-ink); font-size:12.5px; font-weight:600; cursor:pointer">🖨️ Stampa contabilità (Excel / PDF)</button>
 </div>
 <div class="summary" id="summary"></div>
-<div class="card" id="situazione-data"></div>
 <div class="card" id="ricerca-fatture"></div>
 <div class="card" id="elenco-fps" style="display:none"></div>
 <div class="card" id="elenco-filca" style="display:none"></div>
@@ -811,20 +811,20 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/extra.js?v=22"></script>
 <script src="js/documenti.js?v=13"></script>
 <script src="js/installa.js?v=4"></script>
-<script src="js/guida.js?v=49"></script>
+<script src="js/guida.js?v=50"></script>
 <script src="js/scadenze.js?v=202610088"></script>
 <script src="js/config.js?v=202610076"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610122"></script>
+<script src="js/data.js?v=202610123"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610192"></script>
+<script src="js/app.js?v=202610194"></script>
 <script src="js/email.js?v=1"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/ricercafatture.js?v=1"></script>
-<script src="js/situazione.js?v=3"></script>
+<script src="js/situazione.js?v=4"></script>
 <script src="js/spese.js?v=4"></script>
 <script src="js/tipi.js?v=8"></script>
 <script src="js/morosi.js?v=6"></script>
