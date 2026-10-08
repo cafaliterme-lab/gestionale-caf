@@ -4,6 +4,7 @@
 // già compilato e del bollettino postale compilato.
 
 const RIGHE_CASSA = 5;
+const RIGHE_BONIFICI = 5;
 let VC_SPESE = [];   // per ogni riga delle spese: id della spesa sede scelta (se presa dall'elenco)
 
 function datiVersamento() {
@@ -23,6 +24,8 @@ function renderVersamentiCaf(vlist, versatoCaf) {
   const vcData = val('vc-data') || todayIT();
   const cassaRighe = [];
   for (let i = 0; i < RIGHE_CASSA; i++) cassaRighe.push({ d: val('vc-cd' + i), i: val('vc-ci' + i) });
+  const bonRighe = [];
+  for (let i = 0; i < RIGHE_BONIFICI; i++) bonRighe.push({ n: val('vc-bn' + i), d: val('vc-bd' + i), i: val('vc-bi' + i) });
   const campoImp = function (id, v, ph) { return '<input id="' + id + '" type="text" inputmode="decimal" placeholder="' + (ph || '0,00') + '" value="' + v + '" oninput="totaleVersamentoForm()">'; };
   caf.innerHTML = '<div class="raff-title">Versamenti al CAF Regionale</div>'
     + '<div class="grid">'
@@ -37,8 +40,13 @@ function renderVersamentiCaf(vlist, versatoCaf) {
         + '<input id="vc-cd' + i + '" value="' + r.d + '" oninput="VC_SPESE[' + i + ']=null" placeholder="Descrizione (es. TARI 2026, condominio settembre)" style="flex:1">'
         + '<input id="vc-ci' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:110px"></div>';
     }).join('') + '</div>'
-    + '<div class="full"><label>Pagamenti ricevuti con bonifico da detrarre €</label>' + campoImp('vc-bonifico', val('vc-bonifico')) + '</div>'
-    + '<div class="full"><label>Note sui bonifici (chi ha pagato, data, importi…)</label><textarea id="vc-bonnote" rows="2" placeholder="Es. bonifico Rossi Mario del 03/10 € 50,00; bonifico Bianchi Anna del 06/10 € 40,00" style="resize:vertical">' + val('vc-bonnote') + '</textarea></div>'
+    + '<div class="full"><label style="margin:0">Pagamenti ricevuti con bonifico da detrarre (uno per riga: chi l\'ha fatto, data, importo)</label>'
+    + bonRighe.map(function (r, i) {
+      return '<div style="display:flex; gap:6px; margin-bottom:4px; flex-wrap:wrap"><span style="width:18px; padding-top:9px; color:var(--sub)">' + (i + 1) + '.</span>'
+        + '<input id="vc-bn' + i + '" value="' + r.n + '" placeholder="Chi ha fatto il bonifico (es. Rossi Mario)" style="flex:1; min-width:150px">'
+        + '<input id="vc-bd' + i + '" value="' + r.d + '" placeholder="Data" inputmode="numeric" oninput="autoSlashData(this)" style="width:105px">'
+        + '<input id="vc-bi' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:110px"></div>';
+    }).join('') + '</div>'
     + '<div class="full" id="vc-totale" style="font-size:15px"></div>'
     + '<div><label>Data del versamento</label><input id="vc-data" value="' + vcData + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>'
     + '<div><label>Causale</label><input id="vc-causale" placeholder="Facoltativo" value="' + val('vc-causale') + '"></div>'
@@ -52,6 +60,7 @@ function renderVersamentiCaf(vlist, versatoCaf) {
         + '<span>' + esc(v.data || '-') + (v.causale ? ' · ' + esc(v.causale) : '')
         + (v.fatturaDal || v.fatturaAl ? '<div class="sub2">🧾 Fatture dal n. ' + esc(v.fatturaDal || '…') + ' al n. ' + esc(v.fatturaAl || '…') + '</div>' : '')
         + (parti.length ? '<div class="sub2">' + parti.join(' · ') + '</div>' : '')
+        + (Array.isArray(v.bonificiElenco) && v.bonificiElenco.length ? '<div class="sub2">🏦 Bonifici: ' + v.bonificiElenco.map(function (r) { return esc(r.nome || '') + (r.data ? ' (' + esc(r.data) + ')' : '') + ' ' + fmtEuro(r.importo); }).join(' · ') + '</div>' : '')
         + '<div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap">'
         + '<button type="button" onclick="stampaModuloVersamento(\'' + v.id + '\')" style="padding:3px 10px; font-size:12px; background:#1d4f91; color:#fff; border:none; border-radius:999px">🖨️ Modulo trasmissione</button>'
         + '<button type="button" onclick="stampaBollettino(\'' + v.id + '\')" style="padding:3px 10px; font-size:12px; background:#d98b1e; color:#fff; border:none; border-radius:999px">📮 Bollettino postale</button></div></span>'
@@ -129,9 +138,15 @@ function letturaFormVersamento() {
   // importo delle fatture − spese pagate per conto del CAF = quanto si versa col bollettino
   const fatture = num('vc-importo');
   const cassa = Math.round(elenco.reduce(function (t, r) { return t + r.importo; }, 0) * 100) / 100;
-  const bonifico = num('vc-bonifico');
-  const nb = document.getElementById('vc-bonnote');
-  return { totale: fatture, cassa: cassa, elenco: elenco, bonifico: bonifico, bonificoNote: nb ? nb.value.trim() : '', versato: Math.round((fatture - cassa - bonifico) * 100) / 100, pos: 0 };
+  const bonifici = [];
+  for (let i = 0; i < RIGHE_BONIFICI; i++) {
+    const el = document.getElementById('vc-bn' + i);
+    if (!el) continue;
+    const n = (el.value || '').trim(), dt = (document.getElementById('vc-bd' + i).value || '').trim(), imp = num('vc-bi' + i);
+    if (n || dt || imp) bonifici.push({ nome: n, data: dt, importo: imp });
+  }
+  const bonifico = Math.round(bonifici.reduce(function (t, r) { return t + r.importo; }, 0) * 100) / 100;
+  return { totale: fatture, cassa: cassa, elenco: elenco, bonifico: bonifico, bonifici: bonifici, versato: Math.round((fatture - cassa - bonifico) * 100) / 100, pos: 0 };
 }
 function totaleVersamentoForm() {
   const box = document.getElementById('vc-totale');
@@ -148,17 +163,20 @@ function aggiungiVersamento() {
   const errore = function (t) { if (msg) { msg.textContent = '⚠️ ' + t; msg.style.display = 'block'; } };
   if (!(f.totale > 0)) return errore('Inserisci l\'importo delle fatture, es. 1.460,21');
   if (f.elenco.some(function (r) { return !r.importo; })) return errore('In una delle spese da detrarre manca l\'importo');
+  if (f.bonifici.some(function (r) { return !r.importo; })) return errore('In uno dei bonifici manca l\'importo');
+  if (f.bonifici.some(function (r) { return !r.nome; })) return errore('In uno dei bonifici manca chi l\'ha fatto');
   if (f.versato < 0) return errore('Spese e bonifici da detrarre sono più alti dell\'importo delle fatture');
   const dal = (document.getElementById('vc-dal').value || '').trim(), al = (document.getElementById('vc-al').value || '').trim();
   if (dal && al && Number(dal) > Number(al)) return errore('Il numero "dalla fattura" deve essere più piccolo di "alla fattura"');
   const nuovo = {
-    importo: f.totale, versato: f.versato, pos: f.pos, cassa: f.cassa, cassaElenco: f.elenco, bonifico: f.bonifico, bonificoNote: f.bonificoNote,
+    importo: f.totale, versato: f.versato, pos: f.pos, cassa: f.cassa, cassaElenco: f.elenco, bonifico: f.bonifico, bonificiElenco: f.bonifici,
     data: document.getElementById('vc-data').value.trim() || todayIT(),
     causale: document.getElementById('vc-causale').value.trim(),
     fatturaDal: dal, fatturaAl: al,
     operatore: ((auth.profilo && auth.profilo.nome) || '').toUpperCase()
   };
-  ['vc-dal', 'vc-al', 'vc-importo', 'vc-causale', 'vc-bonifico', 'vc-bonnote'].forEach(function (id) { document.getElementById(id).value = ''; });
+  ['vc-dal', 'vc-al', 'vc-importo', 'vc-causale'].forEach(function (id) { document.getElementById(id).value = ''; });
+  for (let i = 0; i < RIGHE_BONIFICI; i++) ['vc-bn', 'vc-bd', 'vc-bi'].forEach(function (k) { document.getElementById(k + i).value = ''; });
   for (let i = 0; i < RIGHE_CASSA; i++) { document.getElementById('vc-cd' + i).value = ''; document.getElementById('vc-ci' + i).value = ''; }
   VC_SPESE = [];
   document.getElementById('vc-data').value = todayIT();
@@ -243,6 +261,7 @@ function stampaModuloVersamento(id) {
   const d = datiVersamento();
   const versato = v.versato != null && v.versato !== '' ? Number(v.versato) : Number(v.importo || 0) - Number(v.pos || 0) - Number(v.cassa || 0) - Number(v.bonifico || 0);
   const elenco = Array.isArray(v.cassaElenco) ? v.cassaElenco : [];
+  const bonElenco = Array.isArray(v.bonificiElenco) ? v.bonificiElenco : [];
   const righe = [];
   for (let i = 0; i < Math.max(5, elenco.length); i++) {
     const r = elenco[i] || {};
@@ -262,7 +281,10 @@ function stampaModuloVersamento(id) {
     + riga('PAGAMENTI CON BONIFICO (da detrarre) €', Number(v.bonifico) ? '− ' + fmtEuro(v.bonifico) : fmtEuro(0))
     + '</table>'
     + '<div class="sotto">Elenco fatture o spese pagate per cassa</div><table class="elenco">' + righe.join('') + '</table>'
-    + '<div class="sotto">Note' + (Number(v.bonifico) ? ' – pagamenti con bonifico' : '') + '</div><div class="note">' + (v.bonificoNote ? esc(v.bonificoNote) : '&nbsp;') + '</div>'
+    + (bonElenco.length || Number(v.bonifico) ? '<div class="sotto">Note – pagamenti ricevuti con bonifico (detratti)</div><table class="elenco">'
+      + bonElenco.map(function (r, i) { return '<tr><td style="width:24px">' + (i + 1) + '.</td><td>Bonifico di <b>' + esc(r.nome || '') + '</b>' + (r.data ? ' del ' + esc(r.data) : '') + '</td><td style="width:120px; text-align:right">' + fmtEuro(r.importo) + '</td></tr>'; }).join('')
+      + (v.bonificoNote ? '<tr><td></td><td colspan="2">' + esc(v.bonificoNote) + '</td></tr>' : '')
+      + '<tr><td></td><td style="text-align:right"><b>Totale bonifici</b></td><td style="text-align:right"><b>' + fmtEuro(v.bonifico) + '</b></td></tr></table>' : '')
     + '<table class="dati" style="margin-top:14px">' + riga('TOTALE VERSATO €', '<b style="font-size:18px">' + fmtEuro(versato) + '</b><div style="font-size:11px">(importo fatture ' + fmtEuro(v.importo) + ' − spese pagate per cassa ' + fmtEuro(v.cassa || 0) + (Number(v.bonifico) ? ' − pagamenti con bonifico ' + fmtEuro(v.bonifico) : '') + ')</div>') + '</table>'
     + '<p class="nota">In allegato devono essere allegati esclusivamente: copia versamento banca, bollettino postale e le fatture e spese documentate pagate per cassa.</p>'
     + '<div class="firme"><div>Data ' + esc(v.data || '') + '</div><div>Firma ____________________________</div></div></div>',
