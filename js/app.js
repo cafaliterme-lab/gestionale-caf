@@ -1453,8 +1453,8 @@ function aggiungiVersamento(){
     return;
   }
   const dal = (document.getElementById('vc-dal').value || '').trim(), al = (document.getElementById('vc-al').value || '').trim();
-  if((dal && !parseDataIT(dal)) || (al && !parseDataIT(al))){
-    if(msg){ msg.textContent = '⚠️ Scrivi le date delle fatture nel formato GG/MM/AAAA'; msg.style.display = 'block'; }
+  if(dal && al && Number(dal) > Number(al)){
+    if(msg){ msg.textContent = '⚠️ Il numero "dalla fattura" deve essere più piccolo di "alla fattura"'; msg.style.display = 'block'; }
     return;
   }
   const nuovoVers = { importo:imp, data:dat, causale:caus, fatturaDal: dal, fatturaAl: al };
@@ -1467,15 +1467,21 @@ function aggiungiVersamento(){
   // Usa la nuova API data.js
   data.versamenti.aggiungi(nuovoVers);
 }
-// Con "Fatture dal… al…" compilate si vede quanto fanno le fatture pagate di quel periodo, da usare come importo
+// Con "dalla fattura n. … alla n. …" si vede quanto fanno quelle fatture (anno di protocollo), da usare come importo
+function numeroFatturaPratica(p){ const m = /\d+/.exec(String(p.numFattura || '')); return m ? Number(m[0]) : null; }
 function suggerimentoVersamento(){
   const box = document.getElementById('vc-suggerimento');
   if(!box) return;
-  const dal = dataNum(document.getElementById('vc-dal').value.trim()), al = dataNum(document.getElementById('vc-al').value.trim());
-  if(!dal || !al){ box.innerHTML = ''; return; }
-  const lista = (state.pratiche || []).filter(function(p){ const n = dataNum(p.data); return !p.annullata && Number(p.pagato || 0) > 0 && n != null && n >= dal && n <= al; });
+  const dal = parseInt(document.getElementById('vc-dal').value, 10), al = parseInt(document.getElementById('vc-al').value, 10);
+  if(!(dal > 0) || !(al > 0) || dal > al){ box.innerHTML = ''; return; }
+  const anno = annoAttivo();
+  const lista = (state.pratiche || []).filter(function(p){ const n = numeroFatturaPratica(p); return !p.annullata && annoPratica(p) === anno && n != null && n >= dal && n <= al; });
   const tot = lista.reduce(function(t, p){ return t + Number(p.compenso || 0); }, 0);
-  box.innerHTML = '🧾 Fatture pagate in questo periodo (per data di apertura): <b>' + fmtEuro(tot) + '</b> · ' + lista.length + ' pratiche'
+  const pagate = lista.filter(function(p){ return Number(p.pagato || 0) > 0; });
+  const totPag = pagate.reduce(function(t, p){ return t + Number(p.compenso || 0); }, 0);
+  const attese = al - dal + 1;
+  box.innerHTML = '🧾 Fatture dal n. ' + dal + ' al n. ' + al + ' (' + anno + '): <b>' + lista.length + '</b> trovate' + (lista.length < attese ? ' su ' + attese + ' <span style="color:#c0392b">(alcuni numeri non sono nel registro)</span>' : '') + ' · totale <b>' + fmtEuro(tot) + '</b>'
+    + (pagate.length !== lista.length ? ' · di cui pagate ' + pagate.length + ' per ' + fmtEuro(totPag) : '')
     + (tot ? ' <button type="button" onclick="document.getElementById(\'vc-importo\').value=\'' + tot.toFixed(2).replace('.', ',') + '\'" style="padding:3px 10px; font-size:12px; margin-left:6px">Usa come importo</button>' : '');
 }
 function rimuoviVersamento(id){
@@ -1630,8 +1636,8 @@ function render(){
   caf.innerHTML = `
     <div class="raff-title">Versamenti al CAF Regionale</div>
     <div class="grid">
-      <div><label>Fatture dal</label><input id="vc-dal" value="${vcDal}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this); suggerimentoVersamento()"></div>
-      <div><label>Fatture al</label><input id="vc-al" value="${vcAl}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this); suggerimentoVersamento()"></div>
+      <div><label>Dalla fattura n.</label><input id="vc-dal" value="${vcDal}" placeholder="Es. 1" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,''); suggerimentoVersamento()"></div>
+      <div><label>Alla fattura n.</label><input id="vc-al" value="${vcAl}" placeholder="Es. 50" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,''); suggerimentoVersamento()"></div>
       <div class="full" id="vc-suggerimento" style="font-size:12.5px"></div>
       <div><label>Importo (€)</label><input id="vc-importo" type="text" inputmode="decimal" placeholder="0,00" value="${vcImp}"></div>
       <div><label>Data del versamento</label><input id="vc-data" value="${vcData}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
@@ -1641,7 +1647,7 @@ function render(){
     <div id="caf-msg" style="color:#c0392b; font-size:12px; margin:4px 0 8px; display:none"></div>
     ${vlist.length ? vlist.map(v => `
       <div class="caf-row">
-        <span>${v.data||'-'} ${v.causale ? '· '+esc(v.causale) : ''}${v.fatturaDal || v.fatturaAl ? '<div class="sub2">🧾 Fatture dal ' + esc(v.fatturaDal || '…') + ' al ' + esc(v.fatturaAl || '…') + '</div>' : ''}</span>
+        <span>${v.data||'-'} ${v.causale ? '· '+esc(v.causale) : ''}${v.fatturaDal || v.fatturaAl ? '<div class="sub2">🧾 Fatture dal n. ' + esc(v.fatturaDal || '…') + ' al n. ' + esc(v.fatturaAl || '…') + '</div>' : ''}</span>
         <span>${fmtEuro(v.importo)} <button onclick="rimuoviVersamento('${v.id}')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-weight:700;margin-left:6px">✕</button></span>
       </div>`).join('') : '<div class="empty">Nessun versamento registrato</div>'}
     <div class="caf-tot"><span>Totale versato</span><span>${fmtEuro(versatoCaf)}</span></div>
