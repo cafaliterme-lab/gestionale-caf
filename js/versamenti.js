@@ -4,7 +4,9 @@
 // già compilato e del bollettino postale compilato.
 
 const RIGHE_CASSA = 5;
-const RIGHE_BONIFICI = 5;
+let BON_N = 3;        // righe dei bonifici mostrate (aumentano con "+ riga" o prendendo dalle pratiche)
+let VC_BON = [];      // per ogni riga dei bonifici: { praticaId, fattura } se presa dalle pratiche
+let VC_ULTIMO = null; // ultimi dati del disegno, per ridisegnare il modulo con più righe
 let VC_SPESE = [];   // per ogni riga delle spese: id della spesa sede scelta (se presa dall'elenco)
 
 function datiVersamento() {
@@ -20,12 +22,13 @@ function datiVersamento() {
 function renderVersamentiCaf(vlist, versatoCaf) {
   const caf = document.getElementById('caf-card');
   if (!caf) return;
+  VC_ULTIMO = [vlist, versatoCaf];
   const val = function (id) { const el = document.getElementById(id); return el ? esc(el.value) : ''; };
   const vcData = val('vc-data') || todayIT();
   const cassaRighe = [];
   for (let i = 0; i < RIGHE_CASSA; i++) cassaRighe.push({ d: val('vc-cd' + i), i: val('vc-ci' + i) });
   const bonRighe = [];
-  for (let i = 0; i < RIGHE_BONIFICI; i++) bonRighe.push({ n: val('vc-bn' + i), d: val('vc-bd' + i), i: val('vc-bi' + i) });
+  for (let i = 0; i < BON_N; i++) bonRighe.push({ n: val('vc-bn' + i), d: val('vc-bd' + i), i: val('vc-bi' + i) });
   const campoImp = function (id, v, ph) { return '<input id="' + id + '" type="text" inputmode="decimal" placeholder="' + (ph || '0,00') + '" value="' + v + '" oninput="totaleVersamentoForm()">'; };
   caf.innerHTML = '<div class="raff-title">Versamenti al CAF Regionale</div>'
     + '<div class="grid">'
@@ -40,13 +43,14 @@ function renderVersamentiCaf(vlist, versatoCaf) {
         + '<input id="vc-cd' + i + '" value="' + r.d + '" oninput="VC_SPESE[' + i + ']=null" placeholder="Descrizione (es. TARI 2026, condominio settembre)" style="flex:1">'
         + '<input id="vc-ci' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:110px"></div>';
     }).join('') + '</div>'
-    + '<div class="full"><label style="margin:0">Pagamenti ricevuti con bonifico da detrarre (uno per riga: chi l\'ha fatto, data, importo)</label>'
+    + '<div class="full"><div style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; flex-wrap:wrap"><label style="margin:0">Pagamenti ricevuti con bonifico da detrarre (uno per riga: chi l\'ha fatto, data, importo)</label>'
+    + '<button type="button" onclick="scegliBonificiDaPratiche()" style="padding:4px 12px; font-size:12.5px; background:#2f7de1; color:#fff; border:none; border-radius:999px; font-weight:700; margin-bottom:4px">📥 Prendi dalle pratiche pagate con bonifico</button></div>'
     + bonRighe.map(function (r, i) {
       return '<div style="display:flex; gap:6px; margin-bottom:4px; flex-wrap:wrap"><span style="width:18px; padding-top:9px; color:var(--sub)">' + (i + 1) + '.</span>'
-        + '<input id="vc-bn' + i + '" value="' + r.n + '" placeholder="Chi ha fatto il bonifico (es. Rossi Mario)" style="flex:1; min-width:150px">'
+        + '<input id="vc-bn' + i + '" value="' + r.n + '" oninput="VC_BON[' + i + ']=null" placeholder="Chi ha fatto il bonifico (es. Rossi Mario)" style="flex:1; min-width:150px">'
         + '<input id="vc-bd' + i + '" value="' + r.d + '" placeholder="Data" inputmode="numeric" oninput="autoSlashData(this)" style="width:105px">'
         + '<input id="vc-bi' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:110px"></div>';
-    }).join('') + '</div>'
+    }).join('') + '<button type="button" onclick="BON_N++; ridisegnaVersamentiCaf()" style="padding:3px 12px; font-size:12.5px; background:none; border:1px dashed #2f7de1; color:#2f7de1; border-radius:999px">+ Aggiungi riga</button></div>'
     + '<div class="full" id="vc-totale" style="font-size:15px"></div>'
     + '<div><label>Data del versamento</label><input id="vc-data" value="' + vcData + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>'
     + '<div><label>Causale</label><input id="vc-causale" placeholder="Facoltativo" value="' + val('vc-causale') + '"></div>'
@@ -117,6 +121,100 @@ function scegliSpeseDaDetrarre() {
     totaleVersamentoForm();
   });
 }
+function ridisegnaVersamentiCaf() { if (VC_ULTIMO) renderVersamentiCaf(VC_ULTIMO[0], VC_ULTIMO[1]); }
+
+// Bonifici presi dalle pratiche: quelle con pagamento "BONIFICO" (anno di protocollo attivo)
+function bonificiGiaDetratti() {
+  const m = {};
+  (state.versamenti || []).forEach(function (v) { (Array.isArray(v.bonificiElenco) ? v.bonificiElenco : []).forEach(function (r) { if (r.praticaId) m[r.praticaId] = v; }); });
+  return m;
+}
+function scegliBonificiDaPratiche() {
+  const anno = typeof annoAttivo === 'function' ? annoAttivo() : null;
+  const nFatt = function (p) { return typeof numeroFatturaPratica === 'function' ? numeroFatturaPratica(p) : null; };
+  const tutte = (state.pratiche || []).filter(function (p) {
+    return !p.annullata && p.metodoPagamento === 'BONIFICO' && Number(p.pagato || 0) > 0 && (!anno || typeof annoPratica !== 'function' || annoPratica(p) === anno);
+  }).sort(function (a, b) { return ((nFatt(a) || 1e9) - (nFatt(b) || 1e9)) || String(a.nome || '').localeCompare(String(b.nome || '')); });
+  if (!tutte.length) { avviso('Non ci sono pratiche pagate con bonifico' + (anno ? ' nel ' + anno : '')); return; }
+  const usati = bonificiGiaDetratti();
+  const giaNelModulo = VC_BON.filter(Boolean).map(function (b) { return b.praticaId; });
+  const dal = parseInt((document.getElementById('vc-dal') || {}).value, 10), al = parseInt((document.getElementById('vc-al') || {}).value, 10);
+  const conRange = dal > 0 && al > 0 && dal <= al;
+  const vecchio = document.getElementById('popup-bon-vers'); if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-bon-vers';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #2f7de1; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:18px 20px; max-width:600px; width:100%; max-height:90vh; display:flex; flex-direction:column">'
+    + '<div style="font-size:18px; font-weight:800; color:#2f7de1">📥 Pratiche pagate con bonifico</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 8px">Spunta i bonifici da detrarre: per ognuno vengono scritti il nome, la data della fattura e l\'importo pagato. Accanto vedi se un bonifico è già stato detratto in un altro versamento.</div>'
+    + '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px">'
+    + '<input id="bonp-cerca" type="search" placeholder="Cerca per nome o numero di fattura…" style="flex:1; min-width:180px">'
+    + (conRange ? '<label class="chk" style="font-size:13px; white-space:nowrap"><input type="checkbox" id="bonp-range" checked> Solo fatture dal n. ' + dal + ' al n. ' + al + '</label>' : '')
+    + '<label class="chk" style="font-size:13px; white-space:nowrap"><input type="checkbox" id="bonp-nuovi" checked> Nascondi quelli già detratti</label></div>'
+    + '<div id="bonp-lista" style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px"></div>'
+    + '<div style="display:flex; gap:8px; justify-content:space-between; align-items:center; margin-top:12px; flex-wrap:wrap"><span id="bonp-tot" style="font-size:13px; font-weight:700"></span>'
+    + '<span style="display:flex; gap:8px; flex-wrap:wrap"><button type="button" data-azione="tutti" style="background:var(--line); color:var(--ink)">Spunta tutti</button><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Annulla</button><button type="button" data-azione="si" style="background:#2f7de1; color:#fff; font-weight:800">Aggiungi al versamento</button></span></div></div>';
+  document.body.appendChild(ov);
+  const scelti = {};
+  const filtrate = function () {
+    const q = (document.getElementById('bonp-cerca').value || '').trim().toUpperCase();
+    const soloRange = conRange && document.getElementById('bonp-range').checked;
+    const soloNuovi = document.getElementById('bonp-nuovi').checked;
+    return tutte.filter(function (p) {
+      const n = nFatt(p);
+      if (soloRange && !(n != null && n >= dal && n <= al)) return false;
+      if (soloNuovi && (usati[p.id] || giaNelModulo.indexOf(p.id) >= 0)) return false;
+      return !q || String(p.nome || '').toUpperCase().indexOf(q) >= 0 || String(p.numFattura || '').toUpperCase().indexOf(q) >= 0;
+    });
+  };
+  const disegna = function () {
+    const lista = filtrate();
+    document.getElementById('bonp-lista').innerHTML = lista.length ? lista.map(function (p) {
+      return '<label style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); margin:0; cursor:pointer"><input type="checkbox" class="bonp-chk" value="' + p.id + '"' + (scelti[p.id] ? ' checked' : '') + ' style="width:auto; margin:0">'
+        + '<span style="flex:1"><b>' + esc(p.nome || '') + '</b><div style="font-size:12px; color:var(--sub)">' + (p.numFattura ? 'Fattura n. ' + esc(p.numFattura) : 'Senza numero di fattura') + ((p.dataFattura || p.data) ? ' · ' + esc(p.dataFattura || p.data) : '') + (p.tipo ? ' · ' + esc(p.tipo) : '') + '</div>'
+        + (usati[p.id] ? '<div style="font-size:11.5px; color:#c0392b">🏦 già detratto nel versamento del ' + esc(usati[p.id].data || '') + '</div>' : '')
+        + (giaNelModulo.indexOf(p.id) >= 0 ? '<div style="font-size:11.5px; color:#c0392b">già nelle righe del versamento</div>' : '') + '</span><b>' + fmtEuro(p.pagato) + '</b></label>';
+    }).join('') : '<div class="empty" style="padding:14px">Nessuna pratica con questi filtri</div>';
+    const ids = Object.keys(scelti).filter(function (k) { return scelti[k]; });
+    const tot = ids.reduce(function (t, id) { const p = tutte.find(function (x) { return x.id === id; }); return t + Number((p && p.pagato) || 0); }, 0);
+    document.getElementById('bonp-tot').textContent = ids.length ? 'Scelti ' + ids.length + ' · totale ' + fmtEuro(tot) : '';
+  };
+  disegna();
+  ov.addEventListener('input', function (e) { if (e.target.id === 'bonp-cerca') disegna(); });
+  ov.addEventListener('change', function (e) {
+    if (e.target.classList.contains('bonp-chk')) { scelti[e.target.value] = e.target.checked; disegna(); }
+    else if (e.target.id === 'bonp-range' || e.target.id === 'bonp-nuovi') disegna();
+  });
+  ov.addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-azione]');
+    if (!b && e.target !== ov) return;
+    if (!b || b.dataset.azione === 'no') { ov.remove(); return; }
+    if (b.dataset.azione === 'tutti') { filtrate().forEach(function (p) { scelti[p.id] = true; }); disegna(); return; }
+    const scelte = tutte.filter(function (p) { return scelti[p.id]; });
+    if (!scelte.length) { alert('Spunta almeno un bonifico.'); return; }
+    // righe libere (se non bastano se ne aggiungono)
+    const libere = [];
+    for (let i = 0; i < BON_N; i++) {
+      const n = document.getElementById('vc-bn' + i), im = document.getElementById('vc-bi' + i);
+      if (n && !n.value.trim() && !im.value.trim()) libere.push(i);
+    }
+    let prossima = BON_N;
+    while (libere.length < scelte.length) libere.push(prossima++);
+    BON_N = Math.max(BON_N, prossima);
+    ridisegnaVersamentiCaf();
+    scelte.forEach(function (p, k) {
+      const i = libere[k];
+      document.getElementById('vc-bn' + i).value = p.nome || '';
+      document.getElementById('vc-bd' + i).value = p.dataFattura || p.data || '';
+      document.getElementById('vc-bi' + i).value = Number(p.pagato || 0).toFixed(2).replace('.', ',');
+      VC_BON[i] = { praticaId: p.id, fattura: p.numFattura || '' };
+    });
+    ov.remove();
+    totaleVersamentoForm();
+    avviso('✓ ' + scelte.length + (scelte.length === 1 ? ' bonifico aggiunto' : ' bonifici aggiunti'));
+  });
+}
+
 // Eliminazione di un versamento: amministratore e operatori che possono scrivere nei Versamenti CAF, con conferma
 function puoEliminareVersamenti() { return typeof puo === 'function' ? puo('caf', true) : !!(auth.profilo && auth.profilo.ruolo === 'admin'); }
 async function rimuoviVersamento(id) {
@@ -139,11 +237,11 @@ function letturaFormVersamento() {
   const fatture = num('vc-importo');
   const cassa = Math.round(elenco.reduce(function (t, r) { return t + r.importo; }, 0) * 100) / 100;
   const bonifici = [];
-  for (let i = 0; i < RIGHE_BONIFICI; i++) {
+  for (let i = 0; i < BON_N; i++) {
     const el = document.getElementById('vc-bn' + i);
     if (!el) continue;
     const n = (el.value || '').trim(), dt = (document.getElementById('vc-bd' + i).value || '').trim(), imp = num('vc-bi' + i);
-    if (n || dt || imp) bonifici.push({ nome: n, data: dt, importo: imp });
+    if (n || dt || imp) bonifici.push(VC_BON[i] ? { nome: n, data: dt, importo: imp, praticaId: VC_BON[i].praticaId, fattura: VC_BON[i].fattura } : { nome: n, data: dt, importo: imp });
   }
   const bonifico = Math.round(bonifici.reduce(function (t, r) { return t + r.importo; }, 0) * 100) / 100;
   return { totale: fatture, cassa: cassa, elenco: elenco, bonifico: bonifico, bonifici: bonifici, versato: Math.round((fatture - cassa - bonifico) * 100) / 100, pos: 0 };
@@ -176,7 +274,8 @@ function aggiungiVersamento() {
     operatore: ((auth.profilo && auth.profilo.nome) || '').toUpperCase()
   };
   ['vc-dal', 'vc-al', 'vc-importo', 'vc-causale'].forEach(function (id) { document.getElementById(id).value = ''; });
-  for (let i = 0; i < RIGHE_BONIFICI; i++) ['vc-bn', 'vc-bd', 'vc-bi'].forEach(function (k) { document.getElementById(k + i).value = ''; });
+  for (let i = 0; i < BON_N; i++) ['vc-bn', 'vc-bd', 'vc-bi'].forEach(function (k) { const el = document.getElementById(k + i); if (el) el.value = ''; });
+  VC_BON = []; BON_N = 3;
   for (let i = 0; i < RIGHE_CASSA; i++) { document.getElementById('vc-cd' + i).value = ''; document.getElementById('vc-ci' + i).value = ''; }
   VC_SPESE = [];
   document.getElementById('vc-data').value = todayIT();
@@ -282,7 +381,7 @@ function stampaModuloVersamento(id) {
     + '</table>'
     + '<div class="sotto">Elenco fatture o spese pagate per cassa</div><table class="elenco">' + righe.join('') + '</table>'
     + (bonElenco.length || Number(v.bonifico) ? '<div class="sotto">Note – pagamenti ricevuti con bonifico (detratti)</div><table class="elenco">'
-      + bonElenco.map(function (r, i) { return '<tr><td style="width:24px">' + (i + 1) + '.</td><td>Bonifico di <b>' + esc(r.nome || '') + '</b>' + (r.data ? ' del ' + esc(r.data) : '') + '</td><td style="width:120px; text-align:right">' + fmtEuro(r.importo) + '</td></tr>'; }).join('')
+      + bonElenco.map(function (r, i) { return '<tr><td style="width:24px">' + (i + 1) + '.</td><td>Bonifico di <b>' + esc(r.nome || '') + '</b>' + (r.data ? ' del ' + esc(r.data) : '') + (r.fattura ? ' – fattura n. ' + esc(r.fattura) : '') + '</td><td style="width:120px; text-align:right">' + fmtEuro(r.importo) + '</td></tr>'; }).join('')
       + (v.bonificoNote ? '<tr><td></td><td colspan="2">' + esc(v.bonificoNote) + '</td></tr>' : '')
       + '<tr><td></td><td style="text-align:right"><b>Totale bonifici</b></td><td style="text-align:right"><b>' + fmtEuro(v.bonifico) + '</b></td></tr></table>' : '')
     + '<table class="dati" style="margin-top:14px">' + riga('TOTALE VERSATO €', '<b style="font-size:18px">' + fmtEuro(versato) + '</b><div style="font-size:11px">(importo fatture ' + fmtEuro(v.importo) + ' − spese pagate per cassa ' + fmtEuro(v.cassa || 0) + (Number(v.bonifico) ? ' − pagamenti con bonifico ' + fmtEuro(v.bonifico) : '') + ')</div>') + '</table>'
