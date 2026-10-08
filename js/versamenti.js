@@ -37,6 +37,8 @@ function renderVersamentiCaf(vlist, versatoCaf) {
         + '<input id="vc-cd' + i + '" value="' + r.d + '" oninput="VC_SPESE[' + i + ']=null" placeholder="Descrizione (es. TARI 2026, condominio settembre)" style="flex:1">'
         + '<input id="vc-ci' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:110px"></div>';
     }).join('') + '</div>'
+    + '<div class="full"><label>Pagamenti ricevuti con bonifico da detrarre €</label>' + campoImp('vc-bonifico', val('vc-bonifico')) + '</div>'
+    + '<div class="full"><label>Note sui bonifici (chi ha pagato, data, importi…)</label><textarea id="vc-bonnote" rows="2" placeholder="Es. bonifico Rossi Mario del 03/10 € 50,00; bonifico Bianchi Anna del 06/10 € 40,00" style="resize:vertical">' + val('vc-bonnote') + '</textarea></div>'
     + '<div class="full" id="vc-totale" style="font-size:15px"></div>'
     + '<div><label>Data del versamento</label><input id="vc-data" value="' + vcData + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>'
     + '<div><label>Causale</label><input id="vc-causale" placeholder="Facoltativo" value="' + val('vc-causale') + '"></div>'
@@ -45,7 +47,7 @@ function renderVersamentiCaf(vlist, versatoCaf) {
     + '<div id="caf-msg" style="color:#c0392b; font-size:12px; margin:4px 0 8px; display:none"></div>'
     + (vlist.length ? vlist.map(function (v) {
       const parti = [];
-      if (Number(v.cassa)) parti.push('fatture ' + fmtEuro(v.importo) + ' − spese ' + fmtEuro(v.cassa) + ' = versato ' + fmtEuro(v.versato));
+      if (Number(v.cassa) || Number(v.bonifico)) parti.push('fatture ' + fmtEuro(v.importo) + (Number(v.cassa) ? ' − spese ' + fmtEuro(v.cassa) : '') + (Number(v.bonifico) ? ' − bonifici ' + fmtEuro(v.bonifico) : '') + ' = versato ' + fmtEuro(v.versato));
       return '<div class="caf-row" style="align-items:flex-start">'
         + '<span>' + esc(v.data || '-') + (v.causale ? ' · ' + esc(v.causale) : '')
         + (v.fatturaDal || v.fatturaAl ? '<div class="sub2">🧾 Fatture dal n. ' + esc(v.fatturaDal || '…') + ' al n. ' + esc(v.fatturaAl || '…') + '</div>' : '')
@@ -127,14 +129,16 @@ function letturaFormVersamento() {
   // importo delle fatture − spese pagate per conto del CAF = quanto si versa col bollettino
   const fatture = num('vc-importo');
   const cassa = Math.round(elenco.reduce(function (t, r) { return t + r.importo; }, 0) * 100) / 100;
-  return { totale: fatture, cassa: cassa, elenco: elenco, versato: Math.round((fatture - cassa) * 100) / 100, pos: 0 };
+  const bonifico = num('vc-bonifico');
+  const nb = document.getElementById('vc-bonnote');
+  return { totale: fatture, cassa: cassa, elenco: elenco, bonifico: bonifico, bonificoNote: nb ? nb.value.trim() : '', versato: Math.round((fatture - cassa - bonifico) * 100) / 100, pos: 0 };
 }
 function totaleVersamentoForm() {
   const box = document.getElementById('vc-totale');
   if (!box) return;
   const f = letturaFormVersamento();
   box.innerHTML = 'DA VERSARE (bollettino): <b style="color:' + (f.versato < 0 ? '#c0392b' : 'inherit') + '">' + fmtEuro(f.versato) + '</b>'
-    + (f.cassa ? ' <span style="color:var(--sub); font-size:12.5px">= fatture ' + fmtEuro(f.totale) + ' − spese ' + fmtEuro(f.cassa) + '</span>' : '');
+    + (f.cassa || f.bonifico ? ' <span style="color:var(--sub); font-size:12.5px">= fatture ' + fmtEuro(f.totale) + (f.cassa ? ' − spese ' + fmtEuro(f.cassa) : '') + (f.bonifico ? ' − bonifici ' + fmtEuro(f.bonifico) : '') + '</span>' : '');
 }
 
 function aggiungiVersamento() {
@@ -144,17 +148,17 @@ function aggiungiVersamento() {
   const errore = function (t) { if (msg) { msg.textContent = '⚠️ ' + t; msg.style.display = 'block'; } };
   if (!(f.totale > 0)) return errore('Inserisci l\'importo delle fatture, es. 1.460,21');
   if (f.elenco.some(function (r) { return !r.importo; })) return errore('In una delle spese da detrarre manca l\'importo');
-  if (f.versato < 0) return errore('Le spese da detrarre sono più alte dell\'importo delle fatture');
+  if (f.versato < 0) return errore('Spese e bonifici da detrarre sono più alti dell\'importo delle fatture');
   const dal = (document.getElementById('vc-dal').value || '').trim(), al = (document.getElementById('vc-al').value || '').trim();
   if (dal && al && Number(dal) > Number(al)) return errore('Il numero "dalla fattura" deve essere più piccolo di "alla fattura"');
   const nuovo = {
-    importo: f.totale, versato: f.versato, pos: f.pos, cassa: f.cassa, cassaElenco: f.elenco,
+    importo: f.totale, versato: f.versato, pos: f.pos, cassa: f.cassa, cassaElenco: f.elenco, bonifico: f.bonifico, bonificoNote: f.bonificoNote,
     data: document.getElementById('vc-data').value.trim() || todayIT(),
     causale: document.getElementById('vc-causale').value.trim(),
     fatturaDal: dal, fatturaAl: al,
     operatore: ((auth.profilo && auth.profilo.nome) || '').toUpperCase()
   };
-  ['vc-dal', 'vc-al', 'vc-importo', 'vc-causale'].forEach(function (id) { document.getElementById(id).value = ''; });
+  ['vc-dal', 'vc-al', 'vc-importo', 'vc-causale', 'vc-bonifico', 'vc-bonnote'].forEach(function (id) { document.getElementById(id).value = ''; });
   for (let i = 0; i < RIGHE_CASSA; i++) { document.getElementById('vc-cd' + i).value = ''; document.getElementById('vc-ci' + i).value = ''; }
   VC_SPESE = [];
   document.getElementById('vc-data').value = todayIT();
@@ -237,7 +241,7 @@ function stampaModuloVersamento(id) {
   const v = cercaVersamento(id);
   if (!v) return;
   const d = datiVersamento();
-  const versato = v.versato != null && v.versato !== '' ? Number(v.versato) : Number(v.importo || 0) - Number(v.pos || 0) - Number(v.cassa || 0);
+  const versato = v.versato != null && v.versato !== '' ? Number(v.versato) : Number(v.importo || 0) - Number(v.pos || 0) - Number(v.cassa || 0) - Number(v.bonifico || 0);
   const elenco = Array.isArray(v.cassaElenco) ? v.cassaElenco : [];
   const righe = [];
   for (let i = 0; i < Math.max(5, elenco.length); i++) {
@@ -255,12 +259,14 @@ function stampaModuloVersamento(id) {
     + riga('NUMERO SEZIONALE SEDE', esc(d.sezionale || '')) + riga('DATA', esc(v.data || ''))
     + (v.fatturaDal || v.fatturaAl ? riga('FATTURE', 'dal n. ' + esc(v.fatturaDal || '…') + ' al n. ' + esc(v.fatturaAl || '…')) : '')
     + riga('IMPORTO FATTURE €', fmtEuro(v.importo)) + riga('FATTURE / SPESE PAGATE PER CASSA (da detrarre) €', Number(v.cassa) ? '− ' + fmtEuro(v.cassa) : fmtEuro(0))
+    + riga('PAGAMENTI CON BONIFICO (da detrarre) €', Number(v.bonifico) ? '− ' + fmtEuro(v.bonifico) : fmtEuro(0))
     + '</table>'
     + '<div class="sotto">Elenco fatture o spese pagate per cassa</div><table class="elenco">' + righe.join('') + '</table>'
-    + '<table class="dati" style="margin-top:14px">' + riga('TOTALE VERSATO €', '<b style="font-size:18px">' + fmtEuro(versato) + '</b><div style="font-size:11px">(importo fatture ' + fmtEuro(v.importo) + ' − spese pagate per cassa ' + fmtEuro(v.cassa || 0) + ')</div>') + '</table>'
+    + '<div class="sotto">Note' + (Number(v.bonifico) ? ' – pagamenti con bonifico' : '') + '</div><div class="note">' + (v.bonificoNote ? esc(v.bonificoNote) : '&nbsp;') + '</div>'
+    + '<table class="dati" style="margin-top:14px">' + riga('TOTALE VERSATO €', '<b style="font-size:18px">' + fmtEuro(versato) + '</b><div style="font-size:11px">(importo fatture ' + fmtEuro(v.importo) + ' − spese pagate per cassa ' + fmtEuro(v.cassa || 0) + (Number(v.bonifico) ? ' − pagamenti con bonifico ' + fmtEuro(v.bonifico) : '') + ')</div>') + '</table>'
     + '<p class="nota">In allegato devono essere allegati esclusivamente: copia versamento banca, bollettino postale e le fatture e spese documentate pagate per cassa.</p>'
     + '<div class="firme"><div>Data ' + esc(v.data || '') + '</div><div>Firma ____________________________</div></div></div>',
-    '@page{size:A4; margin:14mm} .foglio{max-width:180mm} .testa{display:flex; justify-content:space-between; align-items:center; gap:12mm; font-size:12px; border-bottom:2px solid #1d4f91; padding-bottom:8px} .testa .logo{width:24mm; height:auto} .testa .indirizzo{text-align:right; line-height:1.45} h1{text-align:center; font-size:20px; letter-spacing:.08em; margin:14px 0} table{width:100%; border-collapse:collapse} .dati th{width:42%; text-align:left; background:#eef3fa; font-size:12px} .dati th,.dati td{border:1px solid #9aa8bb; padding:7px 9px; font-size:14px} .sotto{margin:14px 0 4px; font-weight:bold; font-size:13px} .elenco td{border-bottom:1px solid #9aa8bb; padding:8px 6px; font-size:13px; height:18px} .nota{font-size:11px; margin-top:14px} .firme{display:flex; justify-content:space-between; margin-top:40px; font-size:13px}');
+    '@page{size:A4; margin:14mm} .foglio{max-width:180mm} .testa{display:flex; justify-content:space-between; align-items:center; gap:12mm; font-size:12px; border-bottom:2px solid #1d4f91; padding-bottom:8px} .testa .logo{width:24mm; height:auto} .testa .indirizzo{text-align:right; line-height:1.45} h1{text-align:center; font-size:20px; letter-spacing:.08em; margin:14px 0} table{width:100%; border-collapse:collapse} .dati th{width:42%; text-align:left; background:#eef3fa; font-size:12px} .dati th,.dati td{border:1px solid #9aa8bb; padding:7px 9px; font-size:14px} .sotto{margin:14px 0 4px; font-weight:bold; font-size:13px} .elenco td{border-bottom:1px solid #9aa8bb; padding:8px 6px; font-size:13px; height:18px} .note{border:1px solid #9aa8bb; padding:8px 9px; font-size:13px; min-height:34px; white-space:pre-wrap} .nota{font-size:11px; margin-top:14px} .firme{display:flex; justify-content:space-between; margin-top:40px; font-size:13px}');
 }
 
 /* --- Bollettino postale TD 123 compilato sul modulo vero (modelli/bollettino-td123.jpg) ---
@@ -303,7 +309,7 @@ function stampaBollettino(id) {
   if (!v) return;
   const d = datiVersamento();
   if (!d.cc && !confirm('Non è stato impostato il numero di conto corrente postale (⚙️ Dati per il modulo e il bollettino, in fondo ai versamenti). Stampo lo stesso con lo spazio vuoto?')) return;
-  const versato = v.versato != null && v.versato !== '' ? Number(v.versato) : Number(v.importo || 0) - Number(v.pos || 0) - Number(v.cassa || 0);
+  const versato = v.versato != null && v.versato !== '' ? Number(v.versato) : Number(v.importo || 0) - Number(v.pos || 0) - Number(v.cassa || 0) - Number(v.bonifico || 0);
   if (!(versato > 0) && !confirm('L\'importo da versare è ' + fmtEuro(versato) + '. Stampo lo stesso il bollettino?')) return;
   const cent = Math.round(Math.max(0, versato) * 100);
   const intero = String(Math.floor(cent / 100)), decimali = String(cent % 100).padStart(2, '0');

@@ -165,6 +165,8 @@ const schemas = {
     pos: 'pos',
     cassa: 'cassa',
     cassaElenco: 'cassa_elenco',
+    bonifico: 'bonifico',
+    bonificoNote: 'bonifico_note',
     operatore: 'operatore',
     creatoDa: 'creato_da',
     creatoIl: 'creato_il',
