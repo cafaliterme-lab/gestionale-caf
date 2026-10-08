@@ -86,7 +86,7 @@ function disegnaBottoneChat() {
   const tot = c + inv;
   if (CHAT.ultimoTot != null && CHAT.ultimoTot !== tot) { b.style.transition = 'box-shadow .3s'; b.style.boxShadow = '0 0 0 4px ' + (tot > CHAT.ultimoTot ? '#d4881c' : '#2f9e5f'); setTimeout(function () { b.style.boxShadow = '0 6px 18px rgba(29,79,145,.3)'; }, 1500); }
   CHAT.ultimoTot = tot;
-  b.innerHTML = '💬 CHAT INTERNA' + (n ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">' + n + ' nuov' + (n === 1 ? 'o' : 'i') + '</span>' : '') + (c ? ' <span style="background:#d4881c; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">📌 ' + c + ' da fare</span>' : '') + (inv ? ' <span style="background:#6b7280; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px" title="Compiti che hai mandato e non sono ancora stati fatti">📤 ' + inv + ' in attesa</span>' : '') + (sol ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">⏰ ' + sol + ' sollecit' + (sol === 1 ? 'o' : 'i') + '</span>' : '') + '<span style="float:right; opacity:.85; font-size:13px">' + (CHAT.aperta ? 'chiudi ✕' : 'apri ›') + '</span>';
+  b.innerHTML = '💬 CHAT INTERNA' + (n ? ' <span style="background:#2f7de1; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">' + n + ' nuov' + (n === 1 ? 'o' : 'i') + '</span>' : '') + (c ? ' <span style="background:#c0392b; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">📌 ' + c + ' da fare</span>' : '') + (inv ? ' <span style="background:#d4881c; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px" title="Compiti che hai mandato e non sono ancora stati fatti">📤 ' + inv + ' in attesa</span>' : '') + (sol ? ' <span style="background:#7f1d1d; border-radius:999px; padding:1px 9px; margin:2px 0 2px 6px; display:inline-block; white-space:nowrap; font-size:14px">⏰ ' + sol + ' sollecit' + (sol === 1 ? 'o' : 'i') + '</span>' : '') + '<span style="float:right; opacity:.85; font-size:13px">' + (CHAT.aperta ? 'chiudi ✕' : 'apri ›') + '</span>';
 }
 
 // I compiti da fare compaiono a video (in alto) finché non vengono spuntati
@@ -153,11 +153,11 @@ function contatoreCompitiHTML() {
   const perMe = chatCompitiAperti().length, inviati = chatCompitiInviatiAperti().length;
   const oggi = new Date().toDateString();
   const fattiOggi = CHAT.messaggi.filter(function (m) { return m.compito && m.fatto && m.fatto_il && new Date(m.fatto_il).toDateString() === oggi && (chatPerMe(m) || m.da_id === auth.profilo.id); }).length;
-  const casella = function (n, t, col) { return '<div style="flex:1; text-align:center; padding:6px 4px; border-radius:10px; background:' + col + '; color:#fff"><div style="font-size:20px; font-weight:900; line-height:1.1">' + n + '</div><div style="font-size:10.5px; font-weight:700; text-transform:uppercase">' + t + '</div></div>'; };
+  const casella = function (n, t, col) { return '<div style="flex:1; text-align:center; padding:6px 4px; border-radius:10px; background:' + col + '; color:#fff' + (n ? '; box-shadow:0 2px 8px ' + col + '66' : '; opacity:.55') + '"><div style="font-size:20px; font-weight:900; line-height:1.1">' + n + '</div><div style="font-size:10.5px; font-weight:700; text-transform:uppercase">' + t + '</div></div>'; };
   return '<div style="display:flex; gap:6px; padding:8px 10px; background:var(--card); border-bottom:1px solid var(--line)">'
-    + casella(perMe, 'Da fare per te', perMe ? '#d4881c' : '#8a8f98')
-    + casella(inviati, 'Inviati in attesa', inviati ? '#6b7280' : '#8a8f98')
-    + casella(fattiOggi, 'Fatti oggi', fattiOggi ? '#2f9e5f' : '#8a8f98') + '</div>';
+    + casella(perMe, '🔴 Da fare per te', '#c0392b')
+    + casella(inviati, '🟠 Inviati in attesa', '#d4881c')
+    + casella(fattiOggi, '🟢 Fatti oggi', '#2f9e5f') + '</div>';
 }
 
 function apriChat(scheda) {
