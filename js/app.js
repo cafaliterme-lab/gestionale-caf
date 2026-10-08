@@ -889,6 +889,7 @@ function rigaPratica(p){
     'Cellulare': p.telefono||'',
     'Telefono fisso': p.telefonoFisso||'',
     'E-mail': p.email||'',
+    'Descrizione pratica': p.descrizioneTipo||'',
     'Stato': statoLabel(p.stato),
     'Fattura (€)': Number(p.compenso)||0,
     'Pagato (€)': Number(p.pagato)||0,
@@ -1278,7 +1279,7 @@ function pickChip(containerId, selectId, val){
     if(lbl && chip){ lbl.innerHTML = chip.innerHTML; }
     dd.classList.remove('open');
   }
-  if(containerId === 'f-tipo-btns'){ coloraTriggerTipo(); aggiornaCampoFineForm(); const si = statoInizialeTipo(val); if(si) pickChip('f-stato-btns','f-stato', si); applicaFatturaAutomatica(val); if(typeof mostraImportiFPSModulo === 'function') mostraImportiFPSModulo(val); }
+  if(containerId === 'f-tipo-btns'){ aggiornaDescTipoForm(); coloraTriggerTipo(); aggiornaCampoFineForm(); const si = statoInizialeTipo(val); if(si) pickChip('f-stato-btns','f-stato', si); applicaFatturaAutomatica(val); if(typeof mostraImportiFPSModulo === 'function') mostraImportiFPSModulo(val); }
   if(containerId === 'f-stato-btns'){ coloraTriggerStato(); const df = document.getElementById('f-data-fine'); if(df && !eColf(document.getElementById('f-tipo').value)) df.value = val === 'lavorata' ? todayIT() : ''; }
 }
 function showTab(btn){
@@ -1635,7 +1636,7 @@ function render(){
               <td>${p.data||'-'}</td>
               <td>${eColf(p.tipo) ? (p.scadenzaAssistenza ? '<span title="Scadenza assistenza" style="color:#c0392b; font-weight:700">⏰ '+esc(p.scadenzaAssistenza)+'</span>' : '-') : (esc(p.dataFine)||'-')}</td>
               <td class="wrap">${(p.nome||'-').toUpperCase()}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}${typeof segnaliDocumentiHTML === 'function' ? segnaliDocumentiHTML(p) : ''}</td>
-              <td class="wrap">${p.tipo||'-'}</td>
+              <td class="wrap">${p.tipo ? esc(p.tipo) + (eAltrePratiche(p.tipo) && p.descrizioneTipo ? '<div class="sub2">' + esc(p.descrizioneTipo) + '</div>' : '') : '-'}</td>
               <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato, p.tipo)}</select></td>
               <td>${formattaInserimento(p)}${ultimaModifica(p) ? '<div class="sub2" title="Ultima modifica">✏️ ' + ultimaModifica(p) + '</div>' : ''}</td>
               <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)} <button type="button" title="Ricevuta da consegnare al cliente" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer" onclick="stampaRicevuta('${p.id}')">🧾</button></td>
@@ -1664,7 +1665,7 @@ function render(){
       <div class="item-top">
         <div>
           <div class="num">#${formattaProtocollo(p)} — ${(p.nome||'(senza nome)').toUpperCase()}</div>
-          <div class="name">${p.tipo||''} ${p.cf ? '· nato il '+p.cf : ''}</div>
+          <div class="name">${esc(tipoConDescrizione(p))} ${p.cf ? '· nato il '+p.cf : ''}</div>
           ${p.congiunta ? `<div class="name">Congiunta con <b>${esc(p.congiunta)}</b>${p.congData ? ' (nato il '+esc(p.congData)+')' : ''}${p.congCodiceFiscale ? ' · CF '+esc(p.congCodiceFiscale) : ''}${p.congTelefono ? ' · Cell. <a href="tel:'+esc(p.congTelefono)+'" style="color:inherit">'+esc(p.congTelefono)+'</a>' : ''}</div>` : ''}
           ${p.telefono ? `<div class="name">Cell. <a href="tel:${esc(p.telefono)}" style="color:inherit">${esc(p.telefono)}</a></div>` : ''}
           ${p.email ? `<div class="name">📧 <a href="mailto:${esc(p.email)}" style="color:inherit">${esc(p.email)}</a></div>` : ''}
@@ -1701,7 +1702,8 @@ function render(){
           <div><label>📧 E-mail</label><input id="e-email-${p.id}" type="email" inputmode="email" value="${esc(p.email)}" style="text-transform:lowercase"></div>
           <div><label>Data di nascita</label><input id="e-cf-${p.id}" value="${esc(p.cf)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Scadenza documento</label><input id="e-docscad-${p.id}" value="${esc(p.documentoScadenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
-          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
+          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="document.getElementById('e-desctipo-box-${p.id}').style.display = eAltrePratiche(this.value) ? '' : 'none'; document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
+          <div id="e-desctipo-box-${p.id}" style="${eAltrePratiche(p.tipo) ? '' : 'display:none'}"><label>Descrizione della pratica *</label><input id="e-desctipo-${p.id}" value="${esc(p.descrizioneTipo)}" maxlength="120"></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
           <div><label>Pagato effettivo (€)</label><div style="display:flex; gap:6px"><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0"><select id="e-met-${p.id}" title="Tipo di pagamento" style="width:auto; flex:0 0 auto">${metodoOptions(p.metodoPagamento)}</select></div></div>
@@ -1797,6 +1799,7 @@ async function addPraticaInterna(){
   const nome = (cognome + ' ' + nomeProprio).trim();
   const cf = document.getElementById('f-cf').value.trim();
   const tipo = document.getElementById('f-tipo').value.trim();
+  const descrizioneTipo = eAltrePratiche(tipo) ? (document.getElementById('f-desctipo').value || '').trim() : '';
   const compensoScritto = parseImporto(document.getElementById('f-compenso').value);
   const compensoAuto = fatturaAutomatica(document.getElementById('f-tipo').value);
   const compenso = compensoScritto || (compensoAuto !== undefined ? compensoAuto : '');
@@ -1845,6 +1848,10 @@ async function addPraticaInterna(){
   if(documenti.mancanti.length && (document.getElementById('f-stato').value || 'arrivo') !== 'arrivo'){
     pickChip('f-stato-btns','f-stato','arrivo');
   }
+  if(eAltrePratiche(tipo) && !descrizioneTipo){
+    popupErroreCampo('Descrizione della pratica', 'Hai scelto <b>ALTRE PRATICHE</b>: scrivi di che pratica si tratta nella casella <b>Descrizione della pratica</b>.', 'f-desctipo');
+    return;
+  }
   const codiceFiscale = document.getElementById('f-codfisc').value.trim();
   if(!codiceFiscale){
     popupErroreCampo('Codice fiscale obbligatorio', 'Per salvare la pratica inserisci il <b>codice fiscale</b> del contribuente (puoi anche leggerlo con "📄 Leggi documento").', 'f-codfisc');
@@ -1865,7 +1872,7 @@ async function addPraticaInterna(){
   }
 
   const annoPr = annoDiData(dataPratica);
-  const doppione = await cercaDoppione(annoPr, nome, tipo, codiceFiscale, null);
+  const doppione = eAltrePratiche(tipo) ? null : await cercaDoppione(annoPr, nome, tipo, codiceFiscale, null);
   if(doppione){
     msg.textContent = '⚠️ ' + nome + ' ha gia\' una pratica ' + tipo + ' nel ' + annoPr + ' (protocollo ' + doppione + '). Non e\' possibile inserire un doppione.';
     msg.style.display = 'block';
@@ -1886,6 +1893,7 @@ async function addPraticaInterna(){
     stato: documenti.mancanti.length ? 'arrivo' : (document.getElementById('f-stato').value || 'arrivo'),
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
+    descrizioneTipo: descrizioneTipo,
     fatt: 'dafatturare',
     numFattura: '',
     dataFattura: '',
@@ -1925,6 +1933,8 @@ async function addPraticaInterna(){
   document.getElementById('f-data-fine').value='';
   document.getElementById('f-stato').value='arrivo';
   document.getElementById('f-note').value='';
+  if(document.getElementById('f-desctipo')) document.getElementById('f-desctipo').value='';
+  aggiornaDescTipoForm();
   document.getElementById('f-data').value=todayIT();
   aggiornaStoricoForm();
 
@@ -2349,6 +2359,7 @@ async function salvaModifica(id){
     email: g('e-email').trim().toLowerCase(),
     cf: g('e-cf').trim(),
     tipo: g('e-tipo'),
+    descrizioneTipo: eAltrePratiche(g('e-tipo')) ? g('e-desctipo').trim() : '',
     scadenzaAssistenza: eColf(g('e-tipo')) ? g('e-scadass').trim() : '',
     compenso: parseImporto(g('e-comp')) || '',
     pagato: parseImporto(g('e-pag')) || '',
@@ -2362,6 +2373,10 @@ async function salvaModifica(id){
   if(campi.email && !emailValida(campi.email)){ popupErroreCampo('E-mail non valida', 'L\'indirizzo <b>' + esc(campi.email) + '</b> non è corretto.', 'e-email-' + id); return; }
   if(!campi.telefono && !campi.telefonoFisso){
     avviso('❌ Inserisci almeno un numero di telefono: cellulare o telefono fisso.', true);
+    return;
+  }
+  if(eAltrePratiche(campi.tipo) && !campi.descrizioneTipo){
+    avviso('❌ Hai scelto ALTRE PRATICHE: scrivi la descrizione della pratica.', true);
     return;
   }
   if(campi.dataFattura && !parseDataIT(campi.dataFattura)){
@@ -2382,7 +2397,7 @@ async function salvaModifica(id){
     return;
   }
   const annoP = annoPratica(p);
-  const doppione = await cercaDoppione(annoP, campi.nome, campi.tipo, p.codiceFiscale, id);
+  const doppione = eAltrePratiche(campi.tipo) ? null : await cercaDoppione(annoP, campi.nome, campi.tipo, p.codiceFiscale, id);
   if(doppione){
     avviso('❌ ' + campi.nome + ' ha gia\' una pratica ' + campi.tipo + ' nel ' + annoP + ' (protocollo ' + doppione + '): modifica non salvata.', true);
     return;
@@ -2589,6 +2604,11 @@ async function cercaDoppione(anno, nome, tipo, codiceFiscale, escludiId){
 }
 
 function e730(p){ return /^730\b/.test(String(p.tipo||'').toUpperCase()); }
+// "ALTRE PRATICHE": il tipo si accompagna a una descrizione scritta a mano
+const TIPO_ALTRE = 'ALTRE PRATICHE';
+function eAltrePratiche(t){ return String(t||'').trim().toUpperCase() === TIPO_ALTRE; }
+function tipoConDescrizione(p){ return (p.tipo||'') + (eAltrePratiche(p.tipo) && p.descrizioneTipo ? ' – ' + p.descrizioneTipo : ''); }
+function aggiornaDescTipoForm(){ const b = document.getElementById('f-desctipo-box'); if(b) b.style.display = eAltrePratiche((document.getElementById('f-tipo')||{}).value) ? '' : 'none'; }
 // Stati: "da lavorare" finche' la pratica non e' stata lavorata; dopo (anche pagata o da pagare) conta come lavorata
 const STATI_DA_LAVORARE = ['arrivo','lavorazione','da_lavorare_scansionata'];
 function eDaLavorare(p){ return STATI_DA_LAVORARE.indexOf(p.stato) >= 0; }

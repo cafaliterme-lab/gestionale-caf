@@ -542,6 +542,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <button type="button" class="chip-dd-trigger" onclick="toggleDD('f-tipo-dd')"><span id="f-tipo-dd-label">Seleziona tipo pratica...</span><span class="arrow">▾</span></button>
         <div class="chip-dd-panel" id="f-tipo-btns"></div>
       </div>
+      <div id="f-desctipo-box" style="display:none; margin-top:8px"><label>Descrizione della pratica *</label><input id="f-desctipo" placeholder="Scrivi di che pratica si tratta (es. successione semplificata)" maxlength="120"></div>
     </div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; align-items:start">
       <div>
@@ -832,9 +833,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610126"></script>
+<script src="js/data.js?v=202610127"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610208"></script>
+<script src="js/app.js?v=202610209"></script>
 <script src="js/email.js?v=1"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/ricercafatture.js?v=1"></script>

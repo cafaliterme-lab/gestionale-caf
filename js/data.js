@@ -100,6 +100,7 @@ const schemas = {
     whatsappInviato: 'whatsapp_inviato',
     cf: 'cf',
     tipo: 'tipo',
+    descrizioneTipo: 'descrizione_tipo',
     compenso: 'compenso',
     pagato: 'pagato',
     data: 'data',
