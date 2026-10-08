@@ -1608,7 +1608,7 @@ function render(){
         <div><div class="chart-cap">Fatture emesse e Incasso</div><div class="chart-wrap"><canvas id="ch-eur"></canvas></div></div>
       </div>
       <div class="raff-diff" id="raff-diff"></div>
-      <div id="box-ch-tipi" style="margin-top:14px"><div class="chart-cap">Fatture emesse, incasso e provento per tipo di pratica</div><div class="chart-wrap"><canvas id="ch-tipi"></canvas></div></div>
+      <div id="box-ch-tipi" style="margin-top:14px"><div class="chart-cap">Fatture emesse, incasso e guadagno netto per tipo di pratica</div><div class="chart-wrap"><canvas id="ch-tipi"></canvas></div></div>
       <div id="raff-tipi" style="margin-top:14px"></div>`;
   }
   document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso totale − fatture emesse − versamenti CAF − spese sede): ' + fmtEuro(incassoLordo - fattureEmesse - versatoCaf - speseSede) : '';
@@ -2519,7 +2519,7 @@ function riepilogoPerTipo(pratiche){
   const d = datiPerTipo(pratiche);
   if(!d.tipi.length) return '';
   return '<div class="raff-title">Dettaglio per tipo di pratica</div>'
-    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Tipo di pratica</th><th>Pratiche</th><th>Fatture emesse</th><th>Incasso</th>'+(vedeGuadagni()?'<th>Provento (incasso − fatture)</th>':'')+'</tr></thead><tbody>'
+    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Tipo di pratica</th><th>Pratiche</th><th>Fatture emesse</th><th>Incasso</th>'+(vedeGuadagni()?'<th>Guadagno netto (incasso − fatture)</th>':'')+'</tr></thead><tbody>'
     + d.tipi.map(function(t){
       const r = d.righe[t];
       return '<tr><td>'+esc(t)+'</td><td>'+r.n+'</td><td>'+fmtEuro(r.fatt)+'</td><td>'+fmtEuro(r.inc)+'</td>'+(vedeGuadagni()?'<td><b>'+fmtEuro(r.inc-r.fatt)+'</b></td>':'')+'</tr>';
