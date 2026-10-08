@@ -62,7 +62,7 @@ function renderVersamentiCaf(vlist, versatoCaf) {
   totaleVersamentoForm();
 }
 
-// Spese della sede già detratte in un versamento (per non usarle due volte)
+// Spese della sede già detratte in un versamento (si possono usare di nuovo: serve solo per ricordarlo)
 function speseGiaDetratte() {
   const m = {};
   (state.versamenti || []).forEach(function (v) { (Array.isArray(v.cassaElenco) ? v.cassaElenco : []).forEach(function (r) { if (r.spesaId) m[r.spesaId] = v; }); });
@@ -70,20 +70,20 @@ function speseGiaDetratte() {
 }
 function scegliSpeseDaDetrarre() {
   const usate = speseGiaDetratte();
-  const giaNelModulo = VC_SPESE.filter(Boolean);
-  const lista = (state.speseSede || []).filter(function (sp) { return !usate[sp.id] && giaNelModulo.indexOf(sp.id) < 0; })
+  const lista = (state.speseSede || []).slice()
     .sort(function (a, b) { return (dataNum(b.data) || 0) - (dataNum(a.data) || 0); });
-  if (!lista.length) { avviso('Nessuna spesa della sede da detrarre: sono già state usate tutte, o non ce ne sono (sezione SPESE SEDE)'); return; }
+  if (!lista.length) { avviso('Non ci sono spese registrate in SPESE SEDE'); return; }
   const vecchio = document.getElementById('popup-spese-vers'); if (vecchio) vecchio.remove();
   const ov = document.createElement('div');
   ov.id = 'popup-spese-vers';
   ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #a0522d; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:18px 20px; max-width:560px; width:100%; max-height:90vh; display:flex; flex-direction:column">'
     + '<div style="font-size:18px; font-weight:800; color:#a0522d">📥 Spese della sede da detrarre</div>'
-    + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 10px">Spunta le spese pagate per conto del CAF (al massimo ' + RIGHE_CASSA + ' righe). Quelle già detratte in un altro versamento non compaiono.</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 10px">Spunta le spese pagate per conto del CAF (al massimo ' + RIGHE_CASSA + ' righe). Una spesa si può usare anche più volte: se è già stata detratta lo vedi scritto accanto.</div>'
     + '<div style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px">' + lista.map(function (sp) {
       return '<label style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); margin:0; cursor:pointer"><input type="checkbox" class="spv-chk" value="' + sp.id + '" style="width:auto; margin:0">'
-        + '<span style="flex:1">' + esc(sp.data || '') + ' · <b>' + esc(sp.categoria || '') + '</b>' + (sp.descrizione ? ' · ' + esc(sp.descrizione) : '') + '</span><b>' + fmtEuro(sp.importo) + '</b></label>';
+        + '<span style="flex:1">' + esc(sp.data || '') + ' · <b>' + esc(sp.categoria || '') + '</b>' + (sp.descrizione ? ' · ' + esc(sp.descrizione) : '')
+        + (usate[sp.id] ? '<div style="font-size:11.5px; color:#1d4f91">🏦 già detratta nel versamento del ' + esc(usate[sp.id].data || '') + '</div>' : '') + '</span><b>' + fmtEuro(sp.importo) + '</b></label>';
     }).join('') + '</div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px"><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Annulla</button><button type="button" data-azione="si" style="background:#a0522d; color:#fff; font-weight:800">Aggiungi al versamento</button></div></div>';
   document.body.appendChild(ov);
