@@ -214,7 +214,7 @@ const GUIDA = [
 <li><b>🔎 Ricerca fatture</b> dal… al… con il tipo di pagamento (vedi il capitolo dedicato).</li>
 <li>I riquadri <b>SPESE SEDE</b>, <b>GUADAGNO NETTO (meno spese sede)</b> e, se c'è, <b>DA RESTITUIRE AD ANGELO</b>.</li>
 <li><b>🖨️ Stampa contabilità (Excel / PDF)</b>.</li>
-</ul><p><b>⚖️ Situazione alla data</b>: subito sotto i riquadri, scegli <b>Dal</b> e <b>Fino al</b> (già proposto dall'inizio dell'anno a oggi) e vedi <b>fatture emesse</b>, <b>introiti</b> (incassato) e <b>versamenti al CAF</b> del periodo, con le differenze <b>Introiti − versamenti</b> (soldi rimasti dopo i versamenti), <b>Fatture − versamenti</b> (fatturato non ancora coperto dai versamenti) e <b>Introiti − fatture</b>. Sotto c'è il dettaglio <b>mese per mese</b> con i totali progressivi; verde = positivo, rosso = negativo. Il tasto 🖨️ Stampa la stampa o salva in PDF.</p>` },
+</ul><p><b>⚖️ Situazione alla data</b>: subito sotto i riquadri, scegli <b>Dal</b> e <b>Fino al</b> (già proposto dall'inizio dell'anno a oggi) e vedi le <b>fatture pagate</b> (fatture delle pratiche che hanno un pagamento; sotto c'è anche il totale emesso), gli <b>introiti</b> (incassato) e i <b>versamenti al CAF</b> del periodo, con le differenze <b>Introiti − fatture pagate</b>, <b>Introiti − versamenti</b> (soldi rimasti dopo i versamenti) e <b>Fatture pagate − versamenti</b>. Sotto c'è il dettaglio <b>mese per mese</b> con i totali progressivi; verde = positivo, rosso = negativo. Il tasto 🖨️ Stampa la stampa o salva in PDF.</p>` },
 
   { id: 'ricercafatture', icona: '🔎', titolo: 'Ricerca fatture dal… al… per tipo di pagamento', parole: 'ricerca fatture dal al periodo pagamento contanti pos bonifico incasso totale excel stampa',
     testo: `
