@@ -28,12 +28,11 @@ function renderVersamentiCaf(vlist, versatoCaf) {
     + '<div><label>Dalla fattura n.</label><input id="vc-dal" value="' + val('vc-dal') + '" placeholder="Es. 1" inputmode="numeric" oninput="this.value=this.value.replace(/\\D/g,\'\'); suggerimentoVersamento()"></div>'
     + '<div><label>Alla fattura n.</label><input id="vc-al" value="' + val('vc-al') + '" placeholder="Es. 50" inputmode="numeric" oninput="this.value=this.value.replace(/\\D/g,\'\'); suggerimentoVersamento()"></div>'
     + '<div class="full" id="vc-suggerimento" style="font-size:12.5px"></div>'
-    + '<div><label>Importo versato (banca / bollettino) €</label>' + campoImp('vc-importo', val('vc-importo')) + '</div>'
-    + '<div><label>POS €</label>' + campoImp('vc-pos', val('vc-pos')) + '</div>'
-    + '<div class="full"><label>Fatture o spese pagate per cassa</label>'
+    + '<div class="full"><label>Importo delle fatture €</label>' + campoImp('vc-importo', val('vc-importo')) + '</div>'
+    + '<div class="full"><label>Spese pagate per conto del CAF da detrarre (condominio, TARI, acqua…)</label>'
     + cassaRighe.map(function (r, i) {
       return '<div style="display:flex; gap:6px; margin-bottom:4px"><span style="width:18px; padding-top:9px; color:var(--sub)">' + (i + 1) + '.</span>'
-        + '<input id="vc-cd' + i + '" value="' + r.d + '" placeholder="Descrizione (es. fattura n. 12 Enel)" style="flex:1">'
+        + '<input id="vc-cd' + i + '" value="' + r.d + '" placeholder="Descrizione (es. TARI 2026, condominio settembre)" style="flex:1">'
         + '<input id="vc-ci' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:110px"></div>';
     }).join('') + '</div>'
     + '<div class="full" id="vc-totale" style="font-size:15px"></div>'
@@ -44,9 +43,8 @@ function renderVersamentiCaf(vlist, versatoCaf) {
     + '<div id="caf-msg" style="color:#c0392b; font-size:12px; margin:4px 0 8px; display:none"></div>'
     + (vlist.length ? vlist.map(function (v) {
       const parti = [];
-      if (v.versato != null && v.versato !== '') parti.push('versato ' + fmtEuro(v.versato));
+      if (Number(v.cassa)) parti.push('fatture ' + fmtEuro(v.importo) + ' − spese ' + fmtEuro(v.cassa) + ' = versato ' + fmtEuro(v.versato));
       if (Number(v.pos)) parti.push('POS ' + fmtEuro(v.pos));
-      if (Number(v.cassa)) parti.push('per cassa ' + fmtEuro(v.cassa));
       return '<div class="caf-row" style="align-items:flex-start">'
         + '<span>' + esc(v.data || '-') + (v.causale ? ' · ' + esc(v.causale) : '')
         + (v.fatturaDal || v.fatturaAl ? '<div class="sub2">🧾 Fatture dal n. ' + esc(v.fatturaDal || '…') + ' al n. ' + esc(v.fatturaAl || '…') + '</div>' : '')
@@ -69,16 +67,17 @@ function letturaFormVersamento() {
     const d = (document.getElementById('vc-cd' + i).value || '').trim(), imp = num('vc-ci' + i);
     if (d || imp) elenco.push({ descrizione: d, importo: imp });
   }
-  const versato = num('vc-importo'), pos = num('vc-pos');
+  // importo delle fatture − spese pagate per conto del CAF = quanto si versa col bollettino
+  const fatture = num('vc-importo');
   const cassa = Math.round(elenco.reduce(function (t, r) { return t + r.importo; }, 0) * 100) / 100;
-  return { versato: versato, pos: pos, cassa: cassa, elenco: elenco, totale: Math.round((versato + pos + cassa) * 100) / 100 };
+  return { totale: fatture, cassa: cassa, elenco: elenco, versato: Math.round((fatture - cassa) * 100) / 100, pos: 0 };
 }
 function totaleVersamentoForm() {
   const box = document.getElementById('vc-totale');
   if (!box) return;
   const f = letturaFormVersamento();
-  box.innerHTML = 'TOTALE (versato + POS + pagate per cassa): <b>' + fmtEuro(f.totale) + '</b>'
-    + (f.pos || f.cassa ? ' <span style="color:var(--sub); font-size:12.5px">= ' + fmtEuro(f.versato) + ' + ' + fmtEuro(f.pos) + ' + ' + fmtEuro(f.cassa) + '</span>' : '');
+  box.innerHTML = 'DA VERSARE (bollettino): <b style="color:' + (f.versato < 0 ? '#c0392b' : 'inherit') + '">' + fmtEuro(f.versato) + '</b>'
+    + (f.cassa ? ' <span style="color:var(--sub); font-size:12.5px">= fatture ' + fmtEuro(f.totale) + ' − spese ' + fmtEuro(f.cassa) + '</span>' : '');
 }
 
 function aggiungiVersamento() {
@@ -86,8 +85,9 @@ function aggiungiVersamento() {
   if (msg) msg.style.display = 'none';
   const f = letturaFormVersamento();
   const errore = function (t) { if (msg) { msg.textContent = '⚠️ ' + t; msg.style.display = 'block'; } };
-  if (!(f.totale > 0)) return errore('Inserisci l\'importo versato (o POS / pagate per cassa), es. 50,00');
-  if (f.elenco.some(function (r) { return !r.importo; })) return errore('Nelle fatture o spese pagate per cassa manca un importo');
+  if (!(f.totale > 0)) return errore('Inserisci l\'importo delle fatture, es. 1.460,21');
+  if (f.elenco.some(function (r) { return !r.importo; })) return errore('In una delle spese da detrarre manca l\'importo');
+  if (f.versato < 0) return errore('Le spese da detrarre sono più alte dell\'importo delle fatture');
   const dal = (document.getElementById('vc-dal').value || '').trim(), al = (document.getElementById('vc-al').value || '').trim();
   if (dal && al && Number(dal) > Number(al)) return errore('Il numero "dalla fattura" deve essere più piccolo di "alla fattura"');
   const nuovo = {
@@ -97,7 +97,7 @@ function aggiungiVersamento() {
     fatturaDal: dal, fatturaAl: al,
     operatore: ((auth.profilo && auth.profilo.nome) || '').toUpperCase()
   };
-  ['vc-dal', 'vc-al', 'vc-importo', 'vc-pos', 'vc-causale'].forEach(function (id) { document.getElementById(id).value = ''; });
+  ['vc-dal', 'vc-al', 'vc-importo', 'vc-causale'].forEach(function (id) { document.getElementById(id).value = ''; });
   for (let i = 0; i < RIGHE_CASSA; i++) { document.getElementById('vc-cd' + i).value = ''; document.getElementById('vc-ci' + i).value = ''; }
   document.getElementById('vc-data').value = todayIT();
   document.getElementById('vc-suggerimento').innerHTML = '';
@@ -194,7 +194,7 @@ function stampaModuloVersamento(id) {
     + riga('SEDE', esc(d.sede)) + riga('OPERATORE', esc(v.operatore || (auth.profilo && auth.profilo.nome) || ''))
     + riga('NUMERO SEZIONALE SEDE', esc(d.sezionale || '')) + riga('DATA', esc(v.data || ''))
     + (v.fatturaDal || v.fatturaAl ? riga('FATTURE', 'dal n. ' + esc(v.fatturaDal || '…') + ' al n. ' + esc(v.fatturaAl || '…')) : '')
-    + riga('IMPORTO VERSATO €', fmtEuro(versato)) + riga('POS €', fmtEuro(v.pos || 0)) + riga('FATTURE PAGATE PER CASSA €', fmtEuro(v.cassa || 0))
+    + riga('IMPORTO VERSATO €', fmtEuro(versato)) + riga('POS €', Number(v.pos) ? fmtEuro(v.pos) : '') + riga('FATTURE PAGATE PER CASSA €', fmtEuro(v.cassa || 0))
     + '</table>'
     + '<div class="sotto">Elenco fatture o spese pagate per cassa</div><table class="elenco">' + righe.join('') + '</table>'
     + '<table class="dati" style="margin-top:14px">' + riga('TOTALE €', '<b style="font-size:18px">' + fmtEuro(v.importo) + '</b><div style="font-size:11px">(deve coincidere con la somma dell\'importo versato + POS + fatture pagate per cassa)</div>') + '</table>'

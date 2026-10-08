@@ -1456,7 +1456,7 @@ function suggerimentoVersamento(){
   const attese = al - dal + 1;
   box.innerHTML = '🧾 Fatture dal n. ' + dal + ' al n. ' + al + ' (' + anno + '): <b>' + lista.length + '</b> trovate' + (lista.length < attese ? ' su ' + attese + ' <span style="color:#c0392b">(alcuni numeri non sono nel registro)</span>' : '') + ' · totale <b>' + fmtEuro(tot) + '</b>'
     + (pagate.length !== lista.length ? ' · di cui pagate ' + pagate.length + ' per ' + fmtEuro(totPag) : '')
-    + (tot ? ' <button type="button" onclick="document.getElementById(\'vc-importo\').value=\'' + tot.toFixed(2).replace('.', ',') + '\'" style="padding:3px 10px; font-size:12px; margin-left:6px">Usa come importo</button>' : '');
+    + (tot ? ' <button type="button" onclick="document.getElementById(\'vc-importo\').value=\'' + tot.toFixed(2).replace('.', ',') + '\'; if(typeof totaleVersamentoForm===\'function\') totaleVersamentoForm();" style="padding:3px 10px; font-size:12px; margin-left:6px">Usa come importo</button>' : '');
 }
 function rimuoviVersamento(id){
   // Usa la nuova API data.js
