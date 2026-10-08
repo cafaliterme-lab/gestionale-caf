@@ -245,8 +245,10 @@ function stampaModuloVersamento(id) {
     righe.push('<tr><td style="width:24px">' + (i + 1) + '.</td><td>' + esc(r.descrizione || '') + '</td><td style="width:120px; text-align:right">' + (r.importo ? fmtEuro(r.importo) : '') + '</td></tr>');
   }
   const riga = function (et, val) { return '<tr><th>' + et + '</th><td>' + val + '</td></tr>'; };
+  const imgLogo = document.querySelector('.hero-logo'), logoCaf = imgLogo ? imgLogo.src : '';
   finestraStampa('Trasmissione versamento ' + (v.data || ''),
-    '<div class="foglio"><div class="testa"><b>CAF CISL SICILIA</b><br>Piazza Castelnuovo 35 – 90141 Palermo<br>Tel 091/331973 – Fax 091/328708 – e-mail: info@cafcislsicilia.com</div>'
+    '<div class="foglio"><div class="testa">' + (logoCaf ? '<img class="logo" src="' + logoCaf + '" alt="CAF CISL">' : '<span></span>')
+    + '<div class="indirizzo"><b>CAF CISL SICILIA</b><br>Piazza Castelnuovo 35 – 90141 Palermo<br>Tel 091/331973 – Fax 091/328708<br>e-mail: info@cafcislsicilia.com</div></div>'
     + '<h1>TRASMISSIONE VERSAMENTO</h1>'
     + '<table class="dati">'
     + riga('SEDE', esc(d.sede)) + riga('OPERATORE', esc(v.operatore || (auth.profilo && auth.profilo.nome) || ''))
@@ -258,7 +260,7 @@ function stampaModuloVersamento(id) {
     + '<table class="dati" style="margin-top:14px">' + riga('TOTALE VERSATO €', '<b style="font-size:18px">' + fmtEuro(versato) + '</b><div style="font-size:11px">(importo fatture ' + fmtEuro(v.importo) + ' − spese pagate per cassa ' + fmtEuro(v.cassa || 0) + ')</div>') + '</table>'
     + '<p class="nota">In allegato devono essere allegati esclusivamente: copia versamento banca, bollettino postale e le fatture e spese documentate pagate per cassa.</p>'
     + '<div class="firme"><div>Data ' + esc(v.data || '') + '</div><div>Firma ____________________________</div></div></div>',
-    '@page{size:A4; margin:14mm} .foglio{max-width:180mm} .testa{text-align:center; font-size:12px; border-bottom:2px solid #1d4f91; padding-bottom:8px} h1{text-align:center; font-size:20px; letter-spacing:.08em; margin:14px 0} table{width:100%; border-collapse:collapse} .dati th{width:42%; text-align:left; background:#eef3fa; font-size:12px} .dati th,.dati td{border:1px solid #9aa8bb; padding:7px 9px; font-size:14px} .sotto{margin:14px 0 4px; font-weight:bold; font-size:13px} .elenco td{border-bottom:1px solid #9aa8bb; padding:8px 6px; font-size:13px; height:18px} .nota{font-size:11px; margin-top:14px} .firme{display:flex; justify-content:space-between; margin-top:40px; font-size:13px}');
+    '@page{size:A4; margin:14mm} .foglio{max-width:180mm} .testa{display:flex; justify-content:space-between; align-items:center; gap:12mm; font-size:12px; border-bottom:2px solid #1d4f91; padding-bottom:8px} .testa .logo{width:24mm; height:auto} .testa .indirizzo{text-align:right; line-height:1.45} h1{text-align:center; font-size:20px; letter-spacing:.08em; margin:14px 0} table{width:100%; border-collapse:collapse} .dati th{width:42%; text-align:left; background:#eef3fa; font-size:12px} .dati th,.dati td{border:1px solid #9aa8bb; padding:7px 9px; font-size:14px} .sotto{margin:14px 0 4px; font-weight:bold; font-size:13px} .elenco td{border-bottom:1px solid #9aa8bb; padding:8px 6px; font-size:13px; height:18px} .nota{font-size:11px; margin-top:14px} .firme{display:flex; justify-content:space-between; margin-top:40px; font-size:13px}');
 }
 
 /* --- Bollettino postale TD 123 compilato sul modulo vero (modelli/bollettino-td123.jpg) ---
