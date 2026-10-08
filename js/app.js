@@ -1458,10 +1458,6 @@ function suggerimentoVersamento(){
     + (pagate.length !== lista.length ? ' · di cui pagate ' + pagate.length + ' per ' + fmtEuro(totPag) : '')
     + (tot ? ' <button type="button" onclick="document.getElementById(\'vc-importo\').value=\'' + tot.toFixed(2).replace('.', ',') + '\'; if(typeof totaleVersamentoForm===\'function\') totaleVersamentoForm();" style="padding:3px 10px; font-size:12px; margin-left:6px">Usa come importo</button>' : '');
 }
-function rimuoviVersamento(id){
-  // Usa la nuova API data.js
-  data.versamenti.elimina(id);
-}
 
 const aperti = {};
 function gToggle(el){ aperti[el.dataset.k] = el.open; }
