@@ -149,7 +149,7 @@ function scegliBonificiDaPratiche() {
     + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 8px">Spunta i bonifici da detrarre: per ognuno vengono scritti il nome, la data della fattura e l\'importo pagato. Accanto vedi se un bonifico è già stato detratto in un altro versamento.</div>'
     + '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px">'
     + '<input id="bonp-cerca" type="search" placeholder="Cerca per nome o numero di fattura…" style="flex:1; min-width:180px">'
-    + (conRange ? '<label class="chk" style="font-size:13px; white-space:nowrap"><input type="checkbox" id="bonp-range" checked> Solo fatture dal n. ' + dal + ' al n. ' + al + '</label>' : '')
+    + (conRange ? '<label class="chk" style="font-size:13px; white-space:nowrap"><input type="checkbox" id="bonp-range" checked> Solo fatture dal n. ' + dal + ' al n. ' + al + ' (e quelle senza numero)</label>' : '')
     + '<label class="chk" style="font-size:13px; white-space:nowrap"><input type="checkbox" id="bonp-nuovi" checked> Nascondi quelli già detratti</label></div>'
     + '<div id="bonp-lista" style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:space-between; align-items:center; margin-top:12px; flex-wrap:wrap"><span id="bonp-tot" style="font-size:13px; font-weight:700"></span>'
@@ -162,7 +162,7 @@ function scegliBonificiDaPratiche() {
     const soloNuovi = document.getElementById('bonp-nuovi').checked;
     return tutte.filter(function (p) {
       const n = nFatt(p);
-      if (soloRange && !(n != null && n >= dal && n <= al)) return false;
+      if (soloRange && n != null && !(n >= dal && n <= al)) return false;   // quelle ancora senza numero di fattura restano
       if (soloNuovi && (usati[p.id] || giaNelModulo.indexOf(p.id) >= 0)) return false;
       return !q || String(p.nome || '').toUpperCase().indexOf(q) >= 0 || String(p.numFattura || '').toUpperCase().indexOf(q) >= 0;
     });
@@ -174,7 +174,7 @@ function scegliBonificiDaPratiche() {
         + '<span style="flex:1"><b>' + esc(p.nome || '') + '</b><div style="font-size:12px; color:var(--sub)">' + (p.numFattura ? 'Fattura n. ' + esc(p.numFattura) : 'Senza numero di fattura') + ((p.dataFattura || p.data) ? ' · ' + esc(p.dataFattura || p.data) : '') + (p.tipo ? ' · ' + esc(p.tipo) : '') + '</div>'
         + (usati[p.id] ? '<div style="font-size:11.5px; color:#c0392b">🏦 già detratto nel versamento del ' + esc(usati[p.id].data || '') + '</div>' : '')
         + (giaNelModulo.indexOf(p.id) >= 0 ? '<div style="font-size:11.5px; color:#c0392b">già nelle righe del versamento</div>' : '') + '</span><b>' + fmtEuro(p.pagato) + '</b></label>';
-    }).join('') : '<div class="empty" style="padding:14px">Nessuna pratica con questi filtri</div>';
+    }).join('') : '<div class="empty" style="padding:14px">Nessuna pratica con questi filtri' + (tutte.length ? ' (le pratiche pagate con bonifico sono ' + tutte.length + ': togli le spunte qui sopra per vederle)' : '') + '</div>';
     const ids = Object.keys(scelti).filter(function (k) { return scelti[k]; });
     const tot = ids.reduce(function (t, id) { const p = tutte.find(function (x) { return x.id === id; }); return t + Number((p && p.pagato) || 0); }, 0);
     document.getElementById('bonp-tot').textContent = ids.length ? 'Scelti ' + ids.length + ' · totale ' + fmtEuro(tot) : '';
