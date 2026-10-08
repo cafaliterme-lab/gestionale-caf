@@ -3,7 +3,7 @@
 // elenco dei versamenti con la stampa del modulo "Trasmissione versamento" del CAF CISL Sicilia
 // già compilato e del bollettino postale compilato.
 
-const RIGHE_CASSA = 5;
+let RIGHE_CASSA = 3;  // righe delle spese mostrate (aumentano con "+ Aggiungi riga" o prendendo da Spese sede)
 let BON_N = 3;        // righe dei bonifici mostrate (aumentano con "+ riga" o prendendo dalle pratiche)
 let VC_BON = [];      // per ogni riga dei bonifici: { praticaId, fattura } se presa dalle pratiche
 let VC_ULTIMO = null; // ultimi dati del disegno, per ridisegnare il modulo con più righe
@@ -42,7 +42,7 @@ function renderVersamentiCaf(vlist, versatoCaf) {
       return '<div style="display:flex; gap:6px; margin-bottom:4px"><span style="width:18px; padding-top:9px; color:var(--sub)">' + (i + 1) + '.</span>'
         + '<input id="vc-cd' + i + '" value="' + r.d + '" oninput="VC_SPESE[' + i + ']=null" placeholder="Descrizione (es. TARI 2026, condominio settembre)" style="flex:1">'
         + '<input id="vc-ci' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:110px"></div>';
-    }).join('') + '</div>'
+    }).join('') + '<button type="button" onclick="RIGHE_CASSA++; ridisegnaVersamentiCaf()" style="padding:3px 12px; font-size:12.5px; background:none; border:1px dashed #a0522d; color:#a0522d; border-radius:999px">+ Aggiungi riga</button></div>'
     + '<div class="full"><div style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; flex-wrap:wrap"><label style="margin:0">Pagamenti ricevuti con bonifico da detrarre (uno per riga: chi l\'ha fatto, data, importo)</label>'
     + '<button type="button" onclick="scegliBonificiDaPratiche()" style="padding:4px 12px; font-size:12.5px; background:#2f7de1; color:#fff; border:none; border-radius:999px; font-weight:700; margin-bottom:4px">📥 Prendi dalle pratiche pagate con bonifico</button></div>'
     + bonRighe.map(function (r, i) {
@@ -95,7 +95,7 @@ function scegliSpeseDaDetrarre() {
   ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #a0522d; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:18px 20px; max-width:560px; width:100%; max-height:90vh; display:flex; flex-direction:column">'
     + '<div style="font-size:18px; font-weight:800; color:#a0522d">📥 Spese della sede da detrarre</div>'
-    + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 10px">Spunta le spese pagate per conto del CAF (al massimo ' + RIGHE_CASSA + ' righe). Una spesa si può usare anche più volte: se è già stata detratta lo vedi scritto accanto.</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 10px">Spunta le spese pagate per conto del CAF (se le righe non bastano se ne aggiungono). Una spesa si può usare anche più volte: se è già stata detratta lo vedi scritto accanto.</div>'
     + '<div style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px">' + lista.map(function (sp) {
       return '<label style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); margin:0; cursor:pointer"><input type="checkbox" class="spv-chk" value="' + sp.id + '" style="width:auto; margin:0">'
         + '<span style="flex:1">' + esc(sp.data || '') + ' · <b>' + esc(sp.categoria || '') + '</b>' + (sp.descrizione ? ' · ' + esc(sp.descrizione) : '')
@@ -110,7 +110,9 @@ function scegliSpeseDaDetrarre() {
     const scelte = Array.from(ov.querySelectorAll('.spv-chk')).filter(function (c) { return c.checked; }).map(function (c) { return lista.find(function (sp) { return sp.id === c.value; }); });
     const libere = [];
     for (let i = 0; i < RIGHE_CASSA; i++) if (!document.getElementById('vc-cd' + i).value.trim() && !document.getElementById('vc-ci' + i).value.trim()) libere.push(i);
-    if (scelte.length > libere.length) { alert('Ci sono solo ' + libere.length + ' righe libere: togli qualche spunta.'); return; }
+    let prossima = RIGHE_CASSA;
+    while (libere.length < scelte.length) libere.push(prossima++);
+    if (prossima > RIGHE_CASSA) { RIGHE_CASSA = prossima; ridisegnaVersamentiCaf(); }
     scelte.forEach(function (sp, k) {
       const i = libere[k];
       document.getElementById('vc-cd' + i).value = (sp.categoria || '') + (sp.descrizione ? ' – ' + sp.descrizione : '') + ' (' + (sp.data || '') + ')';
@@ -277,10 +279,11 @@ function aggiungiVersamento() {
   for (let i = 0; i < BON_N; i++) ['vc-bn', 'vc-bd', 'vc-bi'].forEach(function (k) { const el = document.getElementById(k + i); if (el) el.value = ''; });
   VC_BON = []; BON_N = 3;
   for (let i = 0; i < RIGHE_CASSA; i++) { document.getElementById('vc-cd' + i).value = ''; document.getElementById('vc-ci' + i).value = ''; }
+  RIGHE_CASSA = 3;
   VC_SPESE = [];
   document.getElementById('vc-data').value = todayIT();
   document.getElementById('vc-suggerimento').innerHTML = '';
-  totaleVersamentoForm();
+  ridisegnaVersamentiCaf();
   data.versamenti.aggiungi(nuovo);
 }
 
@@ -362,7 +365,7 @@ function stampaModuloVersamento(id) {
   const elenco = Array.isArray(v.cassaElenco) ? v.cassaElenco : [];
   const bonElenco = Array.isArray(v.bonificiElenco) ? v.bonificiElenco : [];
   const righe = [];
-  for (let i = 0; i < Math.max(5, elenco.length); i++) {
+  for (let i = 0; i < Math.max(3, elenco.length); i++) {
     const r = elenco[i] || {};
     righe.push('<tr><td style="width:24px">' + (i + 1) + '.</td><td>' + esc(r.descrizione || '') + '</td><td style="width:120px; text-align:right">' + (r.importo ? fmtEuro(r.importo) : '') + '</td></tr>');
   }
