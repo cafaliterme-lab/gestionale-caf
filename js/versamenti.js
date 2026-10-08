@@ -239,10 +239,10 @@ function stampaModuloVersamento(id) {
     + riga('SEDE', esc(d.sede)) + riga('OPERATORE', esc(v.operatore || (auth.profilo && auth.profilo.nome) || ''))
     + riga('NUMERO SEZIONALE SEDE', esc(d.sezionale || '')) + riga('DATA', esc(v.data || ''))
     + (v.fatturaDal || v.fatturaAl ? riga('FATTURE', 'dal n. ' + esc(v.fatturaDal || '…') + ' al n. ' + esc(v.fatturaAl || '…')) : '')
-    + riga('IMPORTO VERSATO €', fmtEuro(versato)) + riga('FATTURE PAGATE PER CASSA €', fmtEuro(v.cassa || 0))
+    + riga('IMPORTO FATTURE €', fmtEuro(v.importo)) + riga('FATTURE / SPESE PAGATE PER CASSA (da detrarre) €', Number(v.cassa) ? '− ' + fmtEuro(v.cassa) : fmtEuro(0))
     + '</table>'
     + '<div class="sotto">Elenco fatture o spese pagate per cassa</div><table class="elenco">' + righe.join('') + '</table>'
-    + '<table class="dati" style="margin-top:14px">' + riga('TOTALE €', '<b style="font-size:18px">' + fmtEuro(v.importo) + '</b><div style="font-size:11px">(deve coincidere con la somma dell\'importo versato + fatture pagate per cassa)</div>') + '</table>'
+    + '<table class="dati" style="margin-top:14px">' + riga('TOTALE VERSATO €', '<b style="font-size:18px">' + fmtEuro(versato) + '</b><div style="font-size:11px">(importo fatture ' + fmtEuro(v.importo) + ' − spese pagate per cassa ' + fmtEuro(v.cassa || 0) + ')</div>') + '</table>'
     + '<p class="nota">In allegato devono essere allegati esclusivamente: copia versamento banca, bollettino postale e le fatture e spese documentate pagate per cassa.</p>'
     + '<div class="firme"><div>Data ' + esc(v.data || '') + '</div><div>Firma ____________________________</div></div></div>',
     '@page{size:A4; margin:14mm} .foglio{max-width:180mm} .testa{text-align:center; font-size:12px; border-bottom:2px solid #1d4f91; padding-bottom:8px} h1{text-align:center; font-size:20px; letter-spacing:.08em; margin:14px 0} table{width:100%; border-collapse:collapse} .dati th{width:42%; text-align:left; background:#eef3fa; font-size:12px} .dati th,.dati td{border:1px solid #9aa8bb; padding:7px 9px; font-size:14px} .sotto{margin:14px 0 4px; font-weight:bold; font-size:13px} .elenco td{border-bottom:1px solid #9aa8bb; padding:8px 6px; font-size:13px; height:18px} .nota{font-size:11px; margin-top:14px} .firme{display:flex; justify-content:space-between; margin-top:40px; font-size:13px}');
