@@ -62,7 +62,7 @@ function rigaSpesaHTML(s) {
   return '<div style="padding:9px 10px; border:1px solid var(--line); border-left:5px solid ' + (s.inContabilita ? '#1a7f37' : '#d4881c') + '; border-radius:10px; margin-bottom:7px">'
     + '<div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap"><span>' + esc(s.data || '-') + ' · <b>' + esc(s.categoria || '') + '</b>' + (s.descrizione ? ' · ' + esc(s.descrizione) : '')
     + (function () { const v = typeof speseGiaDetratte === 'function' ? speseGiaDetratte()[s.id] : null; return v ? ' <span style="font-size:11.5px; color:#1d4f91; font-weight:700">· 🏦 detratta nel versamento CAF del ' + esc(v.data || '') + '</span>' : ''; })() + '</span>'
-    + '<span><b>' + fmtEuro(s.importo) + '</b>' + (scrivi ? ' <button onclick="rimuoviSpesa(\'' + s.id + '\')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-weight:700;margin-left:6px" title="Elimina">✕</button>' : '') + '</span></div>'
+    + '<span style="white-space:nowrap"><b>' + fmtEuro(s.importo) + '</b>' + (scrivi ? ' <button type="button" onclick="rimuoviSpesa(\'' + s.id + '\')" title="Elimina questa spesa" style="margin-left:8px; padding:3px 10px; font-size:12px; background:#fdecea; color:#c0392b; border:1px solid #c0392b; border-radius:999px; font-weight:700; cursor:pointer">🗑️ Elimina spesa</button>' : '') + '</span></div>'
     + '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px">'
     + passo(1, 'Registrata', true, '#1d4f91') + freccia
     + passo(2, 'Pagata' + (s.metodoPagamento ? ' – ' + esc(s.metodoPagamento) : ''), true, '#2f7de1') + freccia + conf
@@ -105,7 +105,12 @@ async function aggiungiSpesa() {
 }
 async function rimuoviSpesa(id) {
   const s = (state.speseSede || []).find(function (x) { return x.id === id; });
-  if (!s || !confirm('Eliminare la spesa "' + (s.categoria || '') + (s.descrizione ? ' – ' + s.descrizione : '') + '" di ' + fmtEuro(s.importo) + '?')) return;
+  if (!s) return;
+  const vers = typeof speseGiaDetratte === 'function' ? speseGiaDetratte()[id] : null;
+  if (!confirm('Eliminare la spesa del ' + (s.data || '') + ' "' + (s.categoria || '') + (s.descrizione ? ' – ' + s.descrizione : '') + '" di ' + fmtEuro(s.importo) + '?'
+    + (vers ? '\n\nAttenzione: è stata detratta nel versamento CAF del ' + (vers.data || '') + '. Il versamento resta com\'è.' : '')
+    + (s.prelevatiAngelo && !s.restituitoAngelo ? '\n\nAttenzione: è segnata come soldi prelevati da Angelo non ancora restituiti.' : '')
+    + '\n\nL\'operazione non si può annullare.')) return;
   const r = await data.speseSede.elimina(id);
   if (r.error) { avviso('❌ ' + r.error, true); return; }
   avviso('✓ Spesa eliminata');
