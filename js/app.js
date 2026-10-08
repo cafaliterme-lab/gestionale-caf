@@ -1595,7 +1595,8 @@ function render(){
     <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">NETTO (incasso − versamenti CAF)</span></div>
     ${vedeGuadagni() ? `<div class="stat c5" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE</span></div>${typeof debitoAngelo === 'function' && debitoAngelo().totale ? `<div class="stat c5" style="background:#8e5bd6; border-color:#8e5bd6; color:#fff"><b>${fmtEuro(debitoAngelo().totale)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">DA RESTITUIRE AD ANGELO</span></div>` : ''}<div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO (meno spese sede)</span></div>` : ''}` : '') + (vBlocchi ? `
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true, 'GUADAGNO NETTO 730')}
-    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#6b7280', pratAnno.filter(function(p){ return !e730(p); }), false, 'GUADAGNO NETTO ALTRE PRATICHE')}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf, speseSede) : '');
+    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#0e8a8a', pratAnno.filter(function(p){ return !e730(p); }), false, 'GUADAGNO NETTO ALTRE PRATICHE')}
+    ${vedeGuadagni() ? sommaGuadagniHTML(pratAnno) : ''}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf, speseSede) : '');
   if(typeof renderSpese === 'function') renderSpese();
 
   if(typeof renderVersamentiCaf === 'function') renderVersamentiCaf(versAnno, versatoCaf);
@@ -2549,7 +2550,7 @@ function aggiornaGraficoTipi(pratiche){
       data:{labels:d.tipi.map(etichettaSuPiuRighe), datasets:[
         {label:'Fatture emesse', data:fatt, backgroundColor:'#2f9e5f', borderRadius:6, maxBarThickness:18},
         {label:'Incasso', data:inc, backgroundColor:'#8e5bd6', borderRadius:6, maxBarThickness:18},
-        {label:'Guadagno netto', data:prov, backgroundColor:'#374151', borderRadius:6, maxBarThickness:18}]},
+        {label:'Guadagno netto', data:prov, backgroundColor:'#c2185b', borderRadius:6, maxBarThickness:18}]},
       options:{responsive:true, maintainAspectRatio:false,
         plugins:{legend:{position:'bottom', labels:{boxWidth:10, color:ink, font:{size:11}}}, tooltip:{callbacks:{label:function(c){ return c.dataset.label+': '+fmtEuro(c.parsed.y); }}}},
         scales:{x:{ticks:{color:ink, font:{size:11}}, grid:{display:false}}, y:{beginAtZero:true, ticks:{color:sub, callback:function(v){ return '€ '+Number(v).toLocaleString('it-IT'); }}, grid:{color:'rgba(128,140,160,.18)'}}}}});
@@ -2596,6 +2597,20 @@ function conteggi730(pratiche){
   const daFare = sommaPeso(l.filter(eDaLavorare)), lav = sommaPeso(l.filter(eLavorata));
   return { tot: sommaPeso(l), daFare: daFare, lav: lav, rinunce: sommaPeso(l) - daFare - lav };
 }
+// Tasto che somma il guadagno netto 730 e quello delle altre pratiche (resta aperto finché non lo richiudi)
+let SOMMA_GUADAGNI_APERTA = false;
+function sommaGuadagniHTML(pratiche){
+  const g = function(lista){ return lista.reduce(function(a,p){ return a + Number(p.pagato||0) - Number(p.compenso||0); }, 0); };
+  const g730 = g(pratiche.filter(e730)), gAltre = g(pratiche.filter(function(p){ return !e730(p); }));
+  return '<div style="flex-basis:100%; margin-top:10px; display:flex; flex-wrap:wrap; align-items:center; gap:10px">'
+    + '<button type="button" onclick="SOMMA_GUADAGNI_APERTA=!SOMMA_GUADAGNI_APERTA; render()" style="padding:12px 20px; border:none; border-radius:999px; background:linear-gradient(90deg,#1d4f91,#0e8a8a); color:#fff; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.2)">'
+    + (SOMMA_GUADAGNI_APERTA ? '✕ Chiudi somma' : '➕ Somma guadagni 730 + altre pratiche') + '</button>'
+    + (SOMMA_GUADAGNI_APERTA ? '<div style="flex:1; min-width:260px; padding:12px 16px; border-radius:14px; background:#c2185b; color:#fff; display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 10px">'
+      + '<span style="font-size:14px; font-weight:700">Guadagno netto 730 <b>' + fmtEuro(g730) + '</b> + altre pratiche <b>' + fmtEuro(gAltre) + '</b> =</span>'
+      + '<span style="font-size:26px; font-weight:900">' + fmtEuro(g730 + gAltre) + '</span>'
+      + '<span style="flex-basis:100%; font-size:12px; opacity:.9">Guadagno complessivo delle pratiche, prima delle spese sede</span></div>' : '')
+    + '</div>';
+}
 function bloccoIntroito(titolo, colore, lista, conMedia, nomeGuadagno){
   const fatt = lista.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const inc = lista.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
@@ -2607,7 +2622,7 @@ function bloccoIntroito(titolo, colore, lista, conMedia, nomeGuadagno){
     + tile(colore, n, 'PRATICHE')
     + tile('#2f9e5f', fmtEuro(fatt), 'FATTURE EMESSE')
     + tile('#8e5bd6', fmtEuro(inc), 'INCASSO')
-    + (vedeGuadagni() ? tile('#374151', fmtEuro(inc-fatt), (nomeGuadagno || 'GUADAGNO NETTO') + ' (INCASSO − FATTURE)') : '')
+    + (vedeGuadagni() ? tile('#c2185b', fmtEuro(inc-fatt), (nomeGuadagno || 'GUADAGNO NETTO') + ' (INCASSO − FATTURE)') : '')
     + (conMedia ? tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'PREZZO MEDIO (FATTURE ÷ PRATICHE)') : '');
 }
 
@@ -2748,11 +2763,11 @@ function riepilogoGuadagno(pratiche, pagamentiCaf, speseSede){
   const p730 = provento(pratiche.filter(e730));
   const pAltre = provento(pratiche.filter(function(p){ return !e730(p); }));
   const voce = function(testo, valore, colore){ return '<span style="white-space:nowrap"><span style="color:var(--sub); font-weight:600">'+testo+'</span> <b style="color:'+colore+'">'+fmtEuro(valore)+'</b></span>'; };
-  return '<div style="flex-basis:100%; margin-top:6px; padding:12px 16px; border-radius:12px; background:var(--card); border:2px dashed #374151; font-size:15px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px">'
+  return '<div style="flex-basis:100%; margin-top:6px; padding:12px 16px; border-radius:12px; background:var(--card); border:2px dashed #c2185b; font-size:15px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px">'
     + voce('Guadagno netto 730', p730, '#1d4f91') + '<b>+</b>'
-    + voce('Guadagno netto altre pratiche', pAltre, '#6b7280') + '<b>−</b>'
+    + voce('Guadagno netto altre pratiche', pAltre, '#0e8a8a') + '<b>−</b>'
     + voce('Spese sede', speseSede, '#b35f0c') + '<b>=</b>'
-    + '<span style="white-space:nowrap; background:#374151; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre - speseSede) + '</span>'
+    + '<span style="white-space:nowrap; background:#c2185b; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre - speseSede) + '</span>'
     + (function(){ const daVers = pratiche.reduce(function(a,p){ return a + Number(p.compenso||0); }, 0) - pagamentiCaf; return '<div style="flex-basis:100%; font-size:12.5px; color:var(--sub)">Fatture ancora da versare al CAF: <b style="color:' + (daVers > 0.004 ? '#c0392b' : 'inherit') + '">' + fmtEuro(daVers) + '</b> (fatture emesse − versamenti CAF). I versamenti non cambiano il guadagno: cambiano solo il netto in cassa.</div>'; })()
     + '</div>';
 }

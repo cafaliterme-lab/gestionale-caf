@@ -7,7 +7,7 @@ const COL_FATTURE = '#2f9e5f';
 const COL_INCASSO = '#8e5bd6';
 const COL_CAF = '#2f7de1';
 const COL_NETTO = '#1d4f91';
-const COL_GUADAGNO = '#374151';
+const COL_GUADAGNO = '#c2185b';
 const MESI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 
 function euroTick(v) { return '€ ' + Number(v).toLocaleString('it-IT'); }
