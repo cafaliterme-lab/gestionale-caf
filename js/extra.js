@@ -735,6 +735,30 @@ async function controllaAvvisoBackupCartella() {
   document.body.appendChild(box);
 }
 setTimeout(controllaAvvisoBackupCartella, 8000);
+
+// Promemoria (solo amministratore, dal computer) finché nel database manca il "ripristino completo":
+// si toglie da solo appena la modifica è applicata
+async function promemoriaRipristinoCompleto() {
+  const id = 'promemoria-ripristino';
+  const vecchio = document.getElementById(id);
+  const computer = window.matchMedia && window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 900;
+  if (typeof isAdmin !== 'function' || !isAdmin() || !computer) { if (vecchio) vecchio.remove(); return; }
+  try {
+    const { error } = await supabase.rpc('ripristina_backup', { p_id: -1 });
+    // la funzione c'è (risponde "Backup non trovato"): niente promemoria
+    if (!error || !/could not find|does not exist|schema cache/i.test(error.message)) { if (vecchio) vecchio.remove(); return; }
+  } catch (e) { return; }
+  if (vecchio) return;
+  const box = document.createElement('div');
+  box.id = id;
+  box.style.cssText = 'position:fixed; top:12px; right:12px; z-index:390; width:min(420px, calc(100vw - 24px)); background:#e8f0fb; color:#0f1b2d; border:2px solid #1d4f91; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); padding:12px 14px; font-size:13.5px';
+  box.innerHTML = '<div style="font-weight:800; color:#1d4f91; margin-bottom:4px">📌 Promemoria: ripristino completo dei backup</div>'
+    + 'Sei al computer: apri la chat con Claude (app Claude o claude.ai) e scrivi <b>"applica la modifica al database"</b>, poi premi <b>Consenti</b>. Questo avviso sparisce da solo appena è fatto.'
+    + '<div style="text-align:right; margin-top:8px"><button type="button" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:6px 14px; cursor:pointer; font-weight:700">Ok, chiudi per ora</button></div>';
+  box.querySelector('button').onclick = function () { box.remove(); };
+  document.body.appendChild(box);
+}
+setTimeout(promemoriaRipristinoCompleto, 5000);
 setInterval(function () { if (!document.hidden) controllaAvvisoBackupCartella(); }, 10 * 60 * 1000);
 
 // All'apertura del programma (e poi ogni 6 ore) l'amministratore copia da solo i nuovi backup nella cartella scelta
