@@ -602,7 +602,12 @@ async function caricaFotoDocumento(input) {
   const file = input.files && input.files[0];
   input.value = '';
   if (!file) return;
+  await leggiFileDocumento(file);
+}
+// Un file (PDF o foto) arrivato in qualsiasi modo: scelto, trascinato o incollato
+async function leggiFileDocumento(file) {
   fermaFotocameraDoc();
+  if (!(file.type === 'application/pdf' || /\.pdf$/i.test(file.name) || /^image\//.test(file.type))) { messaggioDoc('❌ Questo file non è un PDF né una foto.', true); return; }
   try {
     if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) { await leggiPdfDocumento(file); return; }
     const img = await createImageBitmap(file);
@@ -611,6 +616,52 @@ async function caricaFotoDocumento(input) {
     messaggioDoc('❌ File non leggibile: ' + e.message, true);
   }
 }
+
+// Finestra "Inserisci PDF": si trascina dentro il file (o si incolla con Ctrl+V, o si sceglie) senza fotocamera
+function apriInserisciDocumento(chi) {
+  docLettura.destinazione = chi === 'coniuge' || chi === 'archivio' ? chi : 'titolare';
+  docLettura.unisci = false;
+  const vecchio = document.getElementById('doc-drop'); if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'doc-drop';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:480; background:rgba(15,27,45,.55); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; padding:18px; width:min(520px, 100%); box-shadow:0 20px 50px rgba(0,0,0,.3)">'
+    + '<div style="font-weight:800; font-size:17px; margin-bottom:10px">' + (chi === 'archivio' ? '📇 Nuovo cliente da PDF' : chi === 'coniuge' ? '📥 PDF del documento del coniuge' : '📥 Inserisci il PDF del documento') + '</div>'
+    + '<label id="doc-drop-zona" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:200px; border:3px dashed #1d4f91; border-radius:14px; background:#eef3fa; color:#1d4f91; text-align:center; padding:18px; cursor:pointer; margin:0">'
+    + '<span style="font-size:42px">📄</span><b style="font-size:16px">Trascina qui il PDF o la foto del documento</b>'
+    + '<span style="font-size:13px; color:#3b5578">oppure copialo e incollalo qui con <b>Ctrl+V</b>, oppure tocca qui per sceglierlo</span>'
+    + '<input id="doc-drop-file" type="file" accept="application/pdf,.pdf,image/*" style="display:none"></label>'
+    + '<div style="font-size:11.5px; color:var(--sub); margin-top:8px">Carta d\'identità, tessera sanitaria o patente, anche fronte e retro nello stesso PDF. Il file resta sul computer: viene solo letto.</div>'
+    + '<div style="text-align:right; margin-top:10px"><button type="button" id="doc-drop-chiudi" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 16px; cursor:pointer">Annulla</button></div></div>';
+  document.body.appendChild(ov);
+  const zona = ov.querySelector('#doc-drop-zona');
+  const chiudi = function () { ov.remove(); document.removeEventListener('paste', incolla); };
+  const usa = function (file) {
+    if (!file) return;
+    chiudi();
+    document.getElementById('doc-titolo').textContent = chi === 'coniuge' ? '📄 Documento del coniuge' : chi === 'archivio' ? '📇 Nuovo cliente in archivio da documento' : '📄 Leggi documento';
+    document.getElementById('doc-overlay').classList.add('open');
+    vistaDoc('cattura');
+    messaggioDoc('Lettura del file ' + (file.name || '') + '...');
+    preparaOCR().catch(function () {});
+    leggiFileDocumento(file);
+  };
+  const incolla = function (e) { const f = Array.from((e.clipboardData || {}).files || [])[0]; if (f) { e.preventDefault(); usa(f); } };
+  document.addEventListener('paste', incolla);
+  ov.querySelector('#doc-drop-file').onchange = function () { usa(this.files && this.files[0]); };
+  ov.querySelector('#doc-drop-chiudi').onclick = chiudi;
+  ov.addEventListener('click', function (e) { if (e.target === ov) chiudi(); });
+  ['dragenter', 'dragover'].forEach(function (t) { zona.addEventListener(t, function (e) { e.preventDefault(); zona.style.background = '#d6e6fb'; }); });
+  zona.addEventListener('dragleave', function () { zona.style.background = '#eef3fa'; });
+  zona.addEventListener('drop', function (e) { e.preventDefault(); usa(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]); });
+}
+// Si può trascinare un file anche dentro la finestra della fotocamera
+document.addEventListener('DOMContentLoaded', function () {
+  const ov = document.getElementById('doc-overlay');
+  if (!ov) return;
+  ['dragenter', 'dragover'].forEach(function (t) { ov.addEventListener(t, function (e) { e.preventDefault(); }); });
+  ov.addEventListener('drop', function (e) { e.preventDefault(); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) leggiFileDocumento(f); });
+});
 
 // PDF (es. scansione della carta d'identita'): ogni pagina diventa un'immagine; se ci sono due pagine
 // (fronte e retro) i dati si uniscono come con "+ Leggi l'altro lato"

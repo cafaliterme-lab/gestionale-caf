@@ -367,7 +367,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <div id="doc-msg" style="font-size:12.5px; margin-top:8px"></div>
       <div style="display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap">
         <button type="button" class="btn-add" style="margin:0" onclick="scattaDocumento()">📸 Scatta</button>
-        <label class="btn-add" style="margin:0; cursor:pointer; background:var(--line); color:var(--ink)">📎 Carica foto o PDF<input type="file" accept="image/*,application/pdf,.pdf" style="display:none" onchange="caricaFotoDocumento(this)"></label>
+        <label class="btn-add" style="margin:0; cursor:pointer; background:var(--line); color:var(--ink)" title="Puoi anche trascinare il file in questa finestra">📎 Carica foto o PDF<input type="file" accept="image/*,application/pdf,.pdf" style="display:none" onchange="caricaFotoDocumento(this)"></label>
         <button type="button" class="btn-add" style="margin:0; background:var(--line); color:var(--ink)" onclick="chiudiLetturaDocumento()">Annulla</button>
       </div>
       <div style="font-size:11px; color:var(--sub); margin-top:10px">Carta d'identita', tessera sanitaria o patente. L'immagine resta sul dispositivo: non viene salvata ne' inviata.</div>
@@ -487,6 +487,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; flex-wrap:wrap">
         <label style="margin:0">Cerca cliente nell'archivio (cognome o nome)</label>
         <button type="button" onclick="apriLetturaDocumentoPer('archivio')" style="background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-size:12.5px; font-weight:800; cursor:pointer; margin-bottom:4px" title="Scansiona il documento e salva il cliente nell'archivio, senza creare una pratica">📇 Nuovo cliente da documento</button>
+        <button type="button" onclick="apriInserisciDocumento('archivio')" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-size:12.5px; font-weight:800; cursor:pointer; margin-bottom:4px" title="Trascina o incolla il PDF del documento: il cliente viene salvato nell'archivio">📥 Nuovo cliente da PDF</button>
       </div>
       <input id="cli-cerca" placeholder="Scrivi per cercare tra i clienti gia' archiviati..." autocomplete="off" oninput="cercaClienti(this.value)" onfocus="cercaClienti(this.value)">
       <div class="cli-results" id="cli-results"></div>
@@ -508,6 +509,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <div style="display:flex; gap:6px">
         <input id="f-codfisc" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace; letter-spacing:.04em" oninput="this.value=normalizzaCF(this.value); controllaCampoCF(); aggiornaStoricoForm()">
         <button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('titolare')" title="Leggi i dati da carta d'identita', tessera sanitaria o patente">📄 Leggi documento</button>
+        <button type="button" class="btn-scan-cf" style="background:#1d4f91" onclick="apriInserisciDocumento('titolare')" title="Trascina o incolla il PDF del documento">📥 Inserisci PDF</button>
       </div>
       <div id="f-codfisc-msg" style="font-size:12px; margin-top:4px; display:none"></div>
     </div>
@@ -821,7 +823,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/qrcode.js?v=1"></script>
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
-<script src="js/ocr-documento.js?v=8"></script>
+<script src="js/ocr-documento.js?v=9"></script>
 <script src="js/grafici.js?v=19"></script>
 <script src="js/stampe.js?v=19"></script>
 <script src="js/extra.js?v=24"></script>
