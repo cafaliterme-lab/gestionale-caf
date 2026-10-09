@@ -817,6 +817,13 @@ async function importaBackup(dati) {
     const sb = await waitForSupabase();
     // Copia di sicurezza dei dati attuali prima di sostituirli
     await sb.rpc('crea_backup', { p_tipo: 'prima_di_importare' });
+    // File nuovo (con la copia esatta del database): ripristino completo di tutti i dati
+    if (dati && dati.datiCompleti && Array.isArray(dati.datiCompleti.pratiche)) {
+      const { error: errR } = await sb.rpc('ripristina_dati', { d: dati.datiCompleti });
+      if (errR) throw new Error(/ripristina_dati/.test(errR.message) ? 'manca l\'aggiornamento del database per il ripristino completo' : errR.message);
+      await caricaTutto();
+      return {};
+    }
     const { error } = await sb.rpc('importa_backup', {
       dati: dati,
     });

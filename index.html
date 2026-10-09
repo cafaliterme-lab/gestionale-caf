@@ -746,7 +746,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <div class="card">
   <div class="raff-title">🛟 Backup automatici e cartella Dropbox</div>
   <div id="backup-cartella" style="margin:0 0 12px"></div>
-  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Ogni lunedì notte il programma salva da solo una copia completa di tutti i dati (pratiche, clienti, versamenti, scadenze, impostazioni). Una copia viene fatta anche prima di svuotare il registro o di importare un backup. Si tengono le ultime 12 settimane; il <b>31 dicembre</b> alle 23:30 viene fatto il salvataggio di fine anno, che si conserva per sempre. Nella cartella (es. Dropbox) c'è un file per anno: <b>salvataggi-2026.json</b>, <b>salvataggi-2027.json</b>… Con "Scarica" ottieni il file da conservare o da ricaricare con "Importa Backup".</p>
+  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Ogni lunedì notte il programma salva da solo una copia <b>completa di tutti gli anni</b> (pratiche, clienti, versamenti, scadenze, spese sede, acconti, tipi e impostazioni). Una copia viene fatta anche prima di svuotare il registro, di importare o di ripristinare un backup. Si tengono le ultime 12 settimane; il <b>31 dicembre</b> alle 23:30 viene fatto il salvataggio di fine anno, che si conserva per sempre. Nella cartella (es. Dropbox) ci sono <b>backup-completo.json</b> (sempre il più recente) e un file per anno, <b>salvataggi-2026.json</b>…: <b>ogni file contiene tutti i dati</b>, non solo quell'anno. Per rimettere tutto com'era usa <b>↩️ Ripristina</b> accanto a un backup, oppure "Importa Backup" con uno di questi file.</p>
   <button type="button" class="btn-add" onclick="creaBackupOra()">💾 Crea un backup adesso</button>
   <div id="backup-lista" style="margin-top:10px"></div>
 
@@ -824,7 +824,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ocr-documento.js?v=8"></script>
 <script src="js/grafici.js?v=19"></script>
 <script src="js/stampe.js?v=19"></script>
-<script src="js/extra.js?v=22"></script>
+<script src="js/extra.js?v=23"></script>
 <script src="js/documenti.js?v=13"></script>
 <script src="js/installa.js?v=4"></script>
 <script src="js/guida.js?v=71"></script>
@@ -834,9 +834,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610127"></script>
+<script src="js/data.js?v=202610128"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610210"></script>
+<script src="js/app.js?v=202610211"></script>
 <script src="js/email.js?v=1"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/ricercafatture.js?v=1"></script>

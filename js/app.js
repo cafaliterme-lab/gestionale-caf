@@ -835,6 +835,16 @@ function pulisciArray(arr){
   return (arr||[]).map(function(x){ var c=Object.assign({},x); delete c._editing; delete c._confirmDelete; delete c._editingFattura; return c; });
 }
 async function esportaBackupJSON(){
+  // backup completo (tutti gli anni, tutte le tabelle) fatto dal server e scaricato subito
+  try{
+    if(typeof preparaBackup === 'function' && typeof isAdmin === 'function' && isAdmin()){
+      const { data: id, error } = await supabase.rpc('crea_backup', { p_tipo: 'manuale' });
+      if(!error && id){
+        const f = await preparaBackup(id);
+        if(f){ const u = URL.createObjectURL(new Blob([f.testo], { type: 'application/json' })); const l = document.createElement('a'); l.href = u; l.download = 'backup-completo-' + dataOraFile() + '.json'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 2000); avviso('✓ Backup completo scaricato'); return; }
+      }
+    }
+  }catch(e){ console.error('backup completo', e); }
   const payload = {
     versione: 1,
     esportatoIl: new Date().toISOString(),

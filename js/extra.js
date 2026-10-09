@@ -205,6 +205,7 @@ async function renderBackup() {
     return '<div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; flex-wrap:wrap">'
       + '<span style="flex:1; min-width:200px"><b>' + esc(quandoStorico(b.creato_il)) + '</b> · ' + esc(NOMI_BACKUP[b.tipo] || b.tipo) + ' <span style="color:var(--sub)">(' + (b.n_pratiche || 0) + ' pratiche' + (b.creato_da ? ', ' + esc(b.creato_da) : '') + ')</span></span>'
       + '<button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:8px; padding:5px 12px; cursor:pointer" onclick="scaricaBackup(' + Number(b.id) + ')">⬇️ Scarica</button>'
+      + '<button type="button" title="Rimetti tutti i dati come erano in questo backup" style="background:#fdf1e6; color:#b35f0c; border:1px solid #b35f0c; border-radius:8px; padding:5px 12px; cursor:pointer; font-weight:700" onclick="ripristinaBackupServer(' + Number(b.id) + ', \'' + esc(quandoStorico(b.creato_il)) + '\')">↩️ Ripristina</button>'
       + '<button type="button" title="Elimina questo backup" style="background:var(--line); color:#c0392b; border:none; border-radius:8px; padding:5px 10px; cursor:pointer" onclick="eliminaBackup(' + Number(b.id) + ', \'' + esc(quandoStorico(b.creato_il)) + '\')">🗑️</button></div>';
   }).join('') : '<div class="empty">Nessun backup ancora</div>');
 }
@@ -221,6 +222,17 @@ async function eliminaBackup(id, quando) {
   const { data: righe, error } = await supabase.from('backup_automatici').delete().eq('id', Number(id)).select('id');
   if (error || !righe || !righe.length) { avviso('❌ Backup non eliminato' + (error ? ': ' + error.message : ''), true); return; }
   avviso('🗑️ Backup eliminato');
+  renderBackup();
+}
+// Ripristino completo da un backup del server (tutti gli anni, tutti i campi); prima salva i dati attuali
+async function ripristinaBackupServer(id, quando) {
+  const ok = await chiediConfermaScritta('Ripristina il backup del ' + quando, 'Tutti i dati attuali (pratiche di tutti gli anni, versamenti, clienti, scadenze, spese sede, acconti, tipi e impostazioni) verranno sostituiti con quelli del backup del ' + quando + '. Prima il programma salva una copia dei dati di adesso in "Backup automatici".', 'RIPRISTINA');
+  if (!ok) return;
+  const { data: esito, error } = await supabase.rpc('ripristina_backup', { p_id: Number(id) });
+  if (error) { avviso('❌ Ripristino non riuscito: ' + (/ripristina_backup/.test(error.message) ? 'manca l\'aggiornamento del database (vedi istruzioni)' : error.message), true); return; }
+  avviso('✓ Backup ripristinato: ' + ((esito && esito.pratiche) || 0) + ' pratiche');
+  if (typeof caricaTutto === 'function') await caricaTutto();
+  if (typeof render === 'function') render();
   renderBackup();
 }
 async function creaBackupOra() {
@@ -246,6 +258,10 @@ async function preparaBackup(id) {
     scadenze: mappa(d.scadenze, s.scadenza),
     collaboratori: (d.collaboratori || []).map(function (c) { return c.nome; }),
     impostazioni: d.impostazioni || [],
+    speseSede: s.spesaSede ? mappa(d.spese_sede, s.spesaSede) : (d.spese_sede || []),
+    acconti: s.acconto ? mappa(d.acconti, s.acconto) : (d.acconti || []),
+    // copia esatta di tutte le tabelle: serve per il ripristino completo (tutti gli anni, tutti i campi)
+    datiCompleti: d,
   };
   return { nome: nomeFileBackup(data[0]), testo: JSON.stringify(payload, null, 2) };
 }
@@ -306,6 +322,7 @@ async function dimenticaCartellaBackup() {
 // Nella cartella c'e' un file per anno, "salvataggi-2026.json": durante l'anno viene riscritto con il backup
 // piu' recente di quell'anno; finito l'anno resta com'e' (= salvataggio completo al 31 dicembre) e si passa al file nuovo
 function nomeFileAnno(anno) { return 'salvataggi-' + anno + '.json'; }
+const NOME_FILE_COMPLETO = 'backup-completo.json';
 function annoBackup(b) { return new Date(b.creato_il).getFullYear(); }
 // l'ultimo backup di ogni anno (l'elenco arriva dal piu' recente)
 function ultimiBackupPerAnno(lista) {
@@ -323,6 +340,21 @@ async function sincronizzaCartellaBackup(chiedi) {
   try {
     const { data, ok } = await fetchSupabase('/rest/v1/backup_automatici?select=id,creato_il,tipo&order=creato_il.desc');
     if (ok && Array.isArray(data)) {
+      // un file unico, sempre con il backup completo piu' recente (tutti gli anni): e' quello da usare per ripristinare
+      if (data.length) {
+        const ult = data[0], chiaveU = 'backup-completo-ultimo';
+        let giaU = ''; try { giaU = localStorage.getItem(chiaveU) || ''; } catch (e) {}
+        let esisteU = true; try { await h.getFileHandle(NOME_FILE_COMPLETO); } catch (e) { esisteU = false; }
+        if (chiedi || !esisteU || giaU !== String(ult.id) + '|' + ult.creato_il) {
+          const fU = await preparaBackup(ult.id);
+          if (fU) {
+            const fhU = await h.getFileHandle(NOME_FILE_COMPLETO, { create: true });
+            const wU = await fhU.createWritable(); await wU.write(fU.testo); await wU.close();
+            scritti.push(NOME_FILE_COMPLETO);
+            try { localStorage.setItem(chiaveU, String(ult.id) + '|' + ult.creato_il); } catch (e) {}
+          }
+        }
+      }
       const per = ultimiBackupPerAnno(data);
       for (const anno of Object.keys(per)) {
         const b = per[anno], nome = nomeFileAnno(anno), chiave = 'backup-anno-' + anno;
@@ -346,6 +378,7 @@ async function sincronizzaCartellaBackup(chiedi) {
   if (errore) avviso('❌ Backup nella cartella non salvato: ' + errore, true);
   else if (scritti.length || chiedi) avviso('✓ ' + h.name + ': ' + (scritti.length ? scritti.join(', ') + ' aggiornato' : 'salvataggi già aggiornati'));
   disegnaStatoCartella();
+  if (typeof controllaAvvisoBackupCartella === 'function') controllaAvvisoBackupCartella();
 }
 function dataCopiato(anno) { try { return localStorage.getItem('backup-cartella-data-' + (anno || new Date().getFullYear())) || ''; } catch (e) { return ''; } }
 async function disegnaStatoCartella() {
@@ -370,7 +403,7 @@ async function disegnaStatoCartella() {
   box.innerHTML = '<div style="padding:10px 12px; border-radius:10px; border:2px solid ' + (attiva ? '#1a7f37' : '#b35f0c') + '">'
     + '<div style="font-weight:800; color:' + (attiva ? '#1a7f37' : '#b35f0c') + '">📁 Cartella dei backup: ' + esc(h.name) + (attiva ? ' ✓' : '') + '</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 8px">' + (attiva
-      ? 'Qui c\'è <b>un file per anno</b>: <b>' + nomeFileAnno(new Date().getFullYear()) + '</b> viene riscritto con il backup più recente quando apri il programma su questo PC; quelli degli anni passati restano come salvataggio completo dell\'anno.' + (dataCopiato() ? ' Ultimo aggiornamento: backup del <b>' + esc(quandoStorico(dataCopiato())) + '</b>.' : '')
+      ? 'Qui c\'è <b>' + NOME_FILE_COMPLETO + '</b>, sempre aggiornato con il backup più recente di <b>tutti gli anni</b> (è quello da usare per ripristinare tutto), e un file per anno (<b>' + nomeFileAnno(new Date().getFullYear()) + '</b>…) che a fine anno resta come fotografia al 31 dicembre. Ogni file contiene tutti i dati, non solo quell\'anno.' + (dataCopiato() ? ' Ultimo aggiornamento: backup del <b>' + esc(quandoStorico(dataCopiato())) + '</b>.' : '')
       : 'Il browser chiede di riconfermare l\'accesso alla cartella: premi "Riattiva" e poi "Consenti".') + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap">'
     + (attiva ? '<button type="button" style="' + stile + '" onclick="sincronizzaCartellaBackup(true)">🔄 Aggiorna ora i salvataggi</button>'
@@ -677,6 +710,32 @@ function inviaAccessoUtente(u) {
     }
   });
 }
+
+// Avviso a video per l'amministratore (Chrome/Edge sul computer) quando la copia in Dropbox non funziona:
+// cartella mai scelta su questo PC, oppure accesso alla cartella da riconfermare (Chrome lo toglie quando si riapre)
+async function controllaAvvisoBackupCartella() {
+  const vecchio = document.getElementById('avviso-backup-cartella');
+  if (typeof isAdmin !== 'function' || !isAdmin() || !window.showDirectoryPicker) { if (vecchio) vecchio.remove(); return; }
+  const h = await leggiCartellaBackup();
+  const attiva = h ? await permessoCartella(h, false) : false;
+  let rimandato = 0; try { rimandato = Number(localStorage.getItem('avviso-backup-rimandato') || 0); } catch (e) {}
+  if (attiva || Date.now() - rimandato < 20 * 3600 * 1000) { if (vecchio) vecchio.remove(); return; }
+  if (vecchio) return;
+  const box = document.createElement('div');
+  box.id = 'avviso-backup-cartella';
+  box.style.cssText = 'position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:380; width:min(560px, calc(100vw - 24px)); background:#fff7e6; color:#5c3d00; border:2px solid #b35f0c; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); padding:10px 14px; display:flex; flex-wrap:wrap; gap:8px; align-items:center';
+  box.innerHTML = '<div style="flex:1; min-width:220px; font-size:13.5px"><b>🛟 La copia dei backup in Dropbox è ferma.</b><br>' + (h ? 'Chrome chiede di riconfermare l\'accesso alla cartella <b>' + esc(h.name) + '</b>.' : 'Su questo computer non è stata scelta la cartella dove salvarli.') + '</div>'
+    + '<button type="button" data-az="ok" style="background:#b35f0c; color:#fff; border:none; border-radius:999px; padding:8px 14px; font-weight:800; cursor:pointer">' + (h ? '🔓 Riattiva' : '📁 Scegli la cartella') + '</button>'
+    + '<button type="button" data-az="dopo" style="background:none; border:1px solid #b35f0c; color:#b35f0c; border-radius:999px; padding:7px 12px; cursor:pointer">Domani</button>';
+  box.addEventListener('click', async function (e) {
+    const az = e.target.getAttribute && e.target.getAttribute('data-az');
+    if (az === 'dopo') { try { localStorage.setItem('avviso-backup-rimandato', String(Date.now())); } catch (er) {} box.remove(); }
+    else if (az === 'ok') { if (h) await sincronizzaCartellaBackup(true); else await scegliCartellaBackup(); controllaAvvisoBackupCartella(); }
+  });
+  document.body.appendChild(box);
+}
+setTimeout(controllaAvvisoBackupCartella, 8000);
+setInterval(function () { if (!document.hidden) controllaAvvisoBackupCartella(); }, 10 * 60 * 1000);
 
 // All'apertura del programma (e poi ogni 6 ore) l'amministratore copia da solo i nuovi backup nella cartella scelta
 setInterval(function () {
