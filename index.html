@@ -509,7 +509,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <div style="display:flex; gap:6px">
         <input id="f-codfisc" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace; letter-spacing:.04em" oninput="this.value=normalizzaCF(this.value); controllaCampoCF(); aggiornaStoricoForm()">
         <button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('titolare')" title="Leggi i dati da carta d'identita', tessera sanitaria o patente">📄 Leggi documento</button>
-        <button type="button" class="btn-scan-cf" style="background:#1d4f91" onclick="apriInserisciDocumento('titolare')" title="Trascina o incolla il PDF del documento">📥 Inserisci PDF</button>
+        <button type="button" class="btn-scan-cf" style="background:#1d4f91; color:#fff" onclick="apriInserisciDocumento('titolare')" title="Trascina o incolla il PDF del documento">📥 Inserisci PDF</button>
       </div>
       <div id="f-codfisc-msg" style="font-size:12px; margin-top:4px; display:none"></div>
     </div>
