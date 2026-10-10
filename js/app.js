@@ -219,7 +219,9 @@ document.addEventListener('click', function(e){
 const ANNO_INIZIO_PROTOCOLLO = 2027;
 function parseDataIT(s){
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((s||'').trim());
-  return m ? {g:+m[1], m:+m[2], a:+m[3]} : null;
+  // date impossibili o anni sbagliati (es. 10/11/0202) non sono valide
+  if(!m || +m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12 || +m[3] < 1900 || +m[3] > 2100) return null;
+  return {g:+m[1], m:+m[2], a:+m[3]};
 }
 function annoDiData(s){
   const d = parseDataIT(s);

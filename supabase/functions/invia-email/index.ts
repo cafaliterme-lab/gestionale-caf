@@ -1,10 +1,11 @@
 // Invia un'e-mail dal programma con la casella Aruba del CAF (SMTP SSL, porta 465).
 // La password NON e' nel codice: sta nei "Secrets" delle Edge Functions di Supabase
 //   SMTP_PASS (obbligatoria) · SMTP_USER (predefinito aliterme@cafcislsicilia.com) · SMTP_HOST (predefinito smtps.aruba.it)
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts"
+// Versione leggera: nodemailer (al posto di denomailer, che superava il limite di CPU) e niente supabase-js.
+import nodemailer from "npm:nodemailer@6.9.16"
 
-const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
+const URL_SB = Deno.env.get("SUPABASE_URL")!
+const CHIAVE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const MITTENTE = Deno.env.get("SMTP_USER") || "aliterme@cafcislsicilia.com"
 const HOST = Deno.env.get("SMTP_HOST") || "smtps.aruba.it"
 const PASSWORD = Deno.env.get("SMTP_PASS") || ""
@@ -19,15 +20,24 @@ function risposta(corpo: unknown, status = 200) {
 }
 const emailValida = (e: string) => /^[^\s@,;]+@[^\s@,;]+\.[a-z]{2,}$/i.test(e)
 
+// utente collegato (dal suo token) e il suo profilo
+async function profiloDa(token: string) {
+  const u = await fetch(URL_SB + "/auth/v1/user", { headers: { apikey: CHIAVE, Authorization: "Bearer " + token } })
+  if (!u.ok) return null
+  const user = await u.json()
+  if (!user?.id) return null
+  const p = await fetch(URL_SB + "/rest/v1/profili?select=nome,sola_lettura&id=eq." + user.id, { headers: { apikey: CHIAVE, Authorization: "Bearer " + CHIAVE } })
+  const righe = p.ok ? await p.json() : []
+  return Array.isArray(righe) && righe.length ? righe[0] : null
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS })
   try {
     const auth = req.headers.get("Authorization") || ""
     if (!auth.startsWith("Bearer ")) return risposta({ error: "Accesso scaduto: esci e rientra nel programma" }, 401)
-    const { data: { user }, error } = await supabase.auth.getUser(auth.slice(7))
-    if (error || !user) return risposta({ error: "Accesso scaduto: esci e rientra nel programma" }, 401)
-    const { data: profilo } = await supabase.from("profili").select("nome, sola_lettura").eq("id", user.id).single()
-    if (!profilo) return risposta({ error: "Utente non abilitato" }, 403)
+    const profilo = await profiloDa(auth.slice(7))
+    if (!profilo) return risposta({ error: "Accesso scaduto o utente non abilitato: esci e rientra nel programma" }, 401)
 
     // GET: dice solo se l'invio e' configurato
     if (req.method === "GET") return risposta({ configurato: !!PASSWORD, mittente: MITTENTE })
@@ -40,23 +50,19 @@ Deno.serve(async (req) => {
     if (!emailValida(dest)) return risposta({ error: "Indirizzo del destinatario non valido" }, 400)
     if (!String(oggetto || "").trim() || !String(testo || "").trim()) return risposta({ error: "Mancano oggetto o testo" }, 400)
 
-    const client = new SMTPClient({ connection: { hostname: HOST, port: 465, tls: true, auth: { username: MITTENTE, password: PASSWORD } } })
-    try {
-      await client.send({
-        from: "CAF CISL Alì Terme <" + MITTENTE + ">",
-        to: dest,
-        replyTo: MITTENTE,
-        subject: String(oggetto).slice(0, 200),
-        content: String(testo).slice(0, 50000),
-        html: html ? String(html).slice(0, 300000) : undefined,
-      })
-    } finally {
-      try { await client.close() } catch (_) { /* gia' chiusa */ }
-    }
+    const trasporto = nodemailer.createTransport({ host: HOST, port: 465, secure: true, auth: { user: MITTENTE, pass: PASSWORD } })
+    await trasporto.sendMail({
+      from: "CAF CISL Alì Terme <" + MITTENTE + ">",
+      to: dest,
+      replyTo: MITTENTE,
+      subject: String(oggetto).slice(0, 200),
+      text: String(testo).slice(0, 50000),
+      html: html ? String(html).slice(0, 300000) : undefined,
+    })
     return risposta({ ok: true, a: dest, da: profilo.nome })
   } catch (e) {
     const m = String((e as Error)?.message || e)
-    if (/535|auth|credential|password/i.test(m)) return risposta({ error: "Aruba ha rifiutato l'accesso: la password della casella del CAF non è corretta" }, 502)
+    if (/535|EAUTH|auth|credential|password/i.test(m)) return risposta({ error: "Aruba ha rifiutato l'accesso: la password della casella del CAF non è corretta" }, 502)
     return risposta({ error: "Invio non riuscito: " + m }, 500)
   }
 })
