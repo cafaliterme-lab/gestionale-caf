@@ -159,6 +159,7 @@ const fromTable = (table) => {
   let colonne = '*';
   let restituisci = false;
   let singolo = false;
+  let preferExtra = '';
   const filtri = [];
   const ordini = [];
 
@@ -187,7 +188,7 @@ const fromTable = (table) => {
       return { data: righe, error: null };
     }
 
-    const prefer = restituisci ? 'return=representation' : 'return=minimal';
+    const prefer = (restituisci ? 'return=representation' : 'return=minimal') + preferExtra;
     const { data, ok } = await fetchSupabase(url, metodo, corpo, { Prefer: prefer });
     if (!ok) return { data: null, error: errore(data) };
     return { data: restituisci ? data : null, error: null };
@@ -204,6 +205,14 @@ const fromTable = (table) => {
       corpo = Array.isArray(records) ? records : [records];
       return builder;
     },
+    // inserisce o, se la chiave c'e' gia', aggiorna (es. upsert(righe, { onConflict: 'chiave' }))
+    upsert(records, opts) {
+      metodo = 'POST';
+      corpo = Array.isArray(records) ? records : [records];
+      preferExtra = ',resolution=merge-duplicates';
+      if (opts && opts.onConflict) filtri.push(`on_conflict=${encodeURIComponent(opts.onConflict)}`);
+      return builder;
+    },
     update(valori) {
       metodo = 'PATCH';
       corpo = valori;
@@ -215,6 +224,11 @@ const fromTable = (table) => {
     },
     eq(col, val) {
       filtri.push(`${col}=eq.${encodeURIComponent(val)}`);
+      return builder;
+    },
+    // filtro negato, es. not('id', 'is', null) = tutte le righe
+    not(col, op, val) {
+      filtri.push(`${col}=not.${op}.${val === null ? 'null' : encodeURIComponent(val)}`);
       return builder;
     },
     order(col, opts) {
