@@ -1793,7 +1793,7 @@ function render(){
     const schedeAperte = aperti[k + '|schede'] === true || items.some(function(p){ return p._editing || p._confirmDelete || p._editingFattura; });
     return '<details class="grp" data-k="' + esc(k) + '" style="--gc:' + col + '" ' + (open ? 'open' : '') + ' ontoggle="gToggle(this)">'
       + '<summary style="background:' + col + '; background-image:none"><span class="grp-name">' + esc(k) + '</span><span class="grp-n">' + sommaPeso(items) + '</span>'
-      + (senzaSoldi(k, fe, inc) ? '' : '<span class="grp-soldi">Fatture ' + fmtEuro(fe) + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + '</span>') + '</summary>'
+      + ('<span class="grp-soldi">Fatture ' + fmtEuro(fe) + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + '</span>') + '</summary>'
       + '<div class="grp-b">' + filtroStatoGruppoHTML(k, tuttiTipo) + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items, k)
       + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 Schede complete delle pratiche (' + items.length + ') – per modificare, ricevuta, WhatsApp…</summary>'
         + items.map(cardHTML).join('') + '</details>' : '') + '</div></details>';
@@ -2295,19 +2295,11 @@ function bottoneStampaCollaboratore(k){
 function contabilitaCollaboratoreHTML(k, items){
   const fatt0 = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const inc0 = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
-  if(items.length && senzaSoldi(k, fatt0, inc0)){
-    const colS = coloreCollaboratore(k);
-    const tileS = function(colore, valore, etichetta){ return '<div style="flex:1; min-width:110px; padding:8px 10px; border-radius:10px; background:' + colore + '; color:#fff; text-align:center"><div style="font-size:17px; font-weight:800">' + valore + '</div><div style="font-size:10.5px; font-weight:700; opacity:.92; text-transform:uppercase">' + etichetta + '</div></div>'; };
-    const daFareS = sommaPeso(items.filter(eDaLavorare));
-    return '<div style="margin-bottom:10px; padding:10px; border-radius:12px; border:2px solid ' + colS + '">'
-      + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><b style="color:' + colS + '">📊 ' + esc(k) + ' – ' + annoAttivo() + '</b>' + bottoneStampaCollaboratore(k) + '</div>'
-      + '<div style="display:flex; gap:6px; flex-wrap:wrap">' + tileS('#1d4f91', sommaPeso(items), 'Pratiche') + tileS('#2f9e5f', sommaPeso(items.filter(eLavorata)), 'Lavorate') + tileS(daFareS ? '#e57373' : '#8a8f98', daFareS, 'Da lavorare') + '</div></div>';
-  }
-  if(!items.length && !accontiDi(annoAttivo(), function(t){ return t === k; }).length) return (puoScrivereAcconti() && haAcconti(k) ? '<div style="margin-bottom:8px"><button type="button" onclick="nuovoAcconto(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">+ 💰 Acconto</button></div>' : '');
+  // la contabilità completa si vede in tutti i tipi di pratica (anche senza pratiche o senza importi)
   const fatt = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const accLista = accontiDi(annoAttivo(), function(t){ return t === k; });
   const acc = accLista.reduce(function(t,a){ return t + Number(a.importo||0); }, 0);
-  const conAcc = haAcconti(k) || accLista.length > 0;
+  const conAcc = true;
   const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
   const n = sommaPeso(items);
   const lav = sommaPeso(items.filter(eLavorata)), daFare = sommaPeso(items.filter(eDaLavorare));
@@ -2333,7 +2325,7 @@ function contabilitaCollaboratoreHTML(k, items){
     + '</div>'
     + (!conAcc ? '</div>' : '<div style="margin-top:10px; padding-top:8px; border-top:1px dashed var(--line)">'
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap"><b style="color:#0e7c86">💰 Pagamenti effettuati (acconti) ' + annoAttivo() + ': ' + fmtEuro(acc) + '</b>'
-    + (puoScrivereAcconti() && haAcconti(k) ? '<button type="button" onclick="nuovoAcconto(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer">+ 💰 Acconto</button>' : '') + '</div>'
+    + (puoScrivereAcconti() ? '<button type="button" onclick="nuovoAcconto(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer">+ 💰 Acconto</button>' : '') + '</div>'
     + (accLista.length ? accLista.map(function(a){ return '<div style="display:flex; justify-content:space-between; gap:8px; font-size:13px; padding:4px 0; border-bottom:1px solid var(--line)"><span>' + esc(a.data) + (a.metodoPagamento ? ' · ' + esc(a.metodoPagamento) : '') + (a.note ? ' · ' + esc(a.note) : '') + (a.creatoDa ? ' <span style="color:var(--sub)">(' + esc(a.creatoDa) + ')</span>' : '') + '</span><span><b>' + fmtEuro(a.importo) + '</b>' + (puoScrivereAcconti() ? ' <button onclick="rimuoviAcconto(\'' + a.id + '\')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-weight:700" title="Elimina">✕</button>' : '') + '</span></div>'; }).join('') : '<div style="font-size:12.5px; color:var(--sub)">Nessun acconto registrato</div>')
     + '</div></div>');
 }
