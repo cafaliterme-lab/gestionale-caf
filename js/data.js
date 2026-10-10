@@ -810,6 +810,51 @@ async function svuotaRegistro() {
 }
 
 /**
+ * Ripristino completo fatto dal programma (senza funzioni speciali nel database), come amministratore:
+ * cancella e rimette pratiche di tutti gli anni, versamenti, ISEE, clienti, spese sede, acconti e scadenze
+ * esattamente come nel backup (formato del database), aggiorna tipi di pratica e impostazioni.
+ * Prima di chiamarla si salva sempre una copia dei dati attuali (crea_backup 'prima_di_importare').
+ */
+async function ripristinoCompletoClient(d, progresso) {
+  const sb = await waitForSupabase();
+  const passo = function (t) { if (typeof progresso === 'function') progresso(t); };
+  const esito = {};
+  const cancellaTutto = async function (tab, chiave) {
+    const { error } = await sb.from(tab).delete().not(chiave || 'id', 'is', null);
+    if (error) throw new Error('cancellazione ' + tab + ': ' + error.message);
+  };
+  const inserisci = async function (tab, righe) {
+    righe = Array.isArray(righe) ? righe : [];
+    for (let i = 0; i < righe.length; i += 300) {
+      const { error } = await sb.from(tab).insert(righe.slice(i, i + 300));
+      if (error) throw new Error('ripristino ' + tab + ': ' + error.message);
+    }
+    esito[tab] = righe.length;
+  };
+  // 1. si svuota (le scadenze prima delle pratiche, a cui sono collegate)
+  passo('Cancellazione dei dati attuali…');
+  if (Array.isArray(d.scadenze)) await cancellaTutto('scadenze');
+  await cancellaTutto('pratiche');
+  for (const t of ['versamenti', 'isee', 'clienti', 'spese_sede', 'acconti']) if (Array.isArray(d[t])) await cancellaTutto(t);
+  // 2. si rimette tutto
+  passo('Ripristino delle pratiche…'); await inserisci('pratiche', d.pratiche);
+  // le scadenze colf create in automatico dalle pratiche si sostituiscono con quelle del backup
+  if (Array.isArray(d.scadenze)) { await cancellaTutto('scadenze'); passo('Ripristino delle scadenze…'); await inserisci('scadenze', d.scadenze); }
+  for (const t of ['versamenti', 'isee', 'clienti', 'spese_sede', 'acconti']) if (Array.isArray(d[t])) { passo('Ripristino ' + t.replace('_', ' ') + '…'); await inserisci(t, d[t]); }
+  if (Array.isArray(d.collaboratori) && d.collaboratori.length) {
+    const nomi = d.collaboratori.slice().sort(function (a, b) { return (a.ordine || 0) - (b.ordine || 0); }).map(function (c) { return c.nome || c; });
+    const { error } = await sb.rpc('salva_collaboratori', { lista: nomi });
+    if (error) throw new Error('tipi di pratica: ' + error.message);
+  }
+  if (Array.isArray(d.impostazioni) && d.impostazioni.length) {
+    const { error } = await sb.from('impostazioni').upsert(d.impostazioni, { onConflict: 'chiave' });
+    if (error) throw new Error('impostazioni: ' + error.message);
+  }
+  passo('Fatto');
+  return esito;
+}
+
+/**
  * Admin - Importa un backup (JSON)
  */
 async function importaBackup(dati) {
@@ -821,9 +866,11 @@ async function importaBackup(dati) {
     if (dati && dati.datiCompleti && Array.isArray(dati.datiCompleti.pratiche)) {
       const { error: errR } = await sb.rpc('ripristina_dati', { d: dati.datiCompleti });
       if (!errR) { await caricaTutto(); return {}; }
-      // database non ancora aggiornato: si usa l'importazione di prima (parziale)
       if (!/ripristina_dati|function|schema cache/i.test(errR.message)) throw new Error(errR.message);
-      console.warn('Ripristino completo non disponibile, uso l\'importazione semplice:', errR.message);
+      // la funzione del database non c'e': il ripristino completo lo fa il programma
+      await ripristinoCompletoClient(dati.datiCompleti);
+      await caricaTutto();
+      return {};
     }
     const { error } = await sb.rpc('importa_backup', {
       dati: dati,
@@ -902,6 +949,7 @@ window.data = {
   admin: {
     svuota: svuotaRegistro,
     importa: importaBackup,
+    ripristinoCompleto: ripristinoCompletoClient,
   },
   mappa: mapFromDb,
   schemi: schemas,

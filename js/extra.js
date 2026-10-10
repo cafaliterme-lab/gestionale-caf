@@ -228,12 +228,32 @@ async function eliminaBackup(id, quando) {
 async function ripristinaBackupServer(id, quando) {
   const ok = await chiediConfermaScritta('Ripristina il backup del ' + quando, 'Tutti i dati attuali (pratiche di tutti gli anni, versamenti, clienti, scadenze, spese sede, acconti, tipi e impostazioni) verranno sostituiti con quelli del backup del ' + quando + '. Prima il programma salva una copia dei dati di adesso in "Backup automatici".', 'RIPRISTINA');
   if (!ok) return;
-  const { data: esito, error } = await supabase.rpc('ripristina_backup', { p_id: Number(id) });
-  if (error) { avviso('❌ Ripristino non riuscito: ' + (/ripristina_backup/.test(error.message) ? 'manca l\'aggiornamento del database (vedi istruzioni)' : error.message), true); return; }
+  let { data: esito, error } = await supabase.rpc('ripristina_backup', { p_id: Number(id) });
+  if (error && /could not find|does not exist|schema cache/i.test(error.message)) {
+    // la funzione del database non c'e': il ripristino lo fa il programma
+    const attesa = mostraAttesaRipristino();
+    try {
+      const { data: righe, error: e1 } = await supabase.from('backup_automatici').select('dati').eq('id', Number(id)).single();
+      if (e1 || !righe || !righe.dati) throw new Error('backup non trovato');
+      const { error: e2 } = await supabase.rpc('crea_backup', { p_tipo: 'prima_di_importare' });
+      if (e2) throw new Error('copia di sicurezza non riuscita: ' + e2.message);
+      esito = await window.data.admin.ripristinoCompleto(righe.dati, function (t) { attesa.testo(t); });
+      error = null;
+    } catch (e) { error = { message: e.message + ' — i dati di prima sono nel backup "Prima di importare un backup"' }; }
+    attesa.chiudi();
+  }
+  if (error) { avviso('❌ Ripristino non riuscito: ' + error.message, true); renderBackup(); return; }
   avviso('✓ Backup ripristinato: ' + ((esito && esito.pratiche) || 0) + ' pratiche');
   if (typeof caricaTutto === 'function') await caricaTutto();
   if (typeof render === 'function') render();
   renderBackup();
+}
+function mostraAttesaRipristino() {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed; inset:0; z-index:500; background:rgba(15,27,45,.55); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; padding:20px 24px; max-width:380px; text-align:center"><div style="font-size:28px">⏳</div><div style="font-weight:800; margin:6px 0">Ripristino in corso</div><div class="att" style="font-size:13px; color:var(--sub)">Non chiudere la pagina…</div></div>';
+  document.body.appendChild(ov);
+  return { testo: function (t) { const el = ov.querySelector('.att'); if (el) el.textContent = t + ' Non chiudere la pagina.'; }, chiudi: function () { ov.remove(); } };
 }
 async function creaBackupOra() {
   const { error } = await supabase.rpc('crea_backup', { p_tipo: 'manuale' });
@@ -758,7 +778,7 @@ async function promemoriaRipristinoCompleto() {
   box.querySelector('button').onclick = function () { box.remove(); };
   document.body.appendChild(box);
 }
-setTimeout(promemoriaRipristinoCompleto, 5000);
+// (promemoria non più necessario: il ripristino completo lo fa ora il programma)
 setInterval(function () { if (!document.hidden) controllaAvvisoBackupCartella(); }, 10 * 60 * 1000);
 
 // All'apertura del programma (e poi ogni 6 ore) l'amministratore copia da solo i nuovi backup nella cartella scelta
