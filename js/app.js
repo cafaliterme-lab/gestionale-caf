@@ -1546,6 +1546,24 @@ function disegnaChipStati(pratiche){
   };
   box.innerHTML = chip('', 'Tutte', (pratiche||[]).length, '#374151') + Object.keys(STATI).filter(function(k){ return conta[k]; }).map(function(k){ return chip(k, STATI[k].e+' '+STATI[k].l, conta[k], STATI[k].c || '#1d4f91'); }).join('');
 }
+// Ricerca per stato dentro ogni riquadro di tipo pratica, con la stampa del report di quel tipo
+const STATO_GRUPPO = {};
+function filtroStatoGruppoHTML(k, pratiche){
+  if(!(pratiche||[]).length) return '';
+  const sel = STATO_GRUPPO[k] || '';
+  const conta = {};
+  pratiche.forEach(function(p){ conta[p.stato] = (conta[p.stato]||0) + 1; });
+  const kq = esc(k).replace(/'/g, "\\'");
+  const chip = function(st, testo, n, col){
+    const attivo = sel === st;
+    return '<button type="button" onclick="STATO_GRUPPO[\''+kq+'\']=\''+st+'\'; render()" style="padding:4px 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:700; border:2px solid '+col+'; background:'+(attivo?col:'var(--card)')+'; color:'+(attivo?'#fff':col)+'">'+testo+' <b>'+n+'</b></button>';
+  };
+  return '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:2px 0 10px; padding:8px; border-radius:10px; background:var(--bg)">'
+    + '<span style="font-size:12.5px; font-weight:800; color:var(--sub)">🔎 Stato:</span>'
+    + chip('', 'Tutte', pratiche.length, '#374151')
+    + Object.keys(STATI).filter(function(st){ return conta[st]; }).map(function(st){ return chip(st, STATI[st].e+' '+STATI[st].l, conta[st], STATI[st].c || '#1d4f91'); }).join('')
+    + '<button type="button" onclick="apriStampa(\'registro\', { tipo: \''+kq+'\', stato: STATO_GRUPPO[\''+kq+'\'] || \'\' })" style="margin-left:auto; padding:5px 13px; border:none; border-radius:999px; background:#1d4f91; color:#fff; font-size:12.5px; font-weight:800; cursor:pointer">🖨️ Stampa report</button></div>';
+}
 function stampaReportStato(){
   const sel = (document.getElementById('filtro-stato')||{}).value || '';
   apriStampa('registro', sel ? { stato: sel } : null);
@@ -1762,8 +1780,11 @@ function render(){
   const nomiGruppi = getTipiList().slice();
   visibili.forEach(function(p){ const k = p.tipo || 'SENZA TIPO'; if(nomiGruppi.indexOf(k) < 0) nomiGruppi.push(k); });
   list.innerHTML = nomiGruppi.map(function(k){
-    const items = visibili.filter(function(p){ return (p.tipo || 'SENZA TIPO') === k; });
-    if(inRicerca && !items.length) return '';
+    const tuttiTipo = visibili.filter(function(p){ return (p.tipo || 'SENZA TIPO') === k; });
+    if(inRicerca && !tuttiTipo.length) return '';
+    // stato scelto dentro questo riquadro (oltre al filtro generale del registro)
+    const statoGr = STATO_GRUPPO[k] || '';
+    const items = statoGr ? tuttiTipo.filter(function(p){ return p.stato === statoGr; }) : tuttiTipo;
     const fe = items.reduce(function(a,p){ return a + Number(p.compenso||0); }, 0);
     const inc = items.reduce(function(a,p){ return a + Number(p.pagato||0); }, 0);
     const accK = inRicerca ? 0 : totaleAcconti(annoAttivo(), function(t){ return t === k; });
@@ -1773,7 +1794,7 @@ function render(){
     return '<details class="grp" data-k="' + esc(k) + '" style="--gc:' + col + '" ' + (open ? 'open' : '') + ' ontoggle="gToggle(this)">'
       + '<summary style="background:' + col + '; background-image:none"><span class="grp-name">' + esc(k) + '</span><span class="grp-n">' + sommaPeso(items) + '</span>'
       + (senzaSoldi(k, fe, inc) ? '' : '<span class="grp-soldi">Fatture ' + fmtEuro(fe) + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + '</span>') + '</summary>'
-      + '<div class="grp-b">' + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items, k)
+      + '<div class="grp-b">' + filtroStatoGruppoHTML(k, tuttiTipo) + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items, k)
       + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 Schede complete delle pratiche (' + items.length + ') – per modificare, ricevuta, WhatsApp…</summary>'
         + items.map(cardHTML).join('') + '</details>' : '') + '</div></details>';
   }).join('');

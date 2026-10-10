@@ -14,7 +14,8 @@ function apriStampa(origine, opz) {
     tipi: {}, stati: {},
     operatore: '', cliente: '', pagamento: '',
   };
-  tipiPerStampa(anno).forEach(function (t) { STAMPA.tipi[t] = true; });
+  tipiPerStampa(anno).forEach(function (t) { STAMPA.tipi[t] = !(opz && opz.tipo) || t === opz.tipo; });
+  if (opz && opz.tipo && !(opz.tipo in STAMPA.tipi)) STAMPA.tipi[opz.tipo] = true;
   Object.keys(STATI).forEach(function (k) { STAMPA.stati[k] = !(opz && opz.stato) || k === opz.stato; });
   let ov = document.getElementById('finestra-stampa');
   if (ov) ov.remove();
