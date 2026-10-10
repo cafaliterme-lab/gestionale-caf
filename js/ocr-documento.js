@@ -933,6 +933,7 @@ function usaDatiDocumento() {
     apriSchedaClienteArchivio(dati);
     return;
   }
+  if (docLettura.destinazione !== 'archivio') inviaDocumentoAgliAltriDispositivi({ destinazione: docLettura.destinazione, cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, scadenza: v('doc-scad') });
   if (docLettura.destinazione === 'coniuge') {
     document.getElementById('f-cong-cognome').value = v('doc-cognome').toUpperCase();
     document.getElementById('f-cong-nome').value = v('doc-nome').toUpperCase();
@@ -960,6 +961,78 @@ function usaDatiDocumento() {
   }
 }
 
+
+/* ---------------- Documento letto col telefono → anagrafica aperta sul PC (stesso utente) ---------------- */
+function idDispositivo() {
+  try {
+    let id = localStorage.getItem('id-dispositivo');
+    if (!id) { id = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('id-dispositivo', id); }
+    return id;
+  } catch (e) { return 'sconosciuto'; }
+}
+async function inviaDocumentoAgliAltriDispositivi(d) {
+  try {
+    const r = await fetchSupabase('/rest/v1/documenti_letti', 'POST', { dispositivo: idDispositivo(), dati: d }, { Prefer: 'return=minimal' });
+    if (r.ok && typeof avviso === 'function') setTimeout(function () { avviso('📲 Dati inviati anche al PC: lì compare "Inserisci nel modulo"'); }, 1500);
+  } catch (e) { /* l'invio al PC non deve bloccare il lavoro */ }
+}
+// Dati arrivati da un altro dispositivo (es. il telefono): si inseriscono nel modulo con un tocco
+function compilaModuloDaDocumento(d) {
+  const metti = function (id, val) { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  const cf = normalizzaCF(d.codiceFiscale || '');
+  if (typeof showTab === 'function') { const b = document.querySelector('.navmenu button[data-tab="anagrafica"]'); if (b) showTab(b); }
+  if (d.destinazione === 'coniuge') {
+    const on = document.getElementById('f-congiunta-on'); if (on && !on.checked) { on.checked = true; on.dispatchEvent(new Event('change')); }
+    metti('f-cong-cognome', d.cognome); metti('f-cong-nome', d.nome); metti('f-cong-data', d.dataNascita);
+    if (cf) metti('f-cong-cf', cf);
+    metti('cli-cerca-cong', ((d.cognome || '') + ' ' + (d.nome || '')).trim());
+    avviso('✓ Dati del coniuge inseriti nel modulo');
+    return;
+  }
+  metti('f-cognome', d.cognome); metti('f-nome', d.nome); metti('f-cf', d.dataNascita); metti('f-codfisc', cf);
+  if (d.scadenza) { metti('f-doc-scad', d.scadenza); if (typeof coloraScadenzaDocumento === 'function') coloraScadenzaDocumento(); }
+  metti('cli-cerca', ((d.cognome || '') + ' ' + (d.nome || '')).trim());
+  if (cf && cfValido(cf) && typeof onCFLetto === 'function') onCFLetto(cf);
+  else {
+    if (typeof controllaCampoCF === 'function') controllaCampoCF();
+    if (typeof aggiornaStoricoForm === 'function') aggiornaStoricoForm();
+    const campo = document.getElementById('f-codfisc');
+    if (campo) { campo.scrollIntoView({ block: 'center', behavior: 'smooth' }); campo.style.outline = '3px solid #b35f0c'; setTimeout(function () { campo.style.outline = ''; }, 6000); }
+    avviso('✓ Dati inseriti: controlla il codice fiscale evidenziato');
+  }
+}
+let DOC_REMOTO_MOSTRATO = null;
+async function controllaDocumentiDalTelefono() {
+  if (document.hidden || typeof auth === 'undefined' || !auth.profilo) return;
+  // solo sui computer (sul telefono si legge e si invia)
+  const telefono = window.matchMedia && window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 900;
+  if (telefono) return;
+  const da = new Date(Date.now() - 15 * 60000).toISOString();
+  let r;
+  try { r = await fetchSupabase('/rest/v1/documenti_letti?select=id,dati,creato_il&usato=eq.false&creato_il=gt.' + encodeURIComponent(da) + '&dispositivo=neq.' + encodeURIComponent(idDispositivo()) + '&order=creato_il.desc&limit=1', 'GET'); } catch (e) { return; }
+  if (!r || !r.ok || !Array.isArray(r.data) || !r.data.length) return;
+  const doc = r.data[0];
+  if (DOC_REMOTO_MOSTRATO === doc.id) return;
+  DOC_REMOTO_MOSTRATO = doc.id;
+  const d = doc.dati || {};
+  const vecchio = document.getElementById('doc-remoto'); if (vecchio) vecchio.remove();
+  const box = document.createElement('div');
+  box.id = 'doc-remoto';
+  box.style.cssText = 'position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:395; width:min(520px, calc(100vw - 24px)); background:#e8f6ee; color:#0f3d22; border:3px solid #1a7f37; border-radius:16px; box-shadow:0 12px 34px rgba(0,0,0,.3); padding:12px 16px';
+  box.innerHTML = '<div style="font-weight:800; font-size:16px">📲 Documento letto col telefono' + (d.destinazione === 'coniuge' ? ' (coniuge)' : '') + '</div>'
+    + '<div style="margin:4px 0 10px; font-size:14px"><b>' + esc(((d.cognome || '') + ' ' + (d.nome || '')).trim() || '(senza nome)') + '</b>' + (d.dataNascita ? ' · nato il ' + esc(d.dataNascita) : '') + (d.codiceFiscale ? ' · CF ' + esc(d.codiceFiscale) : '') + '</div>'
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap"><button type="button" data-az="no" style="background:none; border:1px solid #1a7f37; color:#1a7f37; border-radius:999px; padding:7px 14px; cursor:pointer">Ignora</button>'
+    + '<button type="button" data-az="si" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:8px 16px; font-weight:800; cursor:pointer">✓ Inserisci nel modulo</button></div>';
+  box.addEventListener('click', async function (e) {
+    const az = e.target.getAttribute && e.target.getAttribute('data-az');
+    if (!az) return;
+    box.remove();
+    try { await fetchSupabase('/rest/v1/documenti_letti?id=eq.' + doc.id, 'PATCH', { usato: true }, { Prefer: 'return=minimal' }); } catch (er) {}
+    if (az === 'si') compilaModuloDaDocumento(d);
+  });
+  document.body.appendChild(box);
+}
+setInterval(controllaDocumentiDalTelefono, 4000);
 
 /* ---------------- Cliente nuovo in archivio dal documento (senza creare una pratica) ---------------- */
 function apriSchedaClienteArchivio(d) {
