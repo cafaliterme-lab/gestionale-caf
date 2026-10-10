@@ -1533,6 +1533,23 @@ async function ripristinaPratica(id){
   const esito = await data.pratiche.aggiorna(id, { annullata: false });
   if(!(esito && esito.error)) avviso('↩️ Pratica ' + formattaProtocollo(p) + ' ripristinata');
 }
+// Tasti rapidi con il numero di pratiche per ogni stato (anno attivo): un tocco filtra il registro
+function disegnaChipStati(pratiche){
+  const box = document.getElementById('chip-stati');
+  if(!box) return;
+  const sel = (document.getElementById('filtro-stato')||{}).value || '';
+  const conta = {};
+  (pratiche||[]).forEach(function(p){ conta[p.stato] = (conta[p.stato]||0) + 1; });
+  const chip = function(k, testo, n, col){
+    const attivo = sel === k;
+    return '<button type="button" onclick="document.getElementById(\'filtro-stato\').value=\''+k+'\'; render()" style="padding:5px 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:700; border:2px solid '+col+'; background:'+(attivo?col:'transparent')+'; color:'+(attivo?'#fff':col)+'">'+testo+' <b>'+n+'</b></button>';
+  };
+  box.innerHTML = chip('', 'Tutte', (pratiche||[]).length, '#374151') + Object.keys(STATI).filter(function(k){ return conta[k]; }).map(function(k){ return chip(k, STATI[k].e+' '+STATI[k].l, conta[k], STATI[k].c || '#1d4f91'); }).join('');
+}
+function stampaReportStato(){
+  const sel = (document.getElementById('filtro-stato')||{}).value || '';
+  apriStampa('registro', sel ? { stato: sel } : null);
+}
 function filtra(lista){
   initFiltroStato();
   const statoSel = (document.getElementById('filtro-stato')||{}).value || '';
@@ -1639,6 +1656,7 @@ function render(){
   const tab = document.getElementById('tabella');
   const annAnno = (state.annullate||[]).filter(function(p){ return annoPratica(p) === annoSel; });
   const ordinate = filtra([...pratAnno].sort((a,b)=> a.numero - b.numero));
+  disegnaChipStati(pratAnno);
   // le annullate compaiono nel registro (barrate) solo senza filtro per stato
   const statoFiltro = (document.getElementById('filtro-stato')||{}).value || '';
   if(!statoFiltro){ filtraTesto(annAnno).forEach(function(p){ ordinate.push(p); }); ordinate.sort((a,b)=> a.numero - b.numero); }

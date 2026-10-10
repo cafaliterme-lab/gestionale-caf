@@ -4,7 +4,7 @@
  */
 let STAMPA = null;
 
-function apriStampa(origine) {
+function apriStampa(origine, opz) {
   const anno = annoAttivo();
   STAMPA = {
     origine: origine || 'registro',
@@ -15,7 +15,7 @@ function apriStampa(origine) {
     operatore: '', cliente: '', pagamento: '',
   };
   tipiPerStampa(anno).forEach(function (t) { STAMPA.tipi[t] = true; });
-  Object.keys(STATI).forEach(function (k) { STAMPA.stati[k] = true; });
+  Object.keys(STATI).forEach(function (k) { STAMPA.stati[k] = !(opz && opz.stato) || k === opz.stato; });
   let ov = document.getElementById('finestra-stampa');
   if (ov) ov.remove();
   ov = document.createElement('div');
