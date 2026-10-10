@@ -869,26 +869,64 @@ function mostraRevisioneDocumento(d) {
   verificaRevisioneDocumento();
 }
 
+// Codice fiscale ricostruito: le prime 11 lettere/cifre dai dati (cognome, nome, data, sesso),
+// il codice del comune dal codice letto (anche con errori di lettura) e il carattere di controllo ricalcolato
+function cfDaiDati(grezzo, cognome, nome, dataNascita, sesso) {
+  grezzo = normalizzaCF(grezzo);
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(dataNascita || '').trim());
+  if (!cognome || !nome || !m || grezzo.length < 15) return '';
+  const giornoLetto = parseInt(cfSenzaOmocodia(grezzo.slice(0, 15) + 'X').slice(9, 11).replace(/O/g, '0'), 10);
+  const f = sesso === 'F' || (!sesso && giornoLetto > 40);
+  const giorno = +m[1] + (f ? 40 : 0);
+  const numeri = { O: '0', Q: '0', D: '0', I: '1', L: '1', Z: '2', S: '5', B: '8', G: '6', T: '7' };
+  const lettere = { 0: 'O', 1: 'I', 2: 'Z', 5: 'S', 8: 'B', 6: 'G', 4: 'A' };
+  let comune = grezzo.slice(11, 15).split('').map(function (ch, i) { return i === 0 ? (/[A-Z]/.test(ch) ? ch : (lettere[ch] || ch)) : (/[0-9]/.test(ch) ? ch : (numeri[ch] || ch)); }).join('');
+  if (!/^[A-Z][0-9]{3}$/.test(comune)) return '';
+  const primi15 = codiceCognomeCF(cognome) + codiceNomeCF(nome) + m[3].slice(2) + CF_MESI[+m[2] - 1] + String(giorno).padStart(2, '0') + comune;
+  if (primi15.length !== 15 || /undefined/.test(primi15)) return '';
+  const cf = primi15 + carattereControlloCF(primi15);
+  return cfValido(cf) ? cf : '';
+}
+function usaCFCorretto(cf) {
+  document.getElementById('doc-cf').value = cf;
+  verificaRevisioneDocumento();
+}
+// Trasferisce comunque i dati nel modulo (anche con il codice fiscale da sistemare) e porta al campo da correggere
+function usaDatiECorreggo() {
+  docLettura.forza = true;
+  usaDatiDocumento();
+  docLettura.forza = false;
+}
+
 function verificaRevisioneDocumento() {
   const el = document.getElementById('doc-verifica');
   const cf = normalizzaCF(document.getElementById('doc-cf').value);
+  const g = function (id) { return document.getElementById(id).value.trim(); };
+  // proposta di correzione del codice fiscale (quando manca il controllo o non corrisponde ai dati)
+  const proposta = cfDaiDati(cf, g('doc-cognome'), g('doc-nome'), g('doc-nascita'), g('doc-sesso'));
+  const tastoProposta = proposta && proposta !== cf
+    ? '<div style="margin-top:6px"><button type="button" onclick="usaCFCorretto(\'' + proposta + '\')" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">🔧 Correggi in ' + proposta + '</button> <span style="color:var(--sub)">(ricostruito da cognome, nome, data e comune letto: controllalo sul documento)</span></div>' : '';
+  const tastoForza = '<div style="margin-top:6px"><button type="button" onclick="usaDatiECorreggo()" style="background:#b35f0c; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">✏️ Usa i dati e correggo io il codice fiscale</button></div>';
   if (!cf) {
     el.style.color = '#b5842a';
     el.textContent = /identit/i.test((docLettura.dati || {}).tipo || '')
       ? 'Sul fronte della carta d\'identita\' il codice fiscale non c\'e\': premi "+ Leggi l\'altro lato" e inquadra il retro.'
       : 'Codice fiscale non trovato: puoi scriverlo a mano o premere "+ Leggi l\'altro lato".';
+    el.innerHTML = esc(el.textContent) + '<div style="margin-top:6px"><button type="button" onclick="usaDatiECorreggo()" style="background:#b35f0c; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">✏️ Usa gli altri dati e scrivo io il codice fiscale</button></div>';
     return;
   }
-  if (!cfValido(cf)) { el.style.color = '#c0392b'; el.textContent = '❌ Codice fiscale letto in modo incerto (' + cf.length + '/16 caratteri, controllo non valido): confrontalo con il documento e correggi il carattere sbagliato.'; return; }
+  if (!cfValido(cf)) { el.style.color = '#c0392b'; el.innerHTML = '❌ Codice fiscale letto in modo incerto (' + cf.length + '/16 caratteri): uno o più caratteri sono sbagliati. Correggilo qui sopra oppure:' + tastoProposta + tastoForza; return; }
   const avvisi = controllaCoerenzaCF(cf, document.getElementById('doc-cognome').value, document.getElementById('doc-nome').value, document.getElementById('doc-nascita').value);
   el.style.color = avvisi.length ? '#b5842a' : 'var(--accent)';
-  el.textContent = avvisi.length ? '⚠️ ' + avvisi.join('; ') : '✓ Codice fiscale valido e coerente con nome, cognome e data';
+  if (avvisi.length) el.innerHTML = '⚠️ ' + esc(avvisi.join('; ')) + ': controlla cognome, nome e data, o il codice.' + tastoProposta;
+  else el.textContent = '✓ Codice fiscale valido e coerente con nome, cognome e data';
 }
 
 function usaDatiDocumento() {
   const v = function (id) { return document.getElementById(id).value.trim(); };
   const cf = normalizzaCF(v('doc-cf'));
-  if (cf && !cfValido(cf)) { verificaRevisioneDocumento(); return; }
+  const forza = !!docLettura.forza;
+  if (cf && !cfValido(cf) && !forza) { verificaRevisioneDocumento(); document.getElementById('doc-verifica').scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
   if (docLettura.destinazione === 'archivio') {
     const dati = { cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, documentoScadenza: v('doc-scad') };
     chiudiLetturaDocumento();
@@ -912,8 +950,14 @@ function usaDatiDocumento() {
   if (v('doc-scad')) { document.getElementById('f-doc-scad').value = v('doc-scad'); coloraScadenzaDocumento(); }
   document.getElementById('cli-cerca').value = (v('doc-cognome') + ' ' + v('doc-nome')).trim().toUpperCase();
   chiudiLetturaDocumento();
-  if (cf) onCFLetto(cf);
-  else { controllaCampoCF(); aggiornaStoricoForm(); avviso('✓ Dati del documento inseriti nel modulo'); }
+  if (cf && cfValido(cf)) onCFLetto(cf);
+  else {
+    controllaCampoCF(); aggiornaStoricoForm();
+    // si porta al codice fiscale da sistemare, evidenziato
+    const campo = document.getElementById('f-codfisc');
+    if (campo) { campo.scrollIntoView({ block: 'center', behavior: 'smooth' }); campo.focus(); campo.style.outline = '3px solid #b35f0c'; setTimeout(function () { campo.style.outline = ''; }, 6000); }
+    avviso(cf ? '✏️ Dati inseriti: correggi il codice fiscale evidenziato' : '✏️ Dati inseriti: scrivi il codice fiscale evidenziato');
+  }
 }
 
 
