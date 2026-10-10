@@ -36,6 +36,16 @@ async function chiamaInviaEmail(metodo, corpo) {
 // Finestra per scrivere / controllare l'e-mail prima dell'invio
 // opz: { a, oggetto, testo, html, titolo, nome, dopo(a) }
 function apriEmail(opz) {
+  // in tutte le e-mail ci sono i recapiti del CAF, compresa l'e-mail
+  if (typeof righeContattiCaf === 'function' && typeof emailCaf === 'function') {
+    let t = pulisciTestoEmail(opz.testo);
+    const mail = emailCaf();
+    if (t.toLowerCase().indexOf(mail.toLowerCase()) < 0) {
+      if (/\nTel\. /.test(t)) t = t.replace(/(\nTel\. [^\n]*)/, '$1\nE-mail: ' + mail);
+      else t = t.replace(/\s+$/, '') + '\n\n' + righeContattiCaf();
+    }
+    opz = Object.assign({}, opz, { testo: t });
+  }
   const vecchio = document.getElementById('popup-email'); if (vecchio) vecchio.remove();
   const ov = document.createElement('div');
   ov.id = 'popup-email';
