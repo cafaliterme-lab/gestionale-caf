@@ -811,7 +811,8 @@ async function svuotaRegistro() {
 
 /**
  * Ripristino completo fatto dal programma (senza funzioni speciali nel database), come amministratore:
- * cancella e rimette pratiche di tutti gli anni, versamenti, ISEE, clienti, spese sede, acconti e scadenze
+ * cancella e rimette pratiche di tutti gli anni, versamenti, ISEE, spese sede, acconti e scadenze;
+ * l'archivio clienti non si cancella: i clienti del backup vengono uniti a quelli attuali
  * esattamente come nel backup (formato del database), aggiorna tipi di pratica e impostazioni.
  * Prima di chiamarla si salva sempre una copia dei dati attuali (crea_backup 'prima_di_importare').
  */
@@ -835,12 +836,21 @@ async function ripristinoCompletoClient(d, progresso) {
   passo('Cancellazione dei dati attuali…');
   if (Array.isArray(d.scadenze)) await cancellaTutto('scadenze');
   await cancellaTutto('pratiche');
-  for (const t of ['versamenti', 'isee', 'clienti', 'spese_sede', 'acconti']) if (Array.isArray(d[t])) await cancellaTutto(t);
+  // l'archivio clienti NON si cancella mai: i clienti del backup vengono uniti a quelli attuali
+  for (const t of ['versamenti', 'isee', 'spese_sede', 'acconti']) if (Array.isArray(d[t])) await cancellaTutto(t);
   // 2. si rimette tutto
   passo('Ripristino delle pratiche…'); await inserisci('pratiche', d.pratiche);
   // le scadenze colf create in automatico dalle pratiche si sostituiscono con quelle del backup
   if (Array.isArray(d.scadenze)) { await cancellaTutto('scadenze'); passo('Ripristino delle scadenze…'); await inserisci('scadenze', d.scadenze); }
-  for (const t of ['versamenti', 'isee', 'clienti', 'spese_sede', 'acconti']) if (Array.isArray(d[t])) { passo('Ripristino ' + t.replace('_', ' ') + '…'); await inserisci(t, d[t]); }
+  if (Array.isArray(d.clienti) && d.clienti.length) {
+    passo('Unione dell\'archivio clienti…');
+    for (let i = 0; i < d.clienti.length; i += 300) {
+      const { error } = await sb.rpc('unisci_clienti', { lista: d.clienti.slice(i, i + 300) });
+      if (error) throw new Error('archivio clienti: ' + error.message);
+    }
+    esito.clienti = d.clienti.length;
+  }
+  for (const t of ['versamenti', 'isee', 'spese_sede', 'acconti']) if (Array.isArray(d[t])) { passo('Ripristino ' + t.replace('_', ' ') + '…'); await inserisci(t, d[t]); }
   if (Array.isArray(d.collaboratori) && d.collaboratori.length) {
     const nomi = d.collaboratori.slice().sort(function (a, b) { return (a.ordine || 0) - (b.ordine || 0); }).map(function (c) { return c.nome || c; });
     const { error } = await sb.rpc('salva_collaboratori', { lista: nomi });

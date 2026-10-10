@@ -173,7 +173,7 @@ function cercaClienti(q, ctx){
   if(!match.length){ box.innerHTML = '<div class="cli-row" style="cursor:default">Nessun cliente trovato</div>'; box.classList.add('open'); return; }
   box.innerHTML = match.map(function(c,i){
     const cestino = (puoEliminareClienti() && c.id) ? '<button type="button" title="Elimina definitivamente dall\'archivio" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); eliminaClienteArchivio(&quot;'+esc(String(c.id))+'&quot;, &quot;'+ctx+'&quot;)">🗑</button>' : '';
-    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+'<b>'+esc(c.nomeCompleto)+'</b><span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+(c.telefono || c.telefonoFisso ? ' · 📞 '+esc(c.telefono || c.telefonoFisso) : '')+'</span></div>';
+    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+'<b>'+esc(c.nomeCompleto)+'</b><span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+(c.telefono || c.telefonoFisso ? ' · 📞 '+esc(c.telefono || c.telefonoFisso) : '')+(c.email ? ' · ✉️ '+esc(c.email) : '')+'</span></div>';
   }).join('');
   box.dataset.match = JSON.stringify(match);
   box.classList.add('open');
@@ -316,11 +316,27 @@ function controllaCampoCF(){
   el.style.display = 'block';
   if(cf.length < 16){ el.style.color = 'var(--sub)'; el.textContent = cf.length + '/16 caratteri'; return; }
   if(!cfValido(cf)){ el.style.color = '#c0392b'; el.textContent = '❌ Codice fiscale non valido (controlla i caratteri)'; return; }
+  riempiDaArchivioPerCF(cf);
   const dati = datiDaCF(cf);
   const avvisi = controllaCoerenzaCF(cf, document.getElementById('f-cognome').value, document.getElementById('f-nome').value, document.getElementById('f-cf').value);
   if(avvisi.length){ el.style.color = '#b5842a'; el.textContent = '⚠️ Attenzione: ' + avvisi.join('; ') + '.'; return; }
   el.style.color = 'var(--accent)';
   el.textContent = '✓ Codice valido · ' + (dati.sesso === 'F' ? 'Donna nata il ' : 'Uomo nato il ') + dati.dataNascita;
+}
+// Codice fiscale scritto a mano: se il cliente e' in archivio si compilano i campi ancora vuoti
+let ULTIMO_CF_RIEMPITO = '';
+function riempiDaArchivioPerCF(cf){
+  const c = ARCHIVIO_CLIENTI.find(function(x){ return x.codiceFiscale === cf; });
+  if(!c) return;
+  const campo = function(id, valore){ const el = document.getElementById(id); if(el && !el.value.trim() && valore){ el.value = valore; return 1; } return 0; };
+  const n = campo('f-cognome', (c.cognome||'').toUpperCase()) + campo('f-nome', (c.nome||'').toUpperCase()) + campo('f-cf', c.dataNascita)
+    + campo('f-tel', c.telefono) + campo('f-tel-fisso', c.telefonoFisso) + campo('f-email', c.email) + campo('f-doc-scad', c.documentoScadenza);
+  if(n){
+    if(typeof coloraScadenzaDocumento === 'function') coloraScadenzaDocumento();
+    const cerca = document.getElementById('cli-cerca'); if(cerca && !cerca.value.trim()) cerca.value = c.nomeCompleto;
+    if(ULTIMO_CF_RIEMPITO !== cf) avviso('📇 ' + c.nomeCompleto + ' è già in archivio: dati compilati');
+  }
+  ULTIMO_CF_RIEMPITO = cf;
 }
 // Codice letto dalla tessera: compila i campi vuoti, usando l'archivio se il cliente c'e' gia'
 function onCFLetto(cf){
@@ -1934,8 +1950,9 @@ async function addPraticaInterna(){
     const conferma = await chiediNuovoContribuente(nome, cf, codiceFiscale);
     if(!conferma) return;
   }
-  registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso, documentoScadenza, email);
-  if(congCognome || congNome){ registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono); }
+  // prima si salva il cliente in archivio (cognome e nome separati bene), poi la pratica
+  try{ await registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso, documentoScadenza, email); }catch(e){ console.error('archivio clienti', e); }
+  if(congCognome || congNome){ try{ await registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono); }catch(e){ console.error('archivio clienti coniuge', e); } }
 
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
   const nuovaPratica = {
