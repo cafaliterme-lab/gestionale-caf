@@ -50,6 +50,13 @@ input,select{
   background:var(--bg); color:var(--ink); font-size:14px;
 }
 .full{grid-column:1/-1}
+.vc-form{grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px 8px}
+.vc-form label{font-size:11.5px; margin-bottom:2px}
+.vc-form input{padding:5px 8px; font-size:13px; min-height:0; height:30px; border-radius:7px; transition:background .2s, border-color .2s}
+.vc-form input:not(:placeholder-shown){background:color-mix(in srgb, #2f9e5f 16%, var(--card)); border-color:#2f9e5f; font-weight:600}
+.vc-form input:focus{border-color:#2f7de1}
+.vc-form input[id^="vc-ci"]:not(:placeholder-shown), .vc-form input[id^="vc-bi"]:not(:placeholder-shown){text-align:right}
+@media (max-width:600px){.vc-form{grid-template-columns:1fr 1fr} .vc-form > div:nth-child(3){grid-column:1/-1} .vc-form input{padding:5px 6px} .vc-form input[id^="vc-bd"]{width:86px!important; flex:none} .vc-form input[id^="vc-bi"], .vc-form input[id^="vc-ci"]{width:66px!important; flex:none}}
 .form-anagrafica input, .form-anagrafica select{background:color-mix(in srgb, var(--accent) 10%, var(--card)); border-color:color-mix(in srgb, var(--accent) 30%, var(--line))}
 .form-anagrafica input.compilato{background:color-mix(in srgb, #2f9e5f 18%, var(--card)); border-color:#2f9e5f; transition:background .2s, border-color .2s}
 .form-anagrafica input#cli-cerca, .form-anagrafica input#cli-cerca-cong{background:color-mix(in srgb, #f08a24 22%, var(--card)); border:2px solid #f08a24; font-weight:600}
@@ -850,7 +857,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/ricercafatture.js?v=1"></script>
 <script src="js/situazione.js?v=4"></script>
-<script src="js/versamenti.js?v=18"></script>
+<script src="js/versamenti.js?v=19"></script>
 <script src="js/spese.js?v=6"></script>
 <script src="js/tipi.js?v=8"></script>
 <script src="js/morosi.js?v=6"></script>

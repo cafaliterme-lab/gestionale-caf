@@ -31,25 +31,25 @@ function renderVersamentiCaf(vlist, versatoCaf) {
   for (let i = 0; i < BON_N; i++) bonRighe.push({ n: val('vc-bn' + i), d: val('vc-bd' + i), i: val('vc-bi' + i) });
   const campoImp = function (id, v, ph) { return '<input id="' + id + '" type="text" inputmode="decimal" placeholder="' + (ph || '0,00') + '" value="' + v + '" oninput="totaleVersamentoForm()">'; };
   caf.innerHTML = '<div class="raff-title">Versamenti al CAF Regionale</div>'
-    + '<div class="grid">'
+    + '<div class="grid vc-form">'
     + '<div><label>Dalla fattura n.</label><input id="vc-dal" value="' + val('vc-dal') + '" placeholder="Es. 1" inputmode="numeric" oninput="this.value=this.value.replace(/\\D/g,\'\'); suggerimentoVersamento()"></div>'
     + '<div><label>Alla fattura n.</label><input id="vc-al" value="' + val('vc-al') + '" placeholder="Es. 50" inputmode="numeric" oninput="this.value=this.value.replace(/\\D/g,\'\'); suggerimentoVersamento()"></div>'
+    + '<div><label>Importo fatture €</label>' + campoImp('vc-importo', val('vc-importo')) + '</div>'
     + '<div class="full" id="vc-suggerimento" style="font-size:12.5px"></div>'
-    + '<div class="full"><label>Importo delle fatture €</label>' + campoImp('vc-importo', val('vc-importo')) + '</div>'
     + '<div class="full"><div style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; flex-wrap:wrap"><label style="margin:0">Spese pagate per conto del CAF da detrarre (condominio, TARI, acqua…)</label>'
     + '<button type="button" onclick="scegliSpeseDaDetrarre()" style="padding:4px 12px; font-size:12.5px; background:#a0522d; color:#fff; border:none; border-radius:999px; font-weight:700; margin-bottom:4px">📥 Prendi da Spese sede</button></div>'
     + cassaRighe.map(function (r, i) {
-      return '<div style="display:flex; gap:6px; margin-bottom:4px"><span style="width:18px; padding-top:9px; color:var(--sub)">' + (i + 1) + '.</span>'
-        + '<input id="vc-cd' + i + '" value="' + r.d + '" oninput="VC_SPESE[' + i + ']=null" placeholder="Descrizione (es. TARI 2026, condominio settembre)" style="flex:1">'
-        + '<input id="vc-ci' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:110px"></div>';
+      return '<div style="display:flex; gap:6px; margin-bottom:4px"><span style="width:18px; padding-top:6px; color:var(--sub); font-size:12px">' + (i + 1) + '.</span>'
+        + '<input id="vc-cd' + i + '" value="' + r.d + '" oninput="VC_SPESE[' + i + ']=null" placeholder="Descrizione (es. TARI 2026, condominio settembre)" style="flex:1; min-width:0">'
+        + '<input id="vc-ci' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:90px"></div>';
     }).join('') + '<button type="button" onclick="RIGHE_CASSA++; ridisegnaVersamentiCaf()" style="padding:3px 12px; font-size:12.5px; background:none; border:1px dashed #a0522d; color:#a0522d; border-radius:999px">+ Aggiungi riga</button></div>'
     + '<div class="full"><div style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; flex-wrap:wrap"><label style="margin:0">Pagamenti ricevuti con bonifico da detrarre (uno per riga: chi l\'ha fatto, data, importo)</label>'
     + '<button type="button" onclick="scegliBonificiDaPratiche()" style="padding:4px 12px; font-size:12.5px; background:#2f7de1; color:#fff; border:none; border-radius:999px; font-weight:700; margin-bottom:4px">📥 Prendi dalle pratiche pagate con bonifico</button></div>'
     + bonRighe.map(function (r, i) {
-      return '<div style="display:flex; gap:6px; margin-bottom:4px; flex-wrap:wrap"><span style="width:18px; padding-top:9px; color:var(--sub)">' + (i + 1) + '.</span>'
-        + '<input id="vc-bn' + i + '" value="' + r.n + '" oninput="VC_BON[' + i + ']=null" placeholder="Chi ha fatto il bonifico (es. Rossi Mario)" style="flex:1; min-width:150px">'
-        + '<input id="vc-bd' + i + '" value="' + r.d + '" placeholder="Data" inputmode="numeric" oninput="autoSlashData(this)" style="width:105px">'
-        + '<input id="vc-bi' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:110px"></div>';
+      return '<div style="display:flex; gap:6px; margin-bottom:4px"><span style="width:18px; padding-top:6px; color:var(--sub); font-size:12px">' + (i + 1) + '.</span>'
+        + '<input id="vc-bn' + i + '" value="' + r.n + '" oninput="VC_BON[' + i + ']=null" placeholder="Chi ha fatto il bonifico (es. Rossi Mario)" style="flex:1; min-width:0">'
+        + '<input id="vc-bd' + i + '" value="' + r.d + '" placeholder="Data" inputmode="numeric" oninput="autoSlashData(this)" style="width:92px">'
+        + '<input id="vc-bi' + i + '" type="text" inputmode="decimal" placeholder="0,00" value="' + r.i + '" oninput="totaleVersamentoForm()" style="width:90px"></div>';
     }).join('') + '<button type="button" onclick="BON_N++; ridisegnaVersamentiCaf()" style="padding:3px 12px; font-size:12.5px; background:none; border:1px dashed #2f7de1; color:#2f7de1; border-radius:999px">+ Aggiungi riga</button></div>'
     + '<div class="full" id="vc-totale" style="font-size:15px"></div>'
     + '<div><label>Data del versamento</label><input id="vc-data" value="' + vcData + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>'
