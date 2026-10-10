@@ -1752,7 +1752,7 @@ function render(){
         <div class="grid" style="margin-top:8px">
           <div><label>Cognome</label><input id="e-cognome-${p.id}" value="${esc(dividiNominativo(p).cognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
           <div><label>Nome</label><input id="e-nomeproprio-${p.id}" value="${esc(dividiNominativo(p).nome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
-          <div class="full"><label class="chk"><input type="checkbox" id="e-congon-${p.id}" ${p.congiunta ? 'checked' : ''} onchange="(function(){var on=document.getElementById('e-congon-${p.id}').checked; document.getElementById('e-congbox-${p.id}').style.display = on?'':'none';})()"> Congiunta</label>
+          <div class="full" id="e-congwrap-${p.id}" style="${tipoAmmetteCongiunta(p.tipo) || p.congiunta ? '' : 'display:none'}"><label class="chk"><input type="checkbox" id="e-congon-${p.id}" ${p.congiunta ? 'checked' : ''} onchange="(function(){var on=document.getElementById('e-congon-${p.id}').checked; document.getElementById('e-congbox-${p.id}').style.display = on?'':'none';})()"> Congiunta</label>
             <div id="e-congbox-${p.id}" class="grid" style="${p.congiunta ? '' : 'display:none; '}margin-top:6px">
               <div><label>Cognome</label><input id="e-congcognome-${p.id}" value="${esc(p.congCognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
               <div><label>Nome</label><input id="e-congnome-${p.id}" value="${esc(p.congNome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
@@ -1766,7 +1766,7 @@ function render(){
           <div><label>📧 E-mail</label><input id="e-email-${p.id}" type="email" inputmode="email" value="${esc(p.email)}" style="text-transform:lowercase"></div>
           <div><label>Data di nascita</label><input id="e-cf-${p.id}" value="${esc(p.cf)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Scadenza documento</label><input id="e-docscad-${p.id}" value="${esc(p.documentoScadenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
-          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="document.getElementById('e-desctipo-box-${p.id}').style.display = eAltrePratiche(this.value) ? '' : 'none'; document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
+          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="aggiornaCongiuntaEdit('${p.id}', this.value); document.getElementById('e-desctipo-box-${p.id}').style.display = eAltrePratiche(this.value) ? '' : 'none'; document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
           <div id="e-desctipo-box-${p.id}" style="${eAltrePratiche(p.tipo) ? '' : 'display:none'}"><label>Descrizione della pratica *</label><input id="e-desctipo-${p.id}" value="${esc(p.descrizioneTipo)}" maxlength="120"></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
@@ -2668,7 +2668,29 @@ function e730(p){ return /^730\b/.test(String(p.tipo||'').toUpperCase()); }
 const TIPO_ALTRE = 'ALTRE PRATICHE';
 function eAltrePratiche(t){ return String(t||'').trim().toUpperCase() === TIPO_ALTRE; }
 function tipoConDescrizione(p){ return (p.tipo||'') + (eAltrePratiche(p.tipo) && p.descrizioneTipo ? ' – ' + p.descrizioneTipo : ''); }
-function aggiornaDescTipoForm(){ const b = document.getElementById('f-desctipo-box'); if(b) b.style.display = eAltrePratiche((document.getElementById('f-tipo')||{}).value) ? '' : 'none'; }
+function aggiornaDescTipoForm(){ const b = document.getElementById('f-desctipo-box'); if(b) b.style.display = eAltrePratiche((document.getElementById('f-tipo')||{}).value) ? '' : 'none'; aggiornaCongiuntaForm(); }
+// La dichiarazione congiunta esiste solo per i 730: per gli altri tipi (colf, affitti, IMU, successioni,
+// ISEE, F24, canone RAI, rottamazione, altre pratiche...) la spunta "Congiunta" non compare
+function tipoAmmetteCongiunta(t){ t = String(t||'').trim().toUpperCase(); return !t || t.indexOf('730') === 0; }
+function aggiornaCongiuntaForm(){
+  const chk = document.getElementById('f-congiunta-on');
+  if(!chk) return;
+  const ok = tipoAmmetteCongiunta((document.getElementById('f-tipo')||{}).value);
+  const riga = chk.closest('.full');
+  if(riga) riga.style.display = ok ? '' : 'none';
+  if(!ok && chk.checked){ chk.checked = false; toggleCongBox(); }
+}
+function aggiornaCongiuntaEdit(id, tipo){
+  const w = document.getElementById('e-congwrap-' + id), chk = document.getElementById('e-congon-' + id);
+  if(!w) return;
+  const ok = tipoAmmetteCongiunta(tipo);
+  w.style.display = ok ? '' : 'none';
+  if(!ok && chk && chk.checked){
+    chk.checked = false;
+    document.getElementById('e-congbox-' + id).style.display = 'none';
+    ['e-congcognome-','e-congnome-','e-congdata-','e-congcf-','e-congtel-'].forEach(function(k){ const el = document.getElementById(k + id); if(el) el.value = ''; });
+  }
+}
 // Stati: "da lavorare" finche' la pratica non e' stata lavorata; dopo (anche pagata o da pagare) conta come lavorata
 const STATI_DA_LAVORARE = ['arrivo','lavorazione','da_lavorare_scansionata'];
 function eDaLavorare(p){ return STATI_DA_LAVORARE.indexOf(p.stato) >= 0; }
