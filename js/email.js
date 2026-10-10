@@ -81,9 +81,28 @@ function apriEmail(opz) {
       popupEmailInviata(a, opz.nome);
       if (opz.dopo) opz.dopo(a);
     } catch (err) {
-      b.disabled = false; b.textContent = '📤 Invia e-mail';
-      esito.innerHTML = '<b style="color:#c0392b">❌ ' + esc(err.message) + '</b>';
+      b.disabled = false; b.textContent = '📤 Riprova a inviare';
+      const bloccato = /550|rifiutata|rejected|blocked|spam/i.test(err.message);
+      esito.innerHTML = '<b style="color:#c0392b">❌ ' + (bloccato ? 'Aruba ha rifiutato l\'invio dal server (blocca temporaneamente gli invii che arrivano dai server del programma).' : esc(err.message)) + '</b>'
+        + '<div style="margin-top:8px; padding:8px 10px; border-radius:10px; background:#e8f0fb; color:#0f1b2d">Puoi mandarla subito dalla tua posta: si apre già compilata, premi solo Invia.'
+        + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px">'
+        + '<button type="button" data-posta="app" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">📨 Apri nella mia posta</button>'
+        + '<button type="button" data-posta="copia" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:6px 14px; cursor:pointer">📋 Copia il testo</button></div></div>';
     }
+  });
+  // alternativa quando l'invio dal server non riesce: programma di posta del computer/telefono
+  ov.addEventListener('click', async function (e) {
+    const t = e.target.closest && e.target.closest('button[data-posta]');
+    if (!t) return;
+    const a = document.getElementById('em-a').value.trim();
+    const oggetto = document.getElementById('em-ogg').value.trim();
+    const testo = document.getElementById('em-testo').value;
+    if (t.dataset.posta === 'copia') {
+      try { await navigator.clipboard.writeText(testo); t.textContent = '✓ Copiato'; } catch (er) { document.getElementById('em-testo').select(); }
+      return;
+    }
+    location.href = 'mailto:' + encodeURIComponent(a) + '?subject=' + encodeURIComponent(oggetto) + '&body=' + encodeURIComponent(testo);
+    if (opz.dopo) opz.dopo(a);
   });
   setTimeout(function () { const el = document.getElementById(opz.a ? 'em-testo' : 'em-a'); if (el) el.focus(); }, 50);
 }
