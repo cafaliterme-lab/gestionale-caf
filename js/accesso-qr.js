@@ -135,7 +135,8 @@ function aggiungiQrAlLogin() {
     av.innerHTML = '<b>📱 Stai facendo entrare un PC.</b><br>Su questo telefono non sei ancora entrato: entra qui con email e password <b>solo questa volta</b>. Poi confermi l\'accesso del PC; le prossime volte basterà inquadrare il QR.';
     wrap.insertBefore(av, wrap.firstChild);
   }
-  if (document.getElementById('qr-accesso-box') || QR_DA_APPROVARE) return;
+  // sul telefono il QR non serve (è il telefono che inquadra): si mostra solo sui PC
+  if (document.getElementById('qr-accesso-box') || QR_DA_APPROVARE || !schermoGrande()) return;
   const crea = wrap.querySelector('button[onclick="toggleCreaAccount()"]');
   const div = document.createElement('div');
   div.innerHTML = boxAccessoQrHTML();
