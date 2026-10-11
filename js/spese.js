@@ -5,7 +5,20 @@
 const CATEGORIE_SPESE = ['TARI', 'IMU / tasse comunali', 'Acqua', 'Luce', 'Gas', 'Telefono / Internet', 'Affitto', 'Condominio', 'Pulizie', 'Cancelleria', 'Manutenzione', 'Assicurazione', 'Altro'];
 
 function speseAnno(anno) { return (state.speseSede || []).filter(function (s) { return annoDiData(s.data) === anno; }); }
-function totaleSpeseSede(anno) { return speseAnno(anno).reduce(function (t, s) { return t + Number(s.importo || 0); }, 0); }
+// Spese sede detratte in un versamento al CAF: il CAF le ha "pagate" accettando un bollettino più basso,
+// quindi non pesano su guadagno e cassa (altrimenti sarebbero tolte due volte: nel versamento e come spesa).
+function rimborsiCafSpese() {
+  const m = {};
+  (state.versamenti || []).forEach(function (v) {
+    (Array.isArray(v.cassaElenco) ? v.cassaElenco : []).forEach(function (r) { if (r.spesaId) m[r.spesaId] = (m[r.spesaId] || 0) + Number(r.importo || 0); });
+  });
+  return m;
+}
+function rimborsoCafSpesa(s, mappa) { return Math.min(Number(s.importo || 0), Number((mappa || rimborsiCafSpese())[s.id] || 0)); }
+function totaleSpeseSedeLordo(anno) { return speseAnno(anno).reduce(function (t, s) { return t + Number(s.importo || 0); }, 0); }
+function totaleRimborsiCaf(anno) { const m = rimborsiCafSpese(); return speseAnno(anno).reduce(function (t, s) { return t + rimborsoCafSpesa(s, m); }, 0); }
+// Spese a carico della sede: quelle che contano in guadagno netto e soldi in cassa
+function totaleSpeseSede(anno) { return totaleSpeseSedeLordo(anno) - totaleRimborsiCaf(anno); }
 function puoScrivereSpese() { return typeof puo === 'function' && puo('spese', true); }
 
 function renderSpese() {
@@ -41,6 +54,8 @@ function renderSpese() {
     + Object.keys(perCat).sort().map(function (c) { return '<span style="background:var(--line); border-radius:999px; padding:3px 10px; font-size:12px">' + esc(c) + ': <b>' + fmtEuro(perCat[c]) + '</b></span>'; }).join('') + '</div>' : '';
   document.getElementById('sp-lista').innerHTML = (lista.length ? lista.map(rigaSpesaHTML).join('') : '<div class="empty">Nessuna spesa registrata nel ' + anno + '</div>')
     + '<div class="caf-tot"><span>Totale spese sede ' + anno + '</span><span>' + fmtEuro(tot) + '</span></div>'
+    + (function () { const r = totaleRimborsiCaf(anno); return r > 0.004 ? '<div style="display:flex; justify-content:space-between; font-size:13.5px; padding:4px 2px; color:#1d4f91"><span>🏦 di cui rimborsate dal CAF (detratte nei versamenti)</span><b>− ' + fmtEuro(r) + '</b></div>'
+      + '<div class="caf-tot" style="color:#b35f0c"><span>Spese a carico della sede (contano nel guadagno e nella cassa)</span><span>' + fmtEuro(tot - r) + '</span></div>' : ''; })()
     + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; font-size:13px">'
     + '<span style="padding:4px 10px; border-radius:999px; background:color-mix(in srgb, #1a7f37 14%, var(--card))">✔ In contabilità: <b>' + fmtEuro(daConf.si) + '</b></span>'
     + '<span style="padding:4px 10px; border-radius:999px; background:color-mix(in srgb, #d4881c 18%, var(--card))">⏳ Da confermare: <b>' + fmtEuro(daConf.no) + '</b> (' + daConf.n + ')</span>'
@@ -61,7 +76,7 @@ function rigaSpesaHTML(s) {
     : (scrivi ? '<button type="button" onclick="confermaSpesaContabilita(\'' + s.id + '\', true)" style="background:#d4881c; color:#fff; border:none; border-radius:999px; padding:4px 12px; font-size:12px; font-weight:800; cursor:pointer">③ ✔ Conferma: già inserita in contabilità</button>' : passo(3, 'Da inserire in contabilità', false));
   return '<div style="padding:9px 10px; border:1px solid var(--line); border-left:5px solid ' + (s.inContabilita ? '#1a7f37' : '#d4881c') + '; border-radius:10px; margin-bottom:7px">'
     + '<div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap"><span>' + esc(s.data || '-') + ' · <b>' + esc(s.categoria || '') + '</b>' + (s.descrizione ? ' · ' + esc(s.descrizione) : '')
-    + (function () { const v = typeof speseGiaDetratte === 'function' ? speseGiaDetratte()[s.id] : null; return v ? ' <span style="font-size:11.5px; color:#1d4f91; font-weight:700">· 🏦 detratta nel versamento CAF del ' + esc(v.data || '') + '</span>' : ''; })() + '</span>'
+    + (function () { const v = typeof speseGiaDetratte === 'function' ? speseGiaDetratte()[s.id] : null; return v ? ' <span style="font-size:11.5px; color:#1d4f91; font-weight:700">· 🏦 rimborsata dal CAF col versamento del ' + esc(v.data || '') + ' (non pesa sul guadagno)</span>' : ''; })() + '</span>'
     + '<span style="white-space:nowrap"><b>' + fmtEuro(s.importo) + '</b>' + (scrivi ? ' <button type="button" onclick="rimuoviSpesa(\'' + s.id + '\')" title="Elimina questa spesa" style="margin-left:8px; padding:3px 10px; font-size:12px; background:#fdecea; color:#c0392b; border:1px solid #c0392b; border-radius:999px; font-weight:700; cursor:pointer">🗑️ Elimina spesa</button>' : '') + '</span></div>'
     + '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px">'
     + passo(1, 'Registrata', true, '#1d4f91') + freccia

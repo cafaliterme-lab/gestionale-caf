@@ -102,7 +102,7 @@ function quadraturaCassaHTML(versatoCaf) {
     + '<div style="font-size:13.5px; margin-top:8px">'
     + riga('+', 'Incassato dalle pratiche', inc, VERDE, '#e8f6ee')
     + riga('−', 'Versato al CAF (fatture coperte)', versatoCaf, BLU, '#e8f0fb')
-    + riga('−', 'Spese sede pagate', spese, ARANCIO, '#fdf1e6')
+    + riga('−', 'Spese sede a carico della sede (escluse quelle rimborsate dal CAF)', spese, ARANCIO, '#fdf1e6')
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; margin-top:6px; background:' + colCassa + '; color:#fff"><span style="font-weight:800">= SOLDI IN CASSA</span><b style="font-size:20px">' + fmtEuro(cassa) + '</b></div>'
     + avvisoBox(torna ? VERDE : ROSSO, torna ? '#e8f6ee' : '#fdecea', (torna ? '✅ ' : '❌ ') + 'Controllo: guadagno netto <b>' + fmtEuro(guad) + '</b> + fatture ancora da versare al CAF <b>' + fmtEuro(daVers) + '</b> = <b>' + fmtEuro(guad + daVers) + '</b> ' + (torna ? '— torna con la cassa' : '— non torna con la cassa'))
     + (daVers > 0.004 ? avvisoBox(ROSSO, '#fdecea', '🔴 In cassa ci sono <b>' + fmtEuro(daVers) + '</b> di fatture non ancora versate al CAF: non sono guadagno.') : '')
