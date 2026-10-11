@@ -1,0 +1,241 @@
+/* ---------- Accesso con QR (come WhatsApp Web) ----------
+   PC: nella schermata di accesso compare un QR che cambia ogni 2 minuti.
+   Telefono (già entrato nel programma): "📷 Fai entrare un PC" → inquadra il QR → conferma →
+   il PC entra con lo stesso utente del telefono. Funzione sul server: "accesso-qr". */
+
+const QR_ACCESSO = { id: null, segreto: null, scade: 0, timer: null, giri: 0, attivo: false };
+let QR_DA_APPROVARE = null; // codice arrivato aprendo il link del QR (fotocamera del telefono)
+
+function chiamaAccessoQr(corpo, conUtente, giaRinnovato) {
+  const tok = conUtente ? localStorage.getItem('auth_token') : null;
+  return fetch(SUPABASE_URL + '/functions/v1/accesso-qr', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (tok || SUPABASE_ANON_KEY) },
+    body: JSON.stringify(corpo),
+  }).then(async function (r) {
+    // accesso del telefono scaduto (dura circa un'ora): si rinnova e si riprova una volta
+    if (r.status === 401 && conUtente && !giaRinnovato && typeof rinnovaToken === 'function' && await rinnovaToken()) return chiamaAccessoQr(corpo, true, true);
+    return r.json().catch(function () { return {}; }).then(function (d) {
+      if (!r.ok || d.error) throw new Error(d.error || d.message || ('errore ' + r.status));
+      return d;
+    });
+  });
+}
+
+function nomeDispositivo() {
+  const ua = navigator.userAgent || '';
+  const so = /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) && !/iPhone|iPad/.test(ua) ? 'Mac' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iPhone/iPad' : /Linux/.test(ua) ? 'Linux' : 'PC';
+  const br = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'browser';
+  return so + ' · ' + br;
+}
+function schermoGrande() { return window.matchMedia && window.matchMedia('(pointer: fine) and (min-width: 900px)').matches; }
+
+/* ---------- PC: QR nella schermata di accesso ---------- */
+
+function boxAccessoQrHTML() {
+  return '<div id="qr-accesso-box" style="margin:14px 0 4px; padding:12px; border:2px solid #1d4f91; border-radius:14px; background:color-mix(in srgb, #1d4f91 5%, var(--card)); text-align:center">'
+    + '<div style="font-weight:800; color:#1d4f91; font-size:15px">📱 Entra con il telefono</div>'
+    + '<div id="qr-accesso-corpo">'
+    + '<div style="font-size:12.5px; color:var(--sub); margin:4px 0 8px">Sul telefono, nel programma, premi <b>📷 Fai entrare un PC</b> e inquadra il QR.</div>'
+    + '<button type="button" class="login-btn" style="background:#1d4f91; color:#fff; border:none; width:100%" onclick="avviaQrAccesso()">Mostra il QR</button></div></div>';
+}
+
+function avviaQrAccesso() {
+  QR_ACCESSO.attivo = true;
+  QR_ACCESSO.giri = 0;
+  nuovoQrAccesso();
+}
+function fermaQrAccesso() {
+  QR_ACCESSO.attivo = false;
+  if (QR_ACCESSO.timer) clearTimeout(QR_ACCESSO.timer);
+  QR_ACCESSO.timer = null;
+}
+function corpoQr(html) { const c = document.getElementById('qr-accesso-corpo'); if (c) c.innerHTML = html; return !!c; }
+
+async function nuovoQrAccesso() {
+  if (QR_ACCESSO.timer) clearTimeout(QR_ACCESSO.timer);
+  if (!corpoQr('<div style="font-size:13px; color:var(--sub); padding:30px 0">Preparo il QR…</div>')) return fermaQrAccesso();
+  try {
+    const d = await chiamaAccessoQr({ azione: 'crea', dispositivo: nomeDispositivo() });
+    QR_ACCESSO.id = d.id; QR_ACCESSO.segreto = d.segreto;
+    QR_ACCESSO.scade = Date.now() + (d.secondi || 120) * 1000;
+    QR_ACCESSO.giri++;
+    corpoQr('<div style="width:200px; height:200px; margin:8px auto; background:#fff; padding:6px; border-radius:10px">' + qrSvg(indirizzoApp() + '?qr=' + d.codice) + '</div>'
+      + '<div style="font-size:12.5px; color:var(--sub)">Sul telefono: <b>📷 Fai entrare un PC</b> e inquadra il QR.<br>Il PC entra con l\'utente del telefono.</div>'
+      + '<div id="qr-accesso-stato" style="font-size:12px; margin-top:6px; color:var(--sub)"></div>');
+    controllaQrAccesso();
+  } catch (e) {
+    corpoQr('<div style="font-size:12.5px; color:#c0392b; margin:8px 0">❌ ' + esc(e.message) + '</div><button type="button" class="login-btn" style="background:#1d4f91; color:#fff; border:none; width:100%" onclick="avviaQrAccesso()">Riprova</button>');
+    fermaQrAccesso();
+  }
+}
+
+async function controllaQrAccesso() {
+  if (!QR_ACCESSO.attivo) return;
+  const overlay = document.getElementById('login-overlay');
+  if (!overlay || overlay.style.display === 'none' || !document.getElementById('qr-accesso-corpo')) return fermaQrAccesso();
+  const restano = Math.max(0, Math.round((QR_ACCESSO.scade - Date.now()) / 1000));
+  const st = document.getElementById('qr-accesso-stato');
+  if (st) st.textContent = 'Il QR cambia tra ' + restano + ' secondi';
+  if (!document.hidden) {
+    try {
+      const d = await chiamaAccessoQr({ azione: 'stato', id: QR_ACCESSO.id, segreto: QR_ACCESSO.segreto });
+      if (d.stato === 'ok') return entraConQr(d);
+      if (d.stato === 'scaduto' || restano <= 0) {
+        // si rinnova da solo per un po'; poi serve un clic (così il PC lasciato acceso non chiama il server all'infinito)
+        if (QR_ACCESSO.giri < 15) return nuovoQrAccesso();
+        corpoQr('<div style="font-size:12.5px; color:var(--sub); margin:8px 0">Il QR è scaduto.</div><button type="button" class="login-btn" style="background:#1d4f91; color:#fff; border:none; width:100%" onclick="avviaQrAccesso()">🔄 Nuovo QR</button>');
+        return fermaQrAccesso();
+      }
+    } catch (e) { /* rete assente: si riprova */ }
+  }
+  QR_ACCESSO.timer = setTimeout(controllaQrAccesso, 2000);
+}
+
+async function entraConQr(d) {
+  fermaQrAccesso();
+  corpoQr('<div style="font-size:14px; font-weight:800; color:#2f9e5f; padding:24px 0">✓ Confermato dal telefono: entro…</div>');
+  const verifica = function (tipo) { return fetchSupabase('/auth/v1/verify', 'POST', { type: tipo, token_hash: d.token_hash }); };
+  try {
+    let r = await verifica(d.tipo || 'magiclink');
+    if (!r.ok || !r.data || !r.data.access_token) r = await verifica('email');
+    if (!r.ok || !r.data || !r.data.access_token) throw new Error((r.data && (r.data.msg || r.data.error_description || r.data.message)) || 'accesso non riuscito');
+    localStorage.setItem('auth_token', r.data.access_token);
+    localStorage.setItem('auth_refresh', r.data.refresh_token);
+    await initSupabase();
+    if (document.getElementById('login-overlay').style.display !== 'none') throw new Error('profilo non trovato');
+    avviso('✓ Entrato con il QR');
+  } catch (e) {
+    corpoQr('<div style="font-size:12.5px; color:#c0392b; margin:8px 0">❌ ' + esc(e.message) + '</div><button type="button" class="login-btn" style="background:#1d4f91; color:#fff; border:none; width:100%" onclick="avviaQrAccesso()">🔄 Nuovo QR</button>');
+  }
+}
+
+// Si aggiunge il riquadro sotto il modulo di accesso (sul PC il QR parte da solo)
+function aggiungiQrAlLogin() {
+  const wrap = document.getElementById('login-lista');
+  if (!wrap || document.getElementById('qr-accesso-box')) return;
+  const crea = wrap.querySelector('button[onclick="toggleCreaAccount()"]');
+  const div = document.createElement('div');
+  div.innerHTML = boxAccessoQrHTML();
+  if (crea) crea.parentNode.insertBefore(div.firstChild, crea); else wrap.appendChild(div.firstChild);
+  if (schermoGrande()) avviaQrAccesso();
+}
+new MutationObserver(function () {
+  const ov = document.getElementById('login-overlay');
+  if (ov && ov.style.display !== 'none') aggiungiQrAlLogin();
+}).observe(document.documentElement, { childList: true, subtree: true });
+
+/* ---------- Telefono: inquadrare il QR e confermare ---------- */
+
+function codiceDaTestoQr(t) {
+  const m = /[?&]qr=([A-Za-z0-9_-]{10,})/.exec(String(t || ''));
+  return m ? m[1] : null;
+}
+
+async function creaLettoreQR() {
+  if ('BarcodeDetector' in window) {
+    try {
+      const s = await window.BarcodeDetector.getSupportedFormats();
+      if (s.indexOf('qr_code') >= 0) return new window.BarcodeDetector({ formats: ['qr_code'] });
+    } catch (e) { /* si usa la libreria */ }
+  }
+  if (!window.BarcodeDetectionAPI) throw new Error('Lettore di QR non disponibile su questo dispositivo');
+  window.BarcodeDetectionAPI.setZXingModuleOverrides({ locateFile: function (file) { return new URL('js/vendor/' + file, location.href).href; } });
+  return new window.BarcodeDetectionAPI.BarcodeDetector({ formats: ['qr_code'] });
+}
+
+const LETTORE_QR = { stream: null, attivo: false };
+function chiudiLettoreQR() {
+  LETTORE_QR.attivo = false;
+  if (LETTORE_QR.stream) LETTORE_QR.stream.getTracks().forEach(function (t) { t.stop(); });
+  LETTORE_QR.stream = null;
+  const ov = document.getElementById('lettore-qr'); if (ov) ov.remove();
+}
+
+async function apriLettoreQR() {
+  chiudiLettoreQR();
+  const ov = document.createElement('div');
+  ov.id = 'lettore-qr';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:480; background:rgba(10,20,36,.92); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px; color:#fff; text-align:center';
+  ov.innerHTML = '<div style="font-size:18px; font-weight:800; margin-bottom:6px">📷 Fai entrare un PC</div>'
+    + '<div style="font-size:13px; opacity:.9; margin-bottom:10px">Inquadra il QR che vedi sulla schermata di accesso del PC</div>'
+    + '<div style="position:relative; width:min(80vw,320px); aspect-ratio:1; border-radius:16px; overflow:hidden; background:#000; border:3px solid #fff">'
+    + '<video id="lettore-qr-video" playsinline muted style="width:100%; height:100%; object-fit:cover"></video></div>'
+    + '<div id="lettore-qr-msg" style="font-size:13px; margin-top:10px; min-height:18px"></div>'
+    + '<button type="button" onclick="chiudiLettoreQR()" style="margin-top:12px; background:#fff; color:#0f1b2d; border:none; border-radius:999px; padding:10px 22px; font-weight:800">Annulla</button>';
+  document.body.appendChild(ov);
+  const msg = document.getElementById('lettore-qr-msg');
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Fotocamera non disponibile: apri il programma con Chrome o Safari');
+    LETTORE_QR.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const v = document.getElementById('lettore-qr-video');
+    if (!v) return chiudiLettoreQR();
+    v.srcObject = LETTORE_QR.stream;
+    await v.play();
+    const lettore = await creaLettoreQR();
+    LETTORE_QR.attivo = true;
+    const giro = async function () {
+      if (!LETTORE_QR.attivo) return;
+      try {
+        const codici = await lettore.detect(v);
+        for (const c of codici || []) {
+          const cod = codiceDaTestoQr(c.rawValue);
+          if (cod) { chiudiLettoreQR(); return confermaAccessoPC(cod); }
+        }
+        if (codici && codici.length) msg.textContent = 'Questo non è il QR di accesso del programma';
+      } catch (e) { /* fotogramma non leggibile */ }
+      setTimeout(giro, 250);
+    };
+    giro();
+  } catch (e) {
+    msg.innerHTML = '❌ ' + esc(e.message || 'Fotocamera non disponibile') + '<br><span style="opacity:.85">Puoi anche inquadrare il QR con la fotocamera del telefono e aprire il link.</span>';
+  }
+}
+
+async function confermaAccessoPC(codice) {
+  if (!auth || !auth.profilo) {
+    QR_DA_APPROVARE = codice;
+    avviso('Entra nel programma su questo telefono: poi ti chiedo di confermare l\'accesso del PC');
+    return;
+  }
+  let info;
+  try { info = await chiamaAccessoQr({ azione: 'info', codice: codice }, true); }
+  catch (e) { avviso('❌ ' + e.message, true); return; }
+  const nome = (auth.profilo && auth.profilo.nome) || 'il tuo utente';
+  const ok = await new Promise(function (risolvi) {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed; inset:0; z-index:490; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+    ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #1d4f91; padding:22px 24px; max-width:380px; width:100%; text-align:center">'
+      + '<div style="font-size:38px">💻</div><div style="font-size:19px; font-weight:800; color:#1d4f91; margin:4px 0">Far entrare questo PC?</div>'
+      + '<div style="font-size:14px; margin-bottom:4px"><b>' + esc(info.dispositivo || 'PC') + '</b></div>'
+      + '<div style="font-size:13px; color:var(--sub); margin-bottom:14px">Il PC entrerà nel programma come <b>' + esc(nome) + '</b>, con i tuoi permessi. Conferma solo se il PC è davanti a te.</div>'
+      + '<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap"><button type="button" data-r="no" style="background:var(--line); color:var(--ink); min-width:110px">Annulla</button>'
+      + '<button type="button" data-r="si" style="background:#2f9e5f; color:#fff; min-width:150px; font-weight:800">✓ Sì, fai entrare</button></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) {
+      const b = e.target.closest('button[data-r]');
+      if (!b && e.target !== ov) return;
+      ov.remove(); risolvi(!!b && b.dataset.r === 'si');
+    });
+  });
+  if (!ok) return;
+  try {
+    await chiamaAccessoQr({ azione: 'approva', codice: codice }, true);
+    avviso('✓ Fatto: il PC sta entrando come ' + nome);
+  } catch (e) { avviso('❌ ' + e.message, true); }
+}
+
+// Aperto dal link del QR (fotocamera del telefono): si chiede conferma appena l'utente è dentro
+(function () {
+  const cod = codiceDaTestoQr(location.search);
+  if (!cod) return;
+  QR_DA_APPROVARE = cod;
+  try { history.replaceState(null, '', location.pathname); } catch (e) { /* niente */ }
+})();
+setInterval(function () {
+  if (!QR_DA_APPROVARE || typeof auth === 'undefined' || !auth.profilo) return;
+  const ov = document.getElementById('login-overlay');
+  if (ov && ov.style.display !== 'none') return;
+  const c = QR_DA_APPROVARE; QR_DA_APPROVARE = null;
+  confermaAccessoPC(c);
+}, 1000);

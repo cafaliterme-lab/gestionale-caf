@@ -15,6 +15,17 @@ const GUIDA = [
 </ol>
 <p class="g-nota">I dati sono salvati online: quello che inserisce un operatore lo vedono subito anche gli altri, su PC e telefono. Il programma si aggiorna da solo ogni pochi secondi.</p><p><b>🎞️ Guida a slide</b>: in alto in questa finestra c'è il tasto per la guida a schermate, da sfogliare con ◀ ▶ (o con le frecce della tastiera, o scorrendo col dito). L'amministratore vede anche <b>🔐 Guida amministratore</b>, con le funzioni riservate (utenti, permessi, tipi di pratica, backup).</p><p><b>🔑 Password dimenticata?</b>: nella schermata di accesso, sotto Accedi. Scrivi la tua e-mail e premi <b>📧 Mandami il codice</b>: arriva un'e-mail dalla casella del CAF con un <b>codice di 6 cifre</b> (vale 15 minuti; controlla anche lo spam). Scrivi il codice e due volte la nuova password e premi <b>💾 Cambia password</b>, poi accedi. Se il codice non arriva, l'amministratore può cambiarti la password da Utenti e permessi.</p>` },
 
+  { id: 'accessoqr', icona: '📱', titolo: 'Entrare sul PC con il QR (senza password)', parole: 'qr accesso entrare pc telefono inquadra fai entrare un pc senza password whatsapp web login',
+    testo: `
+<p>Sul PC puoi entrare senza scrivere email e password, usando il telefono su cui sei già entrato nel programma (come WhatsApp Web).</p>
+<ol>
+<li>Sul <b>PC</b>, nella schermata di accesso, c'è il riquadro <b>📱 Entra con il telefono</b> con un <b>QR</b> (sul PC compare da solo; altrimenti premi <b>Mostra il QR</b>). Il QR cambia ogni 2 minuti.</li>
+<li>Sul <b>telefono</b>, nel programma, premi <b>📷 Fai entrare un PC</b> (nella barra in alto, accanto a "Cambia utente") e inquadra il QR. In alternativa puoi inquadrarlo con la fotocamera del telefono e aprire il link.</li>
+<li>Il telefono chiede <b>"Far entrare questo PC?"</b> con il tipo di PC: premi <b>✓ Sì, fai entrare</b>.</li>
+<li>In pochi secondi il PC entra nel programma <b>con lo stesso utente del telefono</b> e con i suoi permessi.</li>
+</ol>
+<p class="g-nota">Sicurezza: il QR non contiene la password, vale 2 minuti e si usa una volta sola. Senza la conferma sul telefono non entra nessuno, e un telefono che non è entrato nel programma non può far entrare un PC. Se un telefono viene perso, l'amministratore cambia la password di quell'utente. L'accesso con email e password resta sempre disponibile.</p>` },
+
   { id: 'contatori', icona: '🔢', titolo: 'I contatori in alto', parole: 'contatori totale pratiche lavorate da lavorare operatore congiunta vale 2 730 rinuncia',
     testo: `
 <p>I riquadri colorati in alto contano <b>solo le pratiche 730</b> (di tutti i tipi 730) dell'anno scelto:</p>
