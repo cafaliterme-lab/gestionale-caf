@@ -223,6 +223,8 @@ function parseDataIT(s){
   if(!m || +m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12 || +m[3] < 1900 || +m[3] > 2100) return null;
   return {g:+m[1], m:+m[2], a:+m[3]};
 }
+// Anno a cui conta un versamento al CAF: quello delle fatture che paga (scelto nel modulo), altrimenti l'anno della data
+function annoVersamento(v){ return Number(v && v.anno) || annoDiData(v && v.data); }
 function annoDiData(s){
   const d = parseDataIT(s);
   return d ? d.a : (new Date()).getFullYear();
@@ -394,7 +396,7 @@ function elencoAnniDisponibili(){
   anni.add(ANNO_INIZIO_PROTOCOLLO);
   anni.add((new Date()).getFullYear());
   state.pratiche.forEach(function(p){ anni.add(annoPratica(p)); });
-  (state.versamenti||[]).forEach(function(v){ anni.add(annoDiData(v.data)); });
+  (state.versamenti||[]).forEach(function(v){ anni.add(annoVersamento(v)); });
   return Array.from(anni).sort(function(a,b){ return a-b; });
 }
 let annoAttivoLocale = null;
@@ -940,7 +942,7 @@ async function esportaRegistroExcel(){
 
   const fattureEmesse = tutte.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const incassoLordo = tutte.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
-  const versAnno = (state.versamenti||[]).filter(function(v){ return annoDiData(v.data) === anno; });
+  const versAnno = (state.versamenti||[]).filter(function(v){ return annoVersamento(v) === anno; });
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
   const incasso = incassoLordo - versatoCaf;
   const DA_LAVORARE = STATI_DA_LAVORARE;
@@ -1631,7 +1633,7 @@ function render(){
       + '</div>';
     if(typeof posizionaPannelloScadenze === 'function') posizionaPannelloScadenze();
   }
-  const versAnno = (state.versamenti||[]).filter(function(v){ return annoDiData(v.data) === annoSel; });
+  const versAnno = (state.versamenti||[]).filter(function(v){ return annoVersamento(v) === annoSel; });
 
   const conti = conteggi730(pratAnno);
   const tot = conti.tot, daLavorare = conti.daFare, lavorate = conti.lav;
@@ -1657,7 +1659,7 @@ function render(){
     <div class="stat c5 verde"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE</span></div>
     <div class="stat c5 viola"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
     <div class="stat c5 blu"><b>${fmtEuro(versatoCaf)}</b><span>VERSAMENTI CAF</span></div>
-    <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso - speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SOLDI IN CASSA (incasso − versamenti CAF − spese sede)</span></div>
+    <div class="stat c5" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso - speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SOLDI IN CASSA (incasso − versamenti CAF − spese sede)${typeof cassaDivisa === 'function' ? (function(){ const d = cassaDivisa(annoSel); return '<br>💶 contanti ' + fmtEuro(d.contanti) + ' · 🏦 banca ' + fmtEuro(d.banca); })() : ''}</span></div>
     ${vedeGuadagni() ? `<div class="stat c5" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE${typeof totaleRimborsiCaf === 'function' && totaleRimborsiCaf(annoSel) > 0.004 ? ' (esclusi ' + fmtEuro(totaleRimborsiCaf(annoSel)) + ' rimborsati dal CAF)' : ''}</span></div>${typeof debitoAngelo === 'function' && debitoAngelo().totale ? `<div class="stat c5" style="background:#8e5bd6; border-color:#8e5bd6; color:#fff"><b>${fmtEuro(debitoAngelo().totale)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">DA RESTITUIRE AD ANGELO</span></div>` : ''}<div class="stat c5 gray"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO (meno spese sede)</span></div>` : ''}` : '') + (vBlocchi ? `
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true, 'GUADAGNO NETTO 730')}
     ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#0e8a8a', pratAnno.filter(function(p){ return !e730(p); }), false, 'GUADAGNO NETTO ALTRE PRATICHE')}
@@ -1955,10 +1957,12 @@ async function addPraticaInterna(){
   if(congCognome || congNome){ try{ await registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono); }catch(e){ console.error('archivio clienti coniuge', e); } }
 
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
+  let statoNuovo = documenti.mancanti.length ? 'arrivo' : (document.getElementById('f-stato').value || 'arrivo');
+  if(propostaStatoPagato(tipo, statoNuovo, compenso, pagato) && confirm('Il cliente ha pagato tutto (' + fmtEuro(pagato) + ').\n\nSalvo la pratica con lo stato "Pagato" invece di "' + statoLabel(statoNuovo) + '"?')) statoNuovo = 'pagato';
   const nuovaPratica = {
     anno: annoPr,
     nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, metodoPagamento, data: dataPratica, note,
-    stato: documenti.mancanti.length ? 'arrivo' : (document.getElementById('f-stato').value || 'arrivo'),
+    stato: statoNuovo,
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
     descrizioneTipo: descrizioneTipo,
@@ -2335,7 +2339,8 @@ function contabilitaCollaboratoreHTML(k, items){
     + tile('#8e5bd6', fmtEuro(inc), 'Incasso')
     + (conAcc ? tile('#0e7c86', fmtEuro(acc), 'Pagamenti effettuati')
     + tile((inc - acc) > 0 ? '#c0392b' : '#374151', fmtEuro(inc - acc), 'Da incassare (incasso − pagamenti)') : '')
-    + tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'Prezzo medio')
+    + tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'Prezzo medio (fatture ÷ pratiche)')
+    + tile('#b8860b', n ? fmtEuro(inc / n) : '—', 'Incasso medio (incasso ÷ pratiche)')
     + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:12.5px">'
     + METODI_PAGAMENTO.concat(pag[''].n ? [''] : []).map(function(m){ return '<span style="padding:3px 10px; border-radius:999px; background:var(--line)">' + ({ CONTANTI:'💶 Contanti', POS:'💳 POS', BONIFICO:'🏦 Bonifico' }[m] || '❔ Non indicato') + ': <b>' + fmtEuro(pag[m].inc) + '</b> (' + pag[m].n + ')</span>'; }).join('')
@@ -2471,6 +2476,17 @@ async function salvaModifica(id){
   if(campi.telefono || campi.telefonoFisso || campi.documentoScadenza || campi.email) data.clienti.salvaTelefono({ nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf || '', codiceFiscale: p.codiceFiscale || '', telefono: campi.telefono, telefonoFisso: campi.telefonoFisso, documentoScadenza: campi.documentoScadenza, email: campi.email });
   if(cc || cn) await aggiornaArchivioCliente(vecchiCong, { cognome: cc, nome: cn, dataNascita: campi.congData });
   if((cc || cn) && (campi.congCodiceFiscale || campi.congTelefono)) registraClienteSeNuovo(cc, cn, campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', campi.congTelefono);
+  // pagato tutto ma lo stato e' ancora "lavorata", "da pagare"...: si propone di passare a "Pagato"
+  if(propostaStatoPagato(campi.tipo, p.stato, campi.compenso, campi.pagato) && confirm('Il cliente ha pagato tutto (' + fmtEuro(campi.pagato) + ').\n\nPasso lo stato della pratica da "' + statoLabel(p.stato) + '" a "Pagato"?')){
+    const r2 = await data.pratiche.aggiorna(id, { stato: 'pagato' });
+    if(!(r2 && r2.error)) avviso('✓ Stato: Pagato');
+  }
+}
+// Stati da cui, a pagamento completo, si propone il passaggio a "Pagato"
+const STATI_PROPONI_PAGATO = ['lavorata', 'lavorata_da_fatturare', 'da_pagare'];
+function propostaStatoPagato(tipo, stato, compenso, pagato){
+  const pg = Number(pagato || 0), fa = Number(compenso || 0);
+  return !eColf(tipo) && STATI_PROPONI_PAGATO.indexOf(stato) >= 0 && pg > 0 && pg >= fa;
 }
 
 function rimuovi(id){
@@ -2719,14 +2735,15 @@ function bloccoIntroito(titolo, colore, lista, conMedia, nomeGuadagno){
   const inc = lista.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
   const n = sommaPeso(lista);
   const tile = function(bg, valore, etichetta){
-    return '<div class="stat '+(conMedia?'c5':'c4')+'" style="background:'+bg+'; border-color:'+bg+'; color:#fff"><b>'+valore+'</b><span style="color:rgba(255,255,255,.92); font-weight:600; letter-spacing:.03em">'+etichetta+'</span></div>';
+    return '<div class="stat '+(conMedia?'c3':'c4')+'" style="background:'+bg+'; border-color:'+bg+'; color:#fff"><b>'+valore+'</b><span style="color:rgba(255,255,255,.92); font-weight:600; letter-spacing:.03em">'+etichetta+'</span></div>';
   };
   return '<div style="flex-basis:100%; margin-top:10px; padding:8px 14px; border-radius:10px; background:'+colore+'; color:#fff; font-size:15px; font-weight:800; letter-spacing:.04em">'+esc(titolo)+'</div>'
     + tile(colore, n, 'PRATICHE')
     + tile('#2f9e5f', fmtEuro(fatt), 'FATTURE EMESSE')
     + tile('#8e5bd6', fmtEuro(inc), 'INCASSO')
     + (vedeGuadagni() ? tile('#c2185b', fmtEuro(inc-fatt), (nomeGuadagno || 'GUADAGNO NETTO') + ' (INCASSO − FATTURE)') : '')
-    + (conMedia ? tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'PREZZO MEDIO (FATTURE ÷ PRATICHE)') : '');
+    + (conMedia ? tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'PREZZO MEDIO (FATTURE ÷ PRATICHE)') : '')
+    + (conMedia ? tile('#b8860b', n ? fmtEuro(inc / n) : '—', 'INCASSO MEDIO (INCASSO ÷ PRATICHE)') : '');
 }
 
 // Pulsante 👁 per mostrare/nascondere ogni campo password, anche quelli creati dopo

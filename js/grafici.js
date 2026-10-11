@@ -69,7 +69,7 @@ function renderGrafici() {
   const anno = annoAttivo();
   document.getElementById('grafici-anno').textContent = anno;
   const pratAnno = (state.pratiche || []).filter(function (p) { return annoPratica(p) === anno; });
-  const versAnno = (state.versamenti || []).filter(function (v) { return annoDiData(v.data) === anno; });
+  const versAnno = (state.versamenti || []).filter(function (v) { return annoVersamento(v) === anno; });
   const fatture = sommaCampo(pratAnno, 'compenso');
   const incasso = sommaCampo(pratAnno, 'pagato');
   const caf = sommaCampo(versAnno, 'importo');

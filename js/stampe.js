@@ -77,7 +77,7 @@ function stampaSuTotale() { return tuttiTipi() && tuttiStati() && !STAMPA.operat
 function versamentiFiltrati() {
   const da = isoNum(STAMPA.da), a = isoNum(STAMPA.a);
   return (state.versamenti || []).filter(function (v) {
-    if (annoDiData(v.data) !== STAMPA.anno) return false;
+    if (annoVersamento(v) !== STAMPA.anno) return false;
     const d = dataNum(v.data);
     if (da && (d === null || d < da)) return false;
     if (a && (d === null || d > a)) return false;

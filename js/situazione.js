@@ -40,11 +40,18 @@ function calcolaSituazioneData() {
   const pratiche = (state.pratiche || []).filter(function (p) { return !p.annullata && dentro(dataNum(dataPraticaSit(p))); });
   const versamenti = (state.versamenti || []).filter(function (v) { return dentro(dataNum(v.data)); });
   const mesi = {};
-  const mese = function (n) { const k = Math.floor(n / 100); return mesi[k] || (mesi[k] = { fatt: 0, fpag: 0, inc: 0, vers: 0 }); };
+  const mese = function (n) { const k = Math.floor(n / 100); return mesi[k] || (mesi[k] = { fatt: 0, fpag: 0, inc: 0, vers: 0, spese: 0 }); };
   pratiche.forEach(function (p) { const m = mese(dataNum(dataPraticaSit(p))); m.fatt += Number(p.compenso || 0); if (Number(p.pagato || 0) > 0) m.fpag += Number(p.compenso || 0); m.inc += Number(p.pagato || 0); });
   versamenti.forEach(function (v) { mese(dataNum(v.data)).vers += Number(v.importo || 0); });
-  const tot = { fatt: 0, fpag: 0, inc: 0, vers: 0 };
-  Object.keys(mesi).forEach(function (k) { tot.fatt += mesi[k].fatt; tot.fpag += mesi[k].fpag; tot.inc += mesi[k].inc; tot.vers += mesi[k].vers; });
+  // spese sede a carico della sede (quelle rimborsate dal CAF nei versamenti non contano): come i "Soldi in cassa" della Contabilità
+  const rimb = typeof rimborsiCafSpese === 'function' ? rimborsiCafSpese() : {};
+  (state.speseSede || []).forEach(function (s) {
+    const n = dataNum(s.data); if (!dentro(n)) return;
+    const carico = Number(s.importo || 0) - (typeof rimborsoCafSpesa === 'function' ? rimborsoCafSpesa(s, rimb) : 0);
+    if (carico) mese(n).spese += carico;
+  });
+  const tot = { fatt: 0, fpag: 0, inc: 0, vers: 0, spese: 0 };
+  Object.keys(mesi).forEach(function (k) { tot.fatt += mesi[k].fatt; tot.fpag += mesi[k].fpag; tot.inc += mesi[k].inc; tot.vers += mesi[k].vers; tot.spese += mesi[k].spese; });
   return { pratiche: pratiche, versamenti: versamenti, mesi: mesi, tot: tot };
 }
 
@@ -60,26 +67,27 @@ function situazioneDataHTML(r, perStampa) {
     return '<div style="flex:1; min-width:180px; padding:10px 12px; border-radius:12px; border:2px solid ' + col + '; background:var(--card, #fff)"><div style="font-size:20px; font-weight:900; color:' + col + '">' + fmtEuro(valore) + '</div><div style="font-size:11.5px; font-weight:800; text-transform:uppercase">' + etichetta + '</div><div style="font-size:11px; color:#5b6b82">' + formula + '</div></div>';
   };
   const guadagni = typeof vedeGuadagni !== 'function' || vedeGuadagni();
-  let progF = 0, progI = 0, progV = 0;
+  let progF = 0, progI = 0, progV = 0, progS = 0;
   const nPagate = r.pratiche.filter(function (p) { return Number(p.pagato || 0) > 0; }).length;
   const righe = Object.keys(r.mesi).sort().map(function (k) {
     const m = r.mesi[k];
-    progF += m.fpag; progI += m.inc; progV += m.vers;
+    progF += m.fpag; progI += m.inc; progV += m.vers; progS += m.spese;
     const nome = NOMI_MESI[Number(String(k).slice(4, 6)) - 1] + ' ' + String(k).slice(0, 4);
     const num = function (v, colora) { return '<td style="text-align:right' + (colora ? '; font-weight:700; color:' + (v < -0.004 ? '#c0392b' : v > 0.004 ? '#1f8a70' : 'inherit') : '') + '">' + fmtEuro(v) + '</td>'; };
-    return '<tr><td><b>' + nome + '</b></td>' + num(m.fpag) + num(m.inc) + num(m.vers) + num(progF) + num(progI) + num(progV) + (guadagni ? num(progI - progF, true) : '') + num(progI - progV, true) + '</tr>';
+    return '<tr><td><b>' + nome + '</b></td>' + num(m.fpag) + num(m.inc) + num(m.vers) + num(progF) + num(progI) + num(progV) + num(progS) + (guadagni ? num(progI - progF - progS, true) : '') + num(progI - progV - progS, true) + '</tr>';
   }).join('');
   return '<div style="display:flex; gap:8px; flex-wrap:wrap">'
     + tile(t.fpag, 'Fatture pagate', '#2f9e5f', nPagate + ' pratiche pagate · emesse in tutto ' + fmtEuro(t.fatt))
     + tile(t.inc, 'Introiti (incassato)', '#8e5bd6', '')
     + tile(t.vers, 'Versamenti al CAF', '#2f7de1', r.versamenti.length + ' versamenti')
+    + tile(t.spese, 'Spese sede', '#b35f0c', 'a carico della sede (escluse quelle rimborsate dal CAF)')
     + '</div>'
     + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">'
-    + (guadagni ? diffTile(t.inc - t.fpag, 'Introiti − fatture pagate', 'incassato meno le fatture delle pratiche pagate') : '')
-    + diffTile(t.inc - t.vers, 'Introiti − versamenti', 'soldi incassati rimasti dopo i versamenti al CAF')
+    + (guadagni ? diffTile(t.inc - t.fpag - t.spese, 'Guadagno: introiti − fatture pagate − spese sede', 'incassato meno le fatture delle pratiche pagate e le spese della sede') : '')
+    + diffTile(t.inc - t.vers - t.spese, 'Soldi in cassa: introiti − versamenti − spese sede', 'soldi rimasti dopo i versamenti al CAF e le spese della sede')
     + diffTile(t.fpag - t.vers, 'Fatture pagate − versamenti', 'fatture pagate non ancora coperte dai versamenti al CAF')
     + '</div>'
-    + (righe ? '<div class="tab-wrap" style="margin-top:12px"><table class="tab-proto"><thead><tr><th>Mese</th><th style="text-align:right">Fatture pagate</th><th style="text-align:right">Introiti</th><th style="text-align:right">Versamenti CAF</th><th style="text-align:right">Fatt. pagate progr.</th><th style="text-align:right">Introiti progr.</th><th style="text-align:right">Versam. progr.</th>' + (guadagni ? '<th style="text-align:right">Introiti − fatt. pagate</th>' : '') + '<th style="text-align:right">Introiti − vers.</th></tr></thead><tbody>' + righe + '</tbody></table></div>'
+    + (righe ? '<div class="tab-wrap" style="margin-top:12px"><table class="tab-proto"><thead><tr><th>Mese</th><th style="text-align:right">Fatture pagate</th><th style="text-align:right">Introiti</th><th style="text-align:right">Versamenti CAF</th><th style="text-align:right">Fatt. pagate progr.</th><th style="text-align:right">Introiti progr.</th><th style="text-align:right">Versam. progr.</th><th style="text-align:right">Spese sede progr.</th>' + (guadagni ? '<th style="text-align:right">Guadagno progr.</th>' : '') + '<th style="text-align:right">Soldi in cassa progr.</th></tr></thead><tbody>' + righe + '</tbody></table></div>'
       + '<div style="font-size:12px; color:#5b6b82; margin-top:6px">Le colonne "progr." sommano i mesi dall\'inizio del periodo fino a quel mese: l\'ultima riga è la situazione alla data scelta.</div>'
       : '<div class="empty">Nessuna pratica o versamento nel periodo scelto</div>');
 }

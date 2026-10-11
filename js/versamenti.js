@@ -53,6 +53,7 @@ function renderVersamentiCaf(vlist, versatoCaf) {
     }).join('') + '<button type="button" onclick="BON_N++; ridisegnaVersamentiCaf()" style="padding:3px 12px; font-size:12.5px; background:none; border:1px dashed #2f7de1; color:#2f7de1; border-radius:999px">+ Aggiungi riga</button></div>'
     + '<div class="full" id="vc-totale" style="font-size:15px"></div>'
     + '<div><label>Data del versamento</label><input id="vc-data" value="' + vcData + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>'
+    + '<div><label title="Es. versamento fatto a gennaio per le fatture di dicembre: scegli l\'anno di dicembre">Anno delle fatture</label><input id="vc-anno" value="' + (val('vc-anno') || (typeof annoAttivo === 'function' ? annoAttivo() : '')) + '" placeholder="AAAA" inputmode="numeric" maxlength="4" oninput="this.value=this.value.replace(/\\D/g,\'\')"></div>'
     + '<div><label>Causale</label><input id="vc-causale" placeholder="Facoltativo" value="' + val('vc-causale') + '"></div>'
     + '</div>'
     + '<div style="text-align:left"><button class="btn-add" onclick="aggiungiVersamento()">+ Aggiungi versamento</button></div>'
@@ -62,6 +63,7 @@ function renderVersamentiCaf(vlist, versatoCaf) {
       if (Number(v.cassa) || Number(v.bonifico)) parti.push('fatture ' + fmtEuro(v.importo) + (Number(v.cassa) ? ' − spese ' + fmtEuro(v.cassa) : '') + (Number(v.bonifico) ? ' − bonifici ' + fmtEuro(v.bonifico) : '') + ' = versato ' + fmtEuro(v.versato));
       return '<div class="caf-row" style="align-items:flex-start">'
         + '<span>' + esc(v.data || '-') + (v.causale ? ' · ' + esc(v.causale) : '')
+        + (v.anno && Number(v.anno) !== annoDiData(v.data) ? '<div class="sub2" style="color:#1d4f91; font-weight:700">📅 Conta per le fatture del ' + esc(v.anno) + '</div>' : '')
         + (v.fatturaDal || v.fatturaAl ? '<div class="sub2">🧾 Fatture dal n. ' + esc(v.fatturaDal || '…') + ' al n. ' + esc(v.fatturaAl || '…') + '</div>' : '')
         + (parti.length ? '<div class="sub2">' + parti.join(' · ') + '</div>' : '')
         + (Array.isArray(v.bonificiElenco) && v.bonificiElenco.length ? '<div class="sub2">🏦 Bonifici: ' + v.bonificiElenco.map(function (r) { return esc(r.nome || '') + (r.data ? ' (' + esc(r.data) + ')' : '') + ' ' + fmtEuro(r.importo); }).join(' · ') + '</div>' : '')
@@ -82,6 +84,78 @@ function renderVersamentiCaf(vlist, versatoCaf) {
 
 // Quadratura della cassa dell'anno: incassato − versato al CAF − spese sede = soldi in cassa,
 // e il controllo che torni con guadagno netto + fatture ancora da versare
+// Soldi in cassa divisi tra contanti (cassetto) e banca (POS e bonifici).
+// Entrate: il pagato delle pratiche secondo il tipo di pagamento (senza tipo = contanti).
+// Uscite: il bollettino si paga in contanti; i bonifici detratti nel versamento escono dalla banca;
+// le spese detratte e le spese a carico della sede escono dal canale con cui sono state pagate.
+// La somma contanti + banca è uguale ai "Soldi in cassa" (incasso − versamenti CAF − spese sede).
+function cassaDivisa(anno) {
+  const banca = function (m) { return m === 'POS' || m === 'BONIFICO'; };
+  const prat = (state.pratiche || []).filter(function (p) { return !p.annullata && (!anno || annoPratica(p) === anno); });
+  const r = { incContanti: 0, incBanca: 0, bollettini: 0, bonifici: 0, detrContanti: 0, detrBanca: 0, speseContanti: 0, speseBanca: 0 };
+  prat.forEach(function (p) { const v = Number(p.pagato || 0); if (banca(p.metodoPagamento)) r.incBanca += v; else r.incContanti += v; });
+  const spesePerId = {};
+  (state.speseSede || []).forEach(function (s) { spesePerId[s.id] = s; });
+  (state.versamenti || []).filter(function (v) { return !anno || annoVersamento(v) === anno; }).forEach(function (v) {
+    const elenco = Array.isArray(v.cassaElenco) ? v.cassaElenco : [];
+    const cassa = v.cassa != null ? Number(v.cassa || 0) : elenco.reduce(function (t, x) { return t + Number(x.importo || 0); }, 0);
+    const bon = Number(v.bonifico || 0);
+    r.bollettini += v.versato != null && v.versato !== '' ? Number(v.versato || 0) : Number(v.importo || 0) - cassa - bon;
+    r.bonifici += bon;
+    let inBanca = 0;
+    elenco.forEach(function (x) { const sp = x.spesaId && spesePerId[x.spesaId]; if (sp && banca(sp.metodoPagamento) && !sp.prelevatiAngelo) inBanca += Number(x.importo || 0); });
+    r.detrBanca += inBanca; r.detrContanti += cassa - inBanca;
+  });
+  const rimb = typeof rimborsiCafSpese === 'function' ? rimborsiCafSpese() : {};
+  (typeof speseAnno === 'function' && anno ? speseAnno(anno) : (state.speseSede || [])).forEach(function (s) {
+    const carico = Number(s.importo || 0) - (typeof rimborsoCafSpesa === 'function' ? rimborsoCafSpesa(s, rimb) : 0);
+    if (banca(s.metodoPagamento) && !s.prelevatiAngelo) r.speseBanca += carico; else r.speseContanti += carico;
+  });
+  r.contanti = r.incContanti - r.bollettini - r.detrContanti - r.speseContanti;
+  r.banca = r.incBanca - r.bonifici - r.detrBanca - r.speseBanca;
+  return r;
+}
+
+// Conte della cassa (contanti contati nel cassetto), salvate sul server
+let CONTE_CASSA = { anno: null, lista: [], caricato: false };
+async function caricaConteCassa(anno) {
+  try {
+    const { data: righe, error } = await supabase.from('conte_cassa').select('*').eq('anno', anno).order('creato_il', { ascending: false });
+    CONTE_CASSA = { anno: anno, lista: error ? [] : (righe || []), caricato: true };
+  } catch (e) { CONTE_CASSA = { anno: anno, lista: [], caricato: true }; }
+  const box = document.getElementById('conta-cassa-elenco'); if (box) box.innerHTML = elencoConteHTML();
+}
+function elencoConteHTML() {
+  const l = CONTE_CASSA.lista.slice(0, 5);
+  if (!l.length) return '<div style="font-size:12px; color:var(--sub)">Nessuna conta salvata.</div>';
+  return l.map(function (c) {
+    const diff = Number(c.contati) - Number(c.calcolati || 0), ok = Math.abs(diff) < 0.01;
+    return '<div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px; padding:3px 0; border-bottom:1px dashed var(--line)"><span>' + new Date(c.creato_il).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + (c.creato_da ? ' · ' + esc(c.creato_da) : '') + '</span>'
+      + '<span>contati <b>' + fmtEuro(c.contati) + '</b> · previsti ' + fmtEuro(c.calcolati) + ' · <b style="color:' + (ok ? '#1a7f37' : '#c0392b') + '">' + (ok ? '✓ torna' : (diff > 0 ? '+' : '') + fmtEuro(diff)) + '</b></span></div>';
+  }).join('');
+}
+function provaContaCassa() {
+  const el = document.getElementById('conta-cassa-importo'), out = document.getElementById('conta-cassa-esito');
+  if (!el || !out) return;
+  const v = typeof parseImporto === 'function' ? parseImporto(el.value) : Number(String(el.value).replace(',', '.'));
+  if (!el.value.trim()) { out.innerHTML = ''; return; }
+  const previsti = cassaDivisa(annoAttivo()).contanti, diff = Math.round((v - previsti) * 100) / 100;
+  out.innerHTML = Math.abs(diff) < 0.01 ? '<b style="color:#1a7f37">✅ Torna: nel cassetto ci sono esattamente i contanti previsti.</b>'
+    : '<b style="color:#c0392b">' + (diff > 0 ? '🔴 Nel cassetto ci sono ' + fmtEuro(diff) + ' in più' : '🔴 Nel cassetto mancano ' + fmtEuro(-diff)) + '</b> rispetto ai contanti previsti (' + fmtEuro(previsti) + '). Controlla incassi, spese e versamenti non registrati.';
+}
+async function salvaContaCassa() {
+  const el = document.getElementById('conta-cassa-importo');
+  const v = el ? parseImporto(el.value) : 0;
+  if (!el || !el.value.trim()) { avviso('Scrivi quanti contanti hai contato', true); return; }
+  const anno = annoAttivo();
+  const riga = { anno: anno, contati: v, calcolati: Math.round(cassaDivisa(anno).contanti * 100) / 100, creato_da: ((auth.profilo && auth.profilo.nome) || '').toUpperCase() };
+  const { error } = await supabase.from('conte_cassa').insert(riga);
+  if (error) { avviso('❌ Conta non salvata: ' + error.message, true); return; }
+  el.value = ''; const out = document.getElementById('conta-cassa-esito'); if (out) out.innerHTML = '';
+  avviso('✓ Conta della cassa salvata');
+  caricaConteCassa(anno);
+}
+
 function quadraturaCassaHTML(versatoCaf) {
   const anno = typeof annoAttivo === 'function' ? annoAttivo() : null;
   const prat = (state.pratiche || []).filter(function (p) { return !p.annullata && (!anno || typeof annoPratica !== 'function' || annoPratica(p) === anno); });
@@ -104,6 +178,20 @@ function quadraturaCassaHTML(versatoCaf) {
     + riga('−', 'Versato al CAF (fatture coperte)', versatoCaf, BLU, '#e8f0fb')
     + riga('−', 'Spese sede a carico della sede (escluse quelle rimborsate dal CAF)', spese, ARANCIO, '#fdf1e6')
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; margin-top:6px; background:' + colCassa + '; color:#fff"><span style="font-weight:800">= SOLDI IN CASSA</span><b style="font-size:20px">' + fmtEuro(cassa) + '</b></div>'
+    + (function () {
+      const d = cassaDivisa(anno);
+      if (!CONTE_CASSA.caricato || CONTE_CASSA.anno !== anno) setTimeout(function () { caricaConteCassa(anno); }, 0);
+      return '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px">'
+        + '<div style="flex:1; min-width:150px; padding:7px 10px; border-radius:8px; background:#e8f6ee; border-left:5px solid ' + VERDE + '">💶 di cui <b>contanti nel cassetto</b><div style="font-size:16px; font-weight:800; color:' + (d.contanti < -0.004 ? ROSSO : VERDE) + '">' + fmtEuro(d.contanti) + '</div></div>'
+        + '<div style="flex:1; min-width:150px; padding:7px 10px; border-radius:8px; background:#e8f0fb; border-left:5px solid ' + BLU + '">🏦 di cui <b>in banca</b> (POS e bonifici)<div style="font-size:16px; font-weight:800; color:' + (d.banca < -0.004 ? ROSSO : BLU) + '">' + fmtEuro(d.banca) + '</div></div></div>'
+        + '<div style="margin-top:8px; padding:9px 10px; border-radius:10px; border:2px dashed ' + VERDE + '">'
+        + '<div style="font-weight:800; color:' + VERDE + '">🧮 Conta della cassa</div>'
+        + '<div style="font-size:12px; color:var(--sub); margin:2px 0 6px">Conta i contanti nel cassetto e scrivili qui: il programma ti dice se tornano con i contanti previsti (' + fmtEuro(d.contanti) + ').</div>'
+        + '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center"><input id="conta-cassa-importo" type="text" inputmode="decimal" value="' + esc((document.getElementById('conta-cassa-importo') || {}).value || '') + '" placeholder="Contanti contati, es. 350,00" oninput="provaContaCassa()" style="flex:1; min-width:150px; max-width:220px">'
+        + (typeof puo === 'function' && puo('caf', true) ? '<button type="button" onclick="salvaContaCassa()" style="background:' + VERDE + '; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:800; cursor:pointer">💾 Salva la conta</button>' : '') + '</div>'
+        + '<div id="conta-cassa-esito" style="font-size:12.5px; margin-top:6px">' + ((document.getElementById('conta-cassa-esito') || {}).innerHTML || '') + '</div>'
+        + '<div style="font-size:12px; font-weight:700; margin-top:6px">Ultime conte salvate</div><div id="conta-cassa-elenco">' + elencoConteHTML() + '</div></div>';
+    })()
     + avvisoBox(torna ? VERDE : ROSSO, torna ? '#e8f6ee' : '#fdecea', (torna ? '✅ ' : '❌ ') + 'Controllo: guadagno netto <b>' + fmtEuro(guad) + '</b> + fatture ancora da versare al CAF <b>' + fmtEuro(daVers) + '</b> = <b>' + fmtEuro(guad + daVers) + '</b> ' + (torna ? '— torna con la cassa' : '— non torna con la cassa'))
     + (daVers > 0.004 ? avvisoBox(ROSSO, '#fdecea', '🔴 In cassa ci sono <b>' + fmtEuro(daVers) + '</b> di fatture non ancora versate al CAF: non sono guadagno.') : '')
     + (daVers < -0.004 ? avvisoBox(ROSSO, '#fdecea', '🔴 Hai versato <b>' + fmtEuro(-daVers) + '</b> in più delle fatture registrate: controlla i numeri e gli importi delle fatture nelle pratiche.') : '')
@@ -262,6 +350,11 @@ async function rimuoviVersamento(id) {
   if (r && r.error) return;
   avviso('🗑️ Versamento eliminato');
 }
+// Anno delle fatture pagate (vuoto o strano: l'anno di protocollo scelto in alto)
+function annoFattureForm() {
+  const n = parseInt((document.getElementById('vc-anno') || {}).value, 10);
+  return n >= 2000 && n <= 2100 ? n : (typeof annoAttivo === 'function' ? annoAttivo() : null);
+}
 function letturaFormVersamento() {
   const num = function (id) { const el = document.getElementById(id); const v = el ? parseImporto(el.value) : 0; return v > 0 ? v : 0; };
   const elenco = [];
@@ -305,11 +398,14 @@ function aggiungiVersamento() {
   if (f.versato < 0) return errore('Spese e bonifici da detrarre sono più alti dell\'importo delle fatture');
   const dal = (document.getElementById('vc-dal').value || '').trim(), al = (document.getElementById('vc-al').value || '').trim();
   if (dal && al && Number(dal) > Number(al)) return errore('Il numero "dalla fattura" deve essere più piccolo di "alla fattura"');
+  const annoF = annoFattureForm(), dataV = document.getElementById('vc-data').value.trim() || todayIT();
+  if (annoF && annoF !== annoDiData(dataV) && !confirm('Il versamento del ' + dataV + ' conterà per le fatture del ' + annoF + ' (contabilità del ' + annoF + ').\n\nConfermi?')) return;
   const nuovo = {
     importo: f.totale, versato: f.versato, pos: f.pos, cassa: f.cassa, cassaElenco: f.elenco, bonifico: f.bonifico, bonificiElenco: f.bonifici,
     data: document.getElementById('vc-data').value.trim() || todayIT(),
     causale: document.getElementById('vc-causale').value.trim(),
     fatturaDal: dal, fatturaAl: al,
+    anno: annoFattureForm(),
     operatore: ((auth.profilo && auth.profilo.nome) || '').toUpperCase()
   };
   ['vc-dal', 'vc-al', 'vc-importo', 'vc-causale'].forEach(function (id) { document.getElementById(id).value = ''; });
@@ -319,6 +415,7 @@ function aggiungiVersamento() {
   RIGHE_CASSA = 3;
   VC_SPESE = [];
   document.getElementById('vc-data').value = todayIT();
+  const ea = document.getElementById('vc-anno'); if (ea && typeof annoAttivo === 'function') ea.value = annoAttivo();
   document.getElementById('vc-suggerimento').innerHTML = '';
   ridisegnaVersamentiCaf();
   data.versamenti.aggiungi(nuovo);
