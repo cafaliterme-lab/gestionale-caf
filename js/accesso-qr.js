@@ -36,7 +36,7 @@ function boxAccessoQrHTML() {
   return '<div id="qr-accesso-box" style="margin:14px 0 4px; padding:12px; border:2px solid #1d4f91; border-radius:14px; background:color-mix(in srgb, #1d4f91 5%, var(--card)); text-align:center">'
     + '<div style="font-weight:800; color:#1d4f91; font-size:15px">📱 Entra con il telefono</div>'
     + '<div id="qr-accesso-corpo">'
-    + '<div style="font-size:12.5px; color:var(--sub); margin:4px 0 8px">Sul telefono, nel programma, premi <b>📷 Fai entrare un PC</b> e inquadra il QR.</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin:4px 0 8px">Inquadra il QR con la <b>fotocamera del telefono</b> e tocca il link che compare.</div>'
     + '<button type="button" class="login-btn" style="background:#1d4f91; color:#fff; border:none; width:100%" onclick="avviaQrAccesso()">Mostra il QR</button></div></div>';
 }
 
@@ -61,7 +61,7 @@ async function nuovoQrAccesso() {
     QR_ACCESSO.scade = Date.now() + (d.secondi || 120) * 1000;
     QR_ACCESSO.giri++;
     corpoQr('<div style="width:200px; height:200px; margin:8px auto; background:#fff; padding:6px; border-radius:10px">' + qrSvg(indirizzoApp() + '?qr=' + d.codice) + '</div>'
-      + '<div style="font-size:12.5px; color:var(--sub)">Sul telefono: <b>📷 Fai entrare un PC</b> e inquadra il QR.<br>Il PC entra con l\'utente del telefono.</div>'
+      + '<div style="font-size:12.5px; color:var(--sub)">Inquadra il QR con la <b>fotocamera del telefono</b>, tocca il link e conferma.<br>Il PC entra con l\'utente del telefono.</div>'
       + '<div id="qr-accesso-stato" style="font-size:12px; margin-top:6px; color:var(--sub)"></div>');
     controllaQrAccesso();
   } catch (e) {
@@ -113,7 +113,16 @@ async function entraConQr(d) {
 // Si aggiunge il riquadro sotto il modulo di accesso (sul PC il QR parte da solo)
 function aggiungiQrAlLogin() {
   const wrap = document.getElementById('login-lista');
-  if (!wrap || document.getElementById('qr-accesso-box')) return;
+  if (!wrap) return;
+  // telefono aperto dal QR ma non ancora entrato: si spiega cosa fare (solo la prima volta)
+  if (QR_DA_APPROVARE && !document.getElementById('qr-primo-accesso')) {
+    const av = document.createElement('div');
+    av.id = 'qr-primo-accesso';
+    av.style.cssText = 'margin:0 0 12px; padding:10px 12px; border-radius:12px; background:#fff4e5; border:2px solid #d98b1e; color:#7a4a05; font-size:13px; text-align:left';
+    av.innerHTML = '<b>📱 Stai facendo entrare un PC.</b><br>Su questo telefono non sei ancora entrato: entra qui con email e password <b>solo questa volta</b>. Poi confermi l\'accesso del PC; le prossime volte basterà inquadrare il QR.';
+    wrap.insertBefore(av, wrap.firstChild);
+  }
+  if (document.getElementById('qr-accesso-box') || QR_DA_APPROVARE) return;
   const crea = wrap.querySelector('button[onclick="toggleCreaAccount()"]');
   const div = document.createElement('div');
   div.innerHTML = boxAccessoQrHTML();

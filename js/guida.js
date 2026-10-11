@@ -19,12 +19,12 @@ const GUIDA = [
     testo: `
 <p>Sul PC puoi entrare senza scrivere email e password, usando il telefono su cui sei già entrato nel programma (come WhatsApp Web).</p>
 <ol>
-<li>Sul <b>PC</b>, nella schermata di accesso, c'è il riquadro <b>📱 Entra con il telefono</b> con un <b>QR</b> (sul PC compare da solo; altrimenti premi <b>Mostra il QR</b>). Il QR cambia ogni 2 minuti.</li>
-<li>Sul <b>telefono</b>, nel programma, premi <b>📷 Fai entrare un PC</b> (nella barra in alto, accanto a "Cambia utente") e inquadra il QR. In alternativa puoi inquadrarlo con la fotocamera del telefono e aprire il link.</li>
-<li>Il telefono chiede <b>"Far entrare questo PC?"</b> con il tipo di PC: premi <b>✓ Sì, fai entrare</b>.</li>
-<li>In pochi secondi il PC entra nel programma <b>con lo stesso utente del telefono</b> e con i suoi permessi.</li>
+<li>Sul <b>PC</b>, nella schermata di accesso, c'è il riquadro <b>📱 Entra con il telefono</b> con un <b>QR</b> (sul PC compare da solo; altrimenti premi <b>Mostra il QR</b>). Il QR cambia ogni 3 minuti.</li>
+<li>Inquadra il QR con la normale <b>fotocamera del telefono</b> e tocca il link che compare.</li>
+<li>Il telefono chiede <b>"Far entrare questo PC?"</b> con il tipo di PC: premi <b>✓ Sì, fai entrare</b>. In pochi secondi il PC entra nel programma <b>con lo stesso utente del telefono</b> e con i suoi permessi.</li>
+<li><b>Solo la prima volta</b> su quel telefono, se non sei mai entrato nel programma con il browser che si apre, il telefono ti chiede email e password; poi se le ricorda e le volte successive basta inquadrare e confermare.</li>
 </ol>
-<p class="g-nota">Sicurezza: il QR non contiene la password, vale 2 minuti e si usa una volta sola. Senza la conferma sul telefono non entra nessuno, e un telefono che non è entrato nel programma non può far entrare un PC. Se un telefono viene perso, l'amministratore cambia la password di quell'utente. L'accesso con email e password resta sempre disponibile.</p>` },
+<p class="g-nota">Sicurezza: il QR non contiene la password, vale 2 minuti e si usa una volta sola. Senza la conferma sul telefono non entra nessuno, e un telefono che non è entrato nel programma non può far entrare un PC. Se un telefono viene perso, l'amministratore cambia la password di quell'utente. L'accesso con email e password resta sempre disponibile. In alternativa alla fotocamera, dentro il programma c'è anche il tasto <b>📷 Fai entrare un PC</b> nella barra in alto.</p>` },
 
   { id: 'contatori', icona: '🔢', titolo: 'I contatori in alto', parole: 'contatori totale pratiche lavorate da lavorare operatore congiunta vale 2 730 rinuncia',
     testo: `

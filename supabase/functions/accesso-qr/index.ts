@@ -4,10 +4,10 @@
 // 2) Telefono (gia' entrato) { azione: "info", codice }            → dispositivo che chiede l'accesso
 //                            { azione: "approva", codice }         → il PC potra' entrare con l'utente del telefono
 // 3) PC                      { azione: "stato", id, segreto }      → "attesa" | "scaduto" | "ok" (+ token per entrare)
-// Il codice vale 2 minuti e si usa una volta sola; sul server restano solo le impronte (SHA-256) di codice e segreto.
+// Il codice vale 3 minuti e si usa una volta sola; sul server restano solo le impronte (SHA-256) di codice e segreto.
 const URL_SB = Deno.env.get("SUPABASE_URL")!
 const CHIAVE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-const SECONDI = 120
+const SECONDI = 180
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
       if (!utente) return risposta({ error: "Per far entrare un PC devi prima essere entrato nel programma su questo telefono" }, 401)
       const riga = await rigaDaCodice(String(b.codice || ""))
       if (!riga) return risposta({ error: "QR non valido: sul PC premi \"Nuovo QR\" e inquadralo di nuovo" }, 404)
-      if (new Date(riga.scade_il).getTime() < adesso) return risposta({ error: "QR scaduto: sul PC premi \"Nuovo QR\" e inquadralo di nuovo" }, 410)
+      if (new Date(riga.scade_il).getTime() < adesso) return risposta({ error: "QR scaduto: inquadra di nuovo il QR che vedi adesso sul PC" }, 410)
       if (riga.approvato_il) return risposta({ error: "Questo QR è già stato usato" }, 409)
       if (azione === "info") return risposta({ dispositivo: riga.dispositivo || "PC", scade: riga.scade_il })
       const prof = await rest("profili?select=id,nome&id=eq." + utente.id)
