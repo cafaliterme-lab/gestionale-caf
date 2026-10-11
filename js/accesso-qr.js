@@ -128,7 +128,7 @@ function aggiungiQrAlLogin() {
   // telefono aperto dal QR ma non ancora entrato: si spiega cosa fare (solo la prima volta)
   let haAccesso = false;
   try { haAccesso = !!localStorage.getItem('auth_token'); } catch (e) { /* niente */ }
-  if (QR_DA_APPROVARE && !haAccesso && !document.getElementById('qr-primo-accesso')) {
+  if (QR_DA_APPROVARE && !haAccesso && !chiaveTelefono() && !document.getElementById('qr-primo-accesso')) {
     const av = document.createElement('div');
     av.id = 'qr-primo-accesso';
     av.style.cssText = 'margin:0 0 12px; padding:10px 12px; border-radius:12px; background:#fff4e5; border:2px solid #d98b1e; color:#7a4a05; font-size:13px; text-align:left';
@@ -214,16 +214,45 @@ async function apriLettoreQR() {
   }
 }
 
+// Chiave del telefono: dopo il primo accesso col QR il telefono resta abilitato (anche se nel programma si preme Esci)
+function chiaveTelefono() { try { return JSON.parse(localStorage.getItem('qr_telefono') || 'null'); } catch (e) { return null; } }
+function salvaChiaveTelefono(k) { try { localStorage.setItem('qr_telefono', JSON.stringify({ id: k.id, segreto: k.segreto })); } catch (e) { /* niente */ } }
+function togliChiaveTelefono() { try { localStorage.removeItem('qr_telefono'); } catch (e) { /* niente */ } }
+function utenteEntrato() { return typeof auth !== 'undefined' && auth && !!auth.profilo; }
+
+// Messaggio sopra a tutto (anche sopra la schermata di accesso), si chiude da solo
+function esitoQR(testo, ok) {
+  const v = document.getElementById('esito-qr'); if (v) v.remove();
+  const d = document.createElement('div');
+  d.id = 'esito-qr';
+  d.style.cssText = 'position:fixed; left:50%; top:20px; transform:translateX(-50%); z-index:500; max-width:92vw; padding:14px 20px; border-radius:14px; font-size:15px; font-weight:800; color:#fff; box-shadow:0 10px 30px rgba(0,0,0,.3); background:' + (ok ? '#2f9e5f' : '#c0392b');
+  d.textContent = testo;
+  document.body.appendChild(d);
+  setTimeout(function () { d.remove(); }, ok ? 4000 : 7000);
+}
+
 async function confermaAccessoPC(codice) {
-  if (!auth || !auth.profilo) {
+  let chiave = chiaveTelefono();
+  const entrato = utenteEntrato();
+  if (!chiave && !entrato) {
     QR_DA_APPROVARE = codice;
-    avviso('Entra nel programma su questo telefono: poi ti chiedo di confermare l\'accesso del PC');
+    esitoQR('Entra nel programma su questo telefono (solo la prima volta): poi confermi l\'accesso del PC', false);
     return;
   }
+  const corpo = function (azione) { return { azione: azione, codice: codice, telefono: chiave || undefined, conAccesso: entrato }; };
   let info;
-  try { info = await chiamaAccessoQr({ azione: 'info', codice: codice }, true); }
-  catch (e) { avviso('❌ ' + e.message, true); return; }
-  const nome = (auth.profilo && auth.profilo.nome) || 'il tuo utente';
+  try { info = await chiamaAccessoQr(corpo('info'), entrato); }
+  catch (e) {
+    if (chiave && /telefono_non_valido/.test(e.message)) {
+      // chiave non più valida (es. tolta dall'amministratore): serve di nuovo email e password
+      togliChiaveTelefono();
+      QR_DA_APPROVARE = codice;
+      esitoQR('Questo telefono va riabilitato: entra con email e password, poi confermi', false);
+      return;
+    }
+    esitoQR('❌ ' + e.message, false); return;
+  }
+  const nome = info.nome || (entrato && auth.profilo.nome) || 'il tuo utente';
   const ok = await new Promise(function (risolvi) {
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed; inset:0; z-index:490; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
@@ -242,12 +271,16 @@ async function confermaAccessoPC(codice) {
   });
   if (!ok) return;
   try {
-    await chiamaAccessoQr({ azione: 'approva', codice: codice }, true);
-    avviso('✓ Fatto: il PC sta entrando come ' + nome);
-  } catch (e) { avviso('❌ ' + e.message, true); }
+    await chiamaAccessoQr(corpo('approva'), entrato);
+    esitoQR('✓ Fatto: il PC sta entrando come ' + nome, true);
+  } catch (e) { esitoQR('❌ ' + e.message, false); return; }
+  // primo accesso da questo telefono: si abilita, così le prossime volte basta inquadrare
+  if (!chiave && entrato) {
+    try { salvaChiaveTelefono(await chiamaAccessoQr({ azione: 'registra_telefono', nome: nomeDispositivo() }, true)); } catch (e) { /* si riproverà la prossima volta */ }
+  }
 }
 
-// Aperto dal link del QR (fotocamera del telefono): si chiede conferma appena l'utente è dentro
+// Aperto dal link del QR (fotocamera del telefono)
 (function () {
   const cod = codiceDaTestoQr(location.search);
   if (!cod) return;
@@ -255,9 +288,13 @@ async function confermaAccessoPC(codice) {
   try { history.replaceState(null, '', location.pathname); } catch (e) { /* niente */ }
 })();
 setInterval(function () {
-  if (!QR_DA_APPROVARE || typeof auth === 'undefined' || !auth.profilo) return;
-  const ov = document.getElementById('login-overlay');
-  if (ov && ov.style.display !== 'none') return;
+  if (!QR_DA_APPROVARE) return;
+  // telefono già abilitato: si chiede subito la conferma, senza aspettare di entrare nel programma
+  if (!chiaveTelefono()) {
+    if (!utenteEntrato()) return;
+    const ov = document.getElementById('login-overlay');
+    if (ov && ov.style.display !== 'none') return;
+  }
   const c = QR_DA_APPROVARE; QR_DA_APPROVARE = null;
   confermaAccessoPC(c);
-}, 1000);
+}, 700);

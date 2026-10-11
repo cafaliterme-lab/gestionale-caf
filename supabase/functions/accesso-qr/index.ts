@@ -1,7 +1,7 @@
 // Accesso al programma su un PC inquadrando un QR con il telefono (come WhatsApp Web).
 // 1) PC (senza accesso)      { azione: "crea", dispositivo }       → { id, codice, segreto, scade }
 //    Il PC mostra un QR con il "codice"; il "segreto" lo tiene solo lui.
-// 2) Telefono (gia' entrato) { azione: "info", codice }            → dispositivo che chiede l'accesso
+// 2) Telefono (gia' entrato o abilitato) { azione: "info", codice, telefono? }            → dispositivo che chiede l'accesso
 //                            { azione: "approva", codice }         → il PC potra' entrare con l'utente del telefono
 // 3) PC                      { azione: "stato", id, segreto }      → "attesa" | "scaduto" | "ok" (+ token per entrare)
 // Il codice vale 3 minuti e si usa una volta sola; sul server restano solo le impronte (SHA-256) di codice e segreto.
@@ -72,19 +72,44 @@ Deno.serve(async (req) => {
       return risposta({ id: righe[0].id, codice, segreto, scade: righe[0].scade_il, secondi: SECONDI })
     }
 
-    if (azione === "info" || azione === "approva") {
+    // Telefono abilitato: resta "chiave" per far entrare i PC anche se nel programma si preme Esci
+    if (azione === "registra_telefono") {
       const utente = await utenteDaRichiesta(req)
-      if (!utente) return risposta({ error: "Per far entrare un PC devi prima essere entrato nel programma su questo telefono" }, 401)
+      if (!utente) return risposta({ error: "Accesso scaduto: entra di nuovo nel programma" }, 401)
+      const segreto = casuale(32)
+      const righe = await rest("telefoni_qr", "POST", { utente_id: utente.id, nome: String(b.nome || "").slice(0, 120), segreto_hash: await impronta("t:" + segreto) })
+      return risposta({ id: righe[0].id, segreto })
+    }
+
+    if (azione === "info" || azione === "approva") {
+      // chi approva: il telefono abilitato (chiave salvata sul telefono) oppure l'utente entrato nel programma
+      let utenteId: string | null = null
+      const tel = b.telefono || null
+      if (tel && tel.id && tel.segreto) {
+        const t = await rest("telefoni_qr?select=*&id=eq." + encodeURIComponent(String(tel.id)))
+        const r = t && t[0]
+        if (r && !r.revocato_il && r.segreto_hash === (await impronta("t:" + String(tel.segreto))) && Date.now() - new Date(r.creato_il).getTime() < 365 * 86400000) {
+          utenteId = r.utente_id
+          if (azione === "approva") rest("telefoni_qr?id=eq." + r.id, "PATCH", { ultimo_uso: new Date().toISOString() }, "return=minimal").catch(() => {})
+        } else if (!b.conAccesso) {
+          return risposta({ error: "telefono_non_valido" }, 401)
+        }
+      }
+      if (!utenteId) {
+        const utente = await utenteDaRichiesta(req)
+        if (!utente) return risposta({ error: "Per far entrare un PC devi prima essere entrato nel programma su questo telefono" }, 401)
+        utenteId = utente.id
+      }
       const riga = await rigaDaCodice(String(b.codice || ""))
-      if (!riga) return risposta({ error: "QR non valido: sul PC premi \"Nuovo QR\" e inquadralo di nuovo" }, 404)
+      if (!riga) return risposta({ error: "QR non valido: inquadra il QR che vedi adesso sul PC" }, 404)
       if (new Date(riga.scade_il).getTime() < adesso) return risposta({ error: "QR scaduto: inquadra di nuovo il QR che vedi adesso sul PC" }, 410)
       if (riga.approvato_il) return risposta({ error: "Questo QR è già stato usato" }, 409)
-      if (azione === "info") return risposta({ dispositivo: riga.dispositivo || "PC", scade: riga.scade_il })
-      const prof = await rest("profili?select=id,nome&id=eq." + utente.id)
+      const prof = await rest("profili?select=id,nome&id=eq." + utenteId)
       if (!prof || !prof[0]) return risposta({ error: "Utente non abilitato al programma" }, 403)
-      const agg = await rest("accessi_qr?id=eq." + riga.id + "&approvato_il=is.null", "PATCH", { utente_id: utente.id, approvato_il: new Date().toISOString() })
+      if (azione === "info") return risposta({ dispositivo: riga.dispositivo || "PC", scade: riga.scade_il, nome: prof[0].nome || "" })
+      const agg = await rest("accessi_qr?id=eq." + riga.id + "&approvato_il=is.null", "PATCH", { utente_id: utenteId, approvato_il: new Date().toISOString() })
       if (!agg || !agg.length) return risposta({ error: "Questo QR è già stato usato" }, 409)
-      return risposta({ ok: true, nome: prof[0].nome || utente.email, dispositivo: riga.dispositivo || "PC" })
+      return risposta({ ok: true, nome: prof[0].nome || "", dispositivo: riga.dispositivo || "PC" })
     }
 
     if (azione === "stato") {

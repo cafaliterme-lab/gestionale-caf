@@ -22,9 +22,9 @@ const GUIDA = [
 <li>Sul <b>PC</b>, nella schermata di accesso, c'è il riquadro <b>📱 Entra con il telefono</b> con un <b>QR</b> (sul PC compare da solo; altrimenti premi <b>Mostra il QR</b>). Il QR cambia ogni 3 minuti.</li>
 <li>Inquadra il QR con la normale <b>fotocamera del telefono</b> e tocca il link che compare.</li>
 <li>Il telefono chiede <b>"Far entrare questo PC?"</b> con il tipo di PC: premi <b>✓ Sì, fai entrare</b>. In pochi secondi il PC entra nel programma <b>con lo stesso utente del telefono</b> e con i suoi permessi.</li>
-<li><b>Solo la prima volta</b> su quel telefono, se non sei mai entrato nel programma con il browser che si apre, il telefono ti chiede email e password; poi se le ricorda e le volte successive basta inquadrare e confermare.</li>
+<li><b>Solo la prima volta</b> il telefono ti chiede email e password. Dopo la prima conferma il telefono resta <b>abilitato</b>: le volte successive basta inquadrare e confermare, anche se nel programma sul telefono hai premuto "Esci".</li>
 </ol>
-<p class="g-nota">Sicurezza: il QR non contiene la password, vale 2 minuti e si usa una volta sola. Senza la conferma sul telefono non entra nessuno, e un telefono che non è entrato nel programma non può far entrare un PC. Se un telefono viene perso, l'amministratore cambia la password di quell'utente. L'accesso con email e password resta sempre disponibile. In alternativa alla fotocamera, dentro il programma c'è anche il tasto <b>📷 Fai entrare un PC</b> nella barra in alto.</p>` },
+<p class="g-nota">Sicurezza: il QR non contiene la password, vale 2 minuti e si usa una volta sola. Senza la conferma sul telefono non entra nessuno, e un telefono che non è entrato nel programma non può far entrare un PC. Se un telefono viene perso, avvisa l'amministratore: il telefono va disabilitato e la password cambiata. Se il telefono usa la navigazione privata di Safari, il telefono non resta abilitato e chiederà ogni volta la password. L'accesso con email e password resta sempre disponibile. In alternativa alla fotocamera, dentro il programma c'è anche il tasto <b>📷 Fai entrare un PC</b> nella barra in alto.</p>` },
 
   { id: 'contatori', icona: '🔢', titolo: 'I contatori in alto', parole: 'contatori totale pratiche lavorate da lavorare operatore congiunta vale 2 730 rinuncia',
     testo: `
