@@ -7,7 +7,17 @@
 const SUPABASE_URL = 'https://mmaqmprukghyazlibphv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tYXFtcHJ1a2doeWF6bGlicGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NDUyMTUsImV4cCI6MjEwNjUyMTIxNX0.ByRES--bYHZG6o_BX8Ha0YzqfcQIIr-D08Q-AbR8bhs';
 
-async function rinnovaToken() {
+// Un solo rinnovo alla volta (piu' richieste insieme con l'accesso scaduto usano lo stesso rinnovo)
+let RINNOVO_IN_CORSO = null;
+function rinnovaToken() {
+  if (!RINNOVO_IN_CORSO) RINNOVO_IN_CORSO = rinnovaTokenOra().finally(function () { RINNOVO_IN_CORSO = null; });
+  return RINNOVO_IN_CORSO;
+}
+// Scadenza dell'accesso scritta dentro il token (in secondi)
+function scadenzaToken(tok) {
+  try { return JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp || 0; } catch (e) { return 0; }
+}
+async function rinnovaTokenOra() {
   const refresh = localStorage.getItem('auth_refresh');
   if (!refresh) return false;
   try {
@@ -27,7 +37,12 @@ async function rinnovaToken() {
 }
 
 async function fetchSupabase(endpoint, method = 'GET', body = null, extraHeaders = {}) {
-  const token = localStorage.getItem('auth_token');
+  let token = localStorage.getItem('auth_token');
+  // accesso scaduto (dura circa un'ora, es. telefono rimasto chiuso): si rinnova prima di chiedere i dati
+  if (token && !endpoint.startsWith('/auth/v1/token') && !endpoint.startsWith('/auth/v1/verify')) {
+    const exp = scadenzaToken(token);
+    if (exp && exp * 1000 < Date.now() + 30000 && await rinnovaToken()) token = localStorage.getItem('auth_token');
+  }
   const headers = {
     'apikey': SUPABASE_ANON_KEY,
     'Content-Type': 'application/json',
@@ -42,11 +57,14 @@ async function fetchSupabase(endpoint, method = 'GET', body = null, extraHeaders
 
   let res = await fetch(`${SUPABASE_URL}${endpoint}`, options);
   // Token scaduto (dura ~1 ora): rinnova con il refresh token e riprova una volta
-  if (res.status === 401 && token && !endpoint.startsWith('/auth/v1/token') && await rinnovaToken()) {
+  let text = await res.text();
+  // 401, o 403 con "token scaduto": si rinnova l'accesso e si riprova una volta
+  const scaduto = res.status === 401 || (res.status === 403 && /expired|bad_jwt|JWT/i.test(text));
+  if (scaduto && token && !endpoint.startsWith('/auth/v1/token') && await rinnovaToken()) {
     headers['Authorization'] = `Bearer ${localStorage.getItem('auth_token')}`;
     res = await fetch(`${SUPABASE_URL}${endpoint}`, options);
+    text = await res.text();
   }
-  const text = await res.text();
   const data = text ? JSON.parse(text) : null;
 
   return { data, status: res.status, ok: res.ok };

@@ -3,10 +3,14 @@
    Telefono (già entrato nel programma): "📷 Fai entrare un PC" → inquadra il QR → conferma →
    il PC entra con lo stesso utente del telefono. Funzione sul server: "accesso-qr". */
 
-const QR_ACCESSO = { id: null, segreto: null, scade: 0, timer: null, giri: 0, attivo: false };
+const QR_ACCESSO = { id: null, segreto: null, scade: 0, timer: null, giri: 0, attivo: false, gen: 0 };
 let QR_DA_APPROVARE = null; // codice arrivato aprendo il link del QR (fotocamera del telefono)
 
-function chiamaAccessoQr(corpo, conUtente, giaRinnovato) {
+async function chiamaAccessoQr(corpo, conUtente, giaRinnovato) {
+  if (conUtente && !giaRinnovato) {
+    const t0 = localStorage.getItem('auth_token'), exp = t0 && typeof scadenzaToken === 'function' ? scadenzaToken(t0) : 0;
+    if (exp && exp * 1000 < Date.now() + 30000 && typeof rinnovaToken === 'function') await rinnovaToken();
+  }
   const tok = conUtente ? localStorage.getItem('auth_token') : null;
   return fetch(SUPABASE_URL + '/functions/v1/accesso-qr', {
     method: 'POST',
@@ -41,37 +45,43 @@ function boxAccessoQrHTML() {
 }
 
 function avviaQrAccesso() {
+  fermaQrAccesso();
   QR_ACCESSO.attivo = true;
   QR_ACCESSO.giri = 0;
-  nuovoQrAccesso();
+  nuovoQrAccesso(QR_ACCESSO.gen);
 }
+// ogni avvio ha il suo numero: un controllo rimasto in sospeso da un avvio precedente si ferma da solo
 function fermaQrAccesso() {
+  QR_ACCESSO.gen++;
   QR_ACCESSO.attivo = false;
   if (QR_ACCESSO.timer) clearTimeout(QR_ACCESSO.timer);
   QR_ACCESSO.timer = null;
 }
 function corpoQr(html) { const c = document.getElementById('qr-accesso-corpo'); if (c) c.innerHTML = html; return !!c; }
 
-async function nuovoQrAccesso() {
+async function nuovoQrAccesso(gen) {
+  if (gen !== QR_ACCESSO.gen) return;
   if (QR_ACCESSO.timer) clearTimeout(QR_ACCESSO.timer);
   if (!corpoQr('<div style="font-size:13px; color:var(--sub); padding:30px 0">Preparo il QR…</div>')) return fermaQrAccesso();
   try {
     const d = await chiamaAccessoQr({ azione: 'crea', dispositivo: nomeDispositivo() });
+    if (gen !== QR_ACCESSO.gen) return;
     QR_ACCESSO.id = d.id; QR_ACCESSO.segreto = d.segreto;
     QR_ACCESSO.scade = Date.now() + (d.secondi || 120) * 1000;
     QR_ACCESSO.giri++;
     corpoQr('<div style="width:200px; height:200px; margin:8px auto; background:#fff; padding:6px; border-radius:10px">' + qrSvg(indirizzoApp() + '?qr=' + d.codice) + '</div>'
       + '<div style="font-size:12.5px; color:var(--sub)">Inquadra il QR con la <b>fotocamera del telefono</b>, tocca il link e conferma.<br>Il PC entra con l\'utente del telefono.</div>'
       + '<div id="qr-accesso-stato" style="font-size:12px; margin-top:6px; color:var(--sub)"></div>');
-    controllaQrAccesso();
+    controllaQrAccesso(gen);
   } catch (e) {
+    if (gen !== QR_ACCESSO.gen) return;
     corpoQr('<div style="font-size:12.5px; color:#c0392b; margin:8px 0">❌ ' + esc(e.message) + '</div><button type="button" class="login-btn" style="background:#1d4f91; color:#fff; border:none; width:100%" onclick="avviaQrAccesso()">Riprova</button>');
     fermaQrAccesso();
   }
 }
 
-async function controllaQrAccesso() {
-  if (!QR_ACCESSO.attivo) return;
+async function controllaQrAccesso(gen) {
+  if (!QR_ACCESSO.attivo || gen !== QR_ACCESSO.gen) return;
   const overlay = document.getElementById('login-overlay');
   if (!overlay || overlay.style.display === 'none' || !document.getElementById('qr-accesso-corpo')) return fermaQrAccesso();
   const restano = Math.max(0, Math.round((QR_ACCESSO.scade - Date.now()) / 1000));
@@ -80,16 +90,17 @@ async function controllaQrAccesso() {
   if (!document.hidden) {
     try {
       const d = await chiamaAccessoQr({ azione: 'stato', id: QR_ACCESSO.id, segreto: QR_ACCESSO.segreto });
+      if (gen !== QR_ACCESSO.gen) return;
       if (d.stato === 'ok') return entraConQr(d);
       if (d.stato === 'scaduto' || restano <= 0) {
         // si rinnova da solo per un po'; poi serve un clic (così il PC lasciato acceso non chiama il server all'infinito)
-        if (QR_ACCESSO.giri < 15) return nuovoQrAccesso();
+        if (QR_ACCESSO.giri < 15) return nuovoQrAccesso(gen);
         corpoQr('<div style="font-size:12.5px; color:var(--sub); margin:8px 0">Il QR è scaduto.</div><button type="button" class="login-btn" style="background:#1d4f91; color:#fff; border:none; width:100%" onclick="avviaQrAccesso()">🔄 Nuovo QR</button>');
         return fermaQrAccesso();
       }
     } catch (e) { /* rete assente: si riprova */ }
   }
-  QR_ACCESSO.timer = setTimeout(controllaQrAccesso, 2000);
+  QR_ACCESSO.timer = setTimeout(function () { controllaQrAccesso(gen); }, 2000);
 }
 
 async function entraConQr(d) {
@@ -115,7 +126,9 @@ function aggiungiQrAlLogin() {
   const wrap = document.getElementById('login-lista');
   if (!wrap) return;
   // telefono aperto dal QR ma non ancora entrato: si spiega cosa fare (solo la prima volta)
-  if (QR_DA_APPROVARE && !document.getElementById('qr-primo-accesso')) {
+  let haAccesso = false;
+  try { haAccesso = !!localStorage.getItem('auth_token'); } catch (e) { /* niente */ }
+  if (QR_DA_APPROVARE && !haAccesso && !document.getElementById('qr-primo-accesso')) {
     const av = document.createElement('div');
     av.id = 'qr-primo-accesso';
     av.style.cssText = 'margin:0 0 12px; padding:10px 12px; border-radius:12px; background:#fff4e5; border:2px solid #d98b1e; color:#7a4a05; font-size:13px; text-align:left';
