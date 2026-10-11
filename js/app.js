@@ -1256,7 +1256,7 @@ function firmaDati(){
 function staModificando(){
   const a = document.activeElement;
   if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'checkbox' && a.type !== 'button') return true;
-  if(document.querySelector('.scanner-overlay.open, #invio-multiplo, #finestra-stampa, #editor-documenti, .conferma-scritta, #popup-nuovo-contribuente')) return true;
+  if(document.querySelector('.scanner-overlay.open, #invio-multiplo, #finestra-stampa, #editor-documenti, .conferma-scritta, #popup-nuovo-contribuente, #popup-dettaglio-contab')) return true;
   return [state.pratiche, state.versamenti, state.isee].some(function(l){ return (l||[]).some(function(x){ return x._editing || x._confirmDelete || x._editingFattura; }); });
 }
 async function aggiornaDaServer(){
@@ -2326,24 +2326,28 @@ function contabilitaCollaboratoreHTML(k, items){
   const lav = sommaPeso(items.filter(eLavorata)), daFare = sommaPeso(items.filter(eDaLavorare));
   const pag = datiPerPagamento(items);
   const col = coloreCollaboratore(k);
-  const tile = function(colore, valore, etichetta){
-    return '<div style="flex:1; min-width:110px; padding:8px 10px; border-radius:10px; background:' + colore + '; color:#fff; text-align:center"><div style="font-size:17px; font-weight:800">' + valore + '</div><div style="font-size:10.5px; font-weight:700; opacity:.92; text-transform:uppercase">' + etichetta + '</div></div>';
+  // pratiche usate per i riquadri: servono al dettaglio che si apre toccando un riquadro
+  DETTAGLIO_CONTAB[k] = items;
+  const kAttr = esc(String(k).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+  const clic = function(voce){ return ' onclick="dettaglioContab(\'' + kAttr + '\',\'' + voce + '\')" title="Tocca per vedere il dettaglio"'; };
+  const tile = function(colore, valore, etichetta, voce){
+    return '<div class="tile-dett"' + clic(voce) + ' style="flex:1; min-width:110px; padding:8px 10px; border-radius:10px; background:' + colore + '; color:#fff; text-align:center; cursor:pointer"><div style="font-size:17px; font-weight:800">' + valore + '</div><div style="font-size:10.5px; font-weight:700; opacity:.92; text-transform:uppercase">' + etichetta + '</div><div style="font-size:9.5px; opacity:.75; margin-top:2px">🔍 dettaglio</div></div>';
   };
   return '<div style="margin-bottom:10px; padding:10px; border-radius:12px; border:2px solid ' + col + '">'
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><b style="color:' + col + '">📊 Contabilità ' + esc(k) + ' – ' + annoAttivo() + '</b>' + bottoneStampaCollaboratore(k) + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap">'
-    + tile('#1d4f91', n, 'Pratiche')
-    + tile('#2f9e5f', lav, 'Lavorate')
-    + tile(daFare ? '#e57373' : '#8a8f98', daFare, 'Da lavorare')
-    + tile('#2f9e5f', fmtEuro(fatt), 'Fatture emesse')
-    + tile('#8e5bd6', fmtEuro(inc), 'Incasso')
-    + (conAcc ? tile('#0e7c86', fmtEuro(acc), 'Pagamenti effettuati')
-    + tile((inc - acc) > 0 ? '#c0392b' : '#374151', fmtEuro(inc - acc), 'Da incassare (incasso − pagamenti)') : '')
-    + tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'Prezzo medio (fatture ÷ pratiche)')
-    + tile('#b8860b', n ? fmtEuro(inc / n) : '—', 'Incasso medio (incasso ÷ pratiche)')
+    + tile('#1d4f91', n, 'Pratiche', 'pratiche')
+    + tile('#2f9e5f', lav, 'Lavorate', 'lavorate')
+    + tile(daFare ? '#e57373' : '#8a8f98', daFare, 'Da lavorare', 'dalavorare')
+    + tile('#2f9e5f', fmtEuro(fatt), 'Fatture emesse', 'fatture')
+    + tile('#8e5bd6', fmtEuro(inc), 'Incasso', 'incasso')
+    + (conAcc ? tile('#0e7c86', fmtEuro(acc), 'Pagamenti effettuati', 'pagamenti')
+    + tile((inc - acc) > 0 ? '#c0392b' : '#374151', fmtEuro(inc - acc), 'Da incassare (incasso − pagamenti)', 'daincassare') : '')
+    + tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'Prezzo medio (fatture ÷ pratiche)', 'prezzomedio')
+    + tile('#b8860b', n ? fmtEuro(inc / n) : '—', 'Incasso medio (incasso ÷ pratiche)', 'incassomedio')
     + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:12.5px">'
-    + METODI_PAGAMENTO.concat(pag[''].n ? [''] : []).map(function(m){ return '<span style="padding:3px 10px; border-radius:999px; background:var(--line)">' + ({ CONTANTI:'💶 Contanti', POS:'💳 POS', BONIFICO:'🏦 Bonifico' }[m] || '❔ Non indicato') + ': <b>' + fmtEuro(pag[m].inc) + '</b> (' + pag[m].n + ')</span>'; }).join('')
+    + METODI_PAGAMENTO.concat(pag[''].n ? [''] : []).map(function(m){ return '<span' + clic('metodo:' + m) + ' style="padding:3px 10px; border-radius:999px; background:var(--line); cursor:pointer">' + ({ CONTANTI:'💶 Contanti', POS:'💳 POS', BONIFICO:'🏦 Bonifico' }[m] || '❔ Non indicato') + ': <b>' + fmtEuro(pag[m].inc) + '</b> (' + pag[m].n + ')</span>'; }).join('')
     + '</div>'
     + (!conAcc ? '</div>' : '<div style="margin-top:10px; padding-top:8px; border-top:1px dashed var(--line)">'
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap"><b style="color:#0e7c86">💰 Pagamenti effettuati (acconti) ' + annoAttivo() + ': ' + fmtEuro(acc) + '</b>'
@@ -2369,7 +2373,10 @@ function stampaCollaboratore(k){
   const items = state.pratiche.filter(function(p){ return (p.tipo || 'SENZA TIPO') === k && annoPratica(p) === anno; });
   const w = window.open('', '_blank');
   if(!w){ alert('Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito.'); return; }
-  const riquadro = contabilitaCollaboratoreHTML(k, items).replace(/<button[\s\S]*?<\/button>/g, '');
+  const primaDett = DETTAGLIO_CONTAB[k];
+  const riquadro = contabilitaCollaboratoreHTML(k, items).replace(/<button[\s\S]*?<\/button>/g, '')
+    .replace(/ onclick="dettaglioContab\([^"]*\)"/g, '').replace(/<div style="font-size:9\.5px; opacity:\.75; margin-top:2px">🔍 dettaglio<\/div>/g, '');
+  if(primaDett) DETTAGLIO_CONTAB[k] = primaDett; // il dettaglio a video resta quello del registro (con i filtri)
   const tabella = tabellaPraticheGruppoHTML(items, k).replace(/<td><button[\s\S]*?<\/button><\/td>/g, '<td></td>');
   w.document.open();
   w.document.write('<!doctype html><html lang="it"><head><meta charset="utf-8"><title>' + esc(k) + ' ' + anno + '</title><style>@page{size:A4 landscape; margin:10mm} body{font-family:Arial,Helvetica,sans-serif; font-size:11.5px; color:#0f1b2d; --sub:#5b6b82; --line:#e3e8ef; -webkit-print-color-adjust:exact; print-color-adjust:exact} h1{font-size:16px; color:#1d4f91; margin:0 0 6px} table{width:100%; border-collapse:collapse; margin-top:8px} th,td{border:1px solid #cfd8e3; padding:4px 6px; text-align:left} th{background:#1d4f91; color:#fff} th:last-child,td:last-child{display:none} .sub2{font-size:10px; color:#5b6b82} .barra button{padding:8px 16px; margin:0 6px 10px 0} @media print{.barra{display:none}}</style></head><body>'
@@ -2377,6 +2384,109 @@ function stampaCollaboratore(k){
     + '<h1>CAF CISL Alì Terme – ' + esc(k) + ' – anno ' + anno + '</h1><div style="margin-bottom:8px; color:#5b6b82">Stampato il ' + new Date().toLocaleDateString('it-IT') + ' · ' + sommaPeso(items) + ' pratiche (le congiunte valgono 2)</div>'
     + riquadro + tabella + '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>');
   w.document.close();
+}
+// Dettaglio di un riquadro della contabilita' del collaboratore: si apre toccando il riquadro
+var DETTAGLIO_CONTAB = {};
+function dettaglioContab(k, voce){
+  const items = (DETTAGLIO_CONTAB[k] || []).slice().sort(function(a,b){ return a.numero - b.numero; });
+  const accLista = accontiDi(annoAttivo(), function(t){ return t === k; }).slice().sort(function(a,b){
+    const da = parseDataIT(a.data), db = parseDataIT(b.data);
+    return (da ? da.a*10000 + da.m*100 + da.g : 0) - (db ? db.a*10000 + db.m*100 + db.g : 0);
+  });
+  const n = sommaPeso(items);
+  const fatt = items.reduce(function(t,p){ return t + Number(p.compenso||0); }, 0);
+  const inc = items.reduce(function(t,p){ return t + Number(p.pagato||0); }, 0);
+  const acc = accLista.reduce(function(t,a){ return t + Number(a.importo||0); }, 0);
+  const nomeMetodo = { CONTANTI:'💶 Contanti', POS:'💳 POS', BONIFICO:'🏦 Bonifico', '':'❔ Non indicato' };
+  const box = 'padding:10px 12px; border-radius:12px; background:var(--line); font-size:14px; margin-bottom:10px; line-height:1.5';
+  const titoloSez = function(t){ return '<div style="font-weight:800; margin:12px 0 4px">' + t + '</div>'; };
+  const vuoto = function(t){ return '<div style="font-size:13px; color:var(--sub); padding:6px 0">' + t + '</div>'; };
+  // una riga per pratica: protocollo, data, cliente, stato e (se serve) un importo a destra
+  const rigaPratica = function(p, importo, extra){
+    return '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13.5px">'
+      + '<div style="min-width:0"><b>' + esc(formattaProtocollo(p)) + '</b> · ' + esc(p.data || '-') + '<br>' + esc((p.nome || '-').toUpperCase())
+      + (p.congiunta || p.congCognome || p.congNome ? ' <span style="color:var(--sub)">(congiunta, vale 2)</span>' : '')
+      + '<div style="font-size:12px; color:var(--sub)">' + pallino(p.stato) + esc(statoLabel(p.stato)) + (extra ? ' · ' + extra : '') + '</div></div>'
+      + '<div style="display:flex; align-items:center; gap:8px; flex-shrink:0">' + (importo !== undefined ? '<b>' + fmtEuro(importo) + '</b>' : '')
+      + '<button type="button" data-apri="' + esc(p.id) + '" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer">Apri</button></div></div>';
+  };
+  const rigaAcconto = function(a){
+    return '<div style="display:flex; justify-content:space-between; gap:8px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13.5px"><span>' + esc(a.data)
+      + (a.metodoPagamento ? ' · ' + esc(a.metodoPagamento) : '') + (a.note ? ' · ' + esc(a.note) : '') + (a.creatoDa ? ' <span style="color:var(--sub)">(' + esc(a.creatoDa) + ')</span>' : '')
+      + '</span><b>' + fmtEuro(a.importo) + '</b></div>';
+  };
+  const totale = function(etichetta, valore){ return '<div style="display:flex; justify-content:space-between; padding:8px 0 0; font-size:15px; font-weight:800"><span>' + etichetta + '</span><span>' + valore + '</span></div>'; };
+  const elencoPratiche = function(lista){ return lista.length ? lista.map(function(p){ return rigaPratica(p); }).join('') + totale('Totale', sommaPeso(lista) + ' pratiche') : vuoto('Nessuna pratica'); };
+  const elencoFatture = function(){
+    return items.length ? items.map(function(p){ return rigaPratica(p, Number(p.compenso||0), Number(p.compenso||0) ? '' : '<span style="color:#c0392b">fattura da inserire</span>'); }).join('') + totale('Totale fatture', fmtEuro(fatt)) : vuoto('Nessuna pratica');
+  };
+  const pagate = items.filter(function(p){ return Number(p.pagato||0) > 0; });
+  const elencoIncassi = function(lista){
+    return lista.length ? lista.map(function(p){ return rigaPratica(p, Number(p.pagato||0), esc(nomeMetodo[METODI_PAGAMENTO.indexOf(p.metodoPagamento) >= 0 ? p.metodoPagamento : ''])); }).join('')
+      + totale('Totale incassato', fmtEuro(lista.reduce(function(t,p){ return t + Number(p.pagato||0); }, 0))) : vuoto('Nessun incasso');
+  };
+  const elencoAcconti = function(){ return accLista.length ? accLista.map(rigaAcconto).join('') + totale('Totale pagamenti', fmtEuro(acc)) : vuoto('Nessun acconto registrato nel ' + annoAttivo()); };
+  const nonPagate = items.filter(function(p){ return !Number(p.pagato||0); });
+
+  let titolo = '', corpo = '';
+  if(voce === 'pratiche'){
+    titolo = 'Pratiche (' + n + ')';
+    corpo = '<div style="' + box + '">Tutte le pratiche di ' + esc(k) + ' del ' + annoAttivo() + '. Le congiunte valgono 2.</div>' + elencoPratiche(items);
+  } else if(voce === 'lavorate'){
+    const l = items.filter(eLavorata);
+    titolo = 'Lavorate (' + sommaPeso(l) + ')';
+    corpo = elencoPratiche(l);
+  } else if(voce === 'dalavorare'){
+    const l = items.filter(eDaLavorare);
+    titolo = 'Da lavorare (' + sommaPeso(l) + ')';
+    corpo = elencoPratiche(l);
+  } else if(voce === 'fatture'){
+    titolo = 'Fatture emesse: ' + fmtEuro(fatt);
+    corpo = elencoFatture();
+  } else if(voce === 'incasso'){
+    titolo = 'Incasso: ' + fmtEuro(inc);
+    corpo = elencoIncassi(pagate) + (nonPagate.length ? titoloSez('Non ancora pagate (' + sommaPeso(nonPagate) + ')') + nonPagate.map(function(p){ return rigaPratica(p, 0, Number(p.compenso||0) ? 'fattura ' + fmtEuro(p.compenso) : ''); }).join('') : '');
+  } else if(voce === 'pagamenti'){
+    titolo = 'Pagamenti effettuati: ' + fmtEuro(acc);
+    corpo = '<div style="' + box + '">Acconti che il collaboratore ha versato nel ' + annoAttivo() + '.</div>' + elencoAcconti();
+  } else if(voce === 'daincassare'){
+    titolo = 'Da incassare: ' + fmtEuro(inc - acc);
+    corpo = '<div style="' + box + '">Incasso <b>' + fmtEuro(inc) + '</b> − Pagamenti effettuati <b>' + fmtEuro(acc) + '</b> = <b>' + fmtEuro(inc - acc) + '</b></div>'
+      + titoloSez('➕ Incasso delle pratiche') + elencoIncassi(pagate)
+      + titoloSez('➖ Pagamenti effettuati (acconti)') + elencoAcconti();
+  } else if(voce === 'prezzomedio'){
+    titolo = 'Prezzo medio: ' + (n ? fmtEuro(fatt / n) : '—');
+    corpo = '<div style="' + box + '">Fatture emesse <b>' + fmtEuro(fatt) + '</b> ÷ <b>' + n + '</b> pratiche = <b>' + (n ? fmtEuro(fatt / n) : '—') + '</b><br><span style="font-size:12.5px; color:var(--sub)">Le congiunte valgono 2 pratiche.</span></div>' + elencoFatture();
+  } else if(voce === 'incassomedio'){
+    titolo = 'Incasso medio: ' + (n ? fmtEuro(inc / n) : '—');
+    corpo = '<div style="' + box + '">Incasso <b>' + fmtEuro(inc) + '</b> ÷ <b>' + n + '</b> pratiche = <b>' + (n ? fmtEuro(inc / n) : '—') + '</b><br><span style="font-size:12.5px; color:var(--sub)">Le congiunte valgono 2 pratiche; nel conteggio entrano anche quelle non pagate.</span></div>' + elencoIncassi(pagate);
+  } else if(voce.indexOf('metodo:') === 0){
+    const m = voce.slice(7);
+    const l = pagate.filter(function(p){ return (METODI_PAGAMENTO.indexOf(p.metodoPagamento) >= 0 ? p.metodoPagamento : '') === m; });
+    titolo = (nomeMetodo[m] || m) + ': ' + fmtEuro(l.reduce(function(t,p){ return t + Number(p.pagato||0); }, 0));
+    corpo = elencoIncassi(l);
+  } else return;
+
+  const vecchio = document.getElementById('popup-dettaglio-contab');
+  if(vecchio) vecchio.remove();
+  const col = coloreCollaboratore(k);
+  const ov = document.createElement('div');
+  ov.id = 'popup-dettaglio-contab';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:400; background:rgba(15,27,45,.45); display:flex; align-items:center; justify-content:center; padding:12px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border:3px solid ' + col + '; box-shadow:0 20px 50px rgba(0,0,0,.3); max-width:560px; width:100%; max-height:88vh; display:flex; flex-direction:column">'
+    + '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:14px 16px 10px; border-bottom:1px solid var(--line)">'
+    + '<div><div style="font-size:12px; font-weight:700; color:' + col + '; text-transform:uppercase">' + esc(k) + ' – ' + annoAttivo() + '</div><div style="font-size:18px; font-weight:800">' + titolo + '</div></div>'
+    + '<button type="button" data-chiudi="1" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; width:34px; height:34px; font-size:16px; cursor:pointer; flex-shrink:0" title="Chiudi">✕</button></div>'
+    + '<div style="padding:10px 16px 16px; overflow:auto">' + corpo + '</div></div>';
+  document.body.appendChild(ov);
+  const fine = function(){ ov.remove(); document.removeEventListener('keydown', tasto); };
+  const tasto = function(e){ if(e.key === 'Escape') fine(); };
+  document.addEventListener('keydown', tasto);
+  ov.addEventListener('click', function(e){
+    const apri = e.target.closest('button[data-apri]');
+    if(apri){ fine(); apriPraticaDaTabella(apri.dataset.apri); return; }
+    if(e.target === ov || e.target.closest('button[data-chiudi]')) fine();
+  });
 }
 function apriPraticaDaTabella(id){
   const p = state.pratiche.find(function(x){ return x.id===id; });
