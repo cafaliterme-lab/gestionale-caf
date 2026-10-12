@@ -1313,7 +1313,7 @@ function pickChip(containerId, selectId, val){
     dd.classList.remove('open');
   }
   if(containerId === 'f-tipo-btns'){ aggiornaDescTipoForm(); coloraTriggerTipo(); aggiornaCampoFineForm(); const si = statoInizialeTipo(val); if(si) pickChip('f-stato-btns','f-stato', si); applicaFatturaAutomatica(val); if(typeof mostraImportiFPSModulo === 'function') mostraImportiFPSModulo(val); }
-  if(containerId === 'f-stato-btns'){ coloraTriggerStato(); const df = document.getElementById('f-data-fine'); if(df && !eColf(document.getElementById('f-tipo').value)) df.value = val === 'lavorata' ? todayIT() : ''; }
+  if(containerId === 'f-stato-btns'){ aggiornaPagatoForm(); coloraTriggerStato(); const df = document.getElementById('f-data-fine'); if(df && !eColf(document.getElementById('f-tipo').value)) df.value = val === 'lavorata' ? todayIT() : ''; }
 }
 function showTab(btn){
   const tab = btn.dataset.tab;
@@ -1780,7 +1780,7 @@ function render(){
           <div id="e-desctipo-box-${p.id}" style="${eAltrePratiche(p.tipo) ? '' : 'display:none'}"><label>Descrizione della pratica *</label><input id="e-desctipo-${p.id}" value="${esc(p.descrizioneTipo)}" maxlength="120"></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
-          <div><label>Pagato effettivo (€)</label><div style="display:flex; gap:6px"><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0"><select id="e-met-${p.id}" title="Tipo di pagamento" style="width:auto; flex:0 0 auto">${metodoOptions(p.metodoPagamento)}</select></div></div>
+          <div><label>Pagato effettivo (€)</label><div style="display:flex; gap:6px"><input id="e-pag-${p.id}" type="text" inputmode="decimal" ${pagatoBloccato(p.tipo, p.stato) ? 'disabled placeholder="Solo con stato Pagato" title="Il pagato si scrive quando la pratica passa a Pagato o Pagato da ritirare" value=""' : 'placeholder="0,00" value="' + importoInCampo(p.pagato) + '"'} oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0"><select id="e-met-${p.id}" title="Tipo di pagamento" style="width:auto; flex:0 0 auto">${metodoOptions(p.metodoPagamento)}</select></div></div>
           <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}" oninput="var d=document.getElementById('e-df-${p.id}'); if(this.value.trim() && d && !d.value.trim()) d.value=todayIT();"></div>
           <div><label>Data fattura</label><input id="e-df-${p.id}" value="${esc(p.dataFattura)}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
           <div class="full"><label>Note</label><input id="e-note-${p.id}" value="${esc(p.note)}"></div>
@@ -1884,7 +1884,7 @@ async function addPraticaInterna(){
   const compensoScritto = parseImporto(document.getElementById('f-compenso').value);
   const compensoAuto = fatturaAutomatica(document.getElementById('f-tipo').value);
   const compenso = compensoScritto || (compensoAuto !== undefined ? compensoAuto : '');
-  const pagato = parseImporto(document.getElementById('f-pagato').value) || '';
+  const pagato = pagatoBloccato(document.getElementById('f-tipo').value, document.getElementById('f-stato').value) ? '' : (parseImporto(document.getElementById('f-pagato').value) || '');
   const metodoPagamento = document.getElementById('f-metodo').value;
   const congCognome = document.getElementById('f-cong-cognome').value.trim().toUpperCase();
   const congNome = document.getElementById('f-cong-nome').value.trim().toUpperCase();
@@ -1977,7 +1977,7 @@ async function addPraticaInterna(){
   if(propostaStatoPagato(tipo, statoNuovo, compenso, pagato) && confirm('Il cliente ha pagato tutto (' + fmtEuro(pagato) + ').\n\nSalvo la pratica con lo stato "Pagato" invece di "' + statoLabel(statoNuovo) + '"?')) statoNuovo = 'pagato';
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, metodoPagamento, data: dataPratica, note,
+    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato: pagatoBloccato(tipo, statoNuovo) ? '' : pagato, metodoPagamento, data: dataPratica, note,
     stato: statoNuovo,
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
@@ -2261,6 +2261,55 @@ function bottoneWhatsApp(p, stile, soloIcona){
 }
 
 const STATI_IN_LAVORAZIONE = ['arrivo','lavorazione','da_lavorare_scansionata'];
+// Il PAGATO si scrive solo quando la pratica e' pagata (Pagato o Pagato da ritirare); colf e badanti esclusi
+const STATI_PAGATI = ['pagato', 'pagato_da_ritirare'];
+function statoPagato(s){ return STATI_PAGATI.indexOf(s) >= 0; }
+// "Da pagare" tiene il pagato parziale (chi ha pagato meno della fattura resta tra i morosi)
+function statoConPagato(s){ return statoPagato(s) || s === 'da_pagare'; }
+function pagatoBloccato(tipo, stato){ return !eColf(tipo) && !statoConPagato(stato); }
+// Passaggio a Pagato: si chiedono fattura, pagamento effettuato e dati della fattura
+function chiediPagamentoPratica(p){
+  return new Promise(function(risolvi){
+    const v = document.getElementById('popup-pagamento'); if(v) v.remove();
+    const ov = document.createElement('div');
+    ov.id = 'popup-pagamento';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:14px';
+    const fa = Number(p.compenso || 0), pg = Number(p.pagato || 0) || fa;
+    ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #2f9e5f; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:520px; width:100%">'
+      + '<div style="font-size:19px; font-weight:800; color:#2f9e5f">🟢 Pratica pagata</div>'
+      + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + '<br>Scrivi la fattura e il pagamento effettuato.</div>'
+      + '<div class="grid">'
+      + '<div><label>Fattura (€) *</label><input id="pg-fatt" type="text" inputmode="decimal" value="' + (fa ? importoInCampo(fa) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
+      + '<div><label>Pagato effettivo (€) *</label><input id="pg-pag" type="text" inputmode="decimal" value="' + (pg ? importoInCampo(pg) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
+      + '<div><label>Pagamento</label><select id="pg-met">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div>'
+      + '<div><label>Numero fattura</label><input id="pg-nf" value="' + esc(p.numFattura || '') + '" oninput="var d=document.getElementById(\'pg-df\'); if(this.value.trim() && d && !d.value.trim()) d.value=todayIT();"></div>'
+      + '<div><label>Data fattura</label><input id="pg-df" value="' + esc(p.dataFattura || '') + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>'
+      + '</div><div id="pg-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
+      + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
+      + '<button type="button" data-az="si" style="background:#2f9e5f; color:#fff; font-weight:800">💾 Salva pagamento</button></div></div>';
+    document.body.appendChild(ov);
+    setTimeout(function(){ const el = document.getElementById(fa ? 'pg-pag' : 'pg-fatt'); if(el){ el.focus(); el.select && el.select(); } }, 50);
+    ov.addEventListener('click', function(e){
+      const b = e.target.closest('button[data-az]');
+      if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); risolvi(null); return; }
+      if(!b) return;
+      const msg = document.getElementById('pg-msg');
+      const fatt = parseImporto(document.getElementById('pg-fatt').value), pag = parseImporto(document.getElementById('pg-pag').value);
+      const nf = document.getElementById('pg-nf').value.trim(), df = document.getElementById('pg-df').value.trim();
+      if(!(pag > 0)){ msg.textContent = 'Scrivi quanto ha pagato il cliente.'; return; }
+      if(!(fatt >= 0) || isNaN(fatt)){ msg.textContent = 'Scrivi l\'importo della fattura (0 se non c\'è fattura).'; return; }
+      if(df && !parseDataIT(df)){ msg.textContent = 'La data della fattura deve essere GG/MM/AAAA.'; return; }
+      const met = document.getElementById('pg-met').value;
+      // pagato meno della fattura: resta moroso, la pratica va in "Da pagare" con il pagamento parziale
+      let statoFinale = null;
+      if(fatt > 0 && pag < fatt - 0.004){
+        if(confirm('Il cliente ha pagato ' + fmtEuro(pag) + ' su ' + fmtEuro(fatt) + ': deve ancora ' + fmtEuro(fatt - pag) + '.\n\nOK = la pratica va in "Da pagare" (pagamento parziale, resta tra i morosi)\nAnnulla = la segno "Pagato" lo stesso')) statoFinale = 'da_pagare';
+      }
+      ov.remove();
+      risolvi({ statoFinale: statoFinale, compenso: fatt || '', pagato: pag, metodoPagamento: met, numFattura: nf, dataFattura: df, fatt: (nf || df) ? 'fatturata' : 'dafatturare' });
+    });
+  });
+}
 async function cambiaStato(id, stato){
   const p = (state.pratiche||[]).find(function(x){ return x.id===id; });
   // con documenti mancanti la pratica resta "In arrivo"
@@ -2270,6 +2319,19 @@ async function cambiaStato(id, stato){
     return;
   }
   const campi = { stato: stato };
+  if(p && !eColf(p.tipo)){
+    if(statoPagato(stato) && !statoPagato(p.stato)){
+      // diventa pagata: si chiedono fattura e pagamento
+      const dati = await chiediPagamentoPratica(p);
+      if(!dati){ render(); return; }
+      if(dati.statoFinale) campi.stato = stato = dati.statoFinale;
+      delete dati.statoFinale;
+      Object.assign(campi, dati);
+    } else if(!statoConPagato(stato) && statoConPagato(p.stato) && Number(p.pagato || 0) > 0){
+      if(!confirm('La pratica non è più pagata: il pagato di ' + fmtEuro(p.pagato) + ' verrà azzerato (resta la fattura).\n\nContinuo?')){ render(); return; }
+      campi.pagato = '';
+    }
+  }
   if(p && eColf(p.tipo)) { /* per colf e badanti c'e' la scadenza assistenza al posto della fine lavorazione */ }
   else if(STATI_IN_LAVORAZIONE.indexOf(stato) >= 0) campi.dataFine = '';
   else if(stato === 'lavorata' && !(p && p.dataFine)) campi.dataFine = todayIT();
@@ -2571,7 +2633,7 @@ async function salvaModifica(id){
     descrizioneTipo: eAltrePratiche(g('e-tipo')) ? g('e-desctipo').trim() : '',
     scadenzaAssistenza: eColf(g('e-tipo')) ? g('e-scadass').trim() : '',
     compenso: parseImporto(g('e-comp')) || '',
-    pagato: parseImporto(g('e-pag')) || '',
+    pagato: pagatoBloccato(g('e-tipo') || p.tipo, p.stato) ? '' : (parseImporto(g('e-pag')) || ''),
     metodoPagamento: g('e-met'),
     numFattura: numFattura,
     dataFattura: dataFattura,
@@ -2829,7 +2891,15 @@ function e730(p){ return /^730\b/.test(String(p.tipo||'').toUpperCase()); }
 const TIPO_ALTRE = 'ALTRE PRATICHE';
 function eAltrePratiche(t){ return String(t||'').trim().toUpperCase() === TIPO_ALTRE; }
 function tipoConDescrizione(p){ return (p.tipo||'') + (eAltrePratiche(p.tipo) && p.descrizioneTipo ? ' – ' + p.descrizioneTipo : ''); }
-function aggiornaDescTipoForm(){ const b = document.getElementById('f-desctipo-box'); if(b) b.style.display = eAltrePratiche((document.getElementById('f-tipo')||{}).value) ? '' : 'none'; aggiornaCongiuntaForm(); }
+// Modulo nuova pratica: il pagato si scrive solo con stato Pagato / Pagato da ritirare
+function aggiornaPagatoForm(){
+  const el = document.getElementById('f-pagato'); if(!el) return;
+  const bloccato = pagatoBloccato((document.getElementById('f-tipo')||{}).value, (document.getElementById('f-stato')||{}).value);
+  el.disabled = bloccato;
+  if(bloccato){ el.value = ''; el.placeholder = 'Solo con stato Pagato'; el.title = 'Il pagato si scrive quando la pratica è Pagato o Pagato da ritirare'; }
+  else { el.placeholder = '0,00'; el.title = ''; }
+}
+function aggiornaDescTipoForm(){ const b = document.getElementById('f-desctipo-box'); if(b) b.style.display = eAltrePratiche((document.getElementById('f-tipo')||{}).value) ? '' : 'none'; aggiornaCongiuntaForm(); aggiornaPagatoForm(); }
 // La dichiarazione congiunta esiste solo per i 730: per gli altri tipi (colf, affitti, IMU, successioni,
 // ISEE, F24, canone RAI, rottamazione, altre pratiche...) la spunta "Congiunta" non compare
 function tipoAmmetteCongiunta(t){ t = String(t||'').trim().toUpperCase(); return !t || t.indexOf('730') === 0; }
@@ -3421,3 +3491,6 @@ function inviaProssimoMultiplo(){
   st.pos++;
   disegnaInvioMultiplo();
 }
+
+// all'apertura il campo Pagato del modulo segue lo stato scelto
+document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ if(typeof aggiornaPagatoForm === 'function') aggiornaPagatoForm(); }, 300); });
