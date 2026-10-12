@@ -441,7 +441,7 @@ function cambiaAnnoAttivo(v){
 }
 
 const TAB_LABELS = {
-  anagrafica: 'INSERIMENTO ANAGRAFICA',
+  anagrafica: 'INSERIMENTO PRATICA',
   registro: 'REGISTRO DI PROTOCOLLO',
   contabilita: "CONTABILITA'",
   grafici: 'GRAFICI',
@@ -3187,7 +3187,7 @@ function vedeGuadagni(){
   return !!(u.tabs && u.tabs.cont_guadagni === true);
 }
 
-// Inserimento anagrafica: ogni campo diventa verde quando e' compilato correttamente
+// Inserimento pratica: ogni campo diventa verde quando e' compilato correttamente
 function campoCompilatoBene(el){
   const v = (el.value||'').trim();
   if(!v) return false;

@@ -12,8 +12,8 @@ function riquadroFinto(valore, etichetta, colore) {
 const SLIDE_OPERATORE = [
   { icona: '👋', titolo: 'Benvenuto nel Protocollo CAF CISL Alì Terme', intro: 'Questa guida a slide ti accompagna passo passo nelle operazioni di tutti i giorni. Usa le frecce ◀ ▶ (o la tastiera) per andare avanti e indietro.',
     passi: ['Accedi con la tua e-mail e la tua password. Se l\'hai dimenticata premi <b>🔑 Password dimenticata?</b>: ti arriva un codice per e-mail.', 'In alto trovi il <b>menu colorato</b>: ogni tasto apre una sezione.', 'Il tasto <b>📖 GUIDA DEL PROGRAMMA</b> apre anche la guida completa con la ricerca.'],
-    disegno: tastoFinto('INSERIMENTO ANAGRAFICA', '#1d4f91', true) + tastoFinto('REGISTRO DI PROTOCOLLO', '#2f9e5f', true) + tastoFinto('CONTABILITA\'', '#8e5bd6', true) + tastoFinto('SCADENZE', '#c0392b', true) },
-  { icona: '✍️', titolo: 'Inserire una nuova pratica', intro: 'Tutto parte dalla sezione INSERIMENTO ANAGRAFICA.',
+    disegno: tastoFinto('INSERIMENTO PRATICA', '#1d4f91', true) + tastoFinto('REGISTRO DI PROTOCOLLO', '#2f9e5f', true) + tastoFinto('CONTABILITA\'', '#8e5bd6', true) + tastoFinto('SCADENZE', '#c0392b', true) },
+  { icona: '✍️', titolo: 'Inserire una nuova pratica', intro: 'Tutto parte dalla sezione INSERIMENTO PRATICA.',
     passi: ['Scrivi <b>cognome, nome, data di nascita</b> e <b>codice fiscale</b> (obbligatorio).', 'Scegli il <b>tipo di pratica</b> (730 SEDE, IMU, ISEE…) e lo <b>stato</b>.', 'Spunta i <b>documenti presentati</b>: quelli mancanti tengono la pratica "In arrivo".', 'Scrivi fattura e pagato, scegli il <b>pagamento</b> (contanti, POS, bonifico) e premi <b>Salva</b>.'],
     disegno: tastoFinto('📄 Leggi documento', '#2f7de1') + tastoFinto('💾 Salva pratica', '#2f9e5f') },
   { icona: '📄', titolo: 'Leggere i dati dal documento', intro: 'Non serve scrivere tutto a mano.',
