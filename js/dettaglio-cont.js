@@ -124,7 +124,9 @@ function apriDettaglioCont(chiave, gruppo) {
     const vers = (state.versamenti || []).filter(function (v) { return annoVersamento(v) === anno; }).reduce(function (t, v) { return t + Number(v.importo || 0); }, 0);
     const sp = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0;
     const d = typeof cassaDivisa === 'function' ? cassaDivisa(anno) : null;
-    corpo = rigaFormula([['Incasso', inc], ['Versamenti CAF', vers], ['Spese a carico della sede', sp]], inc - vers - sp)
+    const dd = typeof cassaDivisa === 'function' ? cassaDivisa(anno) : { detrContanti: 0, detrBanca: 0, bonifici: 0 };
+    const detr = dd.detrContanti + dd.detrBanca;
+    corpo = rigaFormula([['Incasso', inc], ['Bollettini al CAF', vers - detr - dd.bonifici], ['Spese detratte (restituite ad Angelo / pagate dalla cassa)', detr], ['Bonifici dei clienti detratti', dd.bonifici], ['Altre spese della sede', sp]].filter(function (v, i) { return i < 2 || i === 4 || v[1] > 0.004; }), inc - vers - sp)
       + (d ? '<div style="display:flex; gap:10px; flex-wrap:wrap">'
         + '<div style="flex:1; min-width:240px; padding:10px 12px; border-radius:10px; border-left:5px solid #1a7f37; background:color-mix(in srgb, #1a7f37 8%, var(--card))"><b>💶 Contanti nel cassetto: ' + fmtEuro(d.contanti) + '</b>'
         + '<div style="font-size:13px; margin-top:4px">+ pagamenti in contanti ' + fmtEuro(d.incContanti) + '<br>− bollettini pagati ' + fmtEuro(d.bollettini) + '<br>− spese detratte pagate in contanti ' + fmtEuro(d.detrContanti) + '<br>− spese sede in contanti ' + fmtEuro(d.speseContanti) + '</div></div>'

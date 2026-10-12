@@ -175,8 +175,17 @@ function quadraturaCassaHTML(versatoCaf) {
   return '<details open style="margin-top:14px; border:2px solid ' + BLU + '; border-radius:12px; padding:10px 12px"><summary style="cursor:pointer; font-weight:800; color:' + BLU + '">⚖️ Quadratura cassa ' + (anno || '') + '</summary>'
     + '<div style="font-size:13.5px; margin-top:8px">'
     + riga('+', 'Incassato dalle pratiche', inc, VERDE, '#e8f6ee')
-    + riga('−', 'Versato al CAF (fatture coperte)', versatoCaf, BLU, '#e8f0fb')
-    + riga('−', 'Spese sede a carico della sede (escluse quelle rimborsate dal CAF)', spese, ARANCIO, '#fdf1e6')
+    + (function () {
+      // i versamenti al CAF divisi in quello che esce davvero: bollettini, spese detratte (restituite ad Angelo o pagate dalla cassa), bonifici dei clienti
+      const d = cassaDivisa(anno);
+      const detr = d.detrContanti + d.detrBanca;
+      const bol = versatoCaf - detr - d.bonifici;
+      return riga('−', 'Bollettini versati al CAF', bol, BLU, '#e8f0fb')
+        + (detr > 0.004 ? riga('−', 'Spese detratte dal versamento (restituite ad Angelo o già pagate dalla cassa)', detr, '#8e5bd6', '#f3edfb') : '')
+        + (d.bonifici > 0.004 ? riga('−', 'Bonifici dei clienti detratti (non sono entrati in cassa)', d.bonifici, BLU, '#e8f0fb') : '')
+        + '<div style="font-size:11.5px; color:var(--sub); margin:-2px 0 4px 6px">Totale fatture coperte dai versamenti al CAF: ' + fmtEuro(versatoCaf) + '</div>';
+    })()
+    + riga('−', 'Altre spese sede a carico della sede', spese, ARANCIO, '#fdf1e6')
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; margin-top:6px; background:' + colCassa + '; color:#fff"><span style="font-weight:800">= SOLDI IN CASSA</span><b style="font-size:20px">' + fmtEuro(cassa) + '</b></div>'
     + (function () {
       const d = cassaDivisa(anno);
