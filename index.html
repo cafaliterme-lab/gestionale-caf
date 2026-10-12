@@ -50,6 +50,9 @@ input,select{
   background:var(--bg); color:var(--ink); font-size:14px;
 }
 .full{grid-column:1/-1}
+#summary [data-dett]{cursor:pointer; position:relative; transition:transform .12s, box-shadow .12s}
+#summary [data-dett]:hover{transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,.18)}
+#summary [data-dett]::after{content:'🔎'; position:absolute; top:4px; right:7px; font-size:11px; opacity:.75}
 .vc-form{grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px 8px}
 .vc-form label{font-size:11.5px; margin-bottom:2px}
 .vc-form input{padding:5px 8px; font-size:13px; min-height:0; height:30px; border-radius:7px; transition:background .2s, border-color .2s}
@@ -857,7 +860,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610132"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610222"></script>
+<script src="js/app.js?v=202610223"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/ricercafatture.js?v=1"></script>
@@ -871,6 +874,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/presenza.js?v=2"></script>
 <script src="js/chat.js?v=8"></script>
 <script src="js/accesso-qr.js?v=5"></script>
+<script src="js/dettaglio-cont.js?v=1"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

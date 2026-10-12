@@ -226,6 +226,7 @@ const GUIDA = [
     testo: `
 <ul>
 <li>Mostra per l'anno scelto: <b>fatture emesse</b>, <b>incasso</b>, <b>pagamenti al CAF</b>, netto e (se hai il permesso) il guadagno.</li>
+<li><b>🔎 Ogni riquadro si apre</b>: toccando un riquadro (pratiche, 730 lavorate e da lavorare, altre pratiche, fatture emesse, incasso, versamenti CAF, soldi in cassa, spese sede, da restituire ad Angelo, guadagno netto, e i riquadri dei blocchi 730 e altre pratiche) si apre il <b>dettaglio</b>: il calcolo del numero e l'elenco delle pratiche, dei versamenti o delle spese che lo compongono, con i totali. Toccando una pratica la apri nel registro; con <b>🖨️ Stampa</b> stampi o salvi in PDF il dettaglio.</li>
 <li><b>Dettaglio per tipo di pratica</b>: pratiche, fatture, incasso e provento per ogni tipo.</li>
 <li><b>Incasso per tipo di pagamento</b>: contanti 💶, POS 💳, bonifico 🏦 (e "non indicato"). Sotto <b>Soldi in cassa</b> vedi quanti sono in contanti e quanti in banca.</li>
 <li>Nel blocco 730 e nella contabilità di ogni collaboratore ci sono il <b>prezzo medio</b> (fatture ÷ pratiche, quanto va al CAF) e l'<b>incasso medio</b> (incasso ÷ pratiche, quanto paga in media il cliente).</li>
