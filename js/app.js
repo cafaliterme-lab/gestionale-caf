@@ -2980,7 +2980,6 @@ function annullateAnno(anno){ return (state.annullate||[]).filter(function(p){ r
 // Blocco a parte: rinunce alla compilazione e pratiche annullate
 function bloccoRinunce(pratAnno, anno){
   const rin = pratAnno.filter(eRinuncia), ann = annullateAnno(anno);
-  if(!rin.length && !ann.length) return '';
   const fatt = rin.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0), inc = rin.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
   const tile = function(bg, valore, etichetta, dett){ return '<div class="stat c4" data-dett="'+dett+'" data-gruppo="rinunce" style="background:'+bg+'; border-color:'+bg+'; color:#fff"><b>'+valore+'</b><span style="color:rgba(255,255,255,.92); font-weight:600; letter-spacing:.03em">'+etichetta+'</span></div>'; };
   return '<div class="cont-gruppo" style="--cg:#374151"><div class="cont-gruppo-tit">🚫 RINUNCE E ANNULLATE (contabilità a parte, non contano tra le pratiche)</div>'
