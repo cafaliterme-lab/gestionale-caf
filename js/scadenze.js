@@ -111,6 +111,12 @@ async function aggiungiScadenzaForm() {
   const dataIso = document.getElementById('sc-data').value;
   if (!dataIso) { avviso('⚠️ Scegli la data della scadenza', true); return; }
   if (!titolo) { avviso('⚠️ Scrivi una descrizione, una nota o il cliente', true); return; }
+  // cliente scritto a mano e non presente in archivio: si propone di inserirlo, poi si salva la scadenza
+  if (cliente && typeof ARCHIVIO_CLIENTI !== 'undefined' && !ARCHIVIO_CLIENTI.some(function (c) { return (c.nomeCompleto || '').toUpperCase() === cliente; })
+    && confirm(cliente + ' non è nell\'archivio clienti.\n\nVuoi inserirlo adesso (codice fiscale, telefono…)?\nPremi Annulla per salvare solo la scadenza.')) {
+    nuovoClienteArchivio(cliente, function () { aggiungiScadenzaForm(); });
+    return;
+  }
   const r = await data.scadenze.aggiungi({
     titolo: titolo,
     data: dataIso,
@@ -260,4 +266,77 @@ async function avvisaClienteScadenza(id) {
   const note = [String(s.note || '').replace(/\s*·?\s*AVVISATO il [\d\/]+/g, ''), quando].filter(Boolean).join(' · ');
   const r = await data.scadenze.aggiorna(id, { note: note });
   if (r && r.error) avviso('❌ ' + r.error, true); else avviso('💬 ' + quando + ': ' + nome);
+}
+
+/* ---------- Nuovo cliente nell'archivio (dalla ricerca cliente delle Scadenze) ---------- */
+function nuovoClienteArchivio(testo, dopo) {
+  const parole = String(testo || '').trim().toUpperCase().split(/\s+/).filter(Boolean);
+  const cognome0 = parole.length > 1 ? parole.slice(0, -1).join(' ') : (parole[0] || '');
+  const nome0 = parole.length > 1 ? parole[parole.length - 1] : '';
+  const vecchio = document.getElementById('popup-nuovo-cliente'); if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-nuovo-cliente';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:14px';
+  const campo = function (id, etichetta, attr) { return '<div><label>' + etichetta + '</label><input id="nc-' + id + '" ' + (attr || '') + '></div>'; };
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #1a7f37; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:560px; width:100%; max-height:92vh; overflow:auto">'
+    + '<div style="font-size:19px; font-weight:800; color:#1a7f37; margin-bottom:2px">👤 Nuovo cliente in archivio</div>'
+    + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">Il cliente viene salvato nell\'archivio e lo ritrovi poi in tutte le ricerche (anagrafica, scadenze…).</div>'
+    + '<div class="grid">'
+    + campo('cognome', 'Cognome *', 'value="' + esc(cognome0) + '" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
+    + campo('nome', 'Nome *', 'value="' + esc(nome0) + '" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
+    + campo('cf', 'Codice fiscale', 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); ncControllaCF()"')
+    + campo('nascita', 'Data di nascita', 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
+    + '<div class="full" id="nc-cf-msg" style="font-size:12px; margin-top:-4px"></div>'
+    + campo('tel', 'Cellulare', 'type="tel" inputmode="tel"')
+    + campo('fisso', 'Telefono fisso', 'type="tel" inputmode="tel"')
+    + campo('email', 'E-mail', 'type="email" inputmode="email" style="text-transform:lowercase"')
+    + campo('scad', 'Scadenza documento', 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
+    + '</div><div id="nc-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
+    + '<button type="button" data-az="si" style="background:#1a7f37; color:#fff; font-weight:800">💾 Salva in archivio</button></div></div>';
+  document.body.appendChild(ov);
+  setTimeout(function () { const el = document.getElementById(cognome0 ? 'nc-cf' : 'nc-cognome'); if (el) el.focus(); }, 50);
+  ov.addEventListener('click', async function (e) {
+    const b = e.target.closest('button[data-az]');
+    if (e.target === ov || (b && b.dataset.az === 'no')) { ov.remove(); return; }
+    if (!b) return;
+    const v = function (id) { return (document.getElementById('nc-' + id).value || '').trim(); };
+    const msg = document.getElementById('nc-msg');
+    const cognome = v('cognome').toUpperCase(), nome = v('nome').toUpperCase(), cf = normalizzaCF(v('cf'));
+    let nascita = v('nascita');
+    const email = v('email').toLowerCase(), scad = v('scad');
+    if (!cognome || !nome) { msg.textContent = 'Scrivi cognome e nome.'; return; }
+    if (cf && !cfValido(cf)) { msg.textContent = 'Il codice fiscale non è valido: controllalo o lascialo vuoto.'; return; }
+    if (cf && !nascita) nascita = datiDaCF(cf).dataNascita;
+    if (nascita && !parseDataIT(nascita)) { msg.textContent = 'La data di nascita deve essere GG/MM/AAAA.'; return; }
+    if (scad && !parseDataIT(scad)) { msg.textContent = 'La scadenza del documento deve essere GG/MM/AAAA.'; return; }
+    if (email && !emailValida(email)) { msg.textContent = 'L\'e-mail non è corretta.'; return; }
+    const nc = (cognome + ' ' + nome).trim();
+    const gia = typeof trovaInArchivio === 'function' ? trovaInArchivio(nc, nascita, cf) : null;
+    if (gia && !confirm(gia.nomeCompleto + ' è già in archivio' + (gia.codiceFiscale ? ' (CF ' + gia.codiceFiscale + ')' : '') + ': aggiorno i suoi dati con quelli che hai scritto?')) return;
+    b.disabled = true; b.textContent = 'Salvataggio…';
+    try {
+      await registraClienteSeNuovo(cognome, nome, nascita, cf, v('tel'), v('fisso'), scad, email);
+      ov.remove();
+      avviso('📇 ' + nc + (gia ? ': dati aggiornati in archivio' : ' aggiunto all\'archivio clienti'));
+      const finale = gia ? gia.nomeCompleto : nc;
+      const sc = document.getElementById('sc-cliente'); if (sc) sc.value = finale;
+      if (typeof dopo === 'function') dopo(finale);
+    } catch (err) {
+      b.disabled = false; b.textContent = '💾 Salva in archivio';
+      msg.textContent = 'Cliente non salvato: ' + (err && err.message || err);
+    }
+  });
+}
+function ncControllaCF() {
+  const cf = (document.getElementById('nc-cf') || {}).value || '', out = document.getElementById('nc-cf-msg');
+  if (!out) return;
+  if (!cf) { out.textContent = ''; return; }
+  if (cf.length < 16) { out.style.color = 'var(--sub)'; out.textContent = cf.length + '/16 caratteri'; return; }
+  if (!cfValido(cf)) { out.style.color = '#c0392b'; out.textContent = '❌ Codice fiscale non valido'; return; }
+  const d = datiDaCF(cf), n = document.getElementById('nc-nascita');
+  if (n && !n.value.trim()) n.value = d.dataNascita;
+  const c = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).find(function (x) { return x.codiceFiscale === cf; });
+  out.style.color = c ? '#b35f0c' : '#1a7f37';
+  out.textContent = c ? '⚠️ Questo codice fiscale è già in archivio: ' + c.nomeCompleto : '✓ Codice valido · nato/a il ' + d.dataNascita;
 }

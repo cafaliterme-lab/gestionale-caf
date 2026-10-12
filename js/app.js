@@ -170,11 +170,13 @@ function cercaClienti(q, ctx){
   q = (q||'').trim().toLowerCase();
   if(!q){ box.classList.remove('open'); box.innerHTML=''; return; }
   const match = ARCHIVIO_CLIENTI.filter(function(c){ return c.nomeCompleto.toLowerCase().indexOf(q) >= 0 || (c.codiceFiscale||'').toLowerCase().indexOf(q) >= 0; }).slice(0,8);
-  if(!match.length){ box.innerHTML = '<div class="cli-row" style="cursor:default">Nessun cliente trovato</div>'; box.classList.add('open'); return; }
+  // nelle Scadenze si può inserire subito un cliente nuovo nell'archivio
+  const rigaNuovo = ctx === 'sc' ? '<div class="cli-row" style="color:#1a7f37; font-weight:800" onclick="document.getElementById(\'cli-results-sc\').classList.remove(\'open\'); nuovoClienteArchivio(document.getElementById(\'sc-cliente\').value)">➕ Nuovo cliente: inseriscilo in archivio (codice fiscale, telefono…)</div>' : '';
+  if(!match.length){ box.innerHTML = '<div class="cli-row" style="cursor:default">Nessun cliente trovato</div>' + rigaNuovo; box.classList.add('open'); return; }
   box.innerHTML = match.map(function(c,i){
     const cestino = (puoEliminareClienti() && c.id) ? '<button type="button" title="Elimina definitivamente dall\'archivio" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); eliminaClienteArchivio(&quot;'+esc(String(c.id))+'&quot;, &quot;'+ctx+'&quot;)">🗑</button>' : '';
     return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+'<b>'+esc(c.nomeCompleto)+'</b><span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+(c.telefono || c.telefonoFisso ? ' · 📞 '+esc(c.telefono || c.telefonoFisso) : '')+(c.email ? ' · ✉️ '+esc(c.email) : '')+'</span></div>';
-  }).join('');
+  }).join('') + rigaNuovo;
   box.dataset.match = JSON.stringify(match);
   box.classList.add('open');
 }
