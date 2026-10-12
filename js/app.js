@@ -2542,8 +2542,31 @@ function bottoneConsegna(p){
   if(eConsegnata(p)) return '<button type="button" title="Consegnata il ' + esc(p.consegnataIl) + (p.consegnataDa ? ' da ' + esc(p.consegnataDa) : '') + ' – tocca per annullare la consegna" onclick="annullaConsegna(\'' + p.id + '\')" style="background:#e8f6ee; color:#1a7f37; border:1px solid #1a7f37; border-radius:6px; padding:4px 8px; font-size:11.5px; font-weight:700; cursor:pointer">📦 ' + esc(p.consegnataIl) + '</button>';
   return '<button type="button" title="Segna la pratica come consegnata al cliente" onclick="consegnaPratica(\'' + p.id + '\')" style="background:#8d5a3b; color:#fff; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer">📦 Consegna</button>';
 }
+// Stati di "non pagato": Non paga + quelli aggiunti dall'amministratore con "non … pag" nel nome (es. "Non ha pagato")
+function eStatoNonPagato(k){
+  if(k === 'non_paga') return true;
+  const l = ((STATI[k]||{}).l || '').toLowerCase();
+  return !!STATI[k] && /\bnon\b.*\bpag/.test(l);
+}
+function statiNonPagato(tipo){
+  return Object.keys(STATI).filter(function(k){
+    if(!eStatoNonPagato(k)) return false;
+    const nuovo = typeof STATI_PREDEFINITI !== 'undefined' && !STATI_PREDEFINITI[k];
+    if(k === 'non_paga' || nuovo) return true;
+    // FILCA / FPS non paga: solo per le pratiche di quel tipo
+    const T = String(tipo||'').toUpperCase();
+    if(k === 'filca_non_paga') return T.indexOf('FILCA') >= 0;
+    if(k === 'fps_non_paga') return T.indexOf('FPS') >= 0;
+    return statoVisibile(k, tipo);
+  });
+}
 function consegnaPratica(id){
   const p = (state.pratiche||[]).find(function(x){ return x.id === id; }); if(!p) return;
+  const colfC = eColf(p.tipo);
+  const nonPag = colfC ? [] : statiNonPagato(p.tipo);
+  const tastiNonPag = nonPag.length
+    ? nonPag.map(function(k){ return '<button type="button" data-az="nonpaga" data-stato="' + k + '" style="background:' + ((STATI[k]||{}).c || '#d63b3b') + '; color:#fff; font-weight:800">✗ ' + esc(STATI[k].l) + '</button>'; }).join('')
+    : '<button type="button" data-az="nonpaga" style="background:#d63b3b; color:#fff; font-weight:800">✗ Non ha pagato</button>';
   const v = document.getElementById('popup-consegna'); if(v) v.remove();
   const ov = document.createElement('div');
   ov.id = 'popup-consegna';
@@ -2559,7 +2582,7 @@ function consegnaPratica(id){
     + '<div id="cs-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px">'
     + '<button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
-    + '<button type="button" data-az="nonpaga" style="background:#d63b3b; color:#fff; font-weight:800">✗ Non ha pagato</button>'
+    + tastiNonPag
     + '<button type="button" data-az="pagato" style="background:#2f9e5f; color:#fff; font-weight:800">✓ Ha pagato</button></div></div>';
   document.body.appendChild(ov);
   ov.addEventListener('click', async function(e){
@@ -2577,7 +2600,7 @@ function consegnaPratica(id){
       campi.pagato = v; campi.metodoPagamento = document.getElementById('cs-met').value;
       if(!colf) campi.stato = 'pagato';
     } else if(!colf){
-      campi.stato = 'non_paga';
+      campi.stato = (b.dataset.stato && STATI[b.dataset.stato]) ? b.dataset.stato : 'non_paga';
     }
     b.disabled = true;
     const r = await data.pratiche.aggiorna(p.id, campi);

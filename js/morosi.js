@@ -99,7 +99,7 @@ function incassaMoroso(id) {
       metodoPagamento: metodo,
       note: ((p.note ? p.note + ' · ' : '') + 'Pagato arretrato ' + fmtEuro(imp) + ' il ' + todayIT() + ' (' + metodo + ')').slice(0, 1000)
     };
-    if (nuovoPagato >= Number(p.compenso || 0) && ['da_pagare', 'non_paga', 'lavorata', 'lavorata_da_fatturare', 'filca_non_paga', 'fps_non_paga'].indexOf(p.stato) >= 0) campi.stato = 'pagato';
+    if (nuovoPagato >= Number(p.compenso || 0) && ['da_pagare', 'non_paga', 'lavorata', 'lavorata_da_fatturare', 'filca_non_paga', 'fps_non_paga'].indexOf(p.stato) >= 0 || (typeof eStatoNonPagato === 'function' && eStatoNonPagato(p.stato))) campi.stato = 'pagato';
     b.disabled = true;
     const r = await data.pratiche.aggiorna(p.id, campi);
     if (r && r.error) { b.disabled = false; esito.innerHTML = '<b style="color:#c0392b">❌ ' + esc(r.error) + '</b>'; return; }
