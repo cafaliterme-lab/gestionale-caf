@@ -111,7 +111,8 @@ function cassaDivisa(anno) {
     const carico = Number(s.importo || 0) - (typeof rimborsoCafSpesa === 'function' ? rimborsoCafSpesa(s, rimb) : 0);
     if (banca(s.metodoPagamento) && !s.prelevatiAngelo) r.speseBanca += carico; else r.speseContanti += carico;
   });
-  r.contanti = r.incContanti - r.bollettini - r.detrContanti - r.speseContanti;
+  r.angelo = typeof angeloInSospesoAnno === 'function' && anno ? angeloInSospesoAnno(anno) : 0;
+  r.contanti = r.incContanti - r.bollettini - r.detrContanti - r.speseContanti + r.angelo;
   r.banca = r.incBanca - r.bonifici - r.detrBanca - r.speseBanca;
   return r;
 }
@@ -162,8 +163,9 @@ function quadraturaCassaHTML(versatoCaf) {
   const fatt = prat.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
   const inc = prat.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);
   const spese = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0;
-  const cassa = inc - versatoCaf - spese, guad = inc - fatt - spese, daVers = fatt - versatoCaf;
-  const torna = Math.abs(guad + daVers - cassa) < 0.01;
+  const ang = typeof angeloInSospesoAnno === 'function' && anno ? angeloInSospesoAnno(anno) : 0;
+  const cassa = inc - versatoCaf - spese + ang, guad = inc - fatt - spese, daVers = fatt - versatoCaf;
+  const torna = Math.abs(guad + daVers + ang - cassa) < 0.01;
   const senzaFatt = prat.filter(function (p) { return Number(p.pagato || 0) > 0 && !Number(p.compenso || 0); });
   const VERDE = '#1a7f37', ROSSO = '#c0392b', BLU = '#1d4f91', ARANCIO = '#b35f0c';
   const riga = function (seg, t, v, col, sfondo) {
@@ -186,6 +188,7 @@ function quadraturaCassaHTML(versatoCaf) {
         + '<div style="font-size:11.5px; color:var(--sub); margin:-2px 0 4px 6px">Totale fatture coperte dai versamenti al CAF: ' + fmtEuro(versatoCaf) + '</div>';
     })()
     + riga('−', 'Altre spese sede a carico della sede', spese, ARANCIO, '#fdf1e6')
+    + (ang > 0.004 ? riga('+', 'Spese anticipate da Angelo non ancora restituite (escono dalla cassa quando spunti «Restituite»)', ang, '#8e5bd6', '#f3edfb') : '')
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; margin-top:6px; background:' + colCassa + '; color:#fff"><span style="font-weight:800">= SOLDI IN CASSA</span><b style="font-size:20px">' + fmtEuro(cassa) + '</b></div>'
     + (function () {
       const d = cassaDivisa(anno);

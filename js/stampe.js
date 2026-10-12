@@ -119,7 +119,7 @@ function riepilogoStampa(lista) {
     const caf = versamentiFiltrati().reduce(function (t, v) { return t + Number(v.importo || 0); }, 0);
     voci.push(['Versamenti CAF', caf, true]);
     const spese = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(STAMPA.anno) : 0;
-    voci.push(['Soldi in cassa (incasso − versamenti CAF − spese sede)', inc - caf - spese, true]);
+    voci.push(['Soldi in cassa (incasso − versamenti CAF − spese sede)', inc - caf - spese + (typeof angeloInSospesoAnno === 'function' ? angeloInSospesoAnno(STAMPA.anno) : 0), true]);
     if (vedeGuadagni()) { voci.push(['Spese gestione sede', spese, true]); voci.push(['Guadagno netto (incasso − fatture − spese sede)', inc - fatt - spese, true]); }
   } else if (vedeGuadagni()) {
     voci.push(['Guadagno netto (incasso − fatture)', inc - fatt, true]);

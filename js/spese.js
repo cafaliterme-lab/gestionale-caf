@@ -19,6 +19,10 @@ function totaleSpeseSedeLordo(anno) { return speseAnno(anno).reduce(function (t,
 function totaleRimborsiCaf(anno) { const m = rimborsiCafSpese(); return speseAnno(anno).reduce(function (t, s) { return t + rimborsoCafSpesa(s, m); }, 0); }
 // Spese a carico della sede: quelle che contano in guadagno netto e soldi in cassa
 function totaleSpeseSede(anno) { return totaleSpeseSedeLordo(anno) - totaleRimborsiCaf(anno); }
+// Spese anticipate da Angelo e non ancora restituite: i soldi non sono ancora usciti dalla cassa
+// (escono quando si spunta "Restituite"), quindi si riaggiungono ai soldi in cassa.
+function speseAngeloNonRestituite(s) { return !!(s && s.prelevatiAngelo && !s.restituitoAngelo); }
+function angeloInSospesoAnno(anno) { return speseAnno(anno).filter(speseAngeloNonRestituite).reduce(function (t, s) { return t + Number(s.importo || 0); }, 0); }
 function puoScrivereSpese() { return typeof puo === 'function' && puo('spese', true); }
 
 function renderSpese() {
