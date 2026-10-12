@@ -1586,12 +1586,17 @@ function filtroStatoGruppoHTML(k, pratiche){
 }
 function stampaReportStato(){
   const sel = (document.getElementById('filtro-stato')||{}).value || '';
-  apriStampa('registro', sel ? { stato: sel } : null);
+  const cli = filtroContribuente();
+  apriStampa('registro', (sel || cli) ? { stato: sel, cliente: cli } : null);
 }
+function filtroContribuente(){ return ((document.getElementById('filtro-contribuente')||{}).value||'').trim().toUpperCase(); }
 function filtra(lista){
   initFiltroStato();
   const statoSel = (document.getElementById('filtro-stato')||{}).value || '';
   if(statoSel){ lista = lista.filter(function(p){ return p.stato === statoSel; }); }
+  // contribuente: titolare o coniuge, per nome o codice fiscale
+  const cli = filtroContribuente();
+  if(cli){ lista = lista.filter(function(p){ return [p.nome, p.congiunta, ((p.congCognome||'') + ' ' + (p.congNome||'')), p.codiceFiscale, p.congCodiceFiscale].join(' ').toUpperCase().indexOf(cli) >= 0; }); }
   const q = ((document.getElementById('cerca')||{}).value||'').trim().toLowerCase();
   if(!q) return lista;
   return lista.filter(function(p){
@@ -1796,7 +1801,7 @@ function render(){
     </div>
   `;
   const visibili = filtra(sorted);
-  const inRicerca = ((document.getElementById('cerca')||{}).value||'').trim() !== '';
+  const inRicerca = ((document.getElementById('cerca')||{}).value||'').trim() !== '' || !!filtroContribuente();
   const nomiGruppi = getTipiList().slice();
   visibili.forEach(function(p){ const k = p.tipo || 'SENZA TIPO'; if(nomiGruppi.indexOf(k) < 0) nomiGruppi.push(k); });
   list.innerHTML = nomiGruppi.map(function(k){
@@ -1811,12 +1816,16 @@ function render(){
     const open = aperti[k] === true;
     const col = coloreCollaboratore(k);
     const schedeAperte = aperti[k + '|schede'] === true || items.some(function(p){ return p._editing || p._confirmDelete || p._editingFattura; });
+    // aperta una sola pratica dal registro: si mostra solo la sua scheda (le altre con "Mostra tutte")
+    const sola = SCHEDA_SOLA[k] && items.find(function(p){ return p.id === SCHEDA_SOLA[k]; });
+    const schede = sola ? [sola] : items;
     return '<details class="grp" data-k="' + esc(k) + '" style="--gc:' + col + '" ' + (open ? 'open' : '') + ' ontoggle="gToggle(this)">'
       + '<summary style="background:' + col + '; background-image:none"><span class="grp-name">' + esc(k) + '</span><span class="grp-n">' + sommaPeso(items) + '</span>'
       + ('<span class="grp-soldi">Fatture ' + fmtEuro(fe) + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + '</span>') + '</summary>'
       + '<div class="grp-b">' + filtroStatoGruppoHTML(k, tuttiTipo) + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items, k)
-      + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 Schede complete delle pratiche (' + items.length + ') – per modificare, ricevuta, WhatsApp…</summary>'
-        + items.map(cardHTML).join('') + '</details>' : '') + '</div></details>';
+      + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open; if(!this.open) delete SCHEDA_SOLA[this.dataset.k.replace(/\|schede$/, \'\')]" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 ' + (sola ? 'Scheda della pratica ' + esc(formattaProtocollo(sola)) + ' – ' + esc(sola.nome || '') : 'Schede complete delle pratiche (' + items.length + ')') + ' – per modificare, ricevuta, WhatsApp…</summary>'
+        + (sola && items.length > 1 ? '<button type="button" onclick="mostraTutteSchede(this.dataset.k)" data-k="' + esc(k) + '" style="margin:0 0 8px; padding:5px 14px; border-radius:999px; border:1px dashed var(--sub); background:none; color:var(--sub); font-weight:700; cursor:pointer">📋 Mostra tutte le schede del gruppo (' + items.length + ')</button>' : '')
+        + schede.map(cardHTML).join('') + '</details>' : '') + '</div></details>';
   }).join('');
 }
 
@@ -2508,12 +2517,16 @@ function dettaglioContab(k, voce){
     if(e.target === ov || e.target.closest('button[data-chiudi]')) fine();
   });
 }
+// Gruppo -> id della sola pratica aperta dal registro (si vede solo la sua scheda)
+const SCHEDA_SOLA = {};
+function mostraTutteSchede(k){ delete SCHEDA_SOLA[k]; render(); }
 function apriPraticaDaTabella(id){
   const p = state.pratiche.find(function(x){ return x.id===id; });
   if(!p) return;
   const k = p.tipo || 'SENZA TIPO';
   aperti[k] = true;
   aperti[k + '|schede'] = true;
+  SCHEDA_SOLA[k] = id;
   p._editing = true;
   render();
   setTimeout(function(){

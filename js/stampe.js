@@ -17,6 +17,7 @@ function apriStampa(origine, opz) {
   tipiPerStampa(anno).forEach(function (t) { STAMPA.tipi[t] = !(opz && opz.tipo) || t === opz.tipo; });
   if (opz && opz.tipo && !(opz.tipo in STAMPA.tipi)) STAMPA.tipi[opz.tipo] = true;
   Object.keys(STATI).forEach(function (k) { STAMPA.stati[k] = !(opz && opz.stato) || k === opz.stato; });
+  if (opz && opz.cliente) STAMPA.cliente = opz.cliente;
   let ov = document.getElementById('finestra-stampa');
   if (ov) ov.remove();
   ov = document.createElement('div');
