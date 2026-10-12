@@ -1666,6 +1666,7 @@ function render(){
     <div class="stat c4" data-dett="paltre" style="background:#0e8a8a; border-color:#0e8a8a; color:#fff"><b>${sommaPeso(pratAnno.filter(function(p){ return !e730(p); }))}</b><span style="color:rgba(255,255,255,.92); font-weight:600">ALTRE PRATICHE</span></div>` : '') + (vEco ? `
     <div class="stat c5 verde" data-dett="fatture"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE</span></div>
     <div class="stat c5 viola" data-dett="incasso"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
+    ${(function(){ const cons = pratAnno.filter(eConsegnata), daC = pratAnno.filter(function(p){ return !eConsegnata(p); }); return '<div class="stat c5" data-dett="consegnate" style="background:#8d5a3b; border-color:#8d5a3b; color:#fff"><b>' + sommaPeso(cons) + ' / ' + sommaPeso(pratAnno) + '</b><span style="color:rgba(255,255,255,.92); font-weight:600">📦 PRATICHE CONSEGNATE<br>da consegnare ' + sommaPeso(daC) + ' · importo ' + fmtEuro(daC.reduce(function(t,p){ return t + Number(p.pagato||0); }, 0)) + '</span></div>'; })()}
     <div class="stat c5 blu" data-dett="versamenti"><b>${fmtEuro(versatoCaf)}</b><span>VERSAMENTI CAF (fatture coperte)${typeof cassaDivisa === 'function' ? (function(){ const d = cassaDivisa(annoSel), detr = d.detrContanti + d.detrBanca; return detr > 0.004 || d.bonifici > 0.004 ? '<br>bollettini ' + fmtEuro(versatoCaf - detr - d.bonifici) + (detr > 0.004 ? ' + spese detratte ' + fmtEuro(detr) : '') + (d.bonifici > 0.004 ? ' + bonifici ' + fmtEuro(d.bonifici) : '') : ''; })() : ''}</span></div>
     <div class="stat c5" data-dett="cassa" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso - speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SOLDI IN CASSA (incasso − versamenti CAF − spese sede)${typeof cassaDivisa === 'function' ? (function(){ const d = cassaDivisa(annoSel); return '<br>💶 contanti ' + fmtEuro(d.contanti) + ' · 🏦 banca ' + fmtEuro(d.banca); })() : ''}</span></div>
     ${vedeGuadagni() ? `<div class="stat c5" data-dett="spese" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE${typeof totaleRimborsiCaf === 'function' && totaleRimborsiCaf(annoSel) > 0.004 ? ' (esclusi ' + fmtEuro(totaleRimborsiCaf(annoSel)) + ' rimborsati dal CAF)' : ''}</span></div>${typeof debitoAngelo === 'function' && debitoAngelo().totale ? `<div class="stat c5" data-dett="angelo" style="background:#8e5bd6; border-color:#8e5bd6; color:#fff"><b>${fmtEuro(debitoAngelo().totale)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">DA RESTITUIRE AD ANGELO</span></div>` : ''}<div class="stat c5 gray" data-dett="guadagno"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO (meno spese sede)</span></div>` : ''}` : '') + ((vPrat || vEco) ? '</div>' : '') + (vBlocchi ? `
@@ -1699,7 +1700,8 @@ function render(){
 
   const tab = document.getElementById('tabella');
   const annAnno = (state.annullate||[]).filter(function(p){ return annoPratica(p) === annoSel; });
-  const ordinate = filtra([...pratAnno].sort((a,b)=> a.numero - b.numero));
+  const ordinate = filtra([...pratAnno].sort((a,b)=> a.numero - b.numero)).filter(vediNelRegistro);
+  aggiornaTastoConsegnate(pratAnno);
   disegnaChipStati(pratAnno);
   // le annullate compaiono nel registro (barrate) solo senza filtro per stato
   const statoFiltro = (document.getElementById('filtro-stato')||{}).value || '';
@@ -1713,7 +1715,7 @@ function render(){
               <td class="wrap">${p.tipo ? esc(p.tipo) + (eAltrePratiche(p.tipo) && p.descrizioneTipo ? '<div class="sub2">' + esc(p.descrizioneTipo) + '</div>' : '') : '-'}</td>
               <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato, p.tipo)}</select></td>
               <td>${formattaInserimento(p)}${ultimaModifica(p) ? '<div class="sub2" title="Ultima modifica">✏️ ' + ultimaModifica(p) + '</div>' : ''}</td>
-              <td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)} <button type="button" title="Ricevuta da consegnare al cliente" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer" onclick="stampaRicevuta('${p.id}')">🧾</button></td>
+              <td>${bottoneConsegna(p)} <button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)} <button type="button" title="Ricevuta da consegnare al cliente" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer" onclick="stampaRicevuta('${p.id}')">🧾</button></td>
             </tr>`;
   // Due registri con numerazioni separate: 730 e altre pratiche (AP)
   const tabellaRegistro = function(titolo, colore, lista, totale){
@@ -1758,6 +1760,7 @@ function render(){
       ${p.emailInviata ? `<div class="meta" style="color:#1d4f91">📧 E-mail inviata: ${esc(p.emailInviata)}</div>` : ''}
       ${ultimaModifica(p) ? `<div class="meta" style="color:var(--sub)">✏️ Ultima modifica: <b>${ultimaModifica(p)}</b></div>` : ''}
       ${p.whatsappInviato ? `<div class="meta" style="color:#1a9e4b">💬 Avvisato su WhatsApp il ${esc(p.whatsappInviato)}</div>` : ''}
+      <div class="meta">${p.consegnataIl ? `<span style="color:#8d5a3b; font-weight:700">📦 Consegnata il ${esc(p.consegnataIl)}${p.consegnataDa ? ' da ' + esc(p.consegnataDa) : ''}</span> ` : ''}${bottoneConsegna(p)}</div>
       ${p._editing ? `
         <div class="grid" style="margin-top:8px">
           <div><label>Cognome</label><input id="e-cognome-${p.id}" value="${esc(dividiNominativo(p).cognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
@@ -1819,11 +1822,11 @@ function render(){
     const schedeAperte = aperti[k + '|schede'] === true || items.some(function(p){ return p._editing || p._confirmDelete || p._editingFattura; });
     // aperta una sola pratica dal registro: si mostra solo la sua scheda (le altre con "Mostra tutte")
     const sola = SCHEDA_SOLA[k] && items.find(function(p){ return p.id === SCHEDA_SOLA[k]; });
-    const schede = sola ? [sola] : items;
+    const schede = sola ? [sola] : items.filter(vediNelRegistro);
     return '<details class="grp" data-k="' + esc(k) + '" style="--gc:' + col + '" ' + (open ? 'open' : '') + ' ontoggle="gToggle(this)">'
       + '<summary style="background:' + col + '; background-image:none"><span class="grp-name">' + esc(k) + '</span><span class="grp-n">' + sommaPeso(items) + '</span>'
       + ('<span class="grp-soldi">Fatture ' + fmtEuro(fe) + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + '</span>') + '</summary>'
-      + '<div class="grp-b">' + filtroStatoGruppoHTML(k, tuttiTipo) + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items, k)
+      + '<div class="grp-b">' + filtroStatoGruppoHTML(k, tuttiTipo) + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items.filter(vediNelRegistro), k)
       + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open; if(!this.open) delete SCHEDA_SOLA[this.dataset.k.replace(/\|schede$/, \'\')]" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 ' + (sola ? 'Scheda della pratica ' + esc(formattaProtocollo(sola)) + ' – ' + esc(sola.nome || '') : 'Schede complete delle pratiche (' + items.length + ')') + ' – per modificare, ricevuta, WhatsApp…</summary>'
         + (sola && items.length > 1 ? '<button type="button" onclick="mostraTutteSchede(this.dataset.k)" data-k="' + esc(k) + '" style="margin:0 0 8px; padding:5px 14px; border-radius:999px; border:1px dashed var(--sub); background:none; color:var(--sub); font-weight:700; cursor:pointer">📋 Mostra tutte le schede del gruppo (' + items.length + ')</button>' : '')
         + schede.map(cardHTML).join('') + '</details>' : '') + '</div></details>';
@@ -2394,7 +2397,7 @@ function tabellaPraticheGruppoHTML(items, k){
     + ord.map(function(p){
       return '<tr><td class="n">' + formattaProtocollo(p) + '</td><td>' + esc(p.data || '-') + '</td><td class="wrap">' + esc((p.nome || '-').toUpperCase()) + (p.congiunta ? '<div class="sub2">+ ' + esc(p.congiunta) + '</div>' : '') + '</td>'
         + '<td><span style="white-space:nowrap">' + pallino(p.stato) + esc(statoLabel(p.stato)) + '</span>' + (p.trasferitaIn ? '<div class="sub2" style="color:#1f8a70">➡️ Trasferita: ' + esc(p.trasferitaIn) + '</div>' : '') + '</td>' + (soldi ? '<td>' + fmtEuro(p.compenso) + '</td><td><b>' + fmtEuro(p.pagato) + '</b>' + (p.saldataCollaboratore ? '<div class="sub2" style="color:#2f9e5f" title="Tolta dai morosi: saldata tramite il collaboratore">✓ fuori dai morosi</div>' : '') + '</td><td>' + esc(p.metodoPagamento || '-') + '</td>' : '')
-        + '<td><button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella(\'' + p.id + '\')">Apri</button></td></tr>';
+        + '<td style="white-space:nowrap">' + bottoneConsegna(p) + ' <button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella(\'' + p.id + '\')">Apri</button></td></tr>';
     }).join('') + '</tbody></table></div>';
 }
 // Stampa della contabilita' e delle pratiche di un solo collaboratore / tipo (anno scelto)
@@ -2518,6 +2521,82 @@ function dettaglioContab(k, voce){
     if(e.target === ov || e.target.closest('button[data-chiudi]')) fine();
   });
 }
+/* ---------- Consegna della pratica al cliente ----------
+   Spunta "Consegnata": chiede se il cliente ha pagato (Pagato con l'importo) o no (Non paga).
+   Le consegnate non si vedono nel registro di lavoro: tasto "Mostra consegnate". */
+let MOSTRA_CONSEGNATE = false;
+function eConsegnata(p){ return !!(p && p.consegnataIl); }
+// nel registro si vedono le consegnate solo col tasto, o se si cerca un contribuente / un testo
+function vediNelRegistro(p){
+  if(!eConsegnata(p) || MOSTRA_CONSEGNATE) return true;
+  return !!filtroContribuente() || !!((document.getElementById('cerca')||{}).value||'').trim();
+}
+function aggiornaTastoConsegnate(pratAnno){
+  const b = document.getElementById('btn-consegnate'); if(!b) return;
+  const n = pratAnno.filter(eConsegnata).length;
+  b.textContent = MOSTRA_CONSEGNATE ? '📦 Nascondi le consegnate (' + n + ')' : '📦 Mostra le consegnate (' + n + ')';
+  b.style.background = MOSTRA_CONSEGNATE ? '#6b7280' : '#8d5a3b';
+}
+function bottoneConsegna(p){
+  if(!p || p.annullata) return '';
+  if(eConsegnata(p)) return '<button type="button" title="Consegnata il ' + esc(p.consegnataIl) + (p.consegnataDa ? ' da ' + esc(p.consegnataDa) : '') + ' – tocca per annullare la consegna" onclick="annullaConsegna(\'' + p.id + '\')" style="background:#e8f6ee; color:#1a7f37; border:1px solid #1a7f37; border-radius:6px; padding:4px 8px; font-size:11.5px; font-weight:700; cursor:pointer">📦 ' + esc(p.consegnataIl) + '</button>';
+  return '<button type="button" title="Segna la pratica come consegnata al cliente" onclick="consegnaPratica(\'' + p.id + '\')" style="background:#8d5a3b; color:#fff; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer">📦 Consegna</button>';
+}
+function consegnaPratica(id){
+  const p = (state.pratiche||[]).find(function(x){ return x.id === id; }); if(!p) return;
+  const v = document.getElementById('popup-consegna'); if(v) v.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-consegna';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:14px';
+  const imp = Number(p.pagato || 0) || Number(p.compenso || 0);
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #8d5a3b; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:500px; width:100%">'
+    + '<div style="font-size:19px; font-weight:800; color:#8d5a3b">📦 Consegna della pratica</div>'
+    + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + (Number(p.compenso || 0) ? ' · fattura ' + fmtEuro(p.compenso) : '') + '</div>'
+    + '<div style="font-size:15px; font-weight:800; margin-bottom:8px">Il cliente ha pagato?</div>'
+    + '<div class="grid"><div><label>Importo pagato (€)</label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
+    + '<div><label>Pagamento</label><select id="cs-met">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div>'
+    + '<div><label>Data di consegna</label><input id="cs-data" value="' + todayIT() + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div></div>'
+    + '<div id="cs-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px">'
+    + '<button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
+    + '<button type="button" data-az="nonpaga" style="background:#d63b3b; color:#fff; font-weight:800">✗ Non ha pagato</button>'
+    + '<button type="button" data-az="pagato" style="background:#2f9e5f; color:#fff; font-weight:800">✓ Ha pagato</button></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', async function(e){
+    const b = e.target.closest('button[data-az]');
+    if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); return; }
+    if(!b) return;
+    const msg = document.getElementById('cs-msg');
+    const dataC = document.getElementById('cs-data').value.trim() || todayIT();
+    if(!parseDataIT(dataC)){ msg.textContent = 'La data di consegna deve essere GG/MM/AAAA.'; return; }
+    const campi = { consegnataIl: dataC, consegnataDa: ((auth.profilo && auth.profilo.nome) || '').toUpperCase() };
+    const colf = eColf(p.tipo);
+    if(b.dataset.az === 'pagato'){
+      const v = parseImporto(document.getElementById('cs-imp').value);
+      if(!(v > 0)){ msg.textContent = 'Scrivi quanto ha pagato.'; return; }
+      campi.pagato = v; campi.metodoPagamento = document.getElementById('cs-met').value;
+      if(!colf) campi.stato = 'pagato';
+    } else if(!colf){
+      campi.stato = 'non_paga';
+    }
+    b.disabled = true;
+    const r = await data.pratiche.aggiorna(p.id, campi);
+    if(r && r.error){ b.disabled = false; msg.textContent = 'Non salvato: ' + r.error; return; }
+    ov.remove();
+    avviso('📦 ' + formattaProtocollo(p) + ' consegnata' + (campi.stato ? ' · ' + statoLabel(campi.stato) : ''));
+    render();
+  });
+}
+async function annullaConsegna(id){
+  const p = (state.pratiche||[]).find(function(x){ return x.id === id; }); if(!p) return;
+  if(!confirm('Annullo la consegna di ' + formattaProtocollo(p) + ' (' + (p.nome || '') + ')?\n\nLa pratica torna tra quelle da consegnare; stato e importi restano come sono.')) return;
+  const r = await data.pratiche.aggiorna(p.id, { consegnataIl: '', consegnataDa: '' });
+  if(r && r.error){ avviso('❌ ' + r.error, true); return; }
+  avviso('Consegna annullata');
+  render();
+}
+function mostraConsegnate(){ MOSTRA_CONSEGNATE = !MOSTRA_CONSEGNATE; render(); }
+
 // Gruppo -> id della sola pratica aperta dal registro (si vede solo la sua scheda)
 const SCHEDA_SOLA = {};
 function mostraTutteSchede(k){ delete SCHEDA_SOLA[k]; render(); }
@@ -2528,6 +2607,7 @@ function apriPraticaDaTabella(id){
   aperti[k] = true;
   aperti[k + '|schede'] = true;
   SCHEDA_SOLA[k] = id;
+  if(eConsegnata(p)) MOSTRA_CONSEGNATE = true;
   p._editing = true;
   render();
   setTimeout(function(){

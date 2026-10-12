@@ -128,6 +128,8 @@ const schemas = {
     emailInviata: 'email_inviata',
     saldataCollaboratore: 'saldata_collaboratore',
     trasferitaIn: 'trasferita_in',
+    consegnataIl: 'consegnata_il',
+    consegnataDa: 'consegnata_da',
   },
   acconto: {
     id: 'id',

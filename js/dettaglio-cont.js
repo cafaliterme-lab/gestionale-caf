@@ -105,6 +105,13 @@ function apriDettaglioCont(chiave, gruppo) {
       + '<div style="font-size:13px; margin:-4px 0 10px; color:var(--sub)">Prezzo medio (fatture ÷ pratiche): <b>' + (n ? fmtEuro(somma(l, 'compenso') / n) : '—') + '</b> · Incasso medio (incasso ÷ pratiche): <b>' + (n ? fmtEuro(somma(l, 'pagato') / n) : '—') + '</b></div>'
       + tabellaPraticheDettaglio(l, { guadagno: true });
   }
+  else if (chiave === 'consegnate') {
+    titolo = 'Pratiche consegnate e da consegnare'; colore = '#8d5a3b';
+    const cons = prat.filter(function (p) { return !!p.consegnataIl; }), daC = prat.filter(function (p) { return !p.consegnataIl; });
+    corpo = rigaFormula([['Pagato delle consegnate', somma(cons, 'pagato')], ['importo delle da consegnare', somma(daC, 'pagato'), '+']], somma(prat, 'pagato'))
+      + '<h4 style="margin:10px 0 6px">📦 Da consegnare (' + sommaPeso(daC) + ')</h4>' + tabellaPraticheDettaglio(daC)
+      + '<h4 style="margin:14px 0 6px">✅ Consegnate (' + sommaPeso(cons) + ')</h4>' + tabellaPraticheDettaglio(cons);
+  }
   else if (chiave === 'versamenti') { titolo = 'Versamenti al CAF'; colore = '#2f7de1'; corpo = dettaglioVersamentiHTML(anno); }
   else if (chiave === 'spese') {
     titolo = 'Spese sede'; colore = '#b35f0c';
