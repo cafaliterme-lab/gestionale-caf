@@ -34,7 +34,7 @@ function renderVersamentiCaf(vlist, versatoCaf) {
     + '<div class="grid vc-form">'
     + '<div><label>Dalla fattura n.</label><input id="vc-dal" value="' + val('vc-dal') + '" placeholder="Es. 1" inputmode="numeric" oninput="this.value=this.value.replace(/\\D/g,\'\'); suggerimentoVersamento()"></div>'
     + '<div><label>Alla fattura n.</label><input id="vc-al" value="' + val('vc-al') + '" placeholder="Es. 50" inputmode="numeric" oninput="this.value=this.value.replace(/\\D/g,\'\'); suggerimentoVersamento()"></div>'
-    + '<div><label>Importo fatture €</label>' + campoImp('vc-importo', val('vc-importo')) + '</div>'
+    + '<div><label title="Il totale delle fatture coperte, NON il bollettino: il bollettino lo calcola il programma togliendo spese e bonifici">Totale fatture coperte € <span style="font-weight:400; color:var(--sub)">(non il bollettino)</span></label>' + campoImp('vc-importo', val('vc-importo')) + '</div>'
     + '<div class="full" id="vc-suggerimento" style="font-size:12.5px"></div>'
     + '<div class="full"><div style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; flex-wrap:wrap"><label style="margin:0">Spese pagate per conto del CAF da detrarre (condominio, TARI, acqua…)</label>'
     + '<button type="button" onclick="scegliSpeseDaDetrarre()" style="padding:4px 12px; font-size:12.5px; background:#a0522d; color:#fff; border:none; border-radius:999px; font-weight:700; margin-bottom:4px">📥 Prendi da Spese sede</button></div>'
@@ -405,6 +405,8 @@ function aggiungiVersamento() {
   const fuori = f.bonifici.filter(function (r) { const n = parseInt(r.fattura, 10); return dalN && alN && n && (n < dalN || n > alN); });
   if (fuori.length && !confirm('Attenzione: ' + fuori.map(function (r) { return r.nome + ' (fattura n. ' + r.fattura + ')'; }).join(', ') + ' non rientra nelle fatture dal n. ' + dalN + ' al n. ' + alN + ' di questo versamento.\n\nDetraggo lo stesso il bonifico?')) return;
   if (f.versato < 0) return errore('Spese e bonifici da detrarre sono più alti dell\'importo delle fatture');
+  const totInt = typeof totaleFattureIntervallo === 'function' ? totaleFattureIntervallo(dalN, alN, annoFattureForm() || annoAttivo()) : null;
+  if (totInt && Math.abs(totInt - f.totale) > 0.004 && !confirm('Attenzione: le fatture dal n. ' + dalN + ' al n. ' + alN + ' fanno in tutto ' + fmtEuro(totInt) + ', ma hai scritto ' + fmtEuro(f.totale) + '.\n\nNel campo "Totale fatture coperte" va il totale delle fatture, NON il bollettino: il bollettino lo calcola il programma (' + fmtEuro(totInt) + (f.cassa ? ' − spese ' + fmtEuro(f.cassa) : '') + (f.bonifico ? ' − bonifici ' + fmtEuro(f.bonifico) : '') + ' = ' + fmtEuro(totInt - f.cassa - f.bonifico) + ').\n\nOK = salvo lo stesso con ' + fmtEuro(f.totale) + '\nAnnulla = torno a correggere')) return;
   const dal = (document.getElementById('vc-dal').value || '').trim(), al = (document.getElementById('vc-al').value || '').trim();
   if (dal && al && Number(dal) > Number(al)) return errore('Il numero "dalla fattura" deve essere più piccolo di "alla fattura"');
   const annoF = annoFattureForm(), dataV = document.getElementById('vc-data').value.trim() || todayIT();

@@ -1480,6 +1480,12 @@ function rimuoviIsee(id){
 }
 // Con "dalla fattura n. … alla n. …" si vede quanto fanno quelle fatture (anno di protocollo), da usare come importo
 function numeroFatturaPratica(p){ const m = /\d+/.exec(String(p.numFattura || '')); return m ? Number(m[0]) : null; }
+// Totale delle fatture dal n. … al n. … dell'anno (per controllare l'importo del versamento)
+function totaleFattureIntervallo(dal, al, anno){
+  if(!(dal > 0) || !(al > 0) || dal > al) return null;
+  return (state.pratiche || []).filter(function(p){ const n = numeroFatturaPratica(p); return !p.annullata && annoPratica(p) === anno && n != null && n >= dal && n <= al; })
+    .reduce(function(t, p){ return t + Number(p.compenso || 0); }, 0);
+}
 function suggerimentoVersamento(){
   const box = document.getElementById('vc-suggerimento');
   if(!box) return;
@@ -1491,6 +1497,9 @@ function suggerimentoVersamento(){
   const pagate = lista.filter(function(p){ return Number(p.pagato || 0) > 0; });
   const totPag = pagate.reduce(function(t, p){ return t + Number(p.compenso || 0); }, 0);
   const attese = al - dal + 1;
+  // Se l'importo è vuoto lo metto io: è il totale delle fatture (il bollettino si calcola da solo)
+  const campoImp = document.getElementById('vc-importo');
+  if(campoImp && tot > 0 && !campoImp.value.trim()){ campoImp.value = tot.toFixed(2).replace('.', ','); if(typeof totaleVersamentoForm === 'function') setTimeout(totaleVersamentoForm, 0); }
   box.innerHTML = '🧾 Fatture dal n. ' + dal + ' al n. ' + al + ' (' + anno + '): <b>' + lista.length + '</b> trovate' + (lista.length < attese ? ' su ' + attese + ' <span style="color:#c0392b">(alcuni numeri non sono nel registro)</span>' : '') + ' · totale <b>' + fmtEuro(tot) + '</b>'
     + (pagate.length !== lista.length ? ' · di cui pagate ' + pagate.length + ' per ' + fmtEuro(totPag) : '')
     + (tot ? ' <button type="button" onclick="document.getElementById(\'vc-importo\').value=\'' + tot.toFixed(2).replace('.', ',') + '\'; if(typeof totaleVersamentoForm===\'function\') totaleVersamentoForm();" style="padding:3px 10px; font-size:12px; margin-left:6px">Usa come importo</button>' : '');
