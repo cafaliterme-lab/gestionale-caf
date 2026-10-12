@@ -1899,6 +1899,10 @@ async function addPraticaInterna(){
     document.getElementById('f-tel').focus();
     return;
   }
+  if(telefono && cellulareSospetto(telefono) && !confirm(cellulareSospetto(telefono) + '\n\nSalvo lo stesso? (Annulla per correggerlo)')){
+    document.getElementById('f-tel').focus();
+    return;
+  }
   if(email && !emailValida(email)){
     popupErroreCampo('E-mail non valida', 'L\'indirizzo <b>' + esc(email) + '</b> non è corretto: controllalo (es. nome@esempio.it) oppure lascia il campo vuoto.', 'f-email');
     return;
@@ -2035,7 +2039,21 @@ function numeroWhatsApp(tel){
   if(n.startsWith('+')) n = n.slice(1);
   else if(n.startsWith('00')) n = n.slice(2);
   else if(n) n = '39' + n;
+  // numero italiano: per WhatsApp serve un cellulare completo (3 + 9 cifre, es. 333 1234567)
+  if(n.startsWith('39')) return /^393\d{9}$/.test(n) ? n : '';
   return /^\d{10,15}$/.test(n) ? n : '';
+}
+// Cellulare italiano scritto male (cifre mancanti o in più): serve per avvisare prima di salvare
+function cellulareSospetto(tel){
+  const n = String(tel||'').replace(/[^\d+]/g, '').replace(/^(\+|00)39/, '');
+  if(!n || /^(\+|00)/.test(n)) return '';
+  if(/^3/.test(n) && n.length !== 10) return 'Il cellulare ' + tel + ' ha ' + n.length + ' cifre: un cellulare italiano ne ha 10 (es. 333 1234567). Così WhatsApp non lo trova.';
+  if(!/^3/.test(n)) return 'Il numero ' + tel + ' non sembra un cellulare (i cellulari iniziano con 3): WhatsApp non lo troverà.';
+  return '';
+}
+function messaggioNumeroWhatsApp(nome, tel){
+  const s = tel ? cellulareSospetto(tel) : '';
+  return (s ? s + '\n\n' : '') + 'Scrivi il numero di cellulare giusto di ' + (nome || 'cliente') + ' (verra\' salvato):';
 }
 // Apre WhatsApp: sul telefono l'app, sul PC sempre la STESSA scheda di WhatsApp Web (niente nuove aperture a ogni invio)
 function eDispositivoMobile(){
@@ -2189,7 +2207,7 @@ function inviaWhatsApp(id){
   let num = numeroWhatsApp(p.telefono);
   let nuovoTel = '';
   if(!num){
-    const t = prompt('Numero di cellulare di ' + p.nome + ' (verra\' salvato nella pratica):', p.telefono || '');
+    const t = prompt(messaggioNumeroWhatsApp(p.nome, p.telefono), p.telefono || '');
     if(!t) return;
     num = numeroWhatsApp(t);
     if(!num){ avviso('❌ Numero di telefono non valido', true); return; }
@@ -2552,6 +2570,7 @@ async function salvaModifica(id){
     avviso('❌ Inserisci almeno un numero di telefono: cellulare o telefono fisso.', true);
     return;
   }
+  if(campi.telefono && campi.telefono !== p.telefono && cellulareSospetto(campi.telefono) && !confirm(cellulareSospetto(campi.telefono) + '\n\nSalvo lo stesso? (Annulla per correggerlo)')) return;
   if(eAltrePratiche(campi.tipo) && !campi.descrizioneTipo){
     avviso('❌ Hai scelto ALTRE PRATICHE: scrivi la descrizione della pratica.', true);
     return;

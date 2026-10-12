@@ -180,10 +180,11 @@ const GUIDA = [
 <p>Premi <b>🧾 Ricevuta</b> nella pratica (o 🧾 nel Registro): si apre la ricevuta da stampare con i dati del CAF, del cliente, il protocollo, gli importi con il tipo di pagamento, la <b>documentazione presentata</b> e quella <b>da portare</b>.</p>
 <p class="g-nota">Le richieste CUD non compaiono sulla ricevuta.</p>` },
 
-  { id: 'whatsapp', icona: '💬', titolo: 'Messaggi WhatsApp ai clienti', parole: 'whatsapp messaggio avviso ritiro pratica pronta multiplo modelli pc copia app scheda',
+  { id: 'whatsapp', icona: '💬', titolo: 'Messaggi WhatsApp ai clienti', parole: 'whatsapp messaggio avviso ritiro pratica pronta multiplo modelli pc copia app scheda numero non risulta contatti cellulare cifre',
     testo: `
 <ul>
 <li>Il pulsante <b>💬</b> sulla pratica avvisa il cliente che la pratica è pronta, con il messaggio predefinito (si scelgono i modelli in <b>Messaggi</b>). La data dell'avviso resta scritta sulla pratica.</li>
+<li><b>Numero giusto</b>: WhatsApp funziona solo con un <b>cellulare completo</b> (in Italia 10 cifre che iniziano con 3, es. 333 1234567). Se il cellulare salvato ha cifre in meno o in più, o è un fisso, il programma non apre WhatsApp: ti dice cosa non va e ti chiede il numero giusto, che viene salvato nella pratica e nell'archivio. Anche quando inserisci o modifichi una pratica, un cellulare con un numero sbagliato di cifre viene segnalato prima di salvare.</li>
 <li><b>💬 WhatsApp multiplo</b> nel Registro avvisa in sequenza tutte le pratiche lavorate.</li>
 <li>Un avviso in alto ricorda le pratiche lavorate e non ancora comunicate.</li>
 </ul>

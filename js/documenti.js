@@ -69,7 +69,7 @@ function messaggioDocumentiMancanti(p) {
 function inviaWhatsAppLibero(telefono, testo, nome) {
   let num = numeroWhatsApp(telefono);
   if (!num) {
-    const t = prompt('Numero di cellulare di ' + (nome || 'cliente') + ':', telefono || '');
+    const t = prompt(typeof messaggioNumeroWhatsApp === 'function' ? messaggioNumeroWhatsApp(nome, telefono) : 'Numero di cellulare di ' + (nome || 'cliente') + ':', telefono || '');
     if (!t) return false;
     num = numeroWhatsApp(t);
     if (!num) { avviso('❌ Numero di telefono non valido', true); return false; }
