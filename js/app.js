@@ -950,15 +950,17 @@ async function esportaRegistroExcel(){
   const incasso = incassoLordo - versatoCaf;
   const DA_LAVORARE = STATI_DA_LAVORARE;
   const daLavorare = sommaPeso(tutte.filter(function(p){ return DA_LAVORARE.indexOf(p.stato)>=0; }));
-  const rinunce = sommaPeso(tutte.filter(function(p){ return p.stato==='rinuncia_compilazione'; }));
+  const rinunce = sommaPeso(tutte.filter(eRinuncia));
   const lavorate = sommaPeso(tutte) - daLavorare - rinunce;
+  const annullate = sommaPeso(annullateAnno(anno));
 
   const contabRighe = [
     { 'Voce':'Anno di protocollo', 'Valore': anno },
-    { 'Voce':'Pratiche totali (congiunte valgono 2)', 'Valore': sommaPeso(tutte) },
+    { 'Voce':'Pratiche totali, senza rinunce e annullate (congiunte valgono 2)', 'Valore': sommaPeso(tutte) - rinunce },
     { 'Voce':'Lavorate', 'Valore': lavorate },
     { 'Voce':'Da lavorare', 'Valore': daLavorare },
-    { 'Voce':'Rinuncia alla compilazione', 'Valore': rinunce },
+    { 'Voce':'Rinuncia alla compilazione (a parte)', 'Valore': rinunce },
+    { 'Voce':'Pratiche annullate (a parte)', 'Valore': annullate },
     { 'Voce':'Fatture emesse (€)', 'Valore': fattureEmesse },
     { 'Voce':'Incasso totale (€)', 'Valore': incassoLordo },
     { 'Voce':'Versamenti CAF (€)', 'Valore': versatoCaf },
@@ -1634,9 +1636,10 @@ function render(){
     };
     const nota = ' del ' + annoSel + ': solo 730, le congiunte valgono 2.';
     lavorateEl.innerHTML = '<div style="display:flex; flex-direction:column; align-items:stretch; gap:5px; min-width:210px">'
-      + badge('TOTALE PRATICHE', c.tot, '#374151', 'Tutte le pratiche' + nota + (c.rinunce ? ' Comprese ' + c.rinunce + ' rinunce alla compilazione.' : ''))
+      + badge('TOTALE PRATICHE', c.tot, '#374151', 'Pratiche lavorate e da lavorare' + nota + ' Le rinunce e le annullate sono a parte.')
       + badge('DA LAVORARE', c.daFare, c.daFare ? '#c0392b' : '#2f9e5f', 'In arrivo, in lavorazione o da lavorare scansionata' + nota)
       + badge('TOTALE LAVORATE', c.lav, '#2f9e5f', 'Lavorate, da fatturare, da pagare, pagate o non pagate' + nota)
+      + (c.rinunce ? badge('RINUNCE', c.rinunce, '#6b7280', 'Rinunce alla compilazione' + nota + ' Non contano tra le pratiche.') : '')
       + Object.keys(perOperatore).sort().map(function(chi){ return badge(esc(chi), perOperatore[chi], '#1d4f91', 'Pratiche 730 lavorate da ' + chi + nota); }).join('')
       + '</div>';
     if(typeof posizionaPannelloScadenze === 'function') posizionaPannelloScadenze();
@@ -1663,15 +1666,16 @@ function render(){
     <div class="stat c4" data-dett="p730" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${tot}</b><span style="color:rgba(255,255,255,.92); font-weight:600">PRATICHE 730 TOTALI</span></div>
     <div class="stat c4" data-dett="p730lav" style="background:#2f9e5f; border-color:#2f9e5f; color:#fff"><b>${lavorate}</b><span style="color:rgba(255,255,255,.92); font-weight:600">730 LAVORATE</span></div>
     <div class="stat c4" data-dett="p730dalav" style="background:#e57373; border-color:#e57373; color:#fff"><b>${daLavorare}</b><span style="color:rgba(255,255,255,.95); font-weight:600">730 DA LAVORARE</span></div>
-    <div class="stat c4" data-dett="paltre" style="background:#0e8a8a; border-color:#0e8a8a; color:#fff"><b>${sommaPeso(pratAnno.filter(function(p){ return !e730(p); }))}</b><span style="color:rgba(255,255,255,.92); font-weight:600">ALTRE PRATICHE</span></div>` : '') + (vEco ? `
+    <div class="stat c4" data-dett="paltre" style="background:#0e8a8a; border-color:#0e8a8a; color:#fff"><b>${sommaPeso(pratAnno.filter(eAltraConta))}</b><span style="color:rgba(255,255,255,.92); font-weight:600">ALTRE PRATICHE</span></div>` : '') + (vEco ? `
     <div class="stat c5 verde" data-dett="fatture"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE</span></div>
     <div class="stat c5 viola" data-dett="incasso"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
     ${(function(){ const cons = pratAnno.filter(eConsegnata), daC = pratAnno.filter(function(p){ return !eConsegnata(p); }); return '<div class="stat c5" data-dett="consegnate" style="background:#8d5a3b; border-color:#8d5a3b; color:#fff"><b>' + sommaPeso(cons) + ' / ' + sommaPeso(pratAnno) + '</b><span style="color:rgba(255,255,255,.92); font-weight:600">📦 PRATICHE CONSEGNATE<br>da consegnare ' + sommaPeso(daC) + ' · importo ' + fmtEuro(daC.reduce(function(t,p){ return t + Number(p.pagato||0); }, 0)) + '</span></div>'; })()}
     <div class="stat c5 blu" data-dett="versamenti"><b>${fmtEuro(versatoCaf)}</b><span>VERSAMENTI CAF (fatture coperte)${typeof cassaDivisa === 'function' ? (function(){ const d = cassaDivisa(annoSel), detr = d.detrContanti + d.detrBanca; return detr > 0.004 || d.bonifici > 0.004 ? '<br>bollettini ' + fmtEuro(versatoCaf - detr - d.bonifici) + (detr > 0.004 ? ' + spese detratte ' + fmtEuro(detr) : '') + (d.bonifici > 0.004 ? ' + bonifici ' + fmtEuro(d.bonifici) : '') : ''; })() : ''}</span></div>
     <div class="stat c5" data-dett="cassa" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso - speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SOLDI IN CASSA (incasso − versamenti CAF − spese sede)${typeof cassaDivisa === 'function' ? (function(){ const d = cassaDivisa(annoSel); return '<br>💶 contanti ' + fmtEuro(d.contanti) + ' · 🏦 banca ' + fmtEuro(d.banca); })() : ''}</span></div>
     ${vedeGuadagni() ? `<div class="stat c5" data-dett="spese" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE${typeof totaleRimborsiCaf === 'function' && totaleRimborsiCaf(annoSel) > 0.004 ? ' (esclusi ' + fmtEuro(totaleRimborsiCaf(annoSel)) + ' rimborsati dal CAF)' : ''}</span></div>${typeof debitoAngelo === 'function' && debitoAngelo().totale ? `<div class="stat c5" data-dett="angelo" style="background:#8e5bd6; border-color:#8e5bd6; color:#fff"><b>${fmtEuro(debitoAngelo().totale)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">DA RESTITUIRE AD ANGELO</span></div>` : ''}<div class="stat c5 gray" data-dett="guadagno"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO (meno spese sede)</span></div>` : ''}` : '') + ((vPrat || vEco) ? '</div>' : '') + (vBlocchi ? `
-    ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730), true, 'GUADAGNO NETTO 730')}
-    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#0e8a8a', pratAnno.filter(function(p){ return !e730(p); }), false, 'GUADAGNO NETTO ALTRE PRATICHE')}
+    ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730Conta), true, 'GUADAGNO NETTO 730')}
+    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#0e8a8a', pratAnno.filter(eAltraConta), false, 'GUADAGNO NETTO ALTRE PRATICHE')}
+    ${bloccoRinunce(pratAnno, annoSel)}
     ${vedeGuadagni() ? sommaGuadagniHTML(pratAnno) : ''}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf, speseSede) : '');
   if(typeof renderSpese === 'function') renderSpese();
 
@@ -2958,23 +2962,44 @@ function aggiornaCongiuntaEdit(id, tipo){
 // Stati: "da lavorare" finche' la pratica non e' stata lavorata; dopo (anche pagata o da pagare) conta come lavorata
 const STATI_DA_LAVORARE = ['arrivo','lavorazione','da_lavorare_scansionata'];
 function eDaLavorare(p){ return STATI_DA_LAVORARE.indexOf(p.stato) >= 0; }
-function eLavorata(p){ return !eDaLavorare(p) && p.stato !== 'rinuncia_compilazione'; }
+// Rinunce (e stati aggiunti con "rinuncia" o "annullata" nel nome): contabilità a parte, non contano tra le pratiche
+function eRinuncia(p){
+  if(!p) return false;
+  if(p.stato === 'rinuncia_compilazione') return true;
+  return /rinunc|annullat/i.test((STATI[p.stato]||{}).l || '');
+}
+function eLavorata(p){ return !eDaLavorare(p) && !eRinuncia(p); }
+function e730Conta(p){ return e730(p) && !eRinuncia(p); }
+function eAltraConta(p){ return !e730(p) && !eRinuncia(p); }
 function conteggi730(pratiche){
   const l = (pratiche||[]).filter(e730);
   const daFare = sommaPeso(l.filter(eDaLavorare)), lav = sommaPeso(l.filter(eLavorata));
-  return { tot: sommaPeso(l), daFare: daFare, lav: lav, rinunce: sommaPeso(l) - daFare - lav };
+  return { tot: daFare + lav, daFare: daFare, lav: lav, rinunce: sommaPeso(l.filter(eRinuncia)) };
+}
+function annullateAnno(anno){ return (state.annullate||[]).filter(function(p){ return annoPratica(p) === anno; }); }
+// Blocco a parte: rinunce alla compilazione e pratiche annullate
+function bloccoRinunce(pratAnno, anno){
+  const rin = pratAnno.filter(eRinuncia), ann = annullateAnno(anno);
+  if(!rin.length && !ann.length) return '';
+  const fatt = rin.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0), inc = rin.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+  const tile = function(bg, valore, etichetta, dett){ return '<div class="stat c4" data-dett="'+dett+'" data-gruppo="rinunce" style="background:'+bg+'; border-color:'+bg+'; color:#fff"><b>'+valore+'</b><span style="color:rgba(255,255,255,.92); font-weight:600; letter-spacing:.03em">'+etichetta+'</span></div>'; };
+  return '<div class="cont-gruppo" style="--cg:#374151"><div class="cont-gruppo-tit">🚫 RINUNCE E ANNULLATE (contabilità a parte, non contano tra le pratiche)</div>'
+    + tile('#374151', sommaPeso(rin), 'RINUNCE ALLA COMPILAZIONE' + (rin.filter(e730).length ? '<br>di cui 730: ' + sommaPeso(rin.filter(e730)) : ''), 'g-pratiche')
+    + tile('#6b7280', sommaPeso(ann), 'PRATICHE ANNULLATE', 'annullate')
+    + (fatt || inc ? tile('#2f9e5f', fmtEuro(fatt), 'FATTURE DELLE RINUNCE', 'g-fatture') + tile('#8e5bd6', fmtEuro(inc), 'INCASSO DELLE RINUNCE', 'g-incasso') : '')
+    + '</div>';
 }
 // Tasto che somma il guadagno netto 730 e quello delle altre pratiche (resta aperto finché non lo richiudi)
 let SOMMA_GUADAGNI_APERTA = false;
 function sommaGuadagniHTML(pratiche){
   const g = function(lista){ return lista.reduce(function(a,p){ return a + Number(p.pagato||0) - Number(p.compenso||0); }, 0); };
-  const g730 = g(pratiche.filter(e730)), gAltre = g(pratiche.filter(function(p){ return !e730(p); }));
+  const g730 = g(pratiche.filter(e730Conta)), gAltre = g(pratiche.filter(eAltraConta)), gRin = g(pratiche.filter(eRinuncia));
   return '<div style="flex-basis:100%; margin-top:10px; display:flex; flex-wrap:wrap; align-items:center; gap:10px">'
     + '<button type="button" onclick="SOMMA_GUADAGNI_APERTA=!SOMMA_GUADAGNI_APERTA; render()" style="padding:12px 20px; border:none; border-radius:999px; background:linear-gradient(90deg,#1d4f91,#0e8a8a); color:#fff; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.2)">'
     + (SOMMA_GUADAGNI_APERTA ? '✕ Chiudi somma' : '➕ Somma guadagni 730 + altre pratiche') + '</button>'
     + (SOMMA_GUADAGNI_APERTA ? '<div style="flex:1; min-width:260px; padding:12px 16px; border-radius:14px; background:#c2185b; color:#fff; display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 10px">'
-      + '<span style="font-size:14px; font-weight:700">Guadagno netto 730 <b>' + fmtEuro(g730) + '</b> + altre pratiche <b>' + fmtEuro(gAltre) + '</b> =</span>'
-      + '<span style="font-size:26px; font-weight:900">' + fmtEuro(g730 + gAltre) + '</span>'
+      + '<span style="font-size:14px; font-weight:700">Guadagno netto 730 <b>' + fmtEuro(g730) + '</b> + altre pratiche <b>' + fmtEuro(gAltre) + '</b>' + (Math.abs(gRin) > 0.004 ? ' + rinunce <b>' + fmtEuro(gRin) + '</b>' : '') + ' =</span>'
+      + '<span style="font-size:26px; font-weight:900">' + fmtEuro(g730 + gAltre + gRin) + '</span>'
       + '<span style="flex-basis:100%; font-size:12px; opacity:.9">Guadagno complessivo delle pratiche, prima delle spese sede</span></div>' : '')
     + '</div>';
 }
@@ -3130,14 +3155,16 @@ function aggiornaCampoFineForm(){
 function riepilogoGuadagno(pratiche, pagamentiCaf, speseSede){
   speseSede = speseSede || 0;
   const provento = function(lista){ return lista.reduce(function(a,p){ return a + Number(p.pagato||0) - Number(p.compenso||0); }, 0); };
-  const p730 = provento(pratiche.filter(e730));
-  const pAltre = provento(pratiche.filter(function(p){ return !e730(p); }));
+  const p730 = provento(pratiche.filter(e730Conta));
+  const pAltre = provento(pratiche.filter(eAltraConta));
+  const pRin = provento(pratiche.filter(eRinuncia));
   const voce = function(testo, valore, colore){ return '<span style="white-space:nowrap"><span style="color:var(--sub); font-weight:600">'+testo+'</span> <b style="color:'+colore+'">'+fmtEuro(valore)+'</b></span>'; };
   return '<div style="flex-basis:100%; margin-top:6px; padding:12px 16px; border-radius:12px; background:var(--card); border:2px dashed #c2185b; font-size:15px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px">'
     + voce('Guadagno netto 730', p730, '#1d4f91') + '<b>+</b>'
-    + voce('Guadagno netto altre pratiche', pAltre, '#0e8a8a') + '<b>−</b>'
+    + voce('Guadagno netto altre pratiche', pAltre, '#0e8a8a')
+    + (Math.abs(pRin) > 0.004 ? '<b>+</b>' + voce('Rinunce', pRin, '#374151') : '') + '<b>−</b>'
     + voce('Spese sede', speseSede, '#b35f0c') + '<b>=</b>'
-    + '<span style="white-space:nowrap; background:#c2185b; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre - speseSede) + '</span>'
+    + '<span style="white-space:nowrap; background:#c2185b; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">GUADAGNO NETTO ' + fmtEuro(p730 + pAltre + pRin - speseSede) + '</span>'
     + (function(){ const daVers = pratiche.reduce(function(a,p){ return a + Number(p.compenso||0); }, 0) - pagamentiCaf; return '<div style="flex-basis:100%; font-size:12.5px; color:var(--sub)">Fatture ancora da versare al CAF: <b style="color:' + (daVers > 0.004 ? '#c0392b' : 'inherit') + '">' + fmtEuro(daVers) + '</b> (fatture emesse − versamenti CAF). I versamenti non cambiano il guadagno: cambiano solo il netto in cassa.</div>'; })()
     + '</div>';
 }

@@ -30,9 +30,10 @@ const GUIDA = [
     testo: `
 <p>I riquadri colorati in alto contano <b>solo le pratiche 730</b> (di tutti i tipi 730) dell'anno scelto:</p>
 <ul>
-<li><b>TOTALE PRATICHE</b>: tutte le pratiche 730.</li>
+<li><b>TOTALE PRATICHE</b>: le pratiche 730 lavorate e da lavorare (le <b>rinunce</b> e le <b>annullate</b> non contano: sono a parte).</li>
 <li><b>Da lavorare</b>: quelle In arrivo, In lavorazione o Da lavorare scansionata.</li>
 <li><b>Lavorate</b>: tutte le altre, tranne la rinuncia alla compilazione.</li>
+<li><b>Rinunce</b> (grigio, solo se ce ne sono): le rinunce alla compilazione, contate a parte.</li>
 <li>Un contatore per ogni <b>operatore</b> con le pratiche lavorate inserite da lui.</li>
 </ul>
 <p class="g-nota">Una dichiarazione <b>congiunta vale 2</b> pratiche in tutti i conteggi.</p>` },
@@ -238,6 +239,7 @@ const GUIDA = [
 <li><b>🔎 Ricerca fatture</b> dal… al… con il tipo di pagamento (vedi il capitolo dedicato).</li>
 <li>I riquadri <b>SPESE SEDE</b>, <b>GUADAGNO NETTO</b> (incasso − fatture emesse − spese sede), <b>SOLDI IN CASSA</b> (incasso − versamenti CAF − spese sede) e, se c'è, <b>DA RESTITUIRE AD ANGELO</b>.</li>
 <li>I blocchi <b>730</b> e <b>Altre pratiche e cose varie</b> mostrano ciascuno il proprio <b>guadagno netto</b>; il tasto <b>➕ Somma guadagni 730 + altre pratiche</b> mostra il totale dei due guadagni.</li>
+<li><b>🚫 Rinunce e annullate – contabilità a parte</b>: le pratiche in <b>Rinuncia alla compilazione</b> (e gli stati aggiunti da te con «rinuncia» o «annullata» nel nome) e le pratiche <b>annullate</b> non contano più tra le pratiche 730 né tra le altre pratiche, e non cambiano prezzo e incasso medio. Hanno un blocco a parte con il numero di rinunce, di annullate e, se ci sono, fatture e incasso delle rinunce. I soldi eventualmente incassati da una rinuncia restano nell'incasso totale e nei soldi in cassa, e nel conto finale compaiono come voce <b>Rinunce</b>.</li>
 <li><b>🖨️ Stampa contabilità (Excel / PDF)</b>.</li>
 </ul>` },
 

@@ -77,14 +77,15 @@ function dettaglioSpeseHTML(anno) {
 function apriDettaglioCont(chiave, gruppo) {
   const anno = annoAttivo();
   const prat = praticheDettaglio(anno);
-  const filtroGruppo = function (l) { return gruppo === '730' ? l.filter(e730) : gruppo === 'altre' ? l.filter(function (p) { return !e730(p); }) : l; };
-  const nomeGruppo = gruppo === '730' ? ' – solo 730' : gruppo === 'altre' ? ' – altre pratiche' : '';
+  const filtroGruppo = function (l) { return gruppo === '730' ? l.filter(e730Conta) : gruppo === 'altre' ? l.filter(eAltraConta) : gruppo === 'rinunce' ? l.filter(eRinuncia) : l; };
+  const nomeGruppo = gruppo === '730' ? ' – solo 730' : gruppo === 'altre' ? ' – altre pratiche' : gruppo === 'rinunce' ? ' – rinunce' : '';
   const somma = function (l, c) { return l.reduce(function (t, p) { return t + Number(p[c] || 0); }, 0); };
   let titolo = '', corpo = '', colore = '#1d4f91';
-  if (chiave === 'p730') { titolo = 'Pratiche 730'; corpo = tabellaPraticheDettaglio(prat.filter(e730)); }
+  if (chiave === 'p730') { titolo = 'Pratiche 730 (senza rinunce)'; corpo = tabellaPraticheDettaglio(prat.filter(e730Conta)); }
+  else if (chiave === 'annullate') { titolo = 'Pratiche annullate'; colore = '#6b7280'; corpo = tabellaPraticheDettaglio(annullateAnno(anno)); }
   else if (chiave === 'p730lav') { titolo = '730 lavorate'; colore = '#2f9e5f'; corpo = tabellaPraticheDettaglio(prat.filter(function (p) { return e730(p) && eLavorata(p); })); }
   else if (chiave === 'p730dalav') { titolo = '730 da lavorare'; colore = '#e57373'; corpo = tabellaPraticheDettaglio(prat.filter(function (p) { return e730(p) && eDaLavorare(p); })); }
-  else if (chiave === 'paltre') { titolo = 'Altre pratiche'; colore = '#0e8a8a'; corpo = tabellaPraticheDettaglio(prat.filter(function (p) { return !e730(p); })); }
+  else if (chiave === 'paltre') { titolo = 'Altre pratiche'; colore = '#0e8a8a'; corpo = tabellaPraticheDettaglio(prat.filter(eAltraConta)); }
   else if (chiave === 'g-pratiche') { titolo = 'Pratiche' + nomeGruppo; corpo = tabellaPraticheDettaglio(filtroGruppo(prat)); }
   else if (chiave === 'fatture' || chiave === 'g-fatture') {
     const l = filtroGruppo(prat).filter(function (p) { return Number(p.compenso || 0) > 0; });
@@ -143,10 +144,10 @@ function apriDettaglioCont(chiave, gruppo) {
   }
   else if (chiave === 'guadagno') {
     titolo = 'Guadagno netto'; colore = '#c2185b';
-    const g730 = prat.filter(e730), gAltre = prat.filter(function (p) { return !e730(p); });
+    const g730 = prat.filter(e730Conta), gAltre = prat.filter(eAltraConta), gRin = prat.filter(eRinuncia);
     const sp = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0;
-    const v730 = somma(g730, 'pagato') - somma(g730, 'compenso'), vAltre = somma(gAltre, 'pagato') - somma(gAltre, 'compenso');
-    corpo = rigaFormula([['Guadagno 730', v730], ['Guadagno altre pratiche', vAltre, '+'], ['Spese a carico della sede', sp]], v730 + vAltre - sp)
+    const v730 = somma(g730, 'pagato') - somma(g730, 'compenso'), vAltre = somma(gAltre, 'pagato') - somma(gAltre, 'compenso'), vRin = somma(gRin, 'pagato') - somma(gRin, 'compenso');
+    corpo = rigaFormula([['Guadagno 730', v730], ['Guadagno altre pratiche', vAltre, '+'], ['Rinunce', vRin, '+'], ['Spese a carico della sede', sp]].filter(function (v) { return v[0] !== 'Rinunce' || Math.abs(v[1]) > 0.004; }), v730 + vAltre + vRin - sp)
       + '<h4 style="margin:10px 0 6px">Pratiche</h4>' + tabellaPraticheDettaglio(prat, { guadagno: true })
       + '<h4 style="margin:14px 0 6px">Spese sede</h4>' + dettaglioSpeseHTML(anno);
   }
