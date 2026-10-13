@@ -481,6 +481,8 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <div class="grafici-griglia">
   <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Riepilogo economico</div><div class="chart-wrap" id="gr-economico-wrap" style="height:260px"><canvas id="gr-economico"></canvas></div></div>
   <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Pratiche per stato</div><div class="chart-wrap" id="gr-stati-wrap" style="height:260px"><canvas id="gr-stati"></canvas></div></div>
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:#8d5a3b">📦 730 consegnati e da consegnare</div><div class="chart-wrap" id="gr-consegna-wrap" style="height:260px"><canvas id="gr-consegna"></canvas></div></div>
+  <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:#8d5a3b">📦 730: incasso e fatture, consegnati e da consegnare</div><div class="chart-wrap" id="gr-consegna-euro-wrap" style="height:260px"><canvas id="gr-consegna-euro"></canvas></div></div>
   <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Pratiche per tipo</div><div class="chart-wrap" id="gr-tipi-wrap" style="height:260px"><canvas id="gr-tipi"></canvas></div></div>
   <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Incasso: 730 e altre pratiche</div><div class="chart-wrap" id="gr-730-wrap" style="height:260px"><canvas id="gr-730"></canvas></div></div>
   <div class="card"><div class="chart-cap" style="font-size:13px; font-weight:700; color:var(--ink)">Pratiche aperte per mese</div><div class="chart-wrap" id="gr-mesi-wrap" style="height:260px"><canvas id="gr-mesi"></canvas></div></div>
@@ -849,12 +851,12 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
 <script src="js/ocr-documento.js?v=11"></script>
-<script src="js/grafici.js?v=21"></script>
+<script src="js/grafici.js?v=22"></script>
 <script src="js/stampe.js?v=24"></script>
 <script src="js/extra.js?v=25"></script>
 <script src="js/documenti.js?v=15"></script>
 <script src="js/installa.js?v=4"></script>
-<script src="js/guida.js?v=95"></script>
+<script src="js/guida.js?v=96"></script>
 <script src="js/scadenze.js?v=202610089"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>

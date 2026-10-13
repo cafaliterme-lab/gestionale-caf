@@ -97,6 +97,29 @@ function renderGrafici() {
     options: opzioniCiambella(false),
   });
 
+  // 2b. 730 consegnati / da consegnare (rinunce escluse)
+  const l730c = pratAnno.filter(function (p) { return typeof e730Conta === 'function' ? e730Conta(p) : e730(p); });
+  const consG = l730c.filter(function (p) { return !!p.consegnataIl; }), daCG = l730c.filter(function (p) { return !p.consegnataIl; });
+  disegna('gr-consegna', {
+    type: 'doughnut',
+    data: {
+      labels: ['✅ Consegnati (' + sommaPeso(consG) + ')', '📦 Da consegnare (' + sommaPeso(daCG) + ')'],
+      datasets: [{ data: [sommaPeso(consG), sommaPeso(daCG)], backgroundColor: ['#1a7f37', '#8d5a3b'], borderColor: getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#fff', borderWidth: 2 }],
+    },
+    options: opzioniCiambella(false),
+  });
+  disegna('gr-consegna-euro', {
+    type: 'bar',
+    data: {
+      labels: ['✅ Consegnati', '📦 Da consegnare'],
+      datasets: [
+        { label: 'Incasso', data: [sommaCampo(consG, 'pagato'), sommaCampo(daCG, 'pagato')], backgroundColor: COL_INCASSO, borderRadius: 6, maxBarThickness: 40 },
+        { label: 'Fatture emesse', data: [sommaCampo(consG, 'compenso'), sommaCampo(daCG, 'compenso')], backgroundColor: COL_FATTURE, borderRadius: 6, maxBarThickness: 40 },
+      ],
+    },
+    options: opzioniBase(true, false, true),
+  });
+
   // 3 e 4. Per tipo pratica
   const d = datiPerTipo(pratAnno);
   const contaTipo = {};
