@@ -2567,7 +2567,7 @@ function aggiornaTastoConsegnate(pratAnno){
 function bottoneConsegna(p){
   if(!p || p.annullata) return '';
   const w = parolaConsegna(p);
-  if(eConsegnata(p)) return '<button type="button" title="' + w.fatta + ' il ' + esc(p.consegnataIl) + (p.consegnataDa ? ' da ' + esc(p.consegnataDa) : '') + ' – tocca per annullare" onclick="annullaConsegna(\'' + p.id + '\')" style="background:#e8f6ee; color:#1a7f37; border:1px solid #1a7f37; border-radius:6px; padding:4px 8px; font-size:11.5px; font-weight:700; cursor:pointer">' + w.icona + ' ' + esc(p.consegnataIl) + '</button>';
+  if(eConsegnata(p)) return '<button type="button" title="' + w.fatta + ' il ' + esc(p.consegnataIl) + (p.consegnataDa ? ' da ' + esc(p.consegnataDa) : '') + ' – tocca per riaprire la pratica (solo amministratore)" onclick="annullaConsegna(\'' + p.id + '\')" style="background:#e8f6ee; color:#1a7f37; border:1px solid #1a7f37; border-radius:6px; padding:4px 8px; font-size:11.5px; font-weight:700; cursor:pointer">' + w.icona + ' ' + esc(p.consegnataIl) + '</button>';
   return '<button type="button" title="Segna la pratica come ' + w.fatta_m + '" onclick="consegnaPratica(\'' + p.id + '\')" style="background:#8d5a3b; color:#fff; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer">' + w.icona + ' ' + w.fai + '</button>';
 }
 // Stati di "non pagato": Non paga + quelli aggiunti dall'amministratore con "non … pag" nel nome (es. "Non ha pagato")
@@ -2638,13 +2638,42 @@ function consegnaPratica(id){
     render();
   });
 }
-async function annullaConsegna(id){
+// Riaprire una pratica consegnata/definita (es. per riportarla a "Lavorata"): solo l'amministratore
+function annullaConsegna(id){
   const p = (state.pratiche||[]).find(function(x){ return x.id === id; }); if(!p) return;
-  if(!confirm('Tolgo la spunta "' + parolaConsegna(p).fatta + '" a ' + formattaProtocollo(p) + ' (' + (p.nome || '') + ')?\n\nStato e importi restano come sono.')) return;
-  const r = await data.pratiche.aggiorna(p.id, { consegnataIl: '', consegnataDa: '' });
-  if(r && r.error){ avviso('❌ ' + r.error, true); return; }
-  avviso('Spunta "' + parolaConsegna(p).fatta + '" tolta');
-  render();
+  const w = parolaConsegna(p);
+  if(!(auth.profilo && auth.profilo.ruolo === 'admin')){ alert('Solo l\'amministratore può riaprire una pratica ' + w.fatta_m + '.\n\nChiedi ad Angelo.'); return; }
+  const v = document.getElementById('popup-riapri'); if(v) v.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-riapri';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:14px';
+  const pag = Number(p.pagato || 0);
+  const statoDef = eColf(p.tipo) ? p.stato : (statoVisibile('lavorata', p.tipo) ? 'lavorata' : p.stato);
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #1d4f91; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:480px; width:100%">'
+    + '<div style="font-size:19px; font-weight:800; color:#1d4f91">↩️ Riapri la pratica</div>'
+    + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + w.fatta + ' il ' + esc(p.consegnataIl || '') + ' · stato ' + esc(statoLabel(p.stato)) + '</div>'
+    + '<div style="font-size:13.5px; margin-bottom:8px">La pratica torna nel registro di lavoro (tolta la spunta «' + w.fatta + '»).</div>'
+    + '<label>Nuovo stato</label><select id="rp-stato">' + statoOptions(statoDef, p.tipo) + '</select>'
+    + (pag > 0 ? '<label class="chk" style="display:flex; gap:8px; align-items:flex-start; margin-top:10px"><input type="checkbox" id="rp-pagato" style="width:auto; margin-top:3px"> <span>Togli anche il pagato di <b>' + fmtEuro(pag) + '</b> (esce dalla contabilità). Se non lo spunti, il pagato resta.</span></label>' : '')
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:14px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
+    + '<button type="button" data-az="si" style="background:#1d4f91; color:#fff; font-weight:800">↩️ Riapri</button></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', async function(e){
+    const b = e.target.closest('button[data-az]');
+    if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); return; }
+    if(!b) return;
+    const stato = document.getElementById('rp-stato').value;
+    const campi = { consegnataIl: '', consegnataDa: '', stato: stato };
+    const tp = document.getElementById('rp-pagato');
+    if(tp && tp.checked) campi.pagato = '';
+    if(!eColf(p.tipo)){ if(STATI_IN_LAVORAZIONE.indexOf(stato) >= 0) campi.dataFine = ''; else if(stato === 'lavorata' && !p.dataFine) campi.dataFine = todayIT(); }
+    b.disabled = true;
+    const r = await data.pratiche.aggiorna(p.id, campi);
+    if(r && r.error){ b.disabled = false; avviso('❌ ' + r.error, true); return; }
+    ov.remove();
+    avviso('↩️ ' + formattaProtocollo(p) + ' riaperta · ' + statoLabel(stato) + (campi.pagato === '' ? ' · pagato tolto' : ''));
+    render();
+  });
 }
 function mostraConsegnate(){ MOSTRA_CONSEGNATE = !MOSTRA_CONSEGNATE; render(); }
 
