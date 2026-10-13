@@ -1690,6 +1690,7 @@ function render(){
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730Conta), true, 'GUADAGNO NETTO 730')}
     ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#0e8a8a', pratAnno.filter(eAltraConta), false, 'GUADAGNO NETTO ALTRE PRATICHE')}
     ${bloccoRinunce(pratAnno, annoSel)}
+    ${vedeGuadagni() ? bloccoSpeseCaf(pratAnno, annoSel) : ''}
     ${vedeGuadagni() ? sommaGuadagniHTML(pratAnno) : ''}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf, speseSede) : '');
   if(typeof renderSpese === 'function') renderSpese();
 
@@ -2992,6 +2993,40 @@ function conteggi730(pratiche){
   const l = (pratiche||[]).filter(e730);
   const daFare = sommaPeso(l.filter(eDaLavorare)), lav = sommaPeso(l.filter(eLavorata));
   return { tot: daFare + lav, daFare: daFare, lav: lav, rinunce: sommaPeso(l.filter(eRinuncia)) };
+}
+// Spese pagate per conto del CAF e detratte nei versamenti (TARI, IMU, condominio…): contabilità a parte
+function speseCafAnno(anno){
+  const perId = {}; (state.speseSede||[]).forEach(function(s){ perId[s.id] = s; });
+  const righe = [];
+  (state.versamenti||[]).filter(function(v){ return annoVersamento(v) === anno; }).forEach(function(v){
+    (Array.isArray(v.cassaElenco) ? v.cassaElenco : []).forEach(function(r){ const s = r.spesaId && perId[r.spesaId]; righe.push({ versamento: v, spesa: s || null, descrizione: r.descrizione || (s ? s.categoria : 'spesa'), importo: Number(r.importo||0) }); });
+    const somma = (Array.isArray(v.cassaElenco) ? v.cassaElenco : []).reduce(function(t,r){ return t + Number(r.importo||0); }, 0);
+    const resto = Number(v.cassa||0) - somma;
+    if(resto > 0.004) righe.push({ versamento: v, spesa: null, descrizione: 'spese detratte', importo: resto });
+  });
+  return righe;
+}
+function bloccoSpeseCaf(pratAnno, anno){
+  const righe = speseCafAnno(anno);
+  const d = typeof cassaDivisa === 'function' ? cassaDivisa(anno) : { bollettini: 0, bonifici: 0 };
+  const speseCaf = righe.reduce(function(t,r){ return t + r.importo; }, 0);
+  const inc = pratAnno.reduce(function(t,p){ return t + Number(p.pagato||0); }, 0), fatt = pratAnno.reduce(function(t,p){ return t + Number(p.compenso||0); }, 0);
+  const vers = (state.versamenti||[]).filter(function(v){ return annoVersamento(v) === anno; }).reduce(function(t,v){ return t + Number(v.importo||0); }, 0);
+  const speseSede = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0;
+  const daVers = fatt - vers, resta = inc - d.bollettini - d.bonifici - speseCaf - speseSede;
+  const tile = function(bg, valore, etichetta, dett){ return '<div class="stat c4" data-dett="'+dett+'" style="background:'+bg+'; border-color:'+bg+'; color:#fff"><b>'+valore+'</b><span style="color:rgba(255,255,255,.92); font-weight:600; letter-spacing:.03em">'+etichetta+'</span></div>'; };
+  const v = function(t, x, col){ return '<span style="white-space:nowrap">' + t + ' <b style="color:' + col + '">' + fmtEuro(x) + '</b></span>'; };
+  return '<div class="cont-gruppo" style="--cg:#a0522d"><div class="cont-gruppo-tit">🏦 SPESE CAF – contabilità a parte (spese pagate per il CAF e detratte nei versamenti)</div>'
+    + tile('#a0522d', fmtEuro(speseCaf), 'SPESE CAF DETRATTE<br>' + righe.length + ' voci (TARI, IMU, condominio…)', 'spesecaf')
+    + tile('#2f7de1', fmtEuro(d.bollettini), 'BOLLETTINI VERSATI', 'versamenti')
+    + tile('#1d4f91', fmtEuro(vers), 'DATO AL CAF<br>bollettini + spese' + (d.bonifici > 0.004 ? ' + bonifici' : ''), 'versamenti')
+    + tile(daVers > 0.004 ? '#c0392b' : '#1a7f37', fmtEuro(daVers), 'ANCORA DA VERSARE AL CAF<br>fatture ' + fmtEuro(fatt) + ' − dato ' + fmtEuro(vers), 'fatture')
+    + '<div style="flex-basis:100%; padding:12px 14px; border-radius:12px; background:var(--card); border:2px dashed #a0522d; font-size:14.5px; display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center">'
+    + '<b style="color:#a0522d; flex-basis:100%">📋 Conto definitivo dell\'anno</b>'
+    + v('Incasso', inc, '#8e5bd6') + '<b>−</b>' + v('bollettini', d.bollettini, '#2f7de1') + (d.bonifici > 0.004 ? '<b>−</b>' + v('bonifici detratti', d.bonifici, '#2f7de1') : '') + '<b>−</b>' + v('spese CAF', speseCaf, '#a0522d') + (speseSede > 0.004 ? '<b>−</b>' + v('spese sede', speseSede, '#b35f0c') : '') + '<b>=</b>'
+    + '<span style="white-space:nowrap; background:#a0522d; color:#fff; padding:4px 12px; border-radius:999px; font-weight:800">RESTA ' + fmtEuro(resta) + '</span>'
+    + '<span style="flex-basis:100%; font-size:12.5px; color:var(--sub)">di cui guadagno della sede <b>' + fmtEuro(resta - daVers) + '</b>' + (daVers > 0.004 ? ' e <b style="color:#c0392b">' + fmtEuro(daVers) + '</b> ancora da versare al CAF' : ' · al CAF non si deve più niente') + '</span>'
+    + '</div></div>';
 }
 function annullateAnno(anno){ return (state.annullate||[]).filter(function(p){ return annoPratica(p) === anno; }); }
 // Blocco a parte: rinunce alla compilazione e pratiche annullate

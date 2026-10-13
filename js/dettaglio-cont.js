@@ -115,6 +115,14 @@ function apriDettaglioCont(chiave, gruppo) {
       + '<h4 style="margin:10px 0 6px">📦 Da consegnare (' + sommaPeso(daC) + ')</h4>' + tabellaPraticheDettaglio(daC)
       + '<h4 style="margin:14px 0 6px">✅ Consegnate (' + sommaPeso(cons) + ')</h4>' + tabellaPraticheDettaglio(cons);
   }
+  else if (chiave === 'spesecaf') {
+    titolo = 'Spese CAF detratte nei versamenti'; colore = '#a0522d';
+    const r = typeof speseCafAnno === 'function' ? speseCafAnno(anno) : [];
+    const tot = r.reduce(function (t, x) { return t + x.importo; }, 0);
+    corpo = r.length ? '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Versamento del</th><th>Spesa</th><th>Pagata da</th><th style="text-align:right">Importo</th></tr></thead><tbody>'
+      + r.map(function (x) { const s = x.spesa; return '<tr><td>' + esc(x.versamento.data || '') + '</td><td><b>' + esc(x.descrizione) + '</b>' + (s && s.data ? '<div class="sub2">spesa del ' + esc(s.data) + '</div>' : '') + '</td><td>' + (s ? (s.prelevatiAngelo ? '💰 Angelo' + (s.restituitoAngelo ? ' · restituita' : ' · <b style="color:#8e5bd6">da restituire</b>') : esc(s.metodoPagamento || 'cassa')) : '—') + '</td>' + euroCella(x.importo, '#a0522d') + '</tr>'; }).join('')
+      + '<tr style="font-weight:800; background:var(--bg)"><td colspan="3">TOTALE · ' + r.length + ' voci</td>' + euroCella(tot) + '</tr></tbody></table></div>' : '<div class="empty">Nessuna spesa detratta nei versamenti del ' + anno + '</div>';
+  }
   else if (chiave === 'versamenti') { titolo = 'Versamenti al CAF'; colore = '#2f7de1'; corpo = dettaglioVersamentiHTML(anno); }
   else if (chiave === 'spese') {
     titolo = 'Spese sede'; colore = '#b35f0c';
