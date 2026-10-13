@@ -142,7 +142,7 @@ function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale, telef
   };
   if(codiceFiscale){
     if(ARCHIVIO_CLIENTI.some(function(c){ return c.codiceFiscale === codiceFiscale; })) return Promise.resolve(salvaTelefono());
-    const esistente = ARCHIVIO_CLIENTI.find(function(c){ return c.nomeCompleto.toUpperCase() === nc && (c.dataNascita||'') === dataNascita && !c.codiceFiscale; });
+    const esistente = ARCHIVIO_CLIENTI.find(function(c){ return c.nomeCompleto.toUpperCase() === nc && ((c.dataNascita||'') === dataNascita || !c.dataNascita) && !c.codiceFiscale; });
     if(esistente) esistente.codiceFiscale = codiceFiscale;
     else ARCHIVIO_CLIENTI.push({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: dataNascita, codiceFiscale: codiceFiscale });
     return data.clienti.salvaCF({ nomeCompleto: nc, cognome: cognome, nome: nome, dataNascita: dataNascita, codiceFiscale: codiceFiscale }).then(salvaTelefono);

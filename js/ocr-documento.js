@@ -1037,17 +1037,26 @@ setInterval(controllaDocumentiDalTelefono, 4000);
 /* ---------------- Cliente nuovo in archivio dal documento (senza creare una pratica) ---------------- */
 function apriSchedaClienteArchivio(d) {
   const vecchio = document.getElementById('popup-cliente-archivio'); if (vecchio) vecchio.remove();
-  const esiste = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).find(function (c) {
-    return (d.codiceFiscale && c.codiceFiscale === d.codiceFiscale) || (c.nomeCompleto === (d.cognome + ' ' + d.nome).trim() && (c.dataNascita || '') === d.dataNascita);
-  });
+  const arch = typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : [];
+  const ncDoc = ((d.cognome || '') + ' ' + (d.nome || '')).trim().toUpperCase();
+  // stesso cliente: stesso CF, oppure stesso nome e stessa data (o data mancante) senza un CF diverso
+  const esiste = arch.find(function (c) { return d.codiceFiscale && c.codiceFiscale === d.codiceFiscale; })
+    || arch.find(function (c) { return (c.nomeCompleto || '').toUpperCase() === ncDoc && (!c.dataNascita || !d.dataNascita || c.dataNascita === d.dataNascita) && (!c.codiceFiscale || !d.codiceFiscale || c.codiceFiscale === d.codiceFiscale); });
+  // omonimi senza codice fiscale con un'altra data di nascita: può essere lo stesso cliente (data sbagliata in archivio)
+  const candidati = esiste ? [] : arch.filter(function (c) { return c.id && (c.nomeCompleto || '').toUpperCase() === ncDoc && !c.codiceFiscale; });
+  const scelta = function () { const r = document.querySelector('input[name="ca-scelta"]:checked'); return r && r.value ? arch.find(function (c) { return String(c.id) === r.value; }) : null; };
   const val = function (k) { return esc((esiste && esiste[k]) || ''); };
   const campo = function (id, etichetta, valore, extra) { return '<div><label style="font-size:12px">' + etichetta + '</label><input id="' + id + '" value="' + esc(valore || '') + '" ' + (extra || '') + '></div>'; };
   const ov = document.createElement('div');
   ov.id = 'popup-cliente-archivio';
   ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #2f9e9e; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:20px 22px; max-width:560px; width:100%; max-height:92vh; overflow:auto">'
-    + '<div style="font-size:19px; font-weight:800; color:#2f9e9e">📇 ' + (esiste ? 'Cliente già in archivio' : 'Nuovo cliente in archivio') + '</div>'
+    + '<div style="font-size:19px; font-weight:800; color:#2f9e9e">📇 ' + (esiste ? 'Cliente già in archivio' : candidati.length ? 'Cliente già in archivio?' : 'Nuovo cliente in archivio') + '</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 12px">' + (esiste ? 'Il cliente c\'è già: puoi completare telefoni, e-mail e scadenza del documento.' : 'Controlla i dati letti dal documento e aggiungi i recapiti. Non viene creata nessuna pratica.') + '</div>'
+    + (candidati.length ? '<div style="margin:0 0 12px; padding:10px 12px; border-radius:12px; background:#fff7e6; border:2px solid #d98b1e; color:#5a3a00">'
+      + '<div style="font-weight:800; margin-bottom:6px">⚠️ In archivio c\'è già ' + esc(ncDoc) + ' senza codice fiscale. È la stessa persona?</div>'
+      + candidati.map(function (c, i) { return '<label class="chk" style="display:flex; gap:8px; align-items:flex-start; margin:4px 0; cursor:pointer"><input type="radio" name="ca-scelta" value="' + esc(String(c.id)) + '"' + (candidati.length === 1 ? ' checked' : '') + ' style="width:auto; margin-top:3px"> <span><b>Sì, aggiorna questo cliente</b>: nato il ' + esc(c.dataNascita || '—') + (c.telefono ? ' · 📞 ' + esc(c.telefono) : '') + (c.email ? ' · ✉️ ' + esc(c.email) : '') + '<br><span style="font-size:12px">prende codice fiscale, data di nascita e recapiti del documento</span></span></label>'; }).join('')
+      + '<label class="chk" style="display:flex; gap:8px; align-items:flex-start; margin:4px 0; cursor:pointer"><input type="radio" name="ca-scelta" value=""' + (candidati.length === 1 ? '' : ' checked') + ' style="width:auto; margin-top:3px"> <span><b>No, è un\'altra persona</b>: crea un cliente nuovo</span></label></div>' : '')
     + '<div class="grid" style="gap:8px">'
     + campo('ca-cognome', 'Cognome', d.cognome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('ca-nome', 'Nome', d.nome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
@@ -1078,7 +1087,16 @@ function apriSchedaClienteArchivio(d) {
     if (c.scad && !parseDataIT(c.scad)) return errore('Scadenza documento nel formato GG/MM/AAAA');
     if (c.email && !emailValida(c.email)) return errore('E-mail non valida');
     b.disabled = true;
+    const scelto = scelta();
     try {
+      if (scelto) {
+        // aggiorna il cliente già in archivio (omonimo senza CF scelto dall'operatore)
+        const campi = { nomeCompleto: (c.cognome + ' ' + c.nome).trim(), cognome: c.cognome, nome: c.nome, dataNascita: c.dataNascita || scelto.dataNascita || '', codiceFiscale: c.cf,
+          telefono: c.tel || scelto.telefono || null, telefonoFisso: c.fisso || scelto.telefonoFisso || null, email: c.email || scelto.email || null, documentoScadenza: c.scad || scelto.documentoScadenza || null };
+        const r = await data.clienti.aggiorna(scelto.id, campi);
+        if (r && r.error) throw new Error(/duplicate|unique/i.test(r.error) ? 'c\'è già in archivio un cliente con questo codice fiscale o con lo stesso nome e data di nascita' : r.error);
+        Object.assign(scelto, campi);
+      } else
       await registraClienteSeNuovo(c.cognome, c.nome, c.dataNascita, c.cf, c.tel, c.fisso, c.scad, c.email);
       if (typeof data !== 'undefined' && data.caricaTutto) await data.caricaTutto({ silenzioso: true });
       if (typeof caricaArchivioClienti === 'function') caricaArchivioClienti();
@@ -1094,7 +1112,7 @@ function apriSchedaClienteArchivio(d) {
       if (typeof aggiornaStoricoForm === 'function') aggiornaStoricoForm();
       avviso('✓ ' + nome + ' salvato in archivio: completa la pratica e premi Salva');
     } else {
-      avviso('📇 ' + nome + (esiste ? ': dati aggiornati in archivio' : ' aggiunto all\'archivio clienti'));
+      avviso('📇 ' + nome + (esiste || scelto ? ': dati aggiornati in archivio (nessun cliente doppio)' : ' aggiunto all\'archivio clienti'));
     }
   });
 }
