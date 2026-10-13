@@ -68,10 +68,10 @@ function dettaglioSpeseHTML(anno) {
     tl += imp; tr += r;
     return '<tr><td style="white-space:nowrap">' + esc(s.data || '') + '</td><td><b>' + esc(s.categoria || '') + '</b>' + (s.descrizione ? '<div class="sub2">' + esc(s.descrizione) + '</div>' : '') + '</td>'
       + '<td>' + esc(s.metodoPagamento || '—') + (s.prelevatiAngelo ? '<div class="sub2" style="color:#8e5bd6">💰 anticipata da Angelo' + (s.restituitoAngelo ? ' · restituita' : ' · da restituire') + '</div>' : '') + '</td>'
-      + euroCella(imp) + euroCella(r, r ? '#1d4f91' : '') + euroCella(imp - r, '#b35f0c') + '</tr>';
+      + euroCella(imp, '#b35f0c') + '<td style="text-align:right; white-space:nowrap; color:#1d4f91">' + (r ? fmtEuro(r) : '—') + '</td></tr>';
   }).join('');
-  return '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Data</th><th>Voce</th><th>Pagamento</th><th style="text-align:right">Importo</th><th style="text-align:right">Rimborsata dal CAF</th><th style="text-align:right">A carico della sede</th></tr></thead><tbody>' + righe
-    + '<tr style="font-weight:800; background:var(--bg)"><td colspan="3">TOTALE · ' + lista.length + ' spese</td>' + euroCella(tl) + euroCella(tr) + euroCella(tl - tr) + '</tr></tbody></table></div>';
+  return '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Data</th><th>Voce</th><th>Pagamento</th><th style="text-align:right">Importo</th><th style="text-align:right">di cui detratta al CAF</th></tr></thead><tbody>' + righe
+    + '<tr style="font-weight:800; background:var(--bg)"><td colspan="3">TOTALE · ' + lista.length + ' spese</td>' + euroCella(tl) + euroCella(tr) + '</tr></tbody></table></div>';
 }
 
 function apriDettaglioCont(chiave, gruppo) {
@@ -127,7 +127,7 @@ function apriDettaglioCont(chiave, gruppo) {
   else if (chiave === 'spese') {
     titolo = 'Spese sede'; colore = '#b35f0c';
     const lordo = typeof totaleSpeseSedeLordo === 'function' ? totaleSpeseSedeLordo(anno) : 0, rimb = typeof totaleRimborsiCaf === 'function' ? totaleRimborsiCaf(anno) : 0;
-    corpo = rigaFormula([['Spese registrate', lordo], ['Rimborsate dal CAF', rimb]], lordo - rimb) + dettaglioSpeseHTML(anno);
+    corpo = '<div style="font-size:13.5px; margin-bottom:10px; padding:8px 12px; border-radius:10px; background:var(--bg)">Spese sede dell\'anno: <b>' + fmtEuro(lordo) + '</b>' + (rimb > 0.004 ? ' · di cui detratte nei versamenti al CAF <b>' + fmtEuro(rimb) + '</b>' : '') + '. Tutte si tolgono dai soldi in cassa.</div>' + dettaglioSpeseHTML(anno);
   }
   else if (chiave === 'angelo') {
     titolo = 'Da restituire ad Angelo'; colore = '#8e5bd6';
@@ -144,12 +144,13 @@ function apriDettaglioCont(chiave, gruppo) {
     const d = typeof cassaDivisa === 'function' ? cassaDivisa(anno) : null;
     const dd = typeof cassaDivisa === 'function' ? cassaDivisa(anno) : { detrContanti: 0, detrBanca: 0, bonifici: 0 };
     const detr = dd.detrContanti + dd.detrBanca;
-    corpo = rigaFormula([['Incasso', inc], ['Bollettini al CAF', vers - detr - dd.bonifici], ['Spese detratte (restituite ad Angelo / pagate dalla cassa)', detr], ['Bonifici dei clienti detratti', dd.bonifici], ['Altre spese della sede', sp], ['Anticipate da Angelo, non ancora restituite', d ? d.angelo : 0, '+']].filter(function (v, i) { return i < 2 || i === 4 || v[1] > 0.004; }), inc - vers - sp + (d ? d.angelo : 0))
+    const spTutte = typeof totaleSpeseSedeLordo === 'function' ? totaleSpeseSedeLordo(anno) : sp;
+    corpo = rigaFormula([['Incasso', inc], ['Bollettini al CAF', vers - detr - dd.bonifici], ['Bonifici dei clienti detratti', dd.bonifici], ['Spese sede (comprese ' + fmtEuro(detr) + ' detratte al CAF)', spTutte]].filter(function (v, i) { return i !== 2 || v[1] > 0.004; }), inc - (vers - detr) - spTutte)
       + (d ? '<div style="display:flex; gap:10px; flex-wrap:wrap">'
         + '<div style="flex:1; min-width:240px; padding:10px 12px; border-radius:10px; border-left:5px solid #1a7f37; background:color-mix(in srgb, #1a7f37 8%, var(--card))"><b>💶 Contanti nel cassetto: ' + fmtEuro(d.contanti) + '</b>'
-        + '<div style="font-size:13px; margin-top:4px">+ pagamenti in contanti ' + fmtEuro(d.incContanti) + '<br>− bollettini pagati ' + fmtEuro(d.bollettini) + '<br>− spese detratte pagate in contanti ' + fmtEuro(d.detrContanti) + '<br>− spese sede in contanti ' + fmtEuro(d.speseContanti) + (d.angelo > 0.004 ? '<br>+ anticipate da Angelo non ancora restituite ' + fmtEuro(d.angelo) : '') + '</div></div>'
+        + '<div style="font-size:13px; margin-top:4px">+ pagamenti in contanti ' + fmtEuro(d.incContanti) + '<br>− bollettini pagati ' + fmtEuro(d.bollettini) + '<br>− spese sede in contanti ' + fmtEuro(d.detrContanti + d.speseContanti) + '</div></div>'
         + '<div style="flex:1; min-width:240px; padding:10px 12px; border-radius:10px; border-left:5px solid #1d4f91; background:color-mix(in srgb, #1d4f91 8%, var(--card))"><b>🏦 In banca: ' + fmtEuro(d.banca) + '</b>'
-        + '<div style="font-size:13px; margin-top:4px">+ pagamenti POS e bonifico ' + fmtEuro(d.incBanca) + '<br>− bonifici detratti nei versamenti ' + fmtEuro(d.bonifici) + '<br>− spese detratte pagate con POS/bonifico ' + fmtEuro(d.detrBanca) + '<br>− spese sede con POS/bonifico ' + fmtEuro(d.speseBanca) + '</div></div></div>' : '')
+        + '<div style="font-size:13px; margin-top:4px">+ pagamenti POS e bonifico ' + fmtEuro(d.incBanca) + '<br>− bonifici detratti nei versamenti ' + fmtEuro(d.bonifici) + '<br>− spese sede con POS/bonifico ' + fmtEuro(d.detrBanca + d.speseBanca) + '</div></div></div>' : '')
       + '<h4 style="margin:14px 0 6px">Versamenti al CAF</h4>' + dettaglioVersamentiHTML(anno) + '<h4 style="margin:14px 0 6px">Spese sede</h4>' + dettaglioSpeseHTML(anno);
   }
   else if (chiave === 'guadagno') {

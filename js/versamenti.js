@@ -183,11 +183,10 @@ function quadraturaCassaHTML(versatoCaf) {
       const detr = d.detrContanti + d.detrBanca;
       const bol = versatoCaf - detr - d.bonifici;
       return riga('−', 'Bollettini versati al CAF', bol, BLU, '#e8f0fb')
-        + (detr > 0.004 ? riga('−', 'Spese detratte dal versamento (restituite ad Angelo o già pagate dalla cassa)', detr, '#8e5bd6', '#f3edfb') : '')
         + (d.bonifici > 0.004 ? riga('−', 'Bonifici dei clienti detratti (non sono entrati in cassa)', d.bonifici, BLU, '#e8f0fb') : '')
-        + '<div style="font-size:11.5px; color:var(--sub); margin:-2px 0 4px 6px">Totale fatture coperte dai versamenti al CAF: ' + fmtEuro(versatoCaf) + '</div>';
+        + '<div style="font-size:11.5px; color:var(--sub); margin:-2px 0 4px 6px">Totale fatture coperte dai versamenti al CAF: ' + fmtEuro(versatoCaf) + (detr > 0.004 ? ' (bollettini + ' + fmtEuro(detr) + ' di spese sede detratte)' : '') + '</div>'
+        + riga('−', 'Spese sede' + (detr > 0.004 ? ' (comprese ' + fmtEuro(detr) + ' detratte al CAF)' : ''), spese + detr, ARANCIO, '#fdf1e6');
     })()
-    + riga('−', 'Altre spese sede (non detratte al CAF)', spese, ARANCIO, '#fdf1e6')
     + (ang > 0.004 ? riga('+', 'Spese anticipate da Angelo non ancora restituite (escono dalla cassa quando spunti «Restituite»)', ang, '#8e5bd6', '#f3edfb') : '')
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; margin-top:6px; background:' + colCassa + '; color:#fff"><span style="font-weight:800">= SOLDI IN CASSA</span><b style="font-size:20px">' + fmtEuro(cassa) + '</b></div>'
     + (function () {

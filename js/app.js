@@ -965,7 +965,7 @@ async function esportaRegistroExcel(){
     { 'Voce':'Incasso totale (€)', 'Valore': incassoLordo },
     { 'Voce':'Versamenti CAF (€)', 'Valore': versatoCaf },
     { 'Voce':'Soldi in cassa: incasso − versamenti CAF − spese sede (€)', 'Valore': incasso - (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) + (typeof angeloInSospesoAnno === 'function' ? angeloInSospesoAnno(anno) : 0) },
-    { 'Voce':'Spese gestione sede a carico della sede, escluse le rimborsate dal CAF (€)', 'Valore': (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
+    { 'Voce':'Spese sede non detratte al CAF (€)', 'Valore': (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
     { 'Voce':'Guadagno netto: incasso − fatture − spese sede (€)', 'Valore': incassoLordo - fattureEmesse - (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) },
     { 'Voce':'', 'Valore':'' },
     { 'Voce':'Dettaglio per collaboratore / tipo pratica', 'Valore':'' }
@@ -1666,6 +1666,10 @@ function render(){
   // I versamenti CAF non si tolgono: pagano le fatture già tolte (il netto in cassa è incasso − versamenti)
   const differenzaIncFatt = incassoLordo - fattureEmesse - speseSede;
 
+  // Cassa: incasso − quello che è uscito per il CAF (bollettini e bonifici) − tutte le spese sede (anche quelle detratte al CAF)
+  const CC = (function(){ const d = typeof cassaDivisa === 'function' ? cassaDivisa(annoSel) : { detrContanti:0, detrBanca:0, bonifici:0, contanti:0, banca:0 };
+    const detr = d.detrContanti + d.detrBanca, speseTutte = typeof totaleSpeseSedeLordo === 'function' ? totaleSpeseSedeLordo(annoSel) : speseSede;
+    return { d: d, detr: detr, bonifici: d.bonifici, usciteCaf: versatoCaf - detr, speseTutte: speseTutte, cassa: incassoLordo - (versatoCaf - detr) - speseTutte }; })();
   const vPrat = vedeSezioneContabilita('cont_pratiche'), vEco = vedeSezioneContabilita('cont_economici'), vBlocchi = vedeSezioneContabilita('cont_blocchi'), vGrafici = vedeSezioneContabilita('cont_grafici');
   const contExcel = document.getElementById('cont-excel');
   if(contExcel) contExcel.style.display = (vPrat && vEco && vBlocchi && vGrafici) ? '' : 'none';
@@ -1684,13 +1688,12 @@ function render(){
         + '<br><span style="display:inline-block; margin-top:3px; padding:1px 8px; border-radius:999px; background:#1a7f37; color:#fff">✅ consegnati ' + sommaPeso(cons) + '</span> incasso ' + fmtEuro(som(cons,'pagato')) + ' · fatture ' + fmtEuro(som(cons,'compenso'))
         + '<br><span style="display:inline-block; margin-top:3px; padding:1px 8px; border-radius:999px; background:#fff; color:#8d5a3b">📦 da consegnare ' + sommaPeso(daC) + '</span> incasso ' + fmtEuro(som(daC,'pagato')) + ' · fatture ' + fmtEuro(som(daC,'compenso'))
         + '</span></div>'; })()}
-    <div class="stat c5 blu" data-dett="versamenti"><b>${fmtEuro(versatoCaf)}</b><span>VERSAMENTI CAF (fatture coperte)${typeof cassaDivisa === 'function' ? (function(){ const d = cassaDivisa(annoSel), detr = d.detrContanti + d.detrBanca; return detr > 0.004 || d.bonifici > 0.004 ? '<br>bollettini ' + fmtEuro(versatoCaf - detr - d.bonifici) + (detr > 0.004 ? ' + spese detratte ' + fmtEuro(detr) : '') + (d.bonifici > 0.004 ? ' + bonifici ' + fmtEuro(d.bonifici) : '') : ''; })() : ''}</span></div>
-    <div class="stat c5" data-dett="cassa" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(incasso - speseSede + (typeof angeloInSospesoAnno === 'function' ? angeloInSospesoAnno(annoSel) : 0))}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SOLDI IN CASSA (incasso − versamenti CAF − spese sede)${typeof cassaDivisa === 'function' ? (function(){ const d = cassaDivisa(annoSel); return (d.angelo > 0.004 ? '<br>compresi ' + fmtEuro(d.angelo) + ' da restituire ad Angelo' : '') + '<br>💶 contanti ' + fmtEuro(d.contanti) + ' · 🏦 banca ' + fmtEuro(d.banca); })() : ''}</span></div>
-    ${vedeGuadagni() ? `<div class="stat c5" data-dett="spese" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(speseSede)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE (a carico della sede)${typeof totaleRimborsiCaf === 'function' && totaleRimborsiCaf(annoSel) > 0.004 ? '<br>registrate ' + fmtEuro(totaleSpeseSedeLordo(annoSel)) + ' − detratte nel versamento CAF ' + fmtEuro(totaleRimborsiCaf(annoSel)) : ''}</span></div>${typeof debitoAngelo === 'function' && debitoAngelo().totale ? `<div class="stat c5" data-dett="angelo" style="background:#8e5bd6; border-color:#8e5bd6; color:#fff"><b>${fmtEuro(debitoAngelo().totale)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">DA RESTITUIRE AD ANGELO</span></div>` : ''}<div class="stat c5 gray" data-dett="guadagno"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO (meno spese sede)</span></div>` : ''}` : '') + ((vPrat || vEco) ? '</div>' : '') + (vBlocchi ? `
+    <div class="stat c5 blu" data-dett="versamenti"><b>${fmtEuro(CC.usciteCaf)}</b><span>VERSAMENTI CAF (bollettini${CC.bonifici > 0.004 ? ' + bonifici' : ''})<br>fatture coperte ${fmtEuro(versatoCaf)}${CC.detr > 0.004 ? ' (comprese ' + fmtEuro(CC.detr) + ' di spese sede detratte)' : ''}</span></div>
+    <div class="stat c5" data-dett="cassa" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(CC.cassa)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SOLDI IN CASSA<br>incasso − versamenti CAF − spese sede<br>💶 contanti ${fmtEuro(CC.d.contanti)} · 🏦 banca ${fmtEuro(CC.d.banca)}</span></div>
+    ${vedeGuadagni() ? `<div class="stat c5" data-dett="spese" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(CC.speseTutte)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE${CC.detr > 0.004 ? '<br>di cui ' + fmtEuro(CC.detr) + ' detratte al CAF' : ''}</span></div>${typeof debitoAngelo === 'function' && debitoAngelo().totale ? `<div class="stat c5" data-dett="angelo" style="background:#8e5bd6; border-color:#8e5bd6; color:#fff"><b>${fmtEuro(debitoAngelo().totale)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">DA RESTITUIRE AD ANGELO</span></div>` : ''}<div class="stat c5 gray" data-dett="guadagno"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO<br>incasso − fatture − spese sede non detratte al CAF</span></div>` : ''}` : '') + ((vPrat || vEco) ? '</div>' : '') + (vBlocchi ? `
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730Conta), true, 'GUADAGNO NETTO 730')}
     ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#0e8a8a', pratAnno.filter(eAltraConta), false, 'GUADAGNO NETTO ALTRE PRATICHE')}
     ${bloccoRinunce(pratAnno, annoSel)}
-    ${vedeGuadagni() ? bloccoSpeseCaf(pratAnno, annoSel) : ''}
     ${vedeGuadagni() ? sommaGuadagniHTML(pratAnno) : ''}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf, speseSede) : '');
   if(typeof renderSpese === 'function') renderSpese();
 
