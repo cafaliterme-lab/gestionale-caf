@@ -111,6 +111,7 @@ function apriDettaglioCont(chiave, gruppo) {
     const p730 = prat.filter(e730Conta);
     const cons = p730.filter(function (p) { return !!p.consegnataIl; }), daC = p730.filter(function (p) { return !p.consegnataIl; });
     corpo = rigaFormula([['Pagato dei consegnati', somma(cons, 'pagato')], ['importo dei da consegnare', somma(daC, 'pagato'), '+']], somma(p730, 'pagato'))
+      + rigaFormula([['Fatture dei consegnati', somma(cons, 'compenso')], ['fatture dei da consegnare', somma(daC, 'compenso'), '+']], somma(p730, 'compenso'))
       + '<h4 style="margin:10px 0 6px">📦 Da consegnare (' + sommaPeso(daC) + ')</h4>' + tabellaPraticheDettaglio(daC)
       + '<h4 style="margin:14px 0 6px">✅ Consegnate (' + sommaPeso(cons) + ')</h4>' + tabellaPraticheDettaglio(cons);
   }
