@@ -107,9 +107,10 @@ function apriDettaglioCont(chiave, gruppo) {
       + tabellaPraticheDettaglio(l, { guadagno: true });
   }
   else if (chiave === 'consegnate') {
-    titolo = 'Pratiche consegnate e da consegnare'; colore = '#8d5a3b';
-    const cons = prat.filter(function (p) { return !!p.consegnataIl; }), daC = prat.filter(function (p) { return !p.consegnataIl; });
-    corpo = rigaFormula([['Pagato delle consegnate', somma(cons, 'pagato')], ['importo delle da consegnare', somma(daC, 'pagato'), '+']], somma(prat, 'pagato'))
+    titolo = '730 consegnati e da consegnare'; colore = '#8d5a3b';
+    const p730 = prat.filter(e730Conta);
+    const cons = p730.filter(function (p) { return !!p.consegnataIl; }), daC = p730.filter(function (p) { return !p.consegnataIl; });
+    corpo = rigaFormula([['Pagato dei consegnati', somma(cons, 'pagato')], ['importo dei da consegnare', somma(daC, 'pagato'), '+']], somma(p730, 'pagato'))
       + '<h4 style="margin:10px 0 6px">📦 Da consegnare (' + sommaPeso(daC) + ')</h4>' + tabellaPraticheDettaglio(daC)
       + '<h4 style="margin:14px 0 6px">✅ Consegnate (' + sommaPeso(cons) + ')</h4>' + tabellaPraticheDettaglio(cons);
   }
