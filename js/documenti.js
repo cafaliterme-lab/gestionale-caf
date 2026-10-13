@@ -210,7 +210,10 @@ async function salvaDocumentiPratica(p, d) {
   }
   render();
   const esito = await data.pratiche.aggiorna(p.id, campi);
-  if (esito && esito.error) avviso('❌ Documentazione non salvata', true);
+  if (esito && esito.error) { avviso('❌ Documentazione non salvata', true); return; }
+  // tutti i documenti ci sono: si propone "Da lavorare scansionata"
+  if (!d.mancanti.length && d.presentati.length && p.stato === 'arrivo' && !eColf(p.tipo) && typeof proponiStato === 'function')
+    proponiStato(p, 'da_lavorare_scansionata', 'Ora ci sono tutti i documenti della pratica di ' + (p.nome || '') + '.');
 }
 function segnaDocumentoConsegnato(id, nome) {
   const p = (state.pratiche || []).find(function (x) { return x.id === id; });

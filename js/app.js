@@ -2002,6 +2002,7 @@ async function addPraticaInterna(){
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
   let statoNuovo = documenti.mancanti.length ? 'arrivo' : (document.getElementById('f-stato').value || 'arrivo');
   if(propostaStatoPagato(tipo, statoNuovo, compenso, pagato) && confirm('Il cliente ha pagato tutto (' + fmtEuro(pagato) + ').\n\nSalvo la pratica con lo stato "Pagato" invece di "' + statoLabel(statoNuovo) + '"?')) statoNuovo = 'pagato';
+  else if(!documenti.mancanti.length && documenti.presentati.length && statoNuovo === 'arrivo' && !eColf(tipo) && statoVisibile('da_lavorare_scansionata', tipo) && confirm('Ci sono tutti i documenti.\n\nSalvo la pratica come "' + statoLabel('da_lavorare_scansionata') + '" invece di "In arrivo"?')) statoNuovo = 'da_lavorare_scansionata';
   const nuovaPratica = {
     anno: annoPr,
     nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note,
@@ -2660,6 +2661,7 @@ function apriPraticaDaTabella(id){
   if(eConsegnata(p)) MOSTRA_CONSEGNATE = true;
   p._editing = true;
   render();
+  proponiInLavorazione(p);
   setTimeout(function(){
     const el = document.getElementById('pratica-'+id);
     if(el) el.scrollIntoView({ behavior:'smooth', block:'center' });
@@ -2667,7 +2669,13 @@ function apriPraticaDaTabella(id){
 }
 function modifica(id){
   const p = state.pratiche.find(x=>x.id===id);
-  if(p){ p._editing = true; render(); }
+  if(p){ p._editing = true; render(); proponiInLavorazione(p); }
+}
+// Aprendo una pratica "In arrivo" o "Scansionata" (con tutti i documenti) si propone "In lavorazione"
+function proponiInLavorazione(p){
+  if(!p || eColf(p.tipo) || ['arrivo','da_lavorare_scansionata'].indexOf(p.stato) < 0) return;
+  if(typeof documentiPratica === 'function' && documentiPratica(p).mancanti.length) return;
+  setTimeout(function(){ proponiStato(p, 'lavorazione', 'Stai aprendo la pratica di ' + (p.nome || '') + ' per lavorarla.'); }, 300);
 }
 
 function annullaModifica(id){
@@ -2744,6 +2752,7 @@ async function salvaModifica(id){
     return;
   }
   delete p._editing;
+  const primaNF = String(p.numFattura || '').trim(), primaPag = Number(p.pagato || 0), statoPrima = p.stato;
   const vecchiTit = { nomeCompleto: p.nome, dataNascita: p.cf, codiceFiscale: p.codiceFiscale };
   const vecchiCong = { nomeCompleto: ((p.congCognome||'')+' '+(p.congNome||'')).trim(), dataNascita: p.congData };
   const esito = await data.pratiche.aggiorna(id, campi);
@@ -2756,7 +2765,24 @@ async function salvaModifica(id){
   if(propostaStatoPagato(campi.tipo, p.stato, campi.compenso, campi.pagato) && confirm('Il cliente ha pagato tutto (' + fmtEuro(campi.pagato) + ').\n\nPasso lo stato della pratica da "' + statoLabel(p.stato) + '" a "Pagato"?')){
     const r2 = await data.pratiche.aggiorna(id, { stato: 'pagato' });
     if(!(r2 && r2.error)) avviso('✓ Stato: Pagato');
+  } else if(!eColf(campi.tipo) && Number(campi.compenso || 0) > 0 && Number(campi.pagato || 0) < Number(campi.compenso || 0) && STATI_NON_PROPONI_DA_PAGARE.indexOf(statoPrima) < 0 && !(typeof eStatoNonPagato === 'function' && eStatoNonPagato(statoPrima)) && !(typeof eRinuncia === 'function' && eRinuncia(p))){
+    // fattura appena emessa, o pagamento parziale: si propone "Da pagare"
+    const nuovaNF = !primaNF && String(campi.numFattura || '').trim();
+    const parziale = Number(campi.pagato || 0) > 0 && Number(campi.pagato || 0) !== primaPag;
+    if(nuovaNF || parziale) await proponiStato(p, 'da_pagare', nuovaNF ? 'Hai emesso la fattura n. ' + campi.numFattura + ' (' + fmtEuro(campi.compenso) + ')' + (Number(campi.pagato||0) ? ' e il cliente ha pagato solo ' + fmtEuro(campi.pagato) : ' e il cliente non ha ancora pagato') + '.' : 'Il cliente ha pagato ' + fmtEuro(campi.pagato) + ' su ' + fmtEuro(campi.compenso) + ' di fattura.');
   }
+}
+// Stati da cui non si propone "Da pagare" (già pagata, già da pagare)
+const STATI_NON_PROPONI_DA_PAGARE = ['da_pagare', 'pagato', 'pagato_da_ritirare', 'pratica_attiva', 'pratica_cessata'];
+// Proposta di cambio stato: chiede conferma, non cambia mai da solo
+const PROPOSTE_RIFIUTATE = {};
+async function proponiStato(p, nuovo, motivo){
+  if(!p || !STATI[nuovo] || p.stato === nuovo || !statoVisibile(nuovo, p.tipo)) return false;
+  const chiave = p.id + '>' + nuovo;
+  if(PROPOSTE_RIFIUTATE[chiave]) return false;
+  if(!confirm(motivo + '\n\nPasso la pratica ' + formattaProtocollo(p) + ' da "' + statoLabel(p.stato) + '" a "' + statoLabel(nuovo) + '"?')){ PROPOSTE_RIFIUTATE[chiave] = true; return false; }
+  await cambiaStato(p.id, nuovo);
+  return true;
 }
 // Stati da cui, a pagamento completo, si propone il passaggio a "Pagato"
 const STATI_PROPONI_PAGATO = ['lavorata', 'lavorata_da_fatturare', 'da_pagare'];
