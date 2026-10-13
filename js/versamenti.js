@@ -394,7 +394,7 @@ function totaleVersamentoForm() {
     + (f.cassa || f.bonifico ? ' <span style="color:var(--sub); font-size:12.5px">= fatture ' + fmtEuro(f.totale) + (f.cassa ? ' − spese ' + fmtEuro(f.cassa) : '') + (f.bonifico ? ' − bonifici ' + fmtEuro(f.bonifico) : '') + '</span>' : '');
 }
 
-function aggiungiVersamento() {
+async function aggiungiVersamento() {
   const msg = document.getElementById('caf-msg');
   if (msg) msg.style.display = 'none';
   const f = letturaFormVersamento();
@@ -431,7 +431,13 @@ function aggiungiVersamento() {
   const ea = document.getElementById('vc-anno'); if (ea && typeof annoAttivo === 'function') ea.value = annoAttivo();
   document.getElementById('vc-suggerimento').innerHTML = '';
   ridisegnaVersamentiCaf();
-  data.versamenti.aggiungi(nuovo);
+  // le spese prese da "Spese sede" e detratte nel versamento risultano subito "già inserite in contabilità"
+  const daConfermare = (nuovo.cassaElenco || []).map(function (r) { return r.spesaId && (state.speseSede || []).find(function (s) { return s.id === r.spesaId; }); })
+    .filter(function (s) { return s && !s.inContabilita; }).map(function (s) { return s.id; });
+  const esitoV = await data.versamenti.aggiungi(nuovo);
+  if (esitoV && esitoV.error) return;
+  for (const id of daConfermare) { const r = await data.speseSede.aggiorna(id, { inContabilita: true }); const s = (state.speseSede || []).find(function (x) { return x.id === id; }); if (s && !(r && r.error)) s.inContabilita = true; }
+  if (daConfermare.length) { avviso('✔ ' + daConfermare.length + (daConfermare.length === 1 ? ' spesa sede segnata' : ' spese sede segnate') + ' come già inserita in contabilità'); if (typeof render === 'function') render(); }
 }
 
 /* --- Dati fissi per modulo e bollettino (li imposta l'amministratore) --- */
