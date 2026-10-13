@@ -580,7 +580,11 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <input id="f-compenso" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this); this.dataset.auto=''" onblur="formattaCampoImporto(this)">
       </div>
       <div>
-        <label>Pagato effettivo (€)</label>
+        <label title="Quanto chiedi al cliente: è solo un promemoria, non entra in contabilità">Pagamento richiesto (€)</label>
+        <input id="f-richiesto" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)">
+      </div>
+      <div>
+        <label title="Quanto ha pagato davvero: questo entra in contabilità (si può scrivere anche alla consegna)">Pagato effettivo (€)</label>
         <input id="f-pagato" type="text" inputmode="decimal" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)">
       </div>
       <div>
@@ -856,16 +860,16 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/extra.js?v=25"></script>
 <script src="js/documenti.js?v=15"></script>
 <script src="js/installa.js?v=4"></script>
-<script src="js/guida.js?v=100"></script>
+<script src="js/guida.js?v=101"></script>
 <script src="js/scadenze.js?v=202610089"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610133"></script>
+<script src="js/data.js?v=202610134"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610244"></script>
+<script src="js/app.js?v=202610245"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/ricercafatture.js?v=1"></script>

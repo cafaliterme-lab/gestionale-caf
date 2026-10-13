@@ -1782,7 +1782,7 @@ function render(){
       ${p.emailInviata ? `<div class="meta" style="color:#1d4f91">📧 E-mail inviata: ${esc(p.emailInviata)}</div>` : ''}
       ${ultimaModifica(p) ? `<div class="meta" style="color:var(--sub)">✏️ Ultima modifica: <b>${ultimaModifica(p)}</b></div>` : ''}
       ${p.whatsappInviato ? `<div class="meta" style="color:#1a9e4b">💬 Avvisato su WhatsApp il ${esc(p.whatsappInviato)}</div>` : ''}
-      <div class="meta">${p.consegnataIl ? `<span style="color:#8d5a3b; font-weight:700">${parolaConsegna(p).icona} ${parolaConsegna(p).fatta} il ${esc(p.consegnataIl)}${p.consegnataDa ? ' da ' + esc(p.consegnataDa) : ''}</span> ` : ''}${bottoneConsegna(p)}</div>
+      <div class="meta">${Number(p.richiesto||0) ? `<span style="color:#b35f0c; font-weight:700">💬 Richiesto ${fmtEuro(p.richiesto)}${Number(p.pagato||0) ? ' · pagato ' + fmtEuro(p.pagato) : ' · non ancora pagato'}</span> ` : ''}${p.consegnataIl ? `<span style="color:#8d5a3b; font-weight:700">${parolaConsegna(p).icona} ${parolaConsegna(p).fatta} il ${esc(p.consegnataIl)}${p.consegnataDa ? ' da ' + esc(p.consegnataDa) : ''}</span> ` : ''}${bottoneConsegna(p)}</div>
       ${p._editing ? `
         <div class="grid" style="margin-top:8px">
           <div><label>Cognome</label><input id="e-cognome-${p.id}" value="${esc(dividiNominativo(p).cognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
@@ -1805,6 +1805,7 @@ function render(){
           <div id="e-desctipo-box-${p.id}" style="${eAltrePratiche(p.tipo) ? '' : 'display:none'}"><label>Descrizione della pratica *</label><input id="e-desctipo-${p.id}" value="${esc(p.descrizioneTipo)}" maxlength="120"></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
+          <div><label title="Solo promemoria: non entra in contabilità">Pagamento richiesto (€)</label><input id="e-ric-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.richiesto)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
           <div><label>Pagato effettivo (€)</label><div style="display:flex; gap:6px"><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0"><select id="e-met-${p.id}" title="Tipo di pagamento" style="width:auto; flex:0 0 auto">${metodoOptions(p.metodoPagamento)}</select></div></div>
           <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}" oninput="var d=document.getElementById('e-df-${p.id}'); if(this.value.trim() && d && !d.value.trim()) d.value=todayIT();"></div>
           <div><label>Data fattura</label><input id="e-df-${p.id}" value="${esc(p.dataFattura)}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
@@ -1910,6 +1911,7 @@ async function addPraticaInterna(){
   const compensoAuto = fatturaAutomatica(document.getElementById('f-tipo').value);
   const compenso = compensoScritto || (compensoAuto !== undefined ? compensoAuto : '');
   const pagato = parseImporto(document.getElementById('f-pagato').value) || '';
+  const richiesto = parseImporto((document.getElementById('f-richiesto')||{}).value || '') || '';
   const metodoPagamento = document.getElementById('f-metodo').value;
   const congCognome = document.getElementById('f-cong-cognome').value.trim().toUpperCase();
   const congNome = document.getElementById('f-cong-nome').value.trim().toUpperCase();
@@ -2002,7 +2004,7 @@ async function addPraticaInterna(){
   if(propostaStatoPagato(tipo, statoNuovo, compenso, pagato) && confirm('Il cliente ha pagato tutto (' + fmtEuro(pagato) + ').\n\nSalvo la pratica con lo stato "Pagato" invece di "' + statoLabel(statoNuovo) + '"?')) statoNuovo = 'pagato';
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, metodoPagamento, data: dataPratica, note,
+    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note,
     stato: statoNuovo,
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
@@ -2031,7 +2033,7 @@ async function addPraticaInterna(){
   controllaCampoCF();
   impostaTipoPredefinito();
   document.getElementById('f-compenso').value=''; document.getElementById('f-compenso').dataset.auto='';
-  document.getElementById('f-pagato').value='';
+  document.getElementById('f-pagato').value=''; if(document.getElementById('f-richiesto')) document.getElementById('f-richiesto').value='';
   document.getElementById('f-metodo').value='CONTANTI';
   document.getElementById('cli-cerca').value='';
   document.getElementById('cli-cerca-cong').value='';
@@ -2596,10 +2598,10 @@ function consegnaPratica(id){
   const ov = document.createElement('div');
   ov.id = 'popup-consegna';
   ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:14px';
-  const imp = Number(p.pagato || 0) || Number(p.compenso || 0);
+  const imp = Number(p.pagato || 0) || Number(p.richiesto || 0) || Number(p.compenso || 0);
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #8d5a3b; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:500px; width:100%">'
     + '<div style="font-size:19px; font-weight:800; color:#8d5a3b">' + parolaConsegna(p).icona + ' ' + (e730(p) ? 'Consegna della pratica' : 'Pratica definita') + '</div>'
-    + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + (Number(p.compenso || 0) ? ' · fattura ' + fmtEuro(p.compenso) : '') + '</div>'
+    + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + (Number(p.compenso || 0) ? ' · fattura ' + fmtEuro(p.compenso) : '') + (Number(p.richiesto || 0) ? ' · <b>richiesto ' + fmtEuro(p.richiesto) + '</b>' : '') + '</div>'
     + '<div style="font-size:15px; font-weight:800; margin-bottom:8px">Il cliente ha pagato?</div>'
     + '<div class="grid"><div><label>Importo pagato (€)</label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
     + '<div><label>Pagamento</label><select id="cs-met">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div>'
@@ -2700,6 +2702,7 @@ async function salvaModifica(id){
     scadenzaAssistenza: eColf(g('e-tipo')) ? g('e-scadass').trim() : '',
     compenso: parseImporto(g('e-comp')) || '',
     pagato: parseImporto(g('e-pag')) || '',
+    richiesto: parseImporto(g('e-ric')) || '',
     metodoPagamento: g('e-met'),
     numFattura: numFattura,
     dataFattura: dataFattura,
@@ -3248,7 +3251,7 @@ function campoCompilatoBene(el){
   if(!v) return false;
   if(el.id === 'f-codfisc') return typeof cfValido !== 'function' || cfValido(v);
   if(el.id === 'f-cf' || el.id === 'f-cong-data' || el.id === 'f-data' || el.id === 'f-data-fine') return !!parseDataIT(v);
-  if(el.id === 'f-compenso' || el.id === 'f-pagato') return !isNaN(parseImporto(v));
+  if(el.id === 'f-compenso' || el.id === 'f-pagato' || el.id === 'f-richiesto') return !isNaN(parseImporto(v));
   return true;
 }
 function aggiornaColoriModulo(){

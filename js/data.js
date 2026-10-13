@@ -75,7 +75,7 @@ function mapToDb(obj, schema) {
 // compenso/pagato sono numeric: un campo lasciato vuoto va salvato come null
 function praticaToDb(pratica) {
   const db = mapToDb(pratica, schemas.pratica);
-  for (const k of ['compenso', 'pagato']) {
+  for (const k of ['compenso', 'pagato', 'richiesto']) {
     if (db[k] === '') db[k] = null;
   }
   delete db.annullata_il; delete db.annullata_da; delete db.modificato_da; delete db.serie;
@@ -103,6 +103,7 @@ const schemas = {
     descrizioneTipo: 'descrizione_tipo',
     compenso: 'compenso',
     pagato: 'pagato',
+    richiesto: 'richiesto',
     data: 'data',
     note: 'note',
     stato: 'stato',
