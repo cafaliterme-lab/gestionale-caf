@@ -14,10 +14,10 @@ function rimborsiCafSpese() {
   });
   return m;
 }
-// Scelta di Angelo (13/10/2026): TUTTE le spese sede, anche quelle detratte nel versamento al CAF
-// e quelle anticipate da Angelo, si tolgono subito da guadagno e soldi in cassa.
-const SPESE_SEMPRE_A_CARICO_SEDE = true;
-function rimborsoCafSpesa(s, mappa) { if (SPESE_SEMPRE_A_CARICO_SEDE) return 0; return Math.min(Number(s.importo || 0), Number((mappa || rimborsiCafSpese())[s.id] || 0)); }
+// Le spese detratte nel versamento al CAF sono pagate con i soldi del CAF: non pesano sul guadagno della sede.
+// Le spese anticipate da Angelo escono subito dalla cassa (la cassa non aspetta la restituzione).
+const ANGELO_SUBITO_DALLA_CASSA = true;
+function rimborsoCafSpesa(s, mappa) { return Math.min(Number(s.importo || 0), Number((mappa || rimborsiCafSpese())[s.id] || 0)); }
 function totaleSpeseSedeLordo(anno) { return speseAnno(anno).reduce(function (t, s) { return t + Number(s.importo || 0); }, 0); }
 function totaleRimborsiCaf(anno) { const m = rimborsiCafSpese(); return speseAnno(anno).reduce(function (t, s) { return t + rimborsoCafSpesa(s, m); }, 0); }
 // Spese a carico della sede: quelle che contano in guadagno netto e soldi in cassa
@@ -25,7 +25,7 @@ function totaleSpeseSede(anno) { return totaleSpeseSedeLordo(anno) - totaleRimbo
 // Spese anticipate da Angelo e non ancora restituite: i soldi non sono ancora usciti dalla cassa
 // (escono quando si spunta "Restituite"), quindi si riaggiungono ai soldi in cassa.
 function speseAngeloNonRestituite(s) { return !!(s && s.prelevatiAngelo && !s.restituitoAngelo); }
-function angeloInSospesoAnno(anno) { if (SPESE_SEMPRE_A_CARICO_SEDE) return 0; return speseAnno(anno).filter(speseAngeloNonRestituite).reduce(function (t, s) { return t + Number(s.importo || 0); }, 0); }
+function angeloInSospesoAnno(anno) { if (ANGELO_SUBITO_DALLA_CASSA) return 0; return speseAnno(anno).filter(speseAngeloNonRestituite).reduce(function (t, s) { return t + Number(s.importo || 0); }, 0); }
 function puoScrivereSpese() { return typeof puo === 'function' && puo('spese', true); }
 
 function renderSpese() {
