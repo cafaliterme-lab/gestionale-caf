@@ -303,13 +303,18 @@ function aggiornaStoricoForm(){
   }
   const totFatt = lista.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const totPag = lista.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
+  const totRic = lista.reduce(function(a,p){ return a+Number(p.richiesto||0); }, 0);
+  const totManca = lista.reduce(function(a,p){ return a+(typeof residuoPratica === 'function' && !p.annullata && p.stato !== 'rinuncia_compilazione' ? residuoPratica(p) : 0); }, 0);
+  const euro = function(v){ return v!=null && v!=='' && Number(v) ? fmtEuro(v) : '-'; };
   box.innerHTML = (typeof avvisoMorosoHTML === 'function' ? avvisoMorosoHTML(lista) : '') + '<div class="raff-title">Storico pratiche di '+esc(nomeCompleto)+(dataNascita ? ' <span class="sub2">nato/a il '+esc(dataNascita)+'</span>' : '')+'</div>'
-    + '<div class="meta" style="margin:0 0 8px">'+lista.length+' pratiche · Fatturato: '+fmtEuro(totFatt)+' · Pagato: '+fmtEuro(totPag)+'</div>'
-    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>N. protocollo</th><th>Data</th><th>Tipo</th><th>Stato</th><th>Fattura</th><th>Pagato</th><th>Inserita da</th></tr></thead><tbody>'
+    + '<div class="meta" style="margin:0 0 8px">'+lista.length+' pratiche · Fatture: <b>'+fmtEuro(totFatt)+'</b> · Richiesto: <b>'+fmtEuro(totRic)+'</b> · Pagato: <b>'+fmtEuro(totPag)+'</b>'+(totManca > 0.004 ? ' · <b style="color:#c0392b">Deve ancora '+fmtEuro(totManca)+'</b>' : '')+'</div>'
+    + '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>N. protocollo</th><th>Data</th><th>Tipo</th><th>Stato</th><th style="text-align:right">Fattura</th><th style="text-align:right">Richiesto</th><th style="text-align:right">Pagato</th><th style="text-align:right">Manca</th><th>Inserita da</th></tr></thead><tbody>'
     + lista.map(function(p){
         const congiunto = (p.nome||'').toUpperCase() !== nomeCompleto;
         return '<tr><td class="n">'+formattaProtocollo(p)+'</td><td>'+esc(p.data)+'</td><td>'+esc(p.tipo)+(congiunto ? ' <span class="sub2">(congiunto di '+esc(p.nome)+')</span>' : '')+'</td>'
-          + '<td>'+esc(statoLabel(p.stato))+'</td><td>'+(p.compenso!=null && p.compenso!=='' ? fmtEuro(p.compenso) : '-')+'</td><td>'+(p.pagato!=null && p.pagato!=='' ? fmtEuro(p.pagato) : '-')+'</td><td>'+esc(p.inseritoDa||'-')+'</td></tr>';
+          + '<td>'+esc(statoLabel(p.stato))+(p.consegnataIl ? '<div class="sub2">📦 '+esc(p.consegnataIl)+'</div>' : '')+'</td><td style="text-align:right">'+euro(p.compenso)+'</td><td style="text-align:right">'+euro(p.richiesto)+'</td><td style="text-align:right">'+euro(p.pagato)+'</td>'
+          + (function(){ const m = typeof residuoPratica === 'function' ? residuoPratica(p) : 0; return '<td style="text-align:right; font-weight:800; color:'+(m > 0.004 ? '#c0392b' : '#1a7f37')+'">'+(m > 0.004 ? fmtEuro(m) : '✓')+'</td>'; })()
+          + '<td>'+esc(p.inseritoDa||'-')+'</td></tr>';
       }).join('')
     + '</tbody></table></div>';
 }
@@ -1788,7 +1793,7 @@ function render(){
       ${p.emailInviata ? `<div class="meta" style="color:#1d4f91">📧 E-mail inviata: ${esc(p.emailInviata)}</div>` : ''}
       ${ultimaModifica(p) ? `<div class="meta" style="color:var(--sub)">✏️ Ultima modifica: <b>${ultimaModifica(p)}</b></div>` : ''}
       ${p.whatsappInviato ? `<div class="meta" style="color:#1a9e4b">💬 Avvisato su WhatsApp il ${esc(p.whatsappInviato)}</div>` : ''}
-      <div class="meta">${Number(p.richiesto||0) ? `<span style="color:#b35f0c; font-weight:700">💬 Richiesto ${fmtEuro(p.richiesto)}${Number(p.pagato||0) ? ' · pagato ' + fmtEuro(p.pagato) : ' · non ancora pagato'}</span> ` : ''}${bottoneAvanti(p)} ${p.consegnataIl ? `<span style="color:#8d5a3b; font-weight:700">${parolaConsegna(p).icona} ${parolaConsegna(p).fatta} il ${esc(p.consegnataIl)}${p.consegnataDa ? ' da ' + esc(p.consegnataDa) : ''}</span> ` : ''}${bottoneConsegna(p)}</div>
+      <div class="meta">${(Number(p.compenso||0) || Number(p.richiesto||0) || Number(p.pagato||0)) ? `<span style="font-weight:700">💶 Fattura ${Number(p.compenso||0) ? fmtEuro(p.compenso) : '-'} · Richiesto ${Number(p.richiesto||0) ? fmtEuro(p.richiesto) : '-'} · Pagato ${Number(p.pagato||0) ? fmtEuro(p.pagato) : '-'}${typeof residuoPratica === 'function' && residuoPratica(p) > 0.004 ? ' · <span style="color:#c0392b">manca ' + fmtEuro(residuoPratica(p)) + '</span>' : ''}</span> ` : ''}${bottoneAvanti(p)} ${p.consegnataIl ? `<span style="color:#8d5a3b; font-weight:700">${parolaConsegna(p).icona} ${parolaConsegna(p).fatta} il ${esc(p.consegnataIl)}${p.consegnataDa ? ' da ' + esc(p.consegnataDa) : ''}</span> ` : ''}${bottoneConsegna(p)}</div>
       ${p._editing ? `
         <div class="grid" style="margin-top:8px">
           <div><label>Cognome</label><input id="e-cognome-${p.id}" value="${esc(dividiNominativo(p).cognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>

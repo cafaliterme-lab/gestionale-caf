@@ -17,12 +17,12 @@ function tabellaPraticheDettaglio(lista, colonne) {
       + '<td>' + esc(p.tipo || '') + (p.descrizioneTipo ? '<div class="sub2">' + esc(p.descrizioneTipo) + '</div>' : '') + '</td>'
       + '<td>' + esc(statoLabel(p.stato)) + '</td>'
       + '<td style="white-space:nowrap">' + (p.numFattura ? 'n. ' + esc(p.numFattura) + (p.dataFattura ? '<div class="sub2">' + esc(p.dataFattura) + '</div>' : '') : '<span class="sub2">da fatturare</span>') + '</td>'
-      + euroCella(fa) + euroCella(pa) + '<td>' + esc(p.metodoPagamento || '—') + '</td>'
+      + euroCella(fa) + euroCella(Number(p.richiesto || 0)) + euroCella(pa) + '<td>' + esc(p.metodoPagamento || '—') + '</td>'
       + (colonne.guadagno ? euroCella(pa - fa, pa - fa < 0 ? '#c0392b' : '#c2185b') : '') + '</tr>';
   }).join('');
-  const tf = lista.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0), tp = lista.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);
-  return '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Protocollo</th><th>Data</th><th>Cliente</th><th>Tipo</th><th>Stato</th><th>Fattura</th><th style="text-align:right">Importo fattura</th><th style="text-align:right">Pagato</th><th>Pagamento</th>' + (colonne.guadagno ? '<th style="text-align:right">Guadagno</th>' : '') + '</tr></thead><tbody>' + righe
-    + '<tr style="font-weight:800; background:var(--bg)"><td colspan="6">TOTALE · ' + sommaPeso(lista) + ' pratiche (le congiunte valgono 2)</td>' + euroCella(tf) + euroCella(tp) + '<td></td>' + (colonne.guadagno ? euroCella(tp - tf) : '') + '</tr></tbody></table></div>';
+  const tf = lista.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0), tp = lista.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0), tr = lista.reduce(function (t, p) { return t + Number(p.richiesto || 0); }, 0);
+  return '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Protocollo</th><th>Data</th><th>Cliente</th><th>Tipo</th><th>Stato</th><th>Fattura</th><th style="text-align:right">Importo fattura</th><th style="text-align:right">Richiesto</th><th style="text-align:right">Pagato</th><th>Pagamento</th>' + (colonne.guadagno ? '<th style="text-align:right">Guadagno</th>' : '') + '</tr></thead><tbody>' + righe
+    + '<tr style="font-weight:800; background:var(--bg)"><td colspan="6">TOTALE · ' + sommaPeso(lista) + ' pratiche (le congiunte valgono 2)</td>' + euroCella(tf) + euroCella(tr) + euroCella(tp) + '<td></td>' + (colonne.guadagno ? euroCella(tp - tf) : '') + '</tr></tbody></table></div>';
 }
 
 function riepilogoPagamentiHTML(lista) {
