@@ -162,3 +162,36 @@ function istruzioniInstallazione() {
   document.addEventListener('visibilitychange', function () { if (!document.hidden) controlla(); });
   setTimeout(controlla, 20000);
 })();
+
+/* ---------- Versione nuova del programma: avviso e aggiornamento ----------
+   Un PC lasciato aperto per giorni continua a usare la versione caricata all'apertura.
+   Ogni 5 minuti (e quando si torna sulla finestra) si controlla se sul server c'è una versione nuova. */
+function versioneCaricata() {
+  const s = document.querySelector('script[src*="js/app.js?v="]');
+  const m = s && /v=(\d+)/.exec(s.getAttribute('src'));
+  return m ? m[1] : '';
+}
+let CONTROLLO_VERSIONE_IN_CORSO = false;
+async function controllaVersioneNuova() {
+  if (CONTROLLO_VERSIONE_IN_CORSO || document.getElementById('banner-versione')) return;
+  const mia = versioneCaricata(); if (!mia) return;
+  CONTROLLO_VERSIONE_IN_CORSO = true;
+  try {
+    const r = await fetch('index.html?_=' + Date.now(), { cache: 'no-store' });
+    const html = await r.text();
+    const m = /js\/app\.js\?v=(\d+)/.exec(html);
+    if (m && m[1] !== mia) mostraBannerVersione();
+  } catch (e) { /* senza rete si riprova dopo */ }
+  CONTROLLO_VERSIONE_IN_CORSO = false;
+}
+function mostraBannerVersione() {
+  const b = document.createElement('div');
+  b.id = 'banner-versione';
+  b.style.cssText = 'position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:500; background:#1d4f91; color:#fff; padding:10px 14px; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.3); display:flex; gap:10px; align-items:center; flex-wrap:wrap; max-width:calc(100vw - 24px); font-size:14px';
+  b.innerHTML = '<span>🆕 <b>C\'è una versione nuova del programma.</b> Salva quello che stai scrivendo e aggiorna.</span>'
+    + '<button type="button" onclick="location.reload()" style="background:#fff; color:#1d4f91; border:none; border-radius:999px; padding:7px 14px; font-weight:800; cursor:pointer">🔄 Aggiorna ora</button>'
+    + '<button type="button" onclick="this.parentNode.remove()" title="Più tardi" style="background:none; border:none; color:#fff; font-size:18px; cursor:pointer">✕</button>';
+  document.body.appendChild(b);
+}
+setInterval(controllaVersioneNuova, 5 * 60 * 1000);
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') controllaVersioneNuova(); });

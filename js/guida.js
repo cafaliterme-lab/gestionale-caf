@@ -10,6 +10,7 @@ const GUIDA = [
 <li>Inserisci <b>e-mail</b> e <b>password</b> che ti ha dato l'amministratore e premi <b>Accedi</b>.</li>
 <li>In alto trovi il logo, i <b>dati del CAF</b>, la <b>data e l'ora</b>, il <b>QR</b> per installare l'app sul telefono e i <b>contatori</b> delle pratiche 730.</li>
 <li>Sotto c'è <b>Anno di protocollo</b>: sceglie l'anno che vedi nel Registro, in Contabilità e nei Grafici. Il numero di una pratica nuova dipende invece dal giorno in cui la inserisci.</li>
+<li><b>🆕 Versione nuova</b>: se il programma resta aperto a lungo (es. sul PC), quando esce un aggiornamento compare in basso l'avviso <b>«C'è una versione nuova del programma»</b>: salva quello che stai scrivendo e premi <b>🔄 Aggiorna ora</b>.</li>
 <li>Il <b>menu</b> colorato porta alle varie sezioni: Inserimento pratica, Registro di protocollo, Contabilità, Grafici, Versamenti CAF, Spese sede, Collaboratori, Scadenze, Messaggi, Modulistica, Utenti e permessi (solo amministratore).</li>
 <li>In alto a destra: <b>📲 Installa app</b>, <b>📖 Guida</b>, <b>Cambia utente</b> e <b>🚪 Esci dal programma</b>.</li>
 </ol>
