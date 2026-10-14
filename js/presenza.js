@@ -14,12 +14,14 @@ function dispositivoAttuale() {
   return (tipo + ' ' + [so, br].filter(Boolean).join(' · ')).trim();
 }
 
+let PRESENZA_SEGNATA = false;
 async function segnaPresenza() {
   if (typeof auth === 'undefined' || !auth.profilo || document.visibilityState === 'hidden') return;
-  try { await supabase.rpc('segna_presenza', { p_sessione: SESSIONE_ID, p_dispositivo: dispositivoAttuale() }); } catch (e) { /* non blocca il lavoro */ }
+  try { const r = await supabase.rpc('segna_presenza', { p_sessione: SESSIONE_ID, p_dispositivo: dispositivoAttuale() }); if (!(r && r.error)) PRESENZA_SEGNATA = true; } catch (e) { /* non blocca il lavoro */ }
 }
 setInterval(segnaPresenza, 60 * 1000);
-setTimeout(segnaPresenza, 4000);
+// appena si entra (anche dopo il login con password, impronta o QR) la presenza si registra subito, non dopo un minuto
+setInterval(function () { if (!PRESENZA_SEGNATA) segnaPresenza(); }, 3000);
 document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') segnaPresenza(); });
 
 function dataOraIT(iso) {
@@ -45,17 +47,23 @@ async function renderPresenze() {
   const box = document.getElementById('presenze-lista');
   if (!box) return;
   if (!auth.profilo || auth.profilo.ruolo !== 'admin') { box.innerHTML = ''; return; }
-  const [sess, profili] = await Promise.all([
+  const [sess, profili, login] = await Promise.all([
     supabase.from('sessioni').select('*').order('ultimo', { ascending: false }),
-    typeof caricaTuttiProfili === 'function' ? caricaTuttiProfili() : Promise.resolve([])
+    typeof caricaTuttiProfili === 'function' ? caricaTuttiProfili() : Promise.resolve([]),
+    supabase.rpc('ultimi_accessi').then(function (r) { return r; }, function () { return {}; })
   ]);
+  const loginDi = {}; ((login && login.data) || []).forEach(function (r) { loginDi[r.id] = r.ultimo_login; });
   if (sess.error) { box.innerHTML = '<div class="empty">Errore nel caricamento: ' + esc(sess.error.message) + '</div>'; return; }
   const sessioni = sess.data || [];
   const limite = Date.now() - PRESENZA_MINUTI_ONLINE * 60000;
   const online = function (s) { return new Date(s.ultimo).getTime() >= limite; };
   const utenti = (profili || []).map(function (u) {
     const sue = sessioni.filter(function (s) { return s.utente_id === u.id; });
-    return { u: u, ultima: sue[0] || null, attive: sue.filter(online) };
+    // ultimo collegamento: il più recente tra presenza nel programma e accesso (password, impronta, QR)
+    let ultima = sue[0] || null;
+    const lg = loginDi[u.id];
+    if (lg && (!ultima || new Date(lg) > new Date(ultima.ultimo))) ultima = { ultimo: lg, dispositivo: ultima ? ultima.dispositivo : '', soloLogin: true };
+    return { u: u, ultima: ultima, attive: sue.filter(online) };
   }).sort(function (a, b) {
     return (b.attive.length - a.attive.length) || (new Date((b.ultima || {}).ultimo || 0) - new Date((a.ultima || {}).ultimo || 0));
   });
@@ -68,7 +76,7 @@ async function renderPresenze() {
       const s = x.attive[0] || x.ultima;
       return '<tr><td><b>' + esc(x.u.nome || x.u.email || '') + '</b><div class="sub2">' + esc(x.u.ruolo === 'admin' ? 'Amministratore' : (x.u.sola_lettura ? 'Sola consultazione' : 'Operatore')) + '</div></td>'
         + '<td style="white-space:nowrap">' + (x.attive.length ? '<b style="color:#2f9e5f">🟢 Collegato</b><div class="sub2">da ' + durata(x.attive[x.attive.length - 1].inizio, new Date().toISOString()) + '</div>' : '<span style="color:var(--sub)">⚪ Non collegato</span>') + '</td>'
-        + '<td>' + (x.ultima ? dataOraIT(x.ultima.ultimo) + '<div class="sub2">' + tempoFa(x.ultima.ultimo) + '</div>' : '<span style="color:var(--sub)">Mai collegato</span>') + '</td>'
+        + '<td>' + (x.ultima ? dataOraIT(x.ultima.ultimo) + '<div class="sub2">' + tempoFa(x.ultima.ultimo) + (x.ultima.soloLogin ? ' · accesso' : '') + '</div>' : '<span style="color:var(--sub)">Mai collegato</span>') + '</td>'
         + '<td>' + (s ? esc(s.dispositivo || '-') + (x.attive.length > 1 ? '<div class="sub2">aperto su ' + x.attive.length + ' dispositivi</div>' : '') : '-') + '</td></tr>';
     }).join('') + '</tbody></table></div>'
     + '<details style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub)">📋 Ultimi accessi (' + Math.min(30, sessioni.length) + ')</summary>'

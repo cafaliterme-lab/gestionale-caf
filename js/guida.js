@@ -356,7 +356,7 @@ const GUIDA = [
 <li>Per ogni utente sceglie quali <b>sezioni</b> vede e se può modificare; poi <b>💾 Salva permessi</b>.</li>
 <li><b>Invia accesso</b> prepara il messaggio con link, e-mail e password da mandare su WhatsApp o per e-mail (anche Aruba Webmail).</li>
 <li>In <b>La mia password</b> ognuno può cambiare la propria password.</li>
-</ul><p><b>🟢 Chi è collegato</b>: in cima a Utenti e permessi vedi per ogni utente se è <b>collegato adesso</b> (programma aperto negli ultimi 3 minuti), da quanto tempo, l'<b>ultimo collegamento</b> (data, ora e "x min fa") e il dispositivo (💻 PC o 📱 telefono). Sotto, <b>📋 Ultimi accessi</b> elenca gli ultimi 30 collegamenti con entrata, ultima attività e durata. L'elenco si aggiorna da solo ogni minuto o col tasto 🔄 Aggiorna.</p>` },
+</ul><p><b>🟢 Chi è collegato</b>: in cima a Utenti e permessi vedi per ogni utente se è <b>collegato adesso</b> (programma aperto negli ultimi 3 minuti), da quanto tempo, l'<b>ultimo collegamento</b> (data, ora e "x min fa") e il dispositivo (💻 PC o 📱 telefono). Sotto, <b>📋 Ultimi accessi</b> elenca gli ultimi 30 collegamenti con entrata, ultima attività e durata. L'elenco si aggiorna da solo ogni minuto o col tasto 🔄 Aggiorna. L'ultimo collegamento tiene conto anche dell'<b>accesso</b> (password, impronta o QR): se qualcuno entra e chiude subito, vedi comunque l'ora dell'accesso (con la scritta «accesso»).</p>` },
 
   { id: 'backup', icona: '🛟', titolo: 'Backup e cartella Dropbox', parole: 'backup copia sicurezza dropbox cartella ripristino importa esporta json excel elimina',
     testo: `
