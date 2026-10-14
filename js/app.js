@@ -2657,10 +2657,10 @@ function popupLavorata(p){
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #2f7de1; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:500px; width:100%">'
     + '<div style="font-size:19px; font-weight:800; color:#2f7de1">🔵 Pratica lavorata</div>'
     + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + (Number(p.richiesto||0) ? ' · richiesto ' + fmtEuro(p.richiesto) : '') + '</div>'
-    + '<div class="grid"><div><label>N. fattura</label><input id="lv-nf" value="' + esc(nfProposto) + '" inputmode="numeric" style="font-weight:800"><div style="font-size:11.5px; color:var(--sub)">' + (!giaNF && String(p.numero) === nfProposto ? 'come il protocollo n. ' + p.numero : '') + '</div></div>'
-    + '<div><label>Data fattura</label><input id="lv-df" value="' + esc(p.dataFattura || todayIT()) + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>'
-    + '<div><label>Importo fattura (€)</label><input id="lv-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800"></div>'
-    + '<div><label title="Quanto chiedi al cliente: promemoria, non entra in contabilità">Importo richiesto (€)</label><input id="lv-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>'
+    + '<div class="grid"><div><label>N. fattura <b style="color:#c0392b">*</b></label><input id="lv-nf" value="' + esc(nfProposto) + '" inputmode="numeric" style="font-weight:800"><div style="font-size:11.5px; color:var(--sub)">' + (!giaNF && String(p.numero) === nfProposto ? 'come il protocollo n. ' + p.numero : '') + '</div></div>'
+    + '<div><label>Data fattura <b style="color:#c0392b">*</b></label><input id="lv-df" value="' + esc(p.dataFattura || todayIT()) + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>'
+    + '<div><label>Importo fattura (€) <b style="color:#c0392b">*</b></label><input id="lv-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800"></div>'
+    + '<div><label title="Quanto chiedi al cliente: promemoria, non entra in contabilità">Importo richiesto (€) <b style="color:#c0392b">*</b></label><input id="lv-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>'
     + '</div>'
     + '<label class="chk" style="display:flex; gap:8px; align-items:center; margin-top:10px"><input type="checkbox" id="lv-wa" style="width:auto"> <span>💬 Avvisa il cliente su WhatsApp che la pratica è pronta' + (tel ? '' : ' <span style="color:#c0392b; font-size:12px">(manca il cellulare: te lo chiederà)</span>') + '</span></label>'
     + '<div id="lv-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
@@ -2674,13 +2674,16 @@ function popupLavorata(p){
     if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); return; }
     if(!b) return;
     const msg = document.getElementById('lv-msg');
+    const segna = function(id, txt){ const el = document.getElementById(id); if(el){ el.style.outline = '3px solid #c0392b'; el.focus(); } msg.textContent = txt; };
+    ['lv-nf','lv-df','lv-imp','lv-ric'].forEach(function(id){ const el = document.getElementById(id); if(el) el.style.outline = ''; });
+    if(!(parseImporto(document.getElementById('lv-ric').value) > 0)) return segna('lv-ric', 'Scrivi l\'importo richiesto al cliente (obbligatorio).');
     const campi = { stato: ['lavorazione','lavorata_da_fatturare','arrivo','da_lavorare_scansionata'].indexOf(p.stato) >= 0 ? 'lavorata' : p.stato };
     if(!p.dataFine) campi.dataFine = todayIT();
     if(b.dataset.az === 'si'){
       const nf = document.getElementById('lv-nf').value.trim(), df = document.getElementById('lv-df').value.trim(), im = parseImporto(document.getElementById('lv-imp').value);
-      if(!nf){ msg.textContent = 'Scrivi il numero della fattura.'; return; }
-      if(!parseDataIT(df)){ msg.textContent = 'La data della fattura deve essere GG/MM/AAAA.'; return; }
-      if(!(im > 0)){ msg.textContent = 'Scrivi l\'importo della fattura.'; return; }
+      if(!nf) return segna('lv-nf', 'Scrivi il numero della fattura (obbligatorio).');
+      if(!parseDataIT(df)) return segna('lv-df', 'La data della fattura deve essere GG/MM/AAAA.');
+      if(!(im > 0)) return segna('lv-imp', 'Scrivi l\'importo della fattura (obbligatorio).');
       const doppia = (state.pratiche||[]).find(function(x){ return x.id !== p.id && !x.annullata && annoPratica(x) === annoPratica(p) && String(x.numFattura||'').trim() === nf; });
       if(doppia && !confirm('La fattura n. ' + nf + ' c\'è già (' + formattaProtocollo(doppia) + ' – ' + (doppia.nome||'') + ').\n\nUso lo stesso il numero ' + nf + '?')) return;
       campi.numFattura = nf; campi.dataFattura = df; campi.compenso = im; campi.fatt = 'fatturata';
@@ -2742,11 +2745,11 @@ function consegnaPratica(id){
     + '<div style="font-size:19px; font-weight:800; color:#8d5a3b">' + parolaConsegna(p).icona + ' ' + (e730(p) ? 'Consegna della pratica' : 'Pratica definita') + '</div>'
     + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + (Number(p.compenso || 0) ? ' · fattura ' + fmtEuro(p.compenso) : '') + (Number(p.richiesto || 0) ? ' · <b>richiesto ' + fmtEuro(p.richiesto) + '</b>' : '') + '</div>'
     + '<div style="font-size:15px; font-weight:800; margin-bottom:8px">Il cliente ha pagato?</div>'
-    + '<div class="grid"><div><label>Importo fattura (€)</label><input id="cs-fatt" type="text" inputmode="decimal" value="' + (Number(p.compenso||0) ? importoInCampo(p.compenso) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)"></div>'
-    + '<div><label title="Promemoria: non entra in contabilità">Importo richiesto (€)</label><input id="cs-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)"></div>'
-    + '<div><label>Importo pagato (€)</label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
+    + '<div class="grid"><div><label>Importo fattura (€) <b style="color:#c0392b">*</b></label><input id="cs-fatt" type="text" inputmode="decimal" value="' + (Number(p.compenso||0) ? importoInCampo(p.compenso) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)"></div>'
+    + '<div><label title="Promemoria: non entra in contabilità">Importo richiesto (€) <b style="color:#c0392b">*</b></label><input id="cs-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)"></div>'
+    + '<div><label>Importo pagato (€) <b style="color:#c0392b">*</b></label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
     + '<div><label>Pagamento</label><select id="cs-met">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div>'
-    + '<div><label>' + (e730(p) ? 'Data di consegna' : 'Data') + '</label><input id="cs-data" value="' + todayIT() + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div></div>'
+    + '<div><label>' + (e730(p) ? 'Data di consegna' : 'Data') + ' <b style="color:#c0392b">*</b></label><input id="cs-data" value="' + todayIT() + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div></div>'
     + '<div id="cs-resto" style="font-size:13.5px; font-weight:800; margin-top:6px"></div>'
     + '<div id="cs-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px">'
@@ -2760,8 +2763,14 @@ function consegnaPratica(id){
     if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); return; }
     if(!b) return;
     const msg = document.getElementById('cs-msg');
-    const dataC = document.getElementById('cs-data').value.trim() || todayIT();
-    if(!parseDataIT(dataC)){ msg.textContent = 'La data di consegna deve essere GG/MM/AAAA.'; return; }
+    const segnaC = function(id, txt){ const el = document.getElementById(id); if(el){ el.style.outline = '3px solid #c0392b'; el.focus(); } msg.textContent = txt; };
+    ['cs-fatt','cs-ric','cs-imp','cs-data'].forEach(function(id){ const el = document.getElementById(id); if(el) el.style.outline = ''; });
+    const dataC = document.getElementById('cs-data').value.trim();
+    if(!parseDataIT(dataC)) return segnaC('cs-data', 'Scrivi la data di consegna (GG/MM/AAAA).');
+    if(!eColf(p.tipo)){
+      if(!(parseImporto(document.getElementById('cs-fatt').value) > 0)) return segnaC('cs-fatt', 'Scrivi l\'importo della fattura (obbligatorio).');
+      if(!(parseImporto(document.getElementById('cs-ric').value) > 0)) return segnaC('cs-ric', 'Scrivi l\'importo richiesto (obbligatorio).');
+    }
     const campi = { consegnataIl: dataC, consegnataDa: ((auth.profilo && auth.profilo.nome) || '').toUpperCase() };
     // fattura e richiesto si confermano (o correggono) alla consegna
     const fa = parseImporto(document.getElementById('cs-fatt').value), ri = parseImporto(document.getElementById('cs-ric').value);
@@ -2771,7 +2780,7 @@ function consegnaPratica(id){
     const colf = eColf(p.tipo);
     if(b.dataset.az === 'pagato'){
       const v = parseImporto(document.getElementById('cs-imp').value);
-      if(!(v > 0)){ msg.textContent = 'Scrivi quanto ha pagato.'; return; }
+      if(!(v > 0)) return segnaC('cs-imp', 'Scrivi quanto ha pagato (obbligatorio).');
       campi.pagato = v; campi.metodoPagamento = document.getElementById('cs-met').value;
       if(!colf) campi.stato = 'pagato';
       // pagamento non completo: resta tra i morosi con la nota di quanto manca
