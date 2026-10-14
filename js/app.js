@@ -1494,6 +1494,8 @@ function totaleFattureIntervallo(dal, al, anno){
 function suggerimentoVersamento(){
   const box = document.getElementById('vc-suggerimento');
   if(!box) return;
+  // l'importo del versamento lo decide l'operatore: nessun calcolo automatico dalle fatture
+  box.innerHTML = ''; return;
   const dal = parseInt(document.getElementById('vc-dal').value, 10), al = parseInt(document.getElementById('vc-al').value, 10);
   if(!(dal > 0) || !(al > 0) || dal > al){ box.innerHTML = ''; return; }
   const anno = annoAttivo();
