@@ -2676,7 +2676,7 @@ function popupLavorata(p){
     const msg = document.getElementById('lv-msg');
     const segna = function(id, txt){ const el = document.getElementById(id); if(el){ el.style.outline = '3px solid #c0392b'; el.focus(); } msg.textContent = txt; };
     ['lv-nf','lv-df','lv-imp','lv-ric'].forEach(function(id){ const el = document.getElementById(id); if(el) el.style.outline = ''; });
-    if(!(parseImporto(document.getElementById('lv-ric').value) > 0)) return segna('lv-ric', 'Scrivi l\'importo richiesto al cliente (obbligatorio).');
+    if(!document.getElementById('lv-ric').value.trim() || !(parseImporto(document.getElementById('lv-ric').value) >= 0)) return segna('lv-ric', 'Scrivi l\'importo richiesto al cliente (obbligatorio; 0 se la pratica è gratuita).');
     const campi = { stato: ['lavorazione','lavorata_da_fatturare','arrivo','da_lavorare_scansionata'].indexOf(p.stato) >= 0 ? 'lavorata' : p.stato };
     if(!p.dataFine) campi.dataFine = todayIT();
     if(b.dataset.az === 'si'){
@@ -2768,19 +2768,21 @@ function consegnaPratica(id){
     const dataC = document.getElementById('cs-data').value.trim();
     if(!parseDataIT(dataC)) return segnaC('cs-data', 'Scrivi la data di consegna (GG/MM/AAAA).');
     if(!eColf(p.tipo)){
-      if(!(parseImporto(document.getElementById('cs-fatt').value) > 0)) return segnaC('cs-fatt', 'Scrivi l\'importo della fattura (obbligatorio).');
-      if(!(parseImporto(document.getElementById('cs-ric').value) > 0)) return segnaC('cs-ric', 'Scrivi l\'importo richiesto (obbligatorio).');
+      const vuoto = function(id){ const v = document.getElementById(id).value.trim(); return !v || !(parseImporto(v) >= 0); };
+      if(vuoto('cs-fatt')) return segnaC('cs-fatt', 'Scrivi l\'importo della fattura (obbligatorio; 0 se gratuita).');
+      if(vuoto('cs-ric')) return segnaC('cs-ric', 'Scrivi l\'importo richiesto (obbligatorio; 0 se gratuita).');
     }
     const campi = { consegnataIl: dataC, consegnataDa: ((auth.profilo && auth.profilo.nome) || '').toUpperCase() };
     // fattura e richiesto si confermano (o correggono) alla consegna
     const fa = parseImporto(document.getElementById('cs-fatt').value), ri = parseImporto(document.getElementById('cs-ric').value);
     if(fa > 0 && fa !== Number(p.compenso || 0)) campi.compenso = fa;
-    if(!(fa > 0) && Number(p.compenso || 0) && !document.getElementById('cs-fatt').value.trim()) campi.compenso = '';
+    if(!(fa > 0) && Number(p.compenso || 0)) campi.compenso = '';
     if((ri > 0 ? ri : 0) !== Number(p.richiesto || 0)) campi.richiesto = ri > 0 ? ri : '';
     const colf = eColf(p.tipo);
     if(b.dataset.az === 'pagato'){
       const v = parseImporto(document.getElementById('cs-imp').value);
-      if(!(v > 0)) return segnaC('cs-imp', 'Scrivi quanto ha pagato (obbligatorio).');
+      const gratuita = !(parseImporto(document.getElementById('cs-ric').value) > 0) && !(parseImporto(document.getElementById('cs-fatt').value) > 0);
+      if(!(v > 0) && !gratuita) return segnaC('cs-imp', 'Scrivi quanto ha pagato (obbligatorio).');
       campi.pagato = v; campi.metodoPagamento = document.getElementById('cs-met').value;
       if(!colf) campi.stato = 'pagato';
       // pagamento non completo: resta tra i morosi con la nota di quanto manca
