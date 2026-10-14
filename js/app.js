@@ -2652,7 +2652,7 @@ function popupLavorata(p){
     + '<div><label>Data fattura</label><input id="lv-df" value="' + esc(p.dataFattura || todayIT()) + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>'
     + '<div><label>Importo fattura (€)</label><input id="lv-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800"></div>'
     + '<div><label title="Quanto chiedi al cliente: promemoria, non entra in contabilità">Importo richiesto (€)</label><input id="lv-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>'
-    + '<div><label title="Quanto ha già pagato: entra in contabilità (si può scrivere anche alla consegna)">Importo pagato (€)</label><div style="display:flex; gap:6px"><input id="lv-pag" type="text" inputmode="decimal" value="' + (Number(p.pagato||0) ? importoInCampo(p.pagato) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0; font-weight:800"><select id="lv-met" style="width:auto">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div></div></div>'
+    + '</div>'
     + '<label class="chk" style="display:flex; gap:8px; align-items:center; margin-top:10px"><input type="checkbox" id="lv-wa" style="width:auto"> <span>💬 Avvisa il cliente su WhatsApp che la pratica è pronta' + (tel ? '' : ' <span style="color:#c0392b; font-size:12px">(manca il cellulare: te lo chiederà)</span>') + '</span></label>'
     + '<div id="lv-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px">'
@@ -2676,11 +2676,9 @@ function popupLavorata(p){
       if(doppia && !confirm('La fattura n. ' + nf + ' c\'è già (' + formattaProtocollo(doppia) + ' – ' + (doppia.nome||'') + ').\n\nUso lo stesso il numero ' + nf + '?')) return;
       campi.numFattura = nf; campi.dataFattura = df; campi.compenso = im; campi.fatt = 'fatturata';
     }
-    // richiesto e pagato si salvano in tutti e due i casi
-    const ric = parseImporto(document.getElementById('lv-ric').value), pag = parseImporto(document.getElementById('lv-pag').value);
+    // il richiesto si salva in tutti e due i casi; il pagato si scrive alla consegna
+    const ric = parseImporto(document.getElementById('lv-ric').value);
     campi.richiesto = ric > 0 ? ric : '';
-    if(pag > 0){ campi.pagato = pag; campi.metodoPagamento = document.getElementById('lv-met').value; }
-    else if(Number(p.pagato || 0) && !document.getElementById('lv-pag').value.trim()) campi.pagato = '';
     const avvisa = document.getElementById('lv-wa').checked;
     b.disabled = true;
     const r = await data.pratiche.aggiorna(p.id, campi);
