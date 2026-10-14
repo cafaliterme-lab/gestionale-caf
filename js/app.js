@@ -2629,17 +2629,18 @@ function bottoneAvanti(p){
   if(['arrivo','da_lavorare_scansionata'].indexOf(p.stato) >= 0 && statoVisibile('lavorazione', p.tipo))
     return '<button type="button" title="Inizia a lavorare la pratica" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#f2c200', '#3a2e00') + '">▶ In lavorazione</button>';
   if(p.stato === 'lavorazione') return '<button type="button" title="Pratica finita: fattura e avviso al cliente" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#1a7f37', '#fff') + '">▶ Lavorata</button>';
-  if(p.stato === 'lavorata_da_fatturare' || (['lavorata','da_pagare','pagato','pagato_da_ritirare'].indexOf(p.stato) >= 0 && !String(p.numFattura||'').trim())) return '<button type="button" title="Emetti la fattura" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#2f7de1', '#fff') + '">▶ Fattura</button>';
+  if(e730(p) && (p.stato === 'lavorata_da_fatturare' || (['lavorata','da_pagare','pagato','pagato_da_ritirare'].indexOf(p.stato) >= 0 && !String(p.numFattura||'').trim()))) return '<button type="button" title="Emetti la fattura" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#2f7de1', '#fff') + '">▶ Fattura</button>';
   return '';
 }
 function avantiPratica(id){
   const p = (state.pratiche||[]).find(function(x){ return x.id === id; }); if(!p) return;
-  if(p.stato === 'lavorazione' || p.stato === 'lavorata_da_fatturare' || !String(p.numFattura||'').trim() && ['lavorata','da_pagare','pagato','pagato_da_ritirare'].indexOf(p.stato) >= 0) return popupLavorata(p);
+  if(p.stato === 'lavorazione' || p.stato === 'lavorata_da_fatturare' || (e730(p) && !String(p.numFattura||'').trim() && ['lavorata','da_pagare','pagato','pagato_da_ritirare'].indexOf(p.stato) >= 0)) return popupLavorata(p);
   cambiaStato(id, 'lavorazione');
 }
 function prossimoNumeroFattura(anno){
   let max = 0;
-  (state.pratiche||[]).forEach(function(x){ if(!x.annullata && annoPratica(x) === anno){ const n = numeroFatturaPratica(x); if(n != null && n > max) max = n; } });
+  // la numerazione delle fatture riguarda solo i 730
+  (state.pratiche||[]).forEach(function(x){ if(!x.annullata && e730(x) && annoPratica(x) === anno){ const n = numeroFatturaPratica(x); if(n != null && n > max) max = n; } });
   return max + 1;
 }
 function popupLavorata(p){
@@ -2651,14 +2652,15 @@ function popupLavorata(p){
   const imp = Number(p.compenso || 0) || (auto !== undefined && auto !== '' ? Number(auto) : 0);
   const giaNF = String(p.numFattura || '').trim();
   // numero proposto: quello del protocollo, se libero; altrimenti il successivo all'ultima fattura
-  const usato = function(n){ return (state.pratiche||[]).some(function(x){ return x.id !== p.id && !x.annullata && annoPratica(x) === annoPratica(p) && String(x.numFattura||'').trim() === String(n); }); };
+  const usato = function(n){ return (state.pratiche||[]).some(function(x){ return x.id !== p.id && !x.annullata && e730(x) && annoPratica(x) === annoPratica(p) && String(x.numFattura||'').trim() === String(n); }); };
+  const conNumero = e730(p); // solo i 730 hanno il numero di fattura
   const nfProposto = giaNF || (p.numero && !usato(p.numero) ? String(p.numero) : String(prossimoNumeroFattura(annoPratica(p))));
   const tel = !!numeroWhatsApp(p.telefono);
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #2f7de1; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:500px; width:100%">'
     + '<div style="font-size:19px; font-weight:800; color:#2f7de1">🔵 Pratica lavorata</div>'
     + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + (Number(p.richiesto||0) ? ' · richiesto ' + fmtEuro(p.richiesto) : '') + '</div>'
-    + '<div class="grid"><div><label>N. fattura <b style="color:#c0392b">*</b></label><input id="lv-nf" value="' + esc(nfProposto) + '" inputmode="numeric" style="font-weight:800"><div style="font-size:11.5px; color:var(--sub)">' + (!giaNF && String(p.numero) === nfProposto ? 'come il protocollo n. ' + p.numero : '') + '</div></div>'
-    + '<div><label>Data fattura <b style="color:#c0392b">*</b></label><input id="lv-df" value="' + esc(p.dataFattura || todayIT()) + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>'
+    + '<div class="grid">' + (conNumero ? '<div><label>N. fattura <b style="color:#c0392b">*</b></label><input id="lv-nf" value="' + esc(nfProposto) + '" inputmode="numeric" style="font-weight:800"><div style="font-size:11.5px; color:var(--sub)">' + (!giaNF && String(p.numero) === nfProposto ? 'come il protocollo n. ' + p.numero : '') + '</div></div>'
+    + '<div><label>Data fattura <b style="color:#c0392b">*</b></label><input id="lv-df" value="' + esc(p.dataFattura || todayIT()) + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>' : '')
     + '<div><label>Importo fattura (€) <b style="color:#c0392b">*</b></label><input id="lv-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800"></div>'
     + '<div><label title="Quanto chiedi al cliente: promemoria, non entra in contabilità">Importo richiesto (€) <b style="color:#c0392b">*</b></label><input id="lv-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>'
     + '</div>'
@@ -2666,8 +2668,9 @@ function popupLavorata(p){
     + '<div id="lv-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px">'
     + '<button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
-    + '<button type="button" data-az="senza" style="background:none; border:1px solid #2f7de1; color:#2f7de1">Lavorata senza fattura</button>'
-    + '<button type="button" data-az="si" style="background:#2f7de1; color:#fff; font-weight:800">✓ Lavorata con fattura</button></div></div>';
+    + (conNumero ? '<button type="button" data-az="senza" style="background:none; border:1px solid #2f7de1; color:#2f7de1">Lavorata senza fattura</button>'
+      + '<button type="button" data-az="si" style="background:#2f7de1; color:#fff; font-weight:800">✓ Lavorata con fattura</button>'
+      : '<button type="button" data-az="si" style="background:#2f7de1; color:#fff; font-weight:800">✓ Lavorata</button>') + '</div></div>';
   document.body.appendChild(ov);
   ov.addEventListener('click', async function(e){
     const b = e.target.closest('button[data-az]');
@@ -2679,12 +2682,17 @@ function popupLavorata(p){
     if(!document.getElementById('lv-ric').value.trim() || !(parseImporto(document.getElementById('lv-ric').value) >= 0)) return segna('lv-ric', 'Scrivi l\'importo richiesto al cliente (obbligatorio; 0 se la pratica è gratuita).');
     const campi = { stato: ['lavorazione','lavorata_da_fatturare','arrivo','da_lavorare_scansionata'].indexOf(p.stato) >= 0 ? 'lavorata' : p.stato };
     if(!p.dataFine) campi.dataFine = todayIT();
-    if(b.dataset.az === 'si'){
+    if(b.dataset.az === 'si' && !conNumero){
+      // altre pratiche: solo l'importo della fattura (0 se gratuita), senza numero
+      const imv = document.getElementById('lv-imp').value.trim(), im = parseImporto(imv);
+      if(!imv || !(im >= 0)) return segna('lv-imp', 'Scrivi l\'importo della fattura (obbligatorio; 0 se gratuita).');
+      campi.compenso = im > 0 ? im : '';
+    } else if(b.dataset.az === 'si'){
       const nf = document.getElementById('lv-nf').value.trim(), df = document.getElementById('lv-df').value.trim(), im = parseImporto(document.getElementById('lv-imp').value);
       if(!nf) return segna('lv-nf', 'Scrivi il numero della fattura (obbligatorio).');
       if(!parseDataIT(df)) return segna('lv-df', 'La data della fattura deve essere GG/MM/AAAA.');
       if(!(im > 0)) return segna('lv-imp', 'Scrivi l\'importo della fattura (obbligatorio).');
-      const doppia = (state.pratiche||[]).find(function(x){ return x.id !== p.id && !x.annullata && annoPratica(x) === annoPratica(p) && String(x.numFattura||'').trim() === nf; });
+      const doppia = (state.pratiche||[]).find(function(x){ return x.id !== p.id && !x.annullata && e730(x) && annoPratica(x) === annoPratica(p) && String(x.numFattura||'').trim() === nf; });
       if(doppia && !confirm('La fattura n. ' + nf + ' c\'è già (' + formattaProtocollo(doppia) + ' – ' + (doppia.nome||'') + ').\n\nUso lo stesso il numero ' + nf + '?')) return;
       campi.numFattura = nf; campi.dataFattura = df; campi.compenso = im; campi.fatt = 'fatturata';
     }
@@ -3295,6 +3303,8 @@ function bloccoIntroito(titolo, colore, lista, conMedia, nomeGuadagno){
     + (vedeGuadagni() ? tile('#c2185b', fmtEuro(inc-fatt), (nomeGuadagno || 'GUADAGNO NETTO') + ' (INCASSO − FATTURE)', 'g-guadagno') : '')
     + (conMedia ? tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'PREZZO MEDIO (FATTURE ÷ PRATICHE)', 'g-guadagno') : '')
     + (conMedia ? tile('#b8860b', n ? fmtEuro(inc / n) : '—', 'INCASSO MEDIO (INCASSO ÷ PRATICHE)', 'g-guadagno') : '')
+    + (conMedia ? (function(){ const nums = lista.map(numeroFatturaPratica).filter(function(x){ return x != null; }).sort(function(a,b){ return a-b; });
+        return tile('#5b4bb7', nums.length, 'FATTURE 730 NUMERATE' + (nums.length ? '<br>dal n. ' + nums[0] + ' al n. ' + nums[nums.length-1] : '') + (lista.length - nums.length > 0 ? '<br>' + (lista.length - nums.length) + ' ancora senza numero' : ''), 'g-fatture'); })() : '')
     + '</div>';
 }
 
