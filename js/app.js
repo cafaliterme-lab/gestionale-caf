@@ -2616,11 +2616,12 @@ function bottoneConsegna(p){
    In arrivo / Scansionata → In lavorazione → Lavorata (fattura + avviso al cliente) → Consegna */
 function bottoneAvanti(p){
   if(!p || p.annullata || eConsegnata(p) || eColf(p.tipo) || (typeof eRinuncia === 'function' && eRinuncia(p))) return '';
-  const st = 'background:#1a7f37; color:#fff; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap';
+  // colori diversi per ogni passo: In lavorazione giallo, Lavorata verde, Fattura blu
+  const stile = function(bg, fg){ return 'background:' + bg + '; color:' + fg + '; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap'; };
   if(['arrivo','da_lavorare_scansionata'].indexOf(p.stato) >= 0 && statoVisibile('lavorazione', p.tipo))
-    return '<button type="button" title="Inizia a lavorare la pratica" onclick="avantiPratica(\'' + p.id + '\')" style="' + st + '">▶ In lavorazione</button>';
-  if(p.stato === 'lavorazione') return '<button type="button" title="Pratica finita: fattura e avviso al cliente" onclick="avantiPratica(\'' + p.id + '\')" style="' + st + '">▶ Lavorata</button>';
-  if(p.stato === 'lavorata_da_fatturare' || (['lavorata','da_pagare','pagato','pagato_da_ritirare'].indexOf(p.stato) >= 0 && !String(p.numFattura||'').trim())) return '<button type="button" title="Emetti la fattura" onclick="avantiPratica(\'' + p.id + '\')" style="' + st + '">▶ Fattura</button>';
+    return '<button type="button" title="Inizia a lavorare la pratica" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#f2c200', '#3a2e00') + '">▶ In lavorazione</button>';
+  if(p.stato === 'lavorazione') return '<button type="button" title="Pratica finita: fattura e avviso al cliente" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#1a7f37', '#fff') + '">▶ Lavorata</button>';
+  if(p.stato === 'lavorata_da_fatturare' || (['lavorata','da_pagare','pagato','pagato_da_ritirare'].indexOf(p.stato) >= 0 && !String(p.numFattura||'').trim())) return '<button type="button" title="Emetti la fattura" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#2f7de1', '#fff') + '">▶ Fattura</button>';
   return '';
 }
 function avantiPratica(id){
