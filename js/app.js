@@ -2611,8 +2611,11 @@ function aggiornaTastoConsegnate(pratAnno){
   b.textContent = (MOSTRA_CONSEGNATE ? '📦 Nascondi' : '📦 Mostra') + ' le consegnate / definite (' + n + ')';
   b.style.background = MOSTRA_CONSEGNATE ? '#6b7280' : '#8d5a3b';
 }
+// Si consegna solo una pratica già lavorata (non In arrivo, In lavorazione o Da lavorare scansionata)
+function puoConsegnare(p){ return !!p && (eColf(p.tipo) || eConsegnata(p) || !eDaLavorare(p)); }
 function bottoneConsegna(p){
   if(!p || p.annullata) return '';
+  if(!puoConsegnare(p)) return '';
   const w = parolaConsegna(p);
   if(eConsegnata(p)) return '<button type="button" title="' + w.fatta + ' il ' + esc(p.consegnataIl) + (p.consegnataDa ? ' da ' + esc(p.consegnataDa) : '') + ' – tocca per riaprire la pratica (solo amministratore)" onclick="annullaConsegna(\'' + p.id + '\')" style="background:#e8f6ee; color:#1a7f37; border:1px solid #1a7f37; border-radius:6px; padding:4px 8px; font-size:11.5px; font-weight:700; cursor:pointer">' + w.icona + ' ' + esc(p.consegnataIl) + '</button>';
   return '<button type="button" title="Segna la pratica come ' + w.fatta_m + '" onclick="consegnaPratica(\'' + p.id + '\')" style="background:#8d5a3b; color:#fff; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer">' + w.icona + ' ' + w.fai + '</button>';
@@ -2724,6 +2727,7 @@ function restoConsegna(){
 }
 function consegnaPratica(id){
   const p = (state.pratiche||[]).find(function(x){ return x.id === id; }); if(!p) return;
+  if(!puoConsegnare(p)){ alert('La pratica è ancora «' + statoLabel(p.stato) + '».\n\nPrima di consegnarla passala a «Lavorata» (tasto ▶ Lavorata).'); return; }
   const colfC = eColf(p.tipo);
   const nonPag = colfC ? [] : statiNonPagato(p.tipo);
   const tastiNonPag = nonPag.length
