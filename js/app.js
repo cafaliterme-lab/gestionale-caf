@@ -2709,6 +2709,15 @@ function statiNonPagato(tipo){
     return statoVisibile(k, tipo);
   });
 }
+// Nella consegna: quanto manca rispetto al richiesto (o alla fattura)
+function restoConsegna(){
+  const box = document.getElementById('cs-resto'); if(!box) return;
+  const ri = parseImporto((document.getElementById('cs-ric')||{}).value || ''), fa = parseImporto((document.getElementById('cs-fatt')||{}).value || ''), pg = parseImporto((document.getElementById('cs-imp')||{}).value || '');
+  const dovuto = ri > 0 ? ri : fa;
+  if(!(dovuto > 0) || !(pg > 0)){ box.innerHTML = ''; return; }
+  const manca = Math.round((dovuto - pg) * 100) / 100;
+  box.innerHTML = manca > 0.004 ? '<span style="color:#c0392b">⚠️ Mancano ' + fmtEuro(manca) + ' (' + (ri > 0 ? 'richiesto' : 'fattura') + ' ' + fmtEuro(dovuto) + ')</span>' : '<span style="color:#1a7f37">✓ Pagato tutto</span>';
+}
 function consegnaPratica(id){
   const p = (state.pratiche||[]).find(function(x){ return x.id === id; }); if(!p) return;
   const colfC = eColf(p.tipo);
@@ -2725,17 +2734,19 @@ function consegnaPratica(id){
     + '<div style="font-size:19px; font-weight:800; color:#8d5a3b">' + parolaConsegna(p).icona + ' ' + (e730(p) ? 'Consegna della pratica' : 'Pratica definita') + '</div>'
     + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + (Number(p.compenso || 0) ? ' · fattura ' + fmtEuro(p.compenso) : '') + (Number(p.richiesto || 0) ? ' · <b>richiesto ' + fmtEuro(p.richiesto) + '</b>' : '') + '</div>'
     + '<div style="font-size:15px; font-weight:800; margin-bottom:8px">Il cliente ha pagato?</div>'
-    + '<div class="grid"><div><label>Importo fattura (€)</label><input id="cs-fatt" type="text" inputmode="decimal" value="' + (Number(p.compenso||0) ? importoInCampo(p.compenso) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>'
-    + '<div><label title="Promemoria: non entra in contabilità">Importo richiesto (€)</label><input id="cs-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>'
-    + '<div><label>Importo pagato (€)</label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
+    + '<div class="grid"><div><label>Importo fattura (€)</label><input id="cs-fatt" type="text" inputmode="decimal" value="' + (Number(p.compenso||0) ? importoInCampo(p.compenso) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)"></div>'
+    + '<div><label title="Promemoria: non entra in contabilità">Importo richiesto (€)</label><input id="cs-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)"></div>'
+    + '<div><label>Importo pagato (€)</label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
     + '<div><label>Pagamento</label><select id="cs-met">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div>'
     + '<div><label>' + (e730(p) ? 'Data di consegna' : 'Data') + '</label><input id="cs-data" value="' + todayIT() + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div></div>'
+    + '<div id="cs-resto" style="font-size:13.5px; font-weight:800; margin-top:6px"></div>'
     + '<div id="cs-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px">'
     + '<button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
     + tastiNonPag
     + '<button type="button" data-az="pagato" style="background:#2f9e5f; color:#fff; font-weight:800">✓ Ha pagato</button></div></div>';
   document.body.appendChild(ov);
+  restoConsegna();
   ov.addEventListener('click', async function(e){
     const b = e.target.closest('button[data-az]');
     if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); return; }
@@ -2755,6 +2766,13 @@ function consegnaPratica(id){
       if(!(v > 0)){ msg.textContent = 'Scrivi quanto ha pagato.'; return; }
       campi.pagato = v; campi.metodoPagamento = document.getElementById('cs-met').value;
       if(!colf) campi.stato = 'pagato';
+      // pagamento non completo: resta tra i morosi con la nota di quanto manca
+      const dovuto = ri > 0 ? ri : (fa > 0 ? fa : Number(p.compenso || 0));
+      const manca = Math.round((dovuto - v) * 100) / 100;
+      if(manca > 0.004 && confirm('Ha pagato ' + fmtEuro(v) + ' su ' + fmtEuro(dovuto) + ': deve ancora ' + fmtEuro(manca) + '.\n\nOK = la pratica resta tra i morosi («Da pagare») con la nota «Deve ancora ' + fmtEuro(manca) + '»\nAnnulla = considero saldato così')){
+        if(!colf) campi.stato = statoVisibile('da_pagare', p.tipo) ? 'da_pagare' : 'non_paga';
+        campi.note = ((p.note ? p.note + ' · ' : '') + 'Deve ancora ' + fmtEuro(manca) + ' (pagati ' + fmtEuro(v) + ' su ' + fmtEuro(dovuto) + ' alla consegna del ' + dataC + ')').slice(0, 1000);
+      } else if(manca > 0.004){ campi.richiesto = v; }
     } else if(!colf){
       campi.stato = (b.dataset.stato && STATI[b.dataset.stato]) ? b.dataset.stato : 'non_paga';
     }

@@ -2,12 +2,16 @@
 
 const MOROSI = { anno: null, annoBase: null, collaboratori: false, cerca: '', aperto: false };
 
-function residuoPratica(p) { return Math.max(0, Math.round((Number(p.compenso || 0) - Number(p.pagato || 0)) * 100) / 100); }
+// Quanto deve pagare il cliente: l'importo richiesto se c'è, altrimenti la fattura
+function dovutoPratica(p) { return Number(p.richiesto || 0) > 0 ? Number(p.richiesto) : Number(p.compenso || 0); }
+function residuoPratica(p) { return Math.max(0, Math.round((dovutoPratica(p) - Number(p.pagato || 0)) * 100) / 100); }
 function eMorosa(p) { return !p.annullata && p.stato !== 'rinuncia_compilazione' && !p.saldataCollaboratore && residuoPratica(p) > 0; }
 
 function morosiAnno(anno, conCollaboratori) {
   return (state.pratiche || []).filter(function (p) {
     // anno 0 = tutti gli anni precedenti a quello di protocollo
+    // anno in corso: solo le pratiche già consegnate con un pagamento non completo
+    if (anno && anno === annoAttivo() && !(typeof eConsegnata === 'function' && eConsegnata(p))) return false;
     return (anno ? annoPratica(p) === anno : annoPratica(p) < annoAttivo()) && eMorosa(p) && (conCollaboratori || typeof haAcconti !== 'function' || !haAcconti(p.tipo));
   }).sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || '')) || (annoPratica(a) - annoPratica(b)); });
 }
@@ -22,6 +26,7 @@ function renderMorosi() {
   if (MOROSI.anno == null || MOROSI.annoBase !== annoAttivo()) { MOROSI.anno = annoPrec; MOROSI.annoBase = annoAttivo(); }
   const anni = Array.from(new Set((state.pratiche || []).map(annoPratica).filter(function (a) { return a < annoAttivo(); }))).sort(function (a, b) { return b - a; });
   if (MOROSI.anno && anni.indexOf(MOROSI.anno) < 0) anni.unshift(MOROSI.anno);
+  if (anni.indexOf(annoAttivo()) < 0) anni.unshift(annoAttivo());
   const tutti = morosiAnno(MOROSI.anno, MOROSI.collaboratori);
   const q = MOROSI.cerca.trim().toUpperCase();
   const lista = q ? tutti.filter(function (p) { return (String(p.nome || '') + ' ' + formattaProtocolloTesto(p) + ' ' + (p.telefono || '')).toUpperCase().indexOf(q) >= 0; }) : tutti;
@@ -31,7 +36,7 @@ function renderMorosi() {
     + '<summary style="background:#c0392b; color:#fff; background-image:none"><span class="grp-name">💸 TABULATO MOROSI ' + nomeAnnoMorosi(MOROSI.anno) + '</span><span class="grp-n">' + tutti.length + '</span><span class="grp-soldi">Da pagare<br>' + fmtEuro(tot) + '</span></summary>'
     + '<div class="grp-b" style="padding-top:10px">'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px">'
-    + '<label style="margin:0">Anno <select onchange="MOROSI.anno=Number(this.value); renderMorosi()" style="width:auto">' + anni.map(function (a) { return '<option value="' + a + '"' + (a === MOROSI.anno ? ' selected' : '') + '>' + a + '</option>'; }).join('') + '<option value="0"' + (!MOROSI.anno ? ' selected' : '') + '>Tutti gli anni</option></select></label>'
+    + '<label style="margin:0">Anno <select onchange="MOROSI.anno=Number(this.value); renderMorosi()" style="width:auto">' + anni.map(function (a) { return '<option value="' + a + '"' + (a === MOROSI.anno ? ' selected' : '') + '>' + a + (a === annoAttivo() ? ' (consegnate non saldate)' : '') + '</option>'; }).join('') + '<option value="0"' + (!MOROSI.anno ? ' selected' : '') + '>Tutti gli anni</option></select></label>'
     + '<input type="search" placeholder="Cerca cliente, protocollo, telefono…" value="' + esc(MOROSI.cerca) + '" oninput="MOROSI.cerca=this.value; renderMorosiLista()" style="flex:1; min-width:200px">'
     + '<label class="chk"><input type="checkbox" ' + (MOROSI.collaboratori ? 'checked' : '') + ' onchange="MOROSI.collaboratori=this.checked; renderMorosi()"> Includi pratiche dei collaboratori</label>'
     + '<button type="button" onclick="stampaMorosi()" style="background:#374151; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">🖨️ Stampa</button>'
@@ -99,7 +104,7 @@ function incassaMoroso(id) {
       metodoPagamento: metodo,
       note: ((p.note ? p.note + ' · ' : '') + 'Pagato arretrato ' + fmtEuro(imp) + ' il ' + todayIT() + ' (' + metodo + ')').slice(0, 1000)
     };
-    if (nuovoPagato >= Number(p.compenso || 0) && ['da_pagare', 'non_paga', 'lavorata', 'lavorata_da_fatturare', 'filca_non_paga', 'fps_non_paga'].indexOf(p.stato) >= 0 || (typeof eStatoNonPagato === 'function' && eStatoNonPagato(p.stato))) campi.stato = 'pagato';
+    if (nuovoPagato >= dovutoPratica(p) && (['da_pagare', 'non_paga', 'lavorata', 'lavorata_da_fatturare', 'filca_non_paga', 'fps_non_paga'].indexOf(p.stato) >= 0 || (typeof eStatoNonPagato === 'function' && eStatoNonPagato(p.stato)))) campi.stato = 'pagato';
     b.disabled = true;
     const r = await data.pratiche.aggiorna(p.id, campi);
     if (r && r.error) { b.disabled = false; esito.innerHTML = '<b style="color:#c0392b">❌ ' + esc(r.error) + '</b>'; return; }
