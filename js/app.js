@@ -1509,10 +1509,16 @@ const aperti = {};
 function gToggle(el){ aperti[el.dataset.k] = el.open; }
 function initFiltroStato(){
   const sel = document.getElementById('filtro-stato');
-  if(!sel || sel.options.length) return;
+  if(!sel) return;
+  // si ridisegna quando cambiano gli stati (es. stati aggiunti dall'amministratore, caricati dopo l'avvio)
+  const firma = Object.keys(STATI).map(function(k){ return k + ':' + STATI[k].l; }).join('|');
+  if(sel.dataset.firma === firma && sel.options.length) return;
+  const val = sel.value;
+  sel.dataset.firma = firma;
   sel.innerHTML = '<option value="">Tutti gli stati</option>' + Object.keys(STATI).map(function(k){
     return '<option value="'+k+'">'+STATI[k].e+' '+STATI[k].l+'</option>';
   }).join('');
+  if(val && STATI[val]) sel.value = val;
 }
 function filtraTesto(lista){
   const q = ((document.getElementById('cerca')||{}).value||'').trim().toLowerCase();
@@ -2554,7 +2560,8 @@ function eConsegnata(p){ return !!(p && p.consegnataIl); }
 // nel registro si vedono le consegnate solo col tasto, o se si cerca un contribuente / un testo
 function vediNelRegistro(p){
   if(!eConsegnata(p) || MOSTRA_CONSEGNATE) return true;
-  return !!filtroContribuente() || !!((document.getElementById('cerca')||{}).value||'').trim();
+  // cercando per contribuente, per testo o per stato si vedono anche le consegnate
+  return !!filtroContribuente() || !!((document.getElementById('cerca')||{}).value||'').trim() || !!((document.getElementById('filtro-stato')||{}).value||'');
 }
 // I 730 si "consegnano"; le altre pratiche si "definiscono" (stessa spunta, altra parola)
 function parolaConsegna(p){ return e730(p) ? { fai: 'Consegna', fatta: 'Consegnata', fatta_m: 'consegnata', icona: '📦' } : { fai: 'Definisci', fatta: 'Definita', fatta_m: 'definita', icona: '✔️' }; }
