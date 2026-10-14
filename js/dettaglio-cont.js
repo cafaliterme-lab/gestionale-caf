@@ -106,6 +106,15 @@ function apriDettaglioCont(chiave, gruppo) {
       + '<div style="font-size:13px; margin:-4px 0 10px; color:var(--sub)">Prezzo medio (fatture ÷ pratiche): <b>' + (n ? fmtEuro(somma(l, 'compenso') / n) : '—') + '</b> · Incasso medio (incasso ÷ pratiche): <b>' + (n ? fmtEuro(somma(l, 'pagato') / n) : '—') + '</b></div>'
       + tabellaPraticheDettaglio(l, { guadagno: true });
   }
+  else if (chiave === 'definite') {
+    titolo = 'Altre pratiche definite e da definire'; colore = '#8d5a3b';
+    const al = prat.filter(eAltraConta);
+    const def = al.filter(function (p) { return !!p.consegnataIl; }), daD = al.filter(function (p) { return !p.consegnataIl; });
+    corpo = rigaFormula([['Pagato delle definite', somma(def, 'pagato')], ['importo delle da definire', somma(daD, 'pagato'), '+']], somma(al, 'pagato'))
+      + rigaFormula([['Fatture delle definite', somma(def, 'compenso')], ['fatture delle da definire', somma(daD, 'compenso'), '+']], somma(al, 'compenso'))
+      + '<h4 style="margin:10px 0 6px">⏳ Da definire (' + sommaPeso(daD) + ')</h4>' + tabellaPraticheDettaglio(daD)
+      + '<h4 style="margin:14px 0 6px">✅ Definite (' + sommaPeso(def) + ')</h4>' + tabellaPraticheDettaglio(def);
+  }
   else if (chiave === 'consegnate') {
     titolo = '730 consegnati e da consegnare'; colore = '#8d5a3b';
     const p730 = prat.filter(e730Conta);

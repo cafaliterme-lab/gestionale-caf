@@ -3305,6 +3305,14 @@ function bloccoIntroito(titolo, colore, lista, conMedia, nomeGuadagno){
     + (vedeGuadagni() ? tile('#c2185b', fmtEuro(inc-fatt), (nomeGuadagno || 'GUADAGNO NETTO') + ' (INCASSO − FATTURE)', 'g-guadagno') : '')
     + (conMedia ? tile('#d98b1e', n ? fmtEuro(fatt / n) : '—', 'PREZZO MEDIO (FATTURE ÷ PRATICHE)', 'g-guadagno') : '')
     + (conMedia ? tile('#b8860b', n ? fmtEuro(inc / n) : '—', 'INCASSO MEDIO (INCASSO ÷ PRATICHE)', 'g-guadagno') : '')
+    + (!conMedia ? (function(){
+        // come i 730 consegnati: altre pratiche definite e da definire, con incasso e fatture
+        const def = lista.filter(eConsegnata), daD = lista.filter(function(p){ return !eConsegnata(p); });
+        const som = function(l, c){ return l.reduce(function(t,p){ return t + Number(p[c]||0); }, 0); };
+        return '<div class="stat c4" data-dett="definite" style="background:#8d5a3b; border-color:#8d5a3b; color:#fff"><b>' + sommaPeso(def) + ' / ' + sommaPeso(lista) + '</b><span style="color:rgba(255,255,255,.92); font-weight:600">✔️ ALTRE PRATICHE DEFINITE'
+          + '<br><span style="display:inline-block; margin-top:3px; padding:1px 8px; border-radius:999px; background:#1a7f37; color:#fff">✅ definite ' + sommaPeso(def) + '</span> incasso ' + fmtEuro(som(def,'pagato')) + ' · fatture ' + fmtEuro(som(def,'compenso'))
+          + '<br><span style="display:inline-block; margin-top:3px; padding:1px 8px; border-radius:999px; background:#fff; color:#8d5a3b">⏳ da definire ' + sommaPeso(daD) + '</span> incasso ' + fmtEuro(som(daD,'pagato')) + ' · fatture ' + fmtEuro(som(daD,'compenso'))
+          + '</span></div>'; })() : '')
     + (conMedia ? (function(){ const nums = lista.map(numeroFatturaPratica).filter(function(x){ return x != null; }).sort(function(a,b){ return a-b; });
         return tile('#5b4bb7', nums.length, 'FATTURE 730 NUMERATE' + (nums.length ? '<br>dal n. ' + nums[0] + ' al n. ' + nums[nums.length-1] : '') + (lista.length - nums.length > 0 ? '<br>' + (lista.length - nums.length) + ' ancora senza numero' : ''), 'g-fatture'); })() : '')
     + '</div>';
