@@ -1737,7 +1737,7 @@ function render(){
               <td class="wrap">${p.tipo ? esc(p.tipo) + (eAltrePratiche(p.tipo) && p.descrizioneTipo ? '<div class="sub2">' + esc(p.descrizioneTipo) + '</div>' : '') : '-'}</td>
               <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato, p.tipo)}</select></td>
               <td>${formattaInserimento(p)}${ultimaModifica(p) ? '<div class="sub2" title="Ultima modifica">✏️ ' + ultimaModifica(p) + '</div>' : ''}</td>
-              <td>${bottoneConsegna(p)} <button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)} <button type="button" title="Ricevuta da consegnare al cliente" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer" onclick="stampaRicevuta('${p.id}')">🧾</button></td>
+              <td>${bottoneAvanti(p)} ${bottoneConsegna(p)} <button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)} <button type="button" title="Ricevuta da consegnare al cliente" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer" onclick="stampaRicevuta('${p.id}')">🧾</button></td>
             </tr>`;
   // Due registri con numerazioni separate: 730 e altre pratiche (AP)
   const tabellaRegistro = function(titolo, colore, lista, totale){
@@ -1782,7 +1782,7 @@ function render(){
       ${p.emailInviata ? `<div class="meta" style="color:#1d4f91">📧 E-mail inviata: ${esc(p.emailInviata)}</div>` : ''}
       ${ultimaModifica(p) ? `<div class="meta" style="color:var(--sub)">✏️ Ultima modifica: <b>${ultimaModifica(p)}</b></div>` : ''}
       ${p.whatsappInviato ? `<div class="meta" style="color:#1a9e4b">💬 Avvisato su WhatsApp il ${esc(p.whatsappInviato)}</div>` : ''}
-      <div class="meta">${Number(p.richiesto||0) ? `<span style="color:#b35f0c; font-weight:700">💬 Richiesto ${fmtEuro(p.richiesto)}${Number(p.pagato||0) ? ' · pagato ' + fmtEuro(p.pagato) : ' · non ancora pagato'}</span> ` : ''}${p.consegnataIl ? `<span style="color:#8d5a3b; font-weight:700">${parolaConsegna(p).icona} ${parolaConsegna(p).fatta} il ${esc(p.consegnataIl)}${p.consegnataDa ? ' da ' + esc(p.consegnataDa) : ''}</span> ` : ''}${bottoneConsegna(p)}</div>
+      <div class="meta">${Number(p.richiesto||0) ? `<span style="color:#b35f0c; font-weight:700">💬 Richiesto ${fmtEuro(p.richiesto)}${Number(p.pagato||0) ? ' · pagato ' + fmtEuro(p.pagato) : ' · non ancora pagato'}</span> ` : ''}${bottoneAvanti(p)} ${p.consegnataIl ? `<span style="color:#8d5a3b; font-weight:700">${parolaConsegna(p).icona} ${parolaConsegna(p).fatta} il ${esc(p.consegnataIl)}${p.consegnataDa ? ' da ' + esc(p.consegnataDa) : ''}</span> ` : ''}${bottoneConsegna(p)}</div>
       ${p._editing ? `
         <div class="grid" style="margin-top:8px">
           <div><label>Cognome</label><input id="e-cognome-${p.id}" value="${esc(dividiNominativo(p).cognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
@@ -2422,7 +2422,7 @@ function tabellaPraticheGruppoHTML(items, k){
     + ord.map(function(p){
       return '<tr><td class="n">' + formattaProtocollo(p) + '</td><td>' + esc(p.data || '-') + '</td><td class="wrap">' + esc((p.nome || '-').toUpperCase()) + (p.congiunta ? '<div class="sub2">+ ' + esc(p.congiunta) + '</div>' : '') + '</td>'
         + '<td><span style="white-space:nowrap">' + pallino(p.stato) + esc(statoLabel(p.stato)) + '</span>' + (p.trasferitaIn ? '<div class="sub2" style="color:#1f8a70">➡️ Trasferita: ' + esc(p.trasferitaIn) + '</div>' : '') + '</td>' + (soldi ? '<td>' + fmtEuro(p.compenso) + '</td><td><b>' + fmtEuro(p.pagato) + '</b>' + (p.saldataCollaboratore ? '<div class="sub2" style="color:#2f9e5f" title="Tolta dai morosi: saldata tramite il collaboratore">✓ fuori dai morosi</div>' : '') + '</td><td>' + esc(p.metodoPagamento || '-') + '</td>' : '')
-        + '<td style="white-space:nowrap">' + bottoneConsegna(p) + ' <button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella(\'' + p.id + '\')">Apri</button></td></tr>';
+        + '<td style="white-space:nowrap">' + bottoneAvanti(p) + ' ' + bottoneConsegna(p) + ' <button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella(\'' + p.id + '\')">Apri</button></td></tr>';
     }).join('') + '</tbody></table></div>';
 }
 // Stampa della contabilita' e delle pratiche di un solo collaboratore / tipo (anno scelto)
@@ -2569,6 +2569,75 @@ function bottoneConsegna(p){
   const w = parolaConsegna(p);
   if(eConsegnata(p)) return '<button type="button" title="' + w.fatta + ' il ' + esc(p.consegnataIl) + (p.consegnataDa ? ' da ' + esc(p.consegnataDa) : '') + ' – tocca per riaprire la pratica (solo amministratore)" onclick="annullaConsegna(\'' + p.id + '\')" style="background:#e8f6ee; color:#1a7f37; border:1px solid #1a7f37; border-radius:6px; padding:4px 8px; font-size:11.5px; font-weight:700; cursor:pointer">' + w.icona + ' ' + esc(p.consegnataIl) + '</button>';
   return '<button type="button" title="Segna la pratica come ' + w.fatta_m + '" onclick="consegnaPratica(\'' + p.id + '\')" style="background:#8d5a3b; color:#fff; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer">' + w.icona + ' ' + w.fai + '</button>';
+}
+/* ---------- ▶ Avanti: la pratica passa al passo successivo con un clic ----------
+   In arrivo / Scansionata → In lavorazione → Lavorata (fattura + avviso al cliente) → Consegna */
+function bottoneAvanti(p){
+  if(!p || p.annullata || eConsegnata(p) || eColf(p.tipo) || (typeof eRinuncia === 'function' && eRinuncia(p))) return '';
+  const st = 'background:#1a7f37; color:#fff; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap';
+  if(['arrivo','da_lavorare_scansionata'].indexOf(p.stato) >= 0 && statoVisibile('lavorazione', p.tipo))
+    return '<button type="button" title="Inizia a lavorare la pratica" onclick="avantiPratica(\'' + p.id + '\')" style="' + st + '">▶ In lavorazione</button>';
+  if(p.stato === 'lavorazione') return '<button type="button" title="Pratica finita: fattura e avviso al cliente" onclick="avantiPratica(\'' + p.id + '\')" style="' + st + '">▶ Lavorata</button>';
+  if(p.stato === 'lavorata_da_fatturare' || (['lavorata','da_pagare','pagato','pagato_da_ritirare'].indexOf(p.stato) >= 0 && !String(p.numFattura||'').trim())) return '<button type="button" title="Emetti la fattura" onclick="avantiPratica(\'' + p.id + '\')" style="' + st + '">▶ Fattura</button>';
+  return '';
+}
+function avantiPratica(id){
+  const p = (state.pratiche||[]).find(function(x){ return x.id === id; }); if(!p) return;
+  if(p.stato === 'lavorazione' || p.stato === 'lavorata_da_fatturare' || !String(p.numFattura||'').trim() && ['lavorata','da_pagare','pagato','pagato_da_ritirare'].indexOf(p.stato) >= 0) return popupLavorata(p);
+  cambiaStato(id, 'lavorazione');
+}
+function prossimoNumeroFattura(anno){
+  let max = 0;
+  (state.pratiche||[]).forEach(function(x){ if(!x.annullata && annoPratica(x) === anno){ const n = numeroFatturaPratica(x); if(n != null && n > max) max = n; } });
+  return max + 1;
+}
+function popupLavorata(p){
+  const v = document.getElementById('popup-lavorata'); if(v) v.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-lavorata';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:14px';
+  const auto = typeof fatturaAutomatica === 'function' ? fatturaAutomatica(p.tipo) : undefined;
+  const imp = Number(p.compenso || 0) || (auto !== undefined && auto !== '' ? Number(auto) : 0);
+  const giaNF = String(p.numFattura || '').trim();
+  const tel = !!numeroWhatsApp(p.telefono);
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #2f7de1; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:500px; width:100%">'
+    + '<div style="font-size:19px; font-weight:800; color:#2f7de1">🔵 Pratica lavorata</div>'
+    + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + (Number(p.richiesto||0) ? ' · richiesto ' + fmtEuro(p.richiesto) : '') + '</div>'
+    + '<div class="grid"><div><label>N. fattura</label><input id="lv-nf" value="' + esc(giaNF || String(prossimoNumeroFattura(annoPratica(p)))) + '" inputmode="numeric" style="font-weight:800"></div>'
+    + '<div><label>Data fattura</label><input id="lv-df" value="' + esc(p.dataFattura || todayIT()) + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>'
+    + '<div><label>Importo fattura (€)</label><input id="lv-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800"></div></div>'
+    + '<label class="chk" style="display:flex; gap:8px; align-items:center; margin-top:10px"><input type="checkbox" id="lv-wa" style="width:auto"' + (tel ? ' checked' : '') + '> <span>💬 Avvisa il cliente su WhatsApp che la pratica è pronta' + (tel ? '' : ' <span style="color:#c0392b; font-size:12px">(manca il cellulare: te lo chiederà)</span>') + '</span></label>'
+    + '<div id="lv-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px">'
+    + '<button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
+    + '<button type="button" data-az="senza" style="background:none; border:1px solid #2f7de1; color:#2f7de1">Lavorata senza fattura</button>'
+    + '<button type="button" data-az="si" style="background:#2f7de1; color:#fff; font-weight:800">✓ Lavorata con fattura</button></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', async function(e){
+    const b = e.target.closest('button[data-az]');
+    if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); return; }
+    if(!b) return;
+    const msg = document.getElementById('lv-msg');
+    const campi = { stato: ['lavorazione','lavorata_da_fatturare','arrivo','da_lavorare_scansionata'].indexOf(p.stato) >= 0 ? 'lavorata' : p.stato };
+    if(!p.dataFine) campi.dataFine = todayIT();
+    if(b.dataset.az === 'si'){
+      const nf = document.getElementById('lv-nf').value.trim(), df = document.getElementById('lv-df').value.trim(), im = parseImporto(document.getElementById('lv-imp').value);
+      if(!nf){ msg.textContent = 'Scrivi il numero della fattura.'; return; }
+      if(!parseDataIT(df)){ msg.textContent = 'La data della fattura deve essere GG/MM/AAAA.'; return; }
+      if(!(im > 0)){ msg.textContent = 'Scrivi l\'importo della fattura.'; return; }
+      const doppia = (state.pratiche||[]).find(function(x){ return x.id !== p.id && !x.annullata && annoPratica(x) === annoPratica(p) && String(x.numFattura||'').trim() === nf; });
+      if(doppia && !confirm('La fattura n. ' + nf + ' c\'è già (' + formattaProtocollo(doppia) + ' – ' + (doppia.nome||'') + ').\n\nUso lo stesso il numero ' + nf + '?')) return;
+      campi.numFattura = nf; campi.dataFattura = df; campi.compenso = im; campi.fatt = 'fatturata';
+    }
+    const avvisa = document.getElementById('lv-wa').checked;
+    b.disabled = true;
+    const r = await data.pratiche.aggiorna(p.id, campi);
+    if(r && r.error){ b.disabled = false; msg.textContent = 'Non salvato: ' + r.error; return; }
+    ov.remove();
+    avviso('🔵 ' + formattaProtocollo(p) + ' lavorata' + (campi.numFattura ? ' · fattura n. ' + campi.numFattura + ' ' + fmtEuro(campi.compenso) : ''));
+    render();
+    if(avvisa) setTimeout(function(){ const q = (state.pratiche||[]).find(function(x){ return x.id === p.id; }); if(q){ q.stato = 'lavorata'; inviaWhatsApp(p.id); } }, 300);
+  });
 }
 // Stati di "non pagato": Non paga + quelli aggiunti dall'amministratore con "non … pag" nel nome (es. "Non ha pagato")
 function eStatoNonPagato(k){
