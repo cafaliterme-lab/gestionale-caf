@@ -2295,6 +2295,35 @@ function bottoneWhatsApp(p, stile, soloIcona){
 }
 
 const STATI_IN_LAVORAZIONE = ['arrivo','lavorazione','da_lavorare_scansionata'];
+// Finestrella "quanto ha pagato?" (proposto: richiesto, altrimenti la fattura)
+function chiediImportoPagato(p, stato){
+  return new Promise(function(fine){
+    const v = document.getElementById('popup-importo-pagato'); if(v) v.remove();
+    const ov = document.createElement('div');
+    ov.id = 'popup-importo-pagato';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:480; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:14px';
+    const prop = Number(p.richiesto || 0) || Number(p.compenso || 0);
+    ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #2f9e5f; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:440px; width:100%">'
+      + '<div style="font-size:18px; font-weight:800; color:#2f9e5f">🟢 ' + esc(statoLabel(stato)) + ': quanto ha pagato?</div>'
+      + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + (Number(p.compenso||0) ? ' · fattura ' + fmtEuro(p.compenso) : '') + (Number(p.richiesto||0) ? ' · richiesto ' + fmtEuro(p.richiesto) : '') + '</div>'
+      + '<div class="grid"><div><label>Importo pagato (€)</label><input id="ip-imp" type="text" inputmode="decimal" value="' + (prop ? importoInCampo(prop) : '') + '" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
+      + '<div><label>Pagamento</label><select id="ip-met">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div></div>'
+      + '<div id="ip-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:6px"></div>'
+      + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
+      + '<button type="button" data-az="si" style="background:#2f9e5f; color:#fff; font-weight:800">✓ Salva</button></div></div>';
+    document.body.appendChild(ov);
+    const imp = document.getElementById('ip-imp'); if(imp){ imp.focus(); imp.select(); }
+    ov.addEventListener('click', function(e){
+      const b = e.target.closest('button[data-az]');
+      if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); fine(null); return; }
+      if(!b) return;
+      const x = parseImporto(document.getElementById('ip-imp').value);
+      if(!(x > 0)){ document.getElementById('ip-msg').textContent = 'Scrivi quanto ha pagato.'; return; }
+      const met = document.getElementById('ip-met').value;
+      ov.remove(); fine({ importo: x, metodo: met });
+    });
+  });
+}
 async function cambiaStato(id, stato){
   const p = (state.pratiche||[]).find(function(x){ return x.id===id; });
   // con documenti mancanti la pratica resta "In arrivo"
@@ -2304,6 +2333,12 @@ async function cambiaStato(id, stato){
     return;
   }
   const campi = { stato: stato };
+  // passando a "Pagato" senza l'importo pagato, si chiede quanto ha pagato (altrimenti la contabilità non lo vede)
+  if(p && (stato === 'pagato' || stato === 'pagato_da_ritirare') && !(Number(p.pagato || 0) > 0)){
+    const pg = await chiediImportoPagato(p, stato);
+    if(!pg){ render(); return; }
+    campi.pagato = pg.importo; campi.metodoPagamento = pg.metodo;
+  }
   if(p && eColf(p.tipo)) { /* per colf e badanti c'e' la scadenza assistenza al posto della fine lavorazione */ }
   else if(STATI_IN_LAVORAZIONE.indexOf(stato) >= 0) campi.dataFine = '';
   else if(stato === 'lavorata' && !(p && p.dataFine)) campi.dataFine = todayIT();
