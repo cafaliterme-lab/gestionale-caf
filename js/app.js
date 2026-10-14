@@ -2725,7 +2725,9 @@ function consegnaPratica(id){
     + '<div style="font-size:19px; font-weight:800; color:#8d5a3b">' + parolaConsegna(p).icona + ' ' + (e730(p) ? 'Consegna della pratica' : 'Pratica definita') + '</div>'
     + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + (Number(p.compenso || 0) ? ' · fattura ' + fmtEuro(p.compenso) : '') + (Number(p.richiesto || 0) ? ' · <b>richiesto ' + fmtEuro(p.richiesto) + '</b>' : '') + '</div>'
     + '<div style="font-size:15px; font-weight:800; margin-bottom:8px">Il cliente ha pagato?</div>'
-    + '<div class="grid"><div><label>Importo pagato (€)</label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
+    + '<div class="grid"><div><label>Importo fattura (€)</label><input id="cs-fatt" type="text" inputmode="decimal" value="' + (Number(p.compenso||0) ? importoInCampo(p.compenso) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>'
+    + '<div><label title="Promemoria: non entra in contabilità">Importo richiesto (€)</label><input id="cs-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>'
+    + '<div><label>Importo pagato (€)</label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
     + '<div><label>Pagamento</label><select id="cs-met">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div>'
     + '<div><label>' + (e730(p) ? 'Data di consegna' : 'Data') + '</label><input id="cs-data" value="' + todayIT() + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div></div>'
     + '<div id="cs-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
@@ -2742,6 +2744,11 @@ function consegnaPratica(id){
     const dataC = document.getElementById('cs-data').value.trim() || todayIT();
     if(!parseDataIT(dataC)){ msg.textContent = 'La data di consegna deve essere GG/MM/AAAA.'; return; }
     const campi = { consegnataIl: dataC, consegnataDa: ((auth.profilo && auth.profilo.nome) || '').toUpperCase() };
+    // fattura e richiesto si confermano (o correggono) alla consegna
+    const fa = parseImporto(document.getElementById('cs-fatt').value), ri = parseImporto(document.getElementById('cs-ric').value);
+    if(fa > 0 && fa !== Number(p.compenso || 0)) campi.compenso = fa;
+    if(!(fa > 0) && Number(p.compenso || 0) && !document.getElementById('cs-fatt').value.trim()) campi.compenso = '';
+    if((ri > 0 ? ri : 0) !== Number(p.richiesto || 0)) campi.richiesto = ri > 0 ? ri : '';
     const colf = eColf(p.tipo);
     if(b.dataset.az === 'pagato'){
       const v = parseImporto(document.getElementById('cs-imp').value);
