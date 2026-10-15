@@ -1607,12 +1607,13 @@ function filtroStatoGruppoHTML(k, pratiche){
     + '<span style="font-size:12.5px; font-weight:800; color:var(--sub)">🔎 Stato:</span>'
     + chip('', 'Tutte', pratiche.length, '#374151')
     + Object.keys(STATI).filter(function(st){ return conta[st]; }).map(function(st){ return chip(st, STATI[st].e+' '+STATI[st].l, conta[st], STATI[st].c || '#1d4f91'); }).join('')
-    + '<button type="button" onclick="apriStampa(\'registro\', { tipo: \''+kq+'\', stato: STATO_GRUPPO[\''+kq+'\'] || \'\' })" style="margin-left:auto; padding:5px 13px; border:none; border-radius:999px; background:#1d4f91; color:#fff; font-size:12.5px; font-weight:800; cursor:pointer">🖨️ Stampa report</button></div>';
+    + '<button type="button" onclick="apriStampa(\'registro\', { tipo: \''+kq+'\', stato: STATO_GRUPPO[\''+kq+'\'] || \'\', consegna: MOSTRA_CONSEGNATE ? \'solo\' : \'escludi\' })" style="margin-left:auto; padding:5px 13px; border:none; border-radius:999px; background:#1d4f91; color:#fff; font-size:12.5px; font-weight:800; cursor:pointer">🖨️ Stampa report</button></div>';
 }
 function stampaReportStato(){
   const sel = (document.getElementById('filtro-stato')||{}).value || '';
   const cli = filtroContribuente();
-  apriStampa('registro', (sel || cli) ? { stato: sel, cliente: cli } : null);
+  // la stampa segue la lista che stai guardando: solo consegnate/definite oppure solo quelle ancora da consegnare
+  apriStampa('registro', { stato: sel, cliente: cli, consegna: cli ? '' : (MOSTRA_CONSEGNATE ? 'solo' : 'escludi') });
 }
 function filtroContribuente(){ return ((document.getElementById('filtro-contribuente')||{}).value||'').trim().toUpperCase(); }
 function filtra(lista){
@@ -2600,17 +2601,19 @@ function dettaglioContab(k, voce){
 let MOSTRA_CONSEGNATE = false;
 function eConsegnata(p){ return !!(p && p.consegnataIl); }
 // nel registro si vedono le consegnate solo col tasto, o se si cerca un contribuente / un testo
+// Registro: due liste separate. Normale = pratiche da consegnare/definire; con il tasto = SOLO consegnate/definite
 function vediNelRegistro(p){
-  if(!eConsegnata(p) || MOSTRA_CONSEGNATE) return true;
-  // cercando per contribuente, per testo o per stato si vedono anche le consegnate
-  return !!filtroContribuente() || !!((document.getElementById('cerca')||{}).value||'').trim() || !!((document.getElementById('filtro-stato')||{}).value||'');
+  if(MOSTRA_CONSEGNATE) return eConsegnata(p);
+  if(!eConsegnata(p)) return true;
+  // cercando un contribuente o un testo si vedono anche le consegnate (per stato no: si usa "Vedi solo le consegnate")
+  return !!filtroContribuente() || !!((document.getElementById('cerca')||{}).value||'').trim();
 }
 // I 730 si "consegnano"; le altre pratiche si "definiscono" (stessa spunta, altra parola)
 function parolaConsegna(p){ return e730(p) ? { fai: 'Consegna', fatta: 'Consegnata', fatta_m: 'consegnata', icona: '📦' } : { fai: 'Definisci', fatta: 'Definita', fatta_m: 'definita', icona: '✔️' }; }
 function aggiornaTastoConsegnate(pratAnno){
   const b = document.getElementById('btn-consegnate'); if(!b) return;
   const n = pratAnno.filter(eConsegnata).length;
-  b.textContent = (MOSTRA_CONSEGNATE ? '📦 Nascondi' : '📦 Mostra') + ' le consegnate / definite (' + n + ')';
+  b.textContent = MOSTRA_CONSEGNATE ? '↩️ Torna alle pratiche da consegnare / definire' : '📦 Vedi solo le consegnate / definite (' + n + ')';
   b.style.background = MOSTRA_CONSEGNATE ? '#6b7280' : '#8d5a3b';
 }
 // Si consegna solo una pratica già lavorata (non In arrivo, In lavorazione o Da lavorare scansionata)

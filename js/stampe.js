@@ -13,6 +13,7 @@ function apriStampa(origine, opz) {
     riferimento: 'apertura',
     tipi: {}, stati: {},
     operatore: '', cliente: '', pagamento: '',
+    consegna: (opz && opz.consegna) || '',
   };
   tipiPerStampa(anno).forEach(function (t) { STAMPA.tipi[t] = !(opz && opz.tipo) || t === opz.tipo; });
   if (opz && opz.tipo && !(opz.tipo in STAMPA.tipi)) STAMPA.tipi[opz.tipo] = true;
@@ -60,6 +61,8 @@ function praticheFiltrate() {
     if (annoPratica(p) !== s.anno) return false;
     if (!s.tipi[p.tipo || 'SENZA TIPO']) return false;
     if (!s.stati[p.stato]) return false;
+    if (s.consegna === 'solo' && !p.consegnataIl) return false;
+    if (s.consegna === 'escludi' && p.consegnataIl) return false;
     if (s.operatore && String(p.inseritoDa || '').toUpperCase() !== s.operatore) return false;
     if (s.pagamento && (s.pagamento === 'NESSUNO' ? METODI_PAGAMENTO.indexOf(p.metodoPagamento) >= 0 : p.metodoPagamento !== s.pagamento)) return false;
     if (cerca && String(p.nome || '').toUpperCase().indexOf(cerca) < 0 && String(p.codiceFiscale || '').toUpperCase().indexOf(cerca) < 0) return false;
@@ -74,7 +77,7 @@ function praticheFiltrate() {
 }
 
 // Versamenti CAF e netto hanno senso solo sul totale (nessun filtro su tipo, stato, operatore, cliente)
-function stampaSuTotale() { return tuttiTipi() && tuttiStati() && !STAMPA.operatore && !STAMPA.cliente.trim() && !STAMPA.pagamento; }
+function stampaSuTotale() { return tuttiTipi() && tuttiStati() && !STAMPA.operatore && !STAMPA.cliente.trim() && !STAMPA.pagamento && !STAMPA.consegna; }
 function versamentiFiltrati() {
   const da = isoNum(STAMPA.da), a = isoNum(STAMPA.a);
   return (state.versamenti || []).filter(function (v) {
@@ -180,6 +183,7 @@ function disegnaStampa() {
     + operatoriPerStampa().map(function (o) { return '<option value="' + esc(o) + '"' + (o === s.operatore ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></div>'
     + '<div><label>Tipo di pagamento</label><select id="st-pag" onchange="STAMPA.pagamento=this.value; disegnaStampa()"><option value="">Tutti</option>'
     + METODI_PAGAMENTO.concat(['NESSUNO']).map(function (m) { return '<option value="' + m + '"' + (m === s.pagamento ? ' selected' : '') + '>' + (m === 'NESSUNO' ? 'Non indicato' : m) + '</option>'; }).join('') + '</select></div>'
+    + '<div><label>Consegnate / definite</label><select onchange="STAMPA.consegna=this.value; disegnaStampa()"><option value=""' + (!s.consegna ? ' selected' : '') + '>Tutte</option><option value="escludi"' + (s.consegna === 'escludi' ? ' selected' : '') + '>Solo da consegnare / definire</option><option value="solo"' + (s.consegna === 'solo' ? ' selected' : '') + '>Solo consegnate / definite</option></select></div>'
     + '<div><label>Cliente (cognome e nome)</label><input id="st-cliente" type="text" placeholder="Tutti i clienti" value="' + esc(s.cliente) + '" oninput="STAMPA.cliente=this.value; aggiornaContoStampa()"></div>'
     + '</div>'
 
