@@ -1614,13 +1614,14 @@ function filtroStatoGruppoHTML(k, pratiche){
     + '<span style="font-size:12.5px; font-weight:800; color:var(--sub)">🔎 Stato:</span>'
     + chip('', 'Tutte', pratiche.length, '#374151')
     + Object.keys(STATI).filter(function(st){ return conta[st]; }).map(function(st){ return chip(st, STATI[st].e+' '+STATI[st].l, conta[st], STATI[st].c || '#1d4f91'); }).join('')
-    + '<button type="button" onclick="apriStampa(\'registro\', { tipo: \''+kq+'\', stato: STATO_GRUPPO[\''+kq+'\'] || \'\', consegna: MOSTRA_CONSEGNATE ? \'solo\' : \'escludi\' })" style="margin-left:auto; padding:5px 13px; border:none; border-radius:999px; background:#1d4f91; color:#fff; font-size:12.5px; font-weight:800; cursor:pointer">🖨️ Stampa report</button></div>';
+    + '<button type="button" onclick="apriStampa(\'registro\', { tipo: \''+kq+'\', stato: STATO_GRUPPO[\''+kq+'\'] || \'\', consegna: STATO_GRUPPO[\''+kq+'\'] ? \'\' : (MOSTRA_CONSEGNATE ? \'solo\' : \'escludi\') })" style="margin-left:auto; padding:5px 13px; border:none; border-radius:999px; background:#1d4f91; color:#fff; font-size:12.5px; font-weight:800; cursor:pointer">🖨️ Stampa report</button></div>';
 }
 function stampaReportStato(){
   const sel = (document.getElementById('filtro-stato')||{}).value || '';
   const cli = filtroContribuente();
   // la stampa segue la lista che stai guardando: solo consegnate/definite oppure solo quelle ancora da consegnare
-  apriStampa('registro', { stato: sel, cliente: cli, consegna: cli ? '' : (MOSTRA_CONSEGNATE ? 'solo' : 'escludi') });
+  // con lo stato scelto si stampano tutti e due gli archivi (da consegnare e consegnate), come nella ricerca
+  apriStampa('registro', { stato: sel, cliente: cli, consegna: (cli || sel) ? '' : (MOSTRA_CONSEGNATE ? 'solo' : 'escludi') });
 }
 function filtroContribuente(){ return ((document.getElementById('filtro-contribuente')||{}).value||'').trim().toUpperCase(); }
 function filtra(lista){
@@ -1872,11 +1873,11 @@ function render(){
     const schedeAperte = aperti[k + '|schede'] === true || items.some(function(p){ return p._editing || p._confirmDelete || p._editingFattura; });
     // aperta una sola pratica dal registro: si mostra solo la sua scheda (le altre con "Mostra tutte")
     const sola = SCHEDA_SOLA[k] && items.find(function(p){ return p.id === SCHEDA_SOLA[k]; });
-    const schede = sola ? [sola] : items.filter(vediNelRegistro);
+    const schede = sola ? [sola] : items.filter(vediNelGruppo(statoGr));
     return '<details class="grp" data-k="' + esc(k) + '" style="--gc:' + col + '" ' + (open ? 'open' : '') + ' ontoggle="gToggle(this)">'
       + '<summary style="background:' + col + '; background-image:none"><span class="grp-name">' + esc(k) + '</span><span class="grp-n">' + sommaPeso(items) + '</span>'
       + ('<span class="grp-soldi">Fatture ' + fmtEuro(fe) + (feAnn ? '<br><small>di cui ' + fmtEuro(feAnn) + ' annullate</small>' : '') + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + '</span>') + '</summary>'
-      + '<div class="grp-b">' + filtroStatoGruppoHTML(k, tuttiTipo) + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items.filter(vediNelRegistro), k)
+      + '<div class="grp-b">' + filtroStatoGruppoHTML(k, tuttiTipo) + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items.filter(vediNelGruppo(statoGr)), k)
       + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open; if(!this.open) delete SCHEDA_SOLA[this.dataset.k.replace(/\|schede$/, \'\')]" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 ' + (sola ? 'Scheda della pratica ' + esc(formattaProtocollo(sola)) + ' – ' + esc(sola.nome || '') : 'Schede complete delle pratiche (' + items.length + ')') + ' – per modificare, ricevuta, WhatsApp…</summary>'
         + (sola && items.length > 1 ? '<button type="button" onclick="mostraTutteSchede(this.dataset.k)" data-k="' + esc(k) + '" style="margin:0 0 8px; padding:5px 14px; border-radius:999px; border:1px dashed var(--sub); background:none; color:var(--sub); font-weight:700; cursor:pointer">📋 Mostra tutte le schede del gruppo (' + items.length + ')</button>' : '')
         + schede.map(cardHTML).join('') + '</details>' : '') + '</div></details>';
@@ -2616,11 +2617,15 @@ function eConsegnata(p){ return !!(p && p.consegnataIl); }
 // nel registro si vedono le consegnate solo col tasto, o se si cerca un contribuente / un testo
 // Registro: due liste separate. Normale = pratiche da consegnare/definire; con il tasto = SOLO consegnate/definite
 function vediNelRegistro(p){
+  // la ricerca per stato cerca in tutti e due gli archivi: da consegnare/definire e consegnate/definite
+  if(((document.getElementById('filtro-stato')||{}).value||'')) return true;
   if(MOSTRA_CONSEGNATE) return eConsegnata(p);
   if(!eConsegnata(p)) return true;
-  // cercando un contribuente o un testo si vedono anche le consegnate (per stato no: si usa "Vedi solo le consegnate")
+  // cercando un contribuente o un testo si vedono anche le consegnate
   return !!filtroContribuente() || !!((document.getElementById('cerca')||{}).value||'').trim();
 }
+// dentro un riquadro di tipo: con lo stato scelto nel riquadro si vedono anche le consegnate/definite
+function vediNelGruppo(statoGr){ return function(p){ return !!statoGr || vediNelRegistro(p); }; }
 // I 730 si "consegnano"; le altre pratiche si "definiscono" (stessa spunta, altra parola)
 function parolaConsegna(p){ return e730(p) ? { fai: 'Consegna', fatta: 'Consegnata', fatta_m: 'consegnata', icona: '📦' } : { fai: 'Definisci', fatta: 'Definita', fatta_m: 'definita', icona: '✔️' }; }
 function aggiornaTastoConsegnate(pratAnno){
