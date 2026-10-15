@@ -5,11 +5,24 @@
 function praticheDettaglio(anno) { return (state.pratiche || []).filter(function (p) { return !p.annullata && annoPratica(p) === anno; }); }
 function euroCella(v, colore) { return '<td style="text-align:right; white-space:nowrap' + (colore ? '; color:' + colore + '; font-weight:700' : '') + '">' + fmtEuro(v) + '</td>'; }
 
-function tabellaPraticheDettaglio(lista, colonne) {
+// Elenchi lunghi: si mostrano subito le prime righe (apertura immediata), le altre con "Mostra tutte"
+const DETT_RIGHE_SUBITO = 120;
+const DETT_LISTE = {};
+let DETT_SEQ = 0;
+function mostraTutteDettaglio(k) {
+  const d = DETT_LISTE[k]; const el = document.getElementById('dett-tab-' + k);
+  if (d && el) el.outerHTML = tabellaPraticheDettaglio(d.lista, d.colonne, true);
+}
+function espandiTuttiDettagli() { Object.keys(DETT_LISTE).forEach(function (k) { if (document.getElementById('dett-tab-' + k)) mostraTutteDettaglio(k); }); }
+function tabellaPraticheDettaglio(lista, colonne, tutte) {
   colonne = colonne || {};
   if (!lista.length) return '<div class="empty">Nessuna pratica</div>';
   const ordinata = lista.slice().sort(function (a, b) { return (serieDi ? String(serieDi(a)).localeCompare(String(serieDi(b))) : 0) || (Number(a.numero) - Number(b.numero)); });
-  const righe = ordinata.map(function (p) {
+  const tagliata = !tutte && ordinata.length > DETT_RIGHE_SUBITO;
+  const k = tagliata ? String(++DETT_SEQ) : '';
+  if (tagliata) DETT_LISTE[k] = { lista: lista, colonne: colonne };
+  const altre = tagliata ? '<tr><td colspan="' + (colonne.guadagno ? 11 : 10) + '" style="text-align:center; padding:10px"><button type="button" onclick="mostraTutteDettaglio(\'' + k + '\')" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 16px; font-weight:800; cursor:pointer">Mostra tutte le ' + ordinata.length + ' pratiche (ne vedi ' + DETT_RIGHE_SUBITO + ')</button></td></tr>' : '';
+  const righe = (tagliata ? ordinata.slice(0, DETT_RIGHE_SUBITO) : ordinata).map(function (p) {
     const fa = Number(p.compenso || 0), pa = Number(p.pagato || 0);
     return '<tr data-pratica="' + esc(p.id) + '" style="cursor:pointer" title="Apri la pratica">'
       + '<td style="white-space:nowrap"><b>' + esc(formattaProtocollo(p)) + '</b></td><td style="white-space:nowrap">' + esc(p.data || '') + '</td>'
@@ -21,7 +34,7 @@ function tabellaPraticheDettaglio(lista, colonne) {
       + (colonne.guadagno ? euroCella(pa - fa, pa - fa < 0 ? '#c0392b' : '#c2185b') : '') + '</tr>';
   }).join('');
   const tf = lista.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0), tp = lista.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0), tr = lista.reduce(function (t, p) { return t + Number(p.richiesto || 0); }, 0);
-  return '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Protocollo</th><th>Data</th><th>Cliente</th><th>Tipo</th><th>Stato</th><th>Fattura</th><th style="text-align:right">Importo fattura</th><th style="text-align:right">Richiesto</th><th style="text-align:right">Pagato</th><th>Pagamento</th>' + (colonne.guadagno ? '<th style="text-align:right">Guadagno</th>' : '') + '</tr></thead><tbody>' + righe
+  return '<div class="tab-wrap"' + (tagliata ? ' id="dett-tab-' + k + '"' : '') + '><table class="tab-proto"><thead><tr><th>Protocollo</th><th>Data</th><th>Cliente</th><th>Tipo</th><th>Stato</th><th>Fattura</th><th style="text-align:right">Importo fattura</th><th style="text-align:right">Richiesto</th><th style="text-align:right">Pagato</th><th>Pagamento</th>' + (colonne.guadagno ? '<th style="text-align:right">Guadagno</th>' : '') + '</tr></thead><tbody>' + righe + altre
     + '<tr style="font-weight:800; background:var(--bg)"><td colspan="6">TOTALE · ' + sommaPeso(lista) + ' pratiche (le congiunte valgono 2)</td>' + euroCella(tf) + euroCella(tr) + euroCella(tp) + '<td></td>' + (colonne.guadagno ? euroCella(tp - tf) : '') + '</tr></tbody></table></div>';
 }
 
@@ -74,7 +87,19 @@ function dettaglioSpeseHTML(anno) {
     + '<tr style="font-weight:800; background:var(--bg)"><td colspan="3">TOTALE · ' + lista.length + ' spese</td>' + euroCella(tl) + euroCella(tr) + '</tr></tbody></table></div>';
 }
 
-function apriDettaglioCont(chiave, gruppo) {
+function apriDettaglioCont(chiave, gruppo, pronto) {
+  // la finestra si apre subito con "Caricamento…", poi si riempie (sui telefoni gli elenchi lunghi richiedono un attimo)
+  if (!pronto) {
+    const v = document.getElementById('popup-dett-cont'); if (v) v.remove();
+    const w = document.createElement('div');
+    w.id = 'popup-dett-cont';
+    w.style.cssText = 'position:fixed; inset:0; z-index:460; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:12px';
+    w.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; padding:22px 28px; font-weight:800; box-shadow:0 20px 50px rgba(0,0,0,.3)">⏳ Caricamento del dettaglio…</div>';
+    w.addEventListener('click', function (e) { if (e.target === w) w.remove(); });
+    document.body.appendChild(w);
+    setTimeout(function () { if (document.getElementById('popup-dett-cont') === w) apriDettaglioCont(chiave, gruppo, true); }, 30);
+    return;
+  }
   const anno = annoAttivo();
   const prat = praticheDettaglio(anno);
   const filtroGruppo = function (l) { return gruppo === '730' ? l.filter(e730Conta) : gruppo === 'altre' ? l.filter(eAltraConta) : gruppo === 'rinunce' ? l.filter(eRinuncia) : l; };
@@ -171,7 +196,7 @@ function apriDettaglioCont(chiave, gruppo) {
       + '<h4 style="margin:10px 0 6px">Pratiche</h4>' + tabellaPraticheDettaglio(prat, { guadagno: true })
       + '<h4 style="margin:14px 0 6px">Spese sede</h4>' + dettaglioSpeseHTML(anno);
   }
-  else return;
+  else { const v0 = document.getElementById('popup-dett-cont'); if (v0) v0.remove(); return; }
 
   const vecchio = document.getElementById('popup-dett-cont'); if (vecchio) vecchio.remove();
   const ov = document.createElement('div');
@@ -190,6 +215,7 @@ function apriDettaglioCont(chiave, gruppo) {
   ov.addEventListener('click', function (e) {
     const b = e.target.closest('button[data-az]');
     if (e.target === ov || (b && b.dataset.az === 'chiudi')) return chiudi();
+    if (b && b.dataset.az === 'stampa') espandiTuttiDettagli();
     if (b && b.dataset.az === 'stampa') return stampaDettaglioCont(titolo + ' – ' + anno, document.getElementById('dett-cont-corpo').innerHTML);
     const r = e.target.closest('tr[data-pratica]');
     if (r && typeof apriPraticaDaTabella === 'function') { chiudi(); const tb = document.querySelector('.navmenu button[data-tab="registro"]'); if (tb && typeof showTab === 'function') showTab(tb); apriPraticaDaTabella(r.dataset.pratica); }
