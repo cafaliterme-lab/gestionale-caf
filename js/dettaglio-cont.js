@@ -2,7 +2,7 @@
    Pratiche, fatture, incasso, versamenti CAF, soldi in cassa, spese sede, Angelo, guadagno:
    elenco delle voci che compongono il numero, con i totali e il tasto Stampa. */
 
-function praticheDettaglio(anno) { return (state.pratiche || []).filter(function (p) { return !p.annullata && annoPratica(p) === anno; }); }
+function praticheDettaglio(anno) { return (state.pratiche || []).filter(function (p) { return !p.annullata && annoPratica(p) === anno; }).concat(typeof fattureAnnullateAperte === 'function' ? fattureAnnullateAperte(anno) : []); }
 function euroCella(v, colore) { return '<td style="text-align:right; white-space:nowrap' + (colore ? '; color:' + colore + '; font-weight:700' : '') + '">' + fmtEuro(v) + '</td>'; }
 
 // Elenchi lunghi: si mostrano subito le prime righe (apertura immediata), le altre con "Mostra tutte"
@@ -26,7 +26,7 @@ function tabellaPraticheDettaglio(lista, colonne, tutte) {
     const fa = Number(p.compenso || 0), pa = Number(p.pagato || 0);
     return '<tr data-pratica="' + esc(p.id) + '" style="cursor:pointer" title="Apri la pratica">'
       + '<td style="white-space:nowrap"><b>' + esc(formattaProtocollo(p)) + '</b></td><td style="white-space:nowrap">' + esc(p.data || '') + '</td>'
-      + '<td>' + esc(p.nome || '') + (p.congCognome || p.congNome ? '<div class="sub2">+ ' + esc(((p.congCognome || '') + ' ' + (p.congNome || '')).trim()) + '</div>' : '') + '</td>'
+      + '<td>' + esc(p.nome || '') + (p._annFatt ? '<div class="sub2" style="color:#b35f0c; font-weight:700">🚫 ANNULLATA – nota di credito da fare</div>' : '') + (p.congCognome || p.congNome ? '<div class="sub2">+ ' + esc(((p.congCognome || '') + ' ' + (p.congNome || '')).trim()) + '</div>' : '') + '</td>'
       + '<td>' + esc(p.tipo || '') + (p.descrizioneTipo ? '<div class="sub2">' + esc(p.descrizioneTipo) + '</div>' : '') + '</td>'
       + '<td>' + esc(statoLabel(p.stato)) + '</td>'
       + '<td style="white-space:nowrap">' + (p.numFattura ? 'n. ' + esc(p.numFattura) + (p.dataFattura ? '<div class="sub2">' + esc(p.dataFattura) + '</div>' : '') : '<span class="sub2">da fatturare</span>') + '</td>'

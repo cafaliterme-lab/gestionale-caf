@@ -131,6 +131,8 @@ const schemas = {
     trasferitaIn: 'trasferita_in',
     consensoPrivacy: 'consenso_privacy',
     recuperi: 'recuperi',
+    notaCredito: 'nota_credito',
+    notaCreditoData: 'nota_credito_data',
     consegnataIl: 'consegnata_il',
     consegnataDa: 'consegnata_da',
   },

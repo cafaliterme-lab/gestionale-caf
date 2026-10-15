@@ -1540,7 +1540,12 @@ function rigaAnnullataHTML(p){
     + '<td class="wrap"><span style="text-decoration:line-through">' + esc((p.nome||'-').toUpperCase()) + '</span>'
     + '<div class="sub2" style="color:#c0392b; font-weight:700">🚫 ANNULLATA' + (quando ? ' il ' + esc(quando) : '') + (p.annullataDa ? ' da ' + esc(p.annullataDa) : '') + (p.annullataMotivo ? ' – ' + esc(p.annullataMotivo) : '') + '</div></td>'
     + '<td class="wrap" style="text-decoration:line-through">' + esc(p.tipo||'-') + '</td>'
-    + '<td><span style="display:inline-block; background:#8a8f98; color:#fff; border-radius:999px; padding:3px 10px; font-size:12px; font-weight:700">ANNULLATA</span></td>'
+    + '<td><span style="display:inline-block; background:#8a8f98; color:#fff; border-radius:999px; padding:3px 10px; font-size:12px; font-weight:700">ANNULLATA</span>'
+    + (haFatturaEmessa(p) ? (String(p.notaCredito||'').trim()
+        ? '<div class="sub2" style="color:#1a7f37; font-weight:700">✓ Fattura n. ' + esc(p.numFattura||'') + ' stornata: nota di credito n. ' + esc(p.notaCredito) + (p.notaCreditoData ? ' del ' + esc(p.notaCreditoData) : '') + (puoAnnullare() ? ' <a href="#" onclick="togliNotaCredito(\'' + p.id + '\'); return false" style="color:var(--sub)">togli</a>' : '') + '</div>'
+        : '<div class="sub2" style="color:#b35f0c; font-weight:700">⚠️ Fattura n. ' + esc(p.numFattura||'') + ' (' + fmtEuro(p.compenso) + ') ancora in contabilità: nota di credito da fare</div>'
+          + (puoAnnullare() ? '<button type="button" style="margin-top:3px; background:#b35f0c; color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer" onclick="segnaNotaCredito(\'' + p.id + '\')">📝 Nota di credito emessa</button>' : '')) : '')
+    + '</td>'
     + '<td>' + formattaInserimento(p) + '</td>'
     + '<td>' + (puoAnnullare() ? '<button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="ripristinaPratica(\'' + p.id + '\')" title="Toglie l\'annullamento">↩️ Ripristina</button>' : '') + '</td></tr>';
 }
@@ -1672,7 +1677,9 @@ function render(){
 
   const conti = conteggi730(pratAnno);
   const tot = conti.tot, daLavorare = conti.daFare, lavorate = conti.lav;
-  const fattureEmesse = pratAnno.reduce((a,p)=>a+Number(p.compenso||0),0);
+  // per i conti: anche le fatture delle pratiche annullate senza nota di credito
+  const pratCont = pratAnno.concat(fattureAnnullateAperte(annoSel));
+  const fattureEmesse = pratCont.reduce((a,p)=>a+Number(p.compenso||0),0);
   const incassoLordo = pratAnno.reduce((a,p)=>a+Number(p.pagato||0),0);
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
   const incasso = incassoLordo - versatoCaf;
@@ -1708,8 +1715,8 @@ function render(){
     ${vedeGuadagni() ? `<div class="stat c5" data-dett="spese" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(CC.speseTutte)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE${CC.detr > 0.004 ? '<br>di cui ' + fmtEuro(CC.detr) + ' detratte al CAF' : ''}</span></div>${typeof debitoAngelo === 'function' && debitoAngelo().totale ? `<div class="stat c5" data-dett="angelo" style="background:#8e5bd6; border-color:#8e5bd6; color:#fff"><b>${fmtEuro(debitoAngelo().totale)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">DA RESTITUIRE AD ANGELO</span></div>` : ''}<div class="stat c5 gray" data-dett="guadagno"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO<br>incasso − fatture − spese sede non detratte al CAF</span></div>` : ''}` : '') + ((vPrat || vEco) ? '</div>' : '') + (vBlocchi ? `
     ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730Conta), true, 'GUADAGNO NETTO 730')}
     ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#0e8a8a', pratAnno.filter(eAltraConta), false, 'GUADAGNO NETTO ALTRE PRATICHE')}
-    ${bloccoRinunce(pratAnno, annoSel)}
-    ${vedeGuadagni() ? sommaGuadagniHTML(pratAnno) : ''}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratAnno, versatoCaf, speseSede) : '');
+    ${bloccoRinunce(pratCont, annoSel)}
+    ${vedeGuadagni() ? sommaGuadagniHTML(pratCont) : ''}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratCont, versatoCaf, speseSede) : '');
   if(typeof renderSpese === 'function') renderSpese();
 
   if(typeof renderVersamentiCaf === 'function') renderVersamentiCaf(versAnno, versatoCaf);
@@ -3226,6 +3233,7 @@ function eDaLavorare(p){ return STATI_DA_LAVORARE.indexOf(p.stato) >= 0; }
 // Rinunce (e stati aggiunti con "rinuncia" o "annullata" nel nome): contabilità a parte, non contano tra le pratiche
 function eRinuncia(p){
   if(!p) return false;
+  if(p._annFatt) return true;
   if(p.stato === 'rinuncia_compilazione') return true;
   return /rinunc|annullat/i.test((STATI[p.stato]||{}).l || '');
 }
@@ -3272,15 +3280,37 @@ function bloccoSpeseCaf(pratAnno, anno){
     + '</div></div>';
 }
 function annullateAnno(anno){ return (state.annullate||[]).filter(function(p){ return annoPratica(p) === anno; }); }
+// Pratiche annullate con la fattura già emessa e senza nota di credito: la fattura resta in contabilità
+// (fatture emesse, da versare al CAF, guadagno) insieme alle rinunce; l'incasso non conta.
+function haFatturaEmessa(p){ return !!String(p.numFattura||'').trim() || (p.fatt === 'fatturata' && Number(p.compenso||0) > 0); }
+function fattureAnnullateAperte(anno){
+  return (state.annullate||[]).filter(function(p){ return (!anno || annoPratica(p) === anno) && haFatturaEmessa(p) && !String(p.notaCredito||'').trim(); })
+    .map(function(p){ return Object.assign({}, p, { pagato: 0, _annFatt: true }); });
+}
+async function segnaNotaCredito(id){
+  const p = (state.annullate||[]).find(function(x){ return x.id === id; }); if(!p) return;
+  const n = prompt('Nota di credito per la fattura n. ' + (p.numFattura||'') + ' di ' + (p.nome||'') + '\n\nNumero della nota di credito:', ''); if(n === null) return;
+  if(!n.trim()){ alert('Scrivi il numero della nota di credito.'); return; }
+  const d = prompt('Data della nota di credito (GG/MM/AAAA):', todayIT()); if(d === null) return;
+  const esito = await data.pratiche.aggiorna(id, { notaCredito: n.trim(), notaCreditoData: (d || '').trim() || todayIT() });
+  if(!(esito && esito.error)) avviso('✓ Nota di credito n. ' + n.trim() + ' registrata: la fattura esce dalla contabilità');
+}
+async function togliNotaCredito(id){
+  const p = (state.annullate||[]).find(function(x){ return x.id === id; }); if(!p) return;
+  if(!confirm('Togliere la nota di credito n. ' + p.notaCredito + '?\nLa fattura n. ' + (p.numFattura||'') + ' torna in contabilità.')) return;
+  const esito = await data.pratiche.aggiorna(id, { notaCredito: '', notaCreditoData: '' });
+  if(!(esito && esito.error)) avviso('Nota di credito tolta: la fattura torna in contabilità');
+}
 // Blocco a parte: rinunce alla compilazione e pratiche annullate
 function bloccoRinunce(pratAnno, anno){
   const rin = pratAnno.filter(eRinuncia), ann = annullateAnno(anno);
   const fatt = rin.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0), inc = rin.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
   const tile = function(bg, valore, etichetta, dett){ return '<div class="stat c4" data-dett="'+dett+'" data-gruppo="rinunce" style="background:'+bg+'; border-color:'+bg+'; color:#fff"><b>'+valore+'</b><span style="color:rgba(255,255,255,.92); font-weight:600; letter-spacing:.03em">'+etichetta+'</span></div>'; };
+  const annF = rin.filter(function(p){ return p._annFatt; });
   return '<div class="cont-gruppo" style="--cg:#374151"><div class="cont-gruppo-tit">🚫 RINUNCE E ANNULLATE (contabilità a parte, non contano tra le pratiche)</div>'
-    + tile('#374151', sommaPeso(rin), 'RINUNCE ALLA COMPILAZIONE' + (rin.filter(e730).length ? '<br>di cui 730: ' + sommaPeso(rin.filter(e730)) : ''), 'g-pratiche')
+    + tile('#374151', sommaPeso(rin.filter(function(p){ return !p._annFatt; })), 'RINUNCE ALLA COMPILAZIONE' + (rin.filter(function(p){ return e730(p) && !p._annFatt; }).length ? '<br>di cui 730: ' + sommaPeso(rin.filter(function(p){ return e730(p) && !p._annFatt; })) : ''), 'g-pratiche')
     + tile('#6b7280', sommaPeso(ann), 'PRATICHE ANNULLATE', 'annullate')
-    + (fatt || inc ? tile('#2f9e5f', fmtEuro(fatt), 'FATTURE DELLE RINUNCE', 'g-fatture') + tile('#8e5bd6', fmtEuro(inc), 'INCASSO DELLE RINUNCE', 'g-incasso') : '')
+    + (fatt || inc ? tile('#2f9e5f', fmtEuro(fatt), 'FATTURE DELLE RINUNCE' + (annF.length ? '<br>e di ' + annF.length + ' annullate (nota di credito da fare)' : ''), 'g-fatture') + tile('#8e5bd6', fmtEuro(inc), 'INCASSO DELLE RINUNCE', 'g-incasso') : '')
     + '</div>';
 }
 // Tasto che somma il guadagno netto 730 e quello delle altre pratiche (resta aperto finché non lo richiudi)
