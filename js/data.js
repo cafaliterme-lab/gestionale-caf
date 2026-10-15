@@ -129,6 +129,7 @@ const schemas = {
     emailInviata: 'email_inviata',
     saldataCollaboratore: 'saldata_collaboratore',
     trasferitaIn: 'trasferita_in',
+    consensoPrivacy: 'consenso_privacy',
     consegnataIl: 'consegnata_il',
     consegnataDa: 'consegnata_da',
   },

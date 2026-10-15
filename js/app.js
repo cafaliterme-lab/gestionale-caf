@@ -1836,6 +1836,7 @@ function render(){
         <button onclick="modifica('${p.id}')">Modifica</button>
         <button onclick="stampaRicevuta('${p.id}')" title="Ricevuta da consegnare al cliente">🧾 Ricevuta</button>
         <button onclick="emailRicevuta('${p.id}')" title="Invia la ricevuta al cliente per e-mail" style="background:#1d4f91; color:#fff">📧 Ricevuta</button>
+        ${typeof bottoniPrivacyHTML === 'function' ? bottoniPrivacyHTML(p) : ''}
         <button onclick="annullaPratica('${p.id}')" title="La pratica resta nel registro con il suo numero, segnata ANNULLATA" style="color:#c0392b">🚫 Annulla pratica</button>
       </div>
       `}
@@ -3565,13 +3566,14 @@ function confermaPraticaSalvata(id, nome, tipo, mancanti){
         + '<div style="font-weight:800; color:#c0392b; margin-bottom:4px">⚠️ Stato: IN ARRIVO – mancano ' + mancanti.length + (mancanti.length === 1 ? ' documento' : ' documenti') + '</div>'
         + '<ul style="margin:0 0 6px; padding-left:20px; font-size:14px">' + mancanti.map(function(d){ return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>'
         + '<div style="font-size:12.5px; color:var(--sub)">La pratica potrà passare agli stati successivi solo quando il cliente avrà portato tutti i documenti (spuntali nel registro).</div></div>' : '')
-    + '<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap"><button type="button" data-ricevuta="1" style="background:var(--line); color:var(--ink); font-size:15px">🧾 Stampa ricevuta</button>'
+    + '<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap"><button type="button" data-ricevuta="1" style="background:var(--line); color:var(--ink); font-size:15px">🧾 Stampa ricevuta</button><button type="button" data-privacy="1" style="background:var(--line); color:var(--ink); font-size:15px">🔏 Consenso privacy</button>'
     + '<button type="button" style="background:#2f9e5f; color:#fff; min-width:120px; font-size:15px">OK</button></div></div>';
   document.body.appendChild(ov);
   const chiudi = function(){ clearTimeout(t); ov.remove(); };
   const t = mancanti.length ? null : setTimeout(chiudi, 6000);
   ov.addEventListener('click', function(e){
     if(e.target.closest('[data-ricevuta]')){ chiudi(); stampaRicevuta(id); return; }
+    if(e.target.closest('[data-privacy]')){ chiudi(); if(typeof stampaPrivacy === 'function') stampaPrivacy(id); return; }
     if(mancanti.length && !e.target.closest('button')) return;
     chiudi();
   });

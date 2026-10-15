@@ -100,6 +100,9 @@ function ricevutaHTML(p, perEmail) {
       + (doc.mancanti.length ? '<div class="docs mancanti"><b>Documentazione mancante – da portare</b><ul>' + doc.mancanti.map(function (n) { return '<li>☐ ' + esc(n) + '</li>'; }).join('') + '</ul></div>' : '')
       + (caf.orari ? '<div class="orari">🕘 Orari di apertura: ' + esc(caf.orari) + '</div>' : '')
       + '<div class="nota">Conservare la ricevuta e presentarla al ritiro della pratica. Verrà avvisato/a quando la pratica sarà pronta.</div>'
+      + (/CAF/.test(perChi) && typeof bloccoConsensiHTML === 'function'
+        ? '<div class="privacy">' + bloccoConsensiHTML(p.nome).replace('<div class="firme"><div>Data ______________</div><div>Firma del contribuente</div></div>', '') + '<div class="pnota">Informativa completa (art. 13 Reg. UE 2016/679) consegnata al contribuente o disponibile in sede.</div></div>'
+        : '<div class="pnota">I dati sono trattati dal CAF CISL secondo il Regolamento UE 2016/679 (GDPR) solo per la pratica richiesta; l\'informativa completa è disponibile in sede.</div>')
       + '<div class="firme"><div>L\'operatore<br><span>' + esc(p.inseritoDa || '') + '</span></div><div>Il contribuente</div></div>'
       + '</div>';
   };
@@ -115,6 +118,7 @@ function ricevutaHTML(p, perEmail) {
     + 'table{width:100%; border-collapse:collapse}th,td{text-align:left; padding:4px 6px; border-bottom:1px solid #e3e8ef; vertical-align:top}th{width:34%; color:#5b6b82; font-weight:600}'
     + '.docs{margin-top:8px; font-size:11.5px}.docs ul{margin:3px 0 0; padding:0; list-style:none; columns:2; column-gap:20px}.docs li{padding:1px 0}'
     + '.docs.mancanti{border:1.5px solid #c0392b; border-radius:8px; padding:6px 10px}.docs.mancanti b{color:#c0392b}'
+    + '.privacy{margin-top:8px; border:1.5px solid #1d4f91; border-radius:8px; padding:6px 10px; font-size:10.5px}.privacy .ctit{font-weight:800; color:#1d4f91}.privacy .cons{margin:3px 0}.privacy .sc{font-weight:700; white-space:nowrap}.pnota{font-size:9.5px; color:#5b6b82; margin-top:4px}'
     + '.orari{margin-top:8px; font-size:11px}.nota{margin-top:6px; font-size:11px; color:#445}'
     + '.firme{display:flex; justify-content:space-between; gap:30px; margin-top:26px}.firme div{flex:1; border-top:1px solid #0f1b2d; padding-top:4px; text-align:center; font-size:11px}.firme span{color:#5b6b82}'
     + '.taglio{border:none; border-top:1px dashed #8a8f98; margin:18px 0; position:relative}.taglio:after{content:"✂ taglia qui"; position:absolute; left:50%; top:-8px; transform:translateX(-50%); background:#fff; padding:0 8px; font-size:10px; color:#8a8f98}'
