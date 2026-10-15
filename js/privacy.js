@@ -61,7 +61,7 @@ async function segnaConsensoPrivacy(id, firmato) {
 }
 function bottoniPrivacyHTML(p) {
   const firmato = !!p.consensoPrivacy;
-  return '<button onclick="stampaPrivacy(\'' + p.id + '\')" title="Informativa e consenso privacy da far firmare al cliente">🔏 Privacy</button>'
+  return '<button onclick="stampaPrivacy(\'' + p.id + '\')" title="Informativa e consenso privacy da far firmare al cliente">🔏 Modulo privacy</button>'
     + '<label class="chk" style="display:inline-flex; align-items:center; gap:4px; font-size:12.5px; padding:4px 10px; border-radius:999px; background:' + (firmato ? '#e8f6ee' : '#fdecea') + '; color:' + (firmato ? '#1a7f37' : '#c0392b') + '; font-weight:700; margin:0">'
     + '<input type="checkbox" ' + (firmato ? 'checked' : '') + ' onchange="segnaConsensoPrivacy(\'' + p.id + '\', this.checked)" style="width:auto; margin:0"> ' + (firmato ? 'Consenso firmato il ' + esc(p.consensoPrivacy) : 'Consenso privacy da firmare') + '</label>';
 }
