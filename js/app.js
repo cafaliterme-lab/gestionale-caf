@@ -1557,6 +1557,7 @@ function annullaPratica(id){
     + '<div style="font-size:20px; font-weight:800; color:#c0392b; text-align:center">🚫 Annulla pratica ' + esc(formattaProtocollo(p)) + '</div>'
     + '<div style="font-size:14px; margin:8px 0 12px; text-align:center"><b>' + esc(p.nome||'') + '</b> · ' + esc(p.tipo||'') + '</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">La pratica <b>resta nel registro con il numero ' + esc(formattaProtocollo(p)) + '</b>, barrata e segnata ANNULLATA. Non conta più nei totali, nei contatori e nella contabilità. Si può ripristinare.</div>'
+    + (String(p.numFattura||'').trim() ? '<div style="font-size:13px; margin-bottom:12px; padding:10px 12px; border-radius:10px; background:#fff4e5; border:2px solid #f08a24; color:#7a3e00"><b>⚠️ Questa pratica ha la fattura n. ' + esc(p.numFattura) + (p.dataFattura ? ' del ' + esc(p.dataFattura) : '') + (Number(p.compenso) ? ' (' + fmtEuro(p.compenso) + ')' : '') + '.</b><br>Una fattura emessa non si cancella: ricordati della <b>nota di credito</b>. Il numero ' + esc(p.numFattura) + ' resta occupato e non verrà dato a un\'altra pratica.</div>' : '')
     + '<label style="font-size:12.5px">Motivo (facoltativo)</label><input id="annulla-motivo" placeholder="Es. inserita per errore, doppione, rinuncia del cliente" style="margin-bottom:14px">'
     + '<div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap"><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Indietro</button>'
     + '<button type="button" data-azione="si" style="background:#c0392b; color:#fff">🚫 Conferma annullamento</button></div></div>';
@@ -2643,10 +2644,12 @@ function avantiPratica(id){
   if(p.stato === 'lavorazione' || p.stato === 'lavorata_da_fatturare' || (e730(p) && !String(p.numFattura||'').trim() && ['lavorata','da_pagare','pagato','pagato_da_ritirare'].indexOf(p.stato) >= 0)) return popupLavorata(p);
   cambiaStato(id, 'lavorazione');
 }
+// Pratiche che occupano un numero di fattura: anche le annullate (una fattura emessa non si riusa)
+function praticheConFattura(){ return (state.pratiche||[]).concat(state.annullate||[]); }
 function prossimoNumeroFattura(anno){
   let max = 0;
   // la numerazione delle fatture riguarda solo i 730
-  (state.pratiche||[]).forEach(function(x){ if(!x.annullata && e730(x) && annoPratica(x) === anno){ const n = numeroFatturaPratica(x); if(n != null && n > max) max = n; } });
+  praticheConFattura().forEach(function(x){ if(e730(x) && annoPratica(x) === anno){ const n = numeroFatturaPratica(x); if(n != null && n > max) max = n; } });
   return max + 1;
 }
 function popupLavorata(p){
@@ -2658,7 +2661,7 @@ function popupLavorata(p){
   const imp = Number(p.compenso || 0) || (auto !== undefined && auto !== '' ? Number(auto) : 0);
   const giaNF = String(p.numFattura || '').trim();
   // numero proposto: quello del protocollo, se libero; altrimenti il successivo all'ultima fattura
-  const usato = function(n){ return (state.pratiche||[]).some(function(x){ return x.id !== p.id && !x.annullata && e730(x) && annoPratica(x) === annoPratica(p) && String(x.numFattura||'').trim() === String(n); }); };
+  const usato = function(n){ return praticheConFattura().some(function(x){ return x.id !== p.id && e730(x) && annoPratica(x) === annoPratica(p) && String(x.numFattura||'').trim() === String(n); }); };
   const conNumero = e730(p); // solo i 730 hanno il numero di fattura
   const nfProposto = giaNF || (p.numero && !usato(p.numero) ? String(p.numero) : String(prossimoNumeroFattura(annoPratica(p))));
   const tel = !!numeroWhatsApp(p.telefono);
@@ -2698,8 +2701,8 @@ function popupLavorata(p){
       if(!nf) return segna('lv-nf', 'Scrivi il numero della fattura (obbligatorio).');
       if(!parseDataIT(df)) return segna('lv-df', 'La data della fattura deve essere GG/MM/AAAA.');
       if(!(im > 0)) return segna('lv-imp', 'Scrivi l\'importo della fattura (obbligatorio).');
-      const doppia = (state.pratiche||[]).find(function(x){ return x.id !== p.id && !x.annullata && e730(x) && annoPratica(x) === annoPratica(p) && String(x.numFattura||'').trim() === nf; });
-      if(doppia && !confirm('La fattura n. ' + nf + ' c\'è già (' + formattaProtocollo(doppia) + ' – ' + (doppia.nome||'') + ').\n\nUso lo stesso il numero ' + nf + '?')) return;
+      const doppia = praticheConFattura().find(function(x){ return x.id !== p.id && e730(x) && annoPratica(x) === annoPratica(p) && String(x.numFattura||'').trim() === nf; });
+      if(doppia && !confirm('La fattura n. ' + nf + ' c\'è già (' + formattaProtocollo(doppia) + ' – ' + (doppia.nome||'') + (doppia.annullata ? ', pratica ANNULLATA: il numero resta occupato' : '') + ').\n\nUso lo stesso il numero ' + nf + '?')) return;
       campi.numFattura = nf; campi.dataFattura = df; campi.compenso = im; campi.fatt = 'fatturata';
     }
     // il richiesto si salva in tutti e due i casi; il pagato si scrive alla consegna
