@@ -188,7 +188,7 @@ const GUIDA = [
 
   { id: 'ricevuta', icona: '🧾', titolo: 'Ricevuta di presa in carico', parole: 'ricevuta presa in carico stampa cliente copia documenti presentati mancanti',
     testo: `
-<p>Premi <b>🧾 Presa in carico</b> nella pratica (o 🧾 nel Registro): si apre la ricevuta di presa in carico, semplice, con il <b>numero di protocollo</b>, la <b>data di consegna</b>, il nome del cliente con <b>data di nascita</b> e <b>codice fiscale</b>. Non ci sono importi né documenti. Si stampa in due copie: una per il cliente e una per il CAF.</p>
+<p>Premi <b>🧾 Presa in carico</b> nella pratica (o 🧾 nel Registro): si apre la ricevuta di presa in carico, semplice, con il <b>numero di protocollo</b>, la <b>data di consegna</b>, il nome del cliente (e del coniuge, per le congiunte) con <b>data di nascita</b> e <b>codice fiscale</b>. Non ci sono importi né documenti. Si stampa in due copie: una per il cliente e una per il CAF.</p>
 <p>La presa in carico <b>non contiene la privacy</b>: il modulo privacy si stampa a parte con <b>🔏 Modulo privacy</b>.</p>
 <p class="g-nota">Le richieste CUD non compaiono sulla ricevuta.</p>` },
 
@@ -256,6 +256,7 @@ const GUIDA = [
 <li><b>🔢 Fatture 730 numerate</b>: nel blocco «Solo 730» della Contabilità il riquadro viola conta le fatture 730 con il numero (dal n. … al n. …) e quante sono ancora senza numero: è il conteggio di fine anno.</li>
 <li><b>🚫 Rinunce e annullate – contabilità a parte</b>: le pratiche in <b>Rinuncia alla compilazione</b> (e gli stati aggiunti da te con «rinuncia» o «annullata» nel nome) e le pratiche <b>annullate</b> non contano più tra le pratiche 730 né tra le altre pratiche, e non cambiano prezzo e incasso medio. Hanno un blocco a parte con il numero di rinunce, di annullate e, se ci sono, fatture e incasso delle rinunce. I soldi eventualmente incassati da una rinuncia restano nell'incasso totale e nei soldi in cassa, e nel conto finale compaiono come voce <b>Rinunce</b>.</li>
 <li><b>🖨️ Stampa contabilità (Excel / PDF)</b>.</li>
+<li><b>📅 Chiusura di cassa del giorno</b>: scegli il giorno (di solito oggi) e stampi gli <b>incassi</b> divisi per contanti, POS e bonifico, le <b>spese della sede</b> pagate quel giorno, i <b>contanti da mettere in cassa</b> (contanti incassati meno spese pagate in contanti) e le <b>pratiche aperte</b> nel giorno. L'incasso di una pratica conta nel giorno della consegna; se non è ancora consegnata, nel giorno di apertura.</li>
 </ul>` },
 
   { id: 'ricercafatture', icona: '🔎', titolo: 'Ricerca fatture dal… al… per tipo di pagamento', parole: 'ricerca fatture dal al periodo pagamento contanti pos bonifico incasso totale excel stampa',
