@@ -2633,9 +2633,9 @@ function bottoneAvanti(p){
   // colori diversi per ogni passo: In lavorazione giallo, Lavorata verde, Fattura blu
   const stile = function(bg, fg){ return 'background:' + bg + '; color:' + fg + '; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap'; };
   if(['arrivo','da_lavorare_scansionata'].indexOf(p.stato) >= 0 && statoVisibile('lavorazione', p.tipo))
-    return '<button type="button" title="Inizia a lavorare la pratica" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#f2c200', '#3a2e00') + '">▶ In lavorazione</button>';
-  if(p.stato === 'lavorazione') return '<button type="button" title="Pratica finita: fattura e avviso al cliente" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#1a7f37', '#fff') + '">▶ Lavorata</button>';
-  if(e730(p) && (p.stato === 'lavorata_da_fatturare' || (['lavorata','da_pagare','pagato','pagato_da_ritirare'].indexOf(p.stato) >= 0 && !String(p.numFattura||'').trim()))) return '<button type="button" title="Emetti la fattura" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#2f7de1', '#fff') + '">▶ Fattura</button>';
+    return '<button type="button" title="Inizia a lavorare la pratica" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#f2c200', '#3a2e00') + '">▶ Inizia lavorazione</button>';
+  if(p.stato === 'lavorazione') return '<button type="button" title="Pratica finita: fattura e avviso al cliente" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#1a7f37', '#fff') + '">✓ Segna come lavorata</button>';
+  if(e730(p) && (p.stato === 'lavorata_da_fatturare' || (['lavorata','da_pagare','pagato','pagato_da_ritirare'].indexOf(p.stato) >= 0 && !String(p.numFattura||'').trim()))) return '<button type="button" title="Emetti la fattura" onclick="avantiPratica(\'' + p.id + '\')" style="' + stile('#2f7de1', '#fff') + '">🧾 Emetti fattura</button>';
   return '';
 }
 function avantiPratica(id){
@@ -2744,7 +2744,7 @@ function restoConsegna(){
 }
 function consegnaPratica(id){
   const p = (state.pratiche||[]).find(function(x){ return x.id === id; }); if(!p) return;
-  if(!puoConsegnare(p)){ alert('La pratica è ancora «' + statoLabel(p.stato) + '».\n\nPrima di consegnarla passala a «Lavorata» (tasto ▶ Lavorata).'); return; }
+  if(!puoConsegnare(p)){ alert('La pratica è ancora «' + statoLabel(p.stato) + '».\n\nPrima di consegnarla passala a «Lavorata» (tasto ✓ Segna come lavorata).'); return; }
   const colfC = eColf(p.tipo);
   const nonPag = colfC ? [] : statiNonPagato(p.tipo);
   const tastiNonPag = nonPag.length
