@@ -130,6 +130,7 @@ const schemas = {
     saldataCollaboratore: 'saldata_collaboratore',
     trasferitaIn: 'trasferita_in',
     consensoPrivacy: 'consenso_privacy',
+    recuperi: 'recuperi',
     consegnataIl: 'consegnata_il',
     consegnataDa: 'consegnata_da',
   },

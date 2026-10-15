@@ -120,7 +120,7 @@ const ETICHETTE_CAMPI = {
   compenso: 'Fattura', pagato: 'Pagato', metodo_pagamento: 'Tipo di pagamento', annullata: 'Annullata', annullata_motivo: 'Motivo annullamento', data: 'Data apertura', data_fine: 'Fine lavorazione', note: 'Note',
   num_fattura: 'N. fattura', data_fattura: 'Data fattura', fatt: 'Fatturazione', cf: 'Data di nascita', codice_fiscale: 'Codice fiscale',
   congiunta: 'Congiunta', cong_cognome: 'Cognome coniuge', cong_nome: 'Nome coniuge', cong_data: 'Nascita coniuge',
-  cong_codice_fiscale: 'CF coniuge', cong_telefono: 'Cellulare coniuge', scadenza_assistenza: 'Scadenza assistenza',
+  cong_codice_fiscale: 'CF coniuge', recuperi: 'Pagamenti arretrati (morosi)', cong_telefono: 'Cellulare coniuge', scadenza_assistenza: 'Scadenza assistenza',
   whatsapp_inviato: 'Avviso WhatsApp', inserito_da: 'Inserito da', numero: 'Numero', anno: 'Anno',
 };
 function valoreStorico(campo, v) {
@@ -128,6 +128,7 @@ function valoreStorico(campo, v) {
   if (campo === 'stato') return statoLabel(v);
   if (campo === 'annullata') return v === true || v === 'true' ? 'SÌ' : 'NO';
   if (campo === 'compenso' || campo === 'pagato') return fmtEuro(v);
+  if (campo === 'recuperi') { let l = v; try { if (typeof l === 'string') l = JSON.parse(l); } catch (e) {} return Array.isArray(l) && l.length ? l.map(function (r) { return r.data + ' ' + fmtEuro(r.importo) + ' ' + (r.metodo || ''); }).join(', ') : '—'; }
   return String(v);
 }
 function quandoStorico(ts) {

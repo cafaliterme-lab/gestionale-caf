@@ -42,7 +42,9 @@ function renderMorosi() {
     + '<button type="button" onclick="stampaMorosi()" style="background:#374151; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">🖨️ Stampa</button>'
     + '</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:6px">Pratiche ' + (MOROSI.anno ? 'del ' + MOROSI.anno : 'di tutti gli anni precedenti al ' + annoAttivo()) + ' con fattura più alta del pagato (escluse annullate e rinunce' + (MOROSI.collaboratori ? '' : ' e, se non spunti la casella, quelle dei collaboratori') + '). Quando il cliente paga premi <b>✓ Pagato</b>: l\'incasso viene scritto nella pratica dell\'anno a cui si riferisce.</div>'
+    + riepilogoRecuperiHTML(MOROSI.anno, MOROSI.collaboratori, tot)
     + '<div id="morosi-lista">' + tabellaMorosiHTML(lista, sola) + '</div>'
+    + registroRecuperiHTML(MOROSI.anno, MOROSI.collaboratori)
     + '</div></details>';
 }
 function renderMorosiLista() {
@@ -99,9 +101,11 @@ function incassaMoroso(id) {
     if (imp > res + 0.001 && !confirm('L\'importo è più alto di quanto deve (' + fmtEuro(res) + '). Registrarlo lo stesso?')) return;
     const metodo = document.getElementById('mo-metodo').value;
     const nuovoPagato = Math.round((Number(p.pagato || 0) + imp) * 100) / 100;
+    const recupero = { data: todayIT(), importo: Math.round(imp * 100) / 100, metodo: metodo, da: ((auth.profilo && auth.profilo.nome) || '').toUpperCase() };
     const campi = {
       pagato: nuovoPagato,
-      metodoPagamento: metodo,
+      metodoPagamento: Number(p.pagato || 0) > 0 && p.metodoPagamento ? p.metodoPagamento : metodo,
+      recuperi: (Array.isArray(p.recuperi) ? p.recuperi : []).concat([recupero]),
       note: ((p.note ? p.note + ' · ' : '') + 'Pagato arretrato ' + fmtEuro(imp) + ' il ' + todayIT() + ' (' + metodo + ')').slice(0, 1000)
     };
     if (nuovoPagato >= dovutoPratica(p) && (['da_pagare', 'non_paga', 'lavorata', 'lavorata_da_fatturare', 'filca_non_paga', 'fps_non_paga'].indexOf(p.stato) >= 0 || (typeof eStatoNonPagato === 'function' && eStatoNonPagato(p.stato)))) campi.stato = 'pagato';
@@ -205,4 +209,70 @@ function pagamentoCumulativo(k) {
     if (fatte === cambiate.length) { ov.remove(); avviso('✓ Elenco dei morosi di ' + k + ' aggiornato'); }
     render();
   });
+}
+
+/* ---------------- Registro dei recuperi: pagamenti arretrati incassati dai morosi ---------------- */
+// Ogni "✓ Pagato" del tabulato morosi resta scritto nella pratica (data, importo, pagamento, operatore):
+// l'importo entra nella contabilità dell'anno della pratica, e qui si vede quanto è stato recuperato.
+function recuperiAnno(anno, conCollaboratori) {
+  const righe = [];
+  (state.pratiche || []).forEach(function (p) {
+    if (!Array.isArray(p.recuperi) || !p.recuperi.length) return;
+    if (anno ? annoPratica(p) !== anno : annoPratica(p) >= annoAttivo()) return;
+    if (!conCollaboratori && typeof haAcconti === 'function' && haAcconti(p.tipo)) return;
+    p.recuperi.forEach(function (r) { righe.push({ p: p, r: r }); });
+  });
+  return righe.sort(function (a, b) { return (dataNum(a.r.data) || 0) - (dataNum(b.r.data) || 0); });
+}
+function riepilogoRecuperiHTML(anno, conCollaboratori, daRecuperare) {
+  const recuperato = recuperiAnno(anno, conCollaboratori).reduce(function (t, x) { return t + Number(x.r.importo || 0); }, 0);
+  const totale = daRecuperare + recuperato;
+  const perc = totale > 0 ? Math.round(recuperato / totale * 100) : 0;
+  const tessera = function (titolo, valore, col, nota) {
+    return '<div style="flex:1; min-width:150px; padding:8px 12px; border-radius:12px; border:2px solid ' + col + '"><div style="font-size:12px; font-weight:800; color:' + col + '">' + titolo + '</div>'
+      + '<div style="font-size:19px; font-weight:800">' + fmtEuro(valore) + '</div>' + (nota ? '<div class="sub2">' + nota + '</div>' : '') + '</div>';
+  };
+  return '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px">'
+    + tessera('📋 TOTALE MOROSI', totale, '#374151', 'da recuperare + recuperato')
+    + tessera('✅ RECUPERATO', recuperato, '#2f9e5f', perc + '% del totale')
+    + tessera('💸 ANCORA DA RECUPERARE', daRecuperare, '#c0392b', '')
+    + '</div>';
+}
+function registroRecuperiHTML(anno, conCollaboratori) {
+  const righe = recuperiAnno(anno, conCollaboratori);
+  const tot = righe.reduce(function (t, x) { return t + Number(x.r.importo || 0); }, 0);
+  return '<details style="margin-top:12px" ' + (MOROSI.registroAperto ? 'open' : '') + ' ontoggle="MOROSI.registroAperto=this.open">'
+    + '<summary style="cursor:pointer; font-weight:800; color:#2f9e5f; font-size:15px">📒 Registro recuperi ' + nomeAnnoMorosi(anno) + ' (' + righe.length + ' pagamenti · ' + fmtEuro(tot) + ')</summary>'
+    + '<div style="display:flex; justify-content:flex-end; margin:6px 0"><button type="button" onclick="stampaRegistroRecuperi()" style="background:#2f9e5f; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">🖨️ Stampa registro recuperi</button></div>'
+    + tabellaRecuperiHTML(righe, tot) + '</details>';
+}
+function tabellaRecuperiHTML(righe, tot) {
+  if (!righe.length) return '<div class="empty">Nessun pagamento arretrato registrato. Quando un moroso paga, premi ✓ Pagato nel tabulato: il pagamento finisce qui.</div>';
+  const perMetodo = {};
+  righe.forEach(function (x) { const m = x.r.metodo || 'NON INDICATO'; perMetodo[m] = (perMetodo[m] || 0) + Number(x.r.importo || 0); });
+  return '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Data pagamento</th><th>Pratica</th><th>Cliente</th><th>Tipo</th><th>Importo</th><th>Pagamento</th><th>Operatore</th><th>Ancora da pagare</th></tr></thead><tbody>'
+    + righe.map(function (x) {
+      return '<tr><td>' + esc(x.r.data || '-') + '</td><td>' + formattaProtocollo(x.p) + '</td><td><b>' + esc((x.p.nome || '').toUpperCase()) + '</b></td><td class="wrap">' + esc(x.p.tipo || '') + '</td>'
+        + '<td><b style="color:#2f9e5f">' + fmtEuro(x.r.importo) + '</b></td><td>' + (typeof etichettaPagamento === 'function' ? etichettaPagamento(x.r.metodo) : esc(x.r.metodo || '')) + '</td><td>' + esc(x.r.da || '') + '</td>'
+        + '<td>' + (residuoPratica(x.p) > 0 ? '<span style="color:#c0392b">' + fmtEuro(residuoPratica(x.p)) + '</span>' : '✓ saldata') + '</td></tr>';
+    }).join('')
+    + '<tr style="font-weight:800"><td colspan="4">TOTALE RECUPERATO · ' + Object.keys(perMetodo).map(function (m) { return esc(m) + ' ' + fmtEuro(perMetodo[m]); }).join(' · ') + '</td><td>' + fmtEuro(tot) + '</td><td colspan="3"></td></tr>'
+    + '</tbody></table></div>';
+}
+function stampaRegistroRecuperi() {
+  const righe = recuperiAnno(MOROSI.anno, MOROSI.collaboratori);
+  const tot = righe.reduce(function (t, x) { return t + Number(x.r.importo || 0); }, 0);
+  const daRec = morosiAnno(MOROSI.anno, MOROSI.collaboratori).reduce(function (t, p) { return t + residuoPratica(p); }, 0);
+  const w = window.open('', '_blank');
+  if (!w) { alert('Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito.'); return; }
+  w.document.open();
+  w.document.write('<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Registro recuperi ' + nomeAnnoMorosi(MOROSI.anno) + '</title><style>@page{size:A4 landscape; margin:10mm} body{font-family:Arial,Helvetica,sans-serif; font-size:11.5px; color:#0f1b2d; margin:0; padding:10px}'
+    + 'h1{font-size:17px; color:#2f9e5f; margin:0 0 4px} table{width:100%; border-collapse:collapse; margin-top:10px} th,td{text-align:left; padding:4px 6px; border-bottom:1px solid #e3e8ef} th{background:#f2f5f9; font-size:11px}'
+    + '.sub2{font-size:10px; color:#5b6b82} .tot{display:flex; gap:10px; margin-top:8px} .tot div{flex:1; border:2px solid #cfd8e3; border-radius:10px; padding:6px 10px} .tot b{display:block; font-size:16px}'
+    + '.barra{margin-bottom:10px} .barra button{font-size:14px; padding:8px 16px; margin-right:6px} @media print{.barra{display:none} body{padding:0}}</style></head><body>'
+    + '<div class="barra"><button onclick="window.print()">🖨️ Stampa / Salva come PDF</button><button onclick="window.close()">Chiudi</button></div>'
+    + '<h1>CAF CISL Alì Terme – Registro recuperi morosi ' + (MOROSI.anno || 'di tutti gli anni') + '</h1><div style="color:#5b6b82">Stampato il ' + new Date().toLocaleDateString('it-IT') + '</div>'
+    + '<div class="tot"><div>TOTALE MOROSI<b>' + fmtEuro(tot + daRec) + '</b></div><div style="border-color:#2f9e5f">RECUPERATO<b>' + fmtEuro(tot) + '</b></div><div style="border-color:#c0392b">ANCORA DA RECUPERARE<b>' + fmtEuro(daRec) + '</b></div></div>'
+    + tabellaRecuperiHTML(righe, tot) + '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>');
+  w.document.close();
 }

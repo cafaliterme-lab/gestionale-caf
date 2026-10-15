@@ -29,11 +29,17 @@ function stampaChiusuraGiorno(iso) {
   const stesso = function (d) { return dataNum(d) === giorno; };
   const valide = (state.pratiche || []).filter(function (p) { return !p.annullata; });
   const aperte = valide.filter(function (p) { return stesso(p.data); });
-  const incassi = valide.filter(function (p) { return Number(p.pagato) > 0 && stesso(dataIncassoPratica(p)); });
+  // il pagato al netto dei pagamenti arretrati, che sono contati a parte nel giorno in cui arrivano
+  const pagatoBase = function (p) { return Math.round((Number(p.pagato || 0) - (Array.isArray(p.recuperi) ? p.recuperi : []).reduce(function (t, r) { return t + Number(r.importo || 0); }, 0)) * 100) / 100; };
+  const incassi = valide.filter(function (p) { return pagatoBase(p) > 0 && stesso(dataIncassoPratica(p)); }).map(function (p) { return Object.assign({}, p, { pagato: pagatoBase(p) }); });
   const spese = (state.speseSede || []).filter(function (s) { return stesso(s.data); });
   const metodo = function (m) { return METODI_PAGAMENTO.indexOf(m) >= 0 ? m : 'NESSUNO'; };
   const somma = function (lista, campo, m) { return lista.filter(function (x) { return !m || metodo(x.metodoPagamento) === m; }).reduce(function (t, x) { return t + Number(x[campo] || 0); }, 0); };
   const conta = function (lista, m) { return lista.filter(function (x) { return metodo(x.metodoPagamento) === m; }).length; };
+  // pagamenti arretrati dei morosi incassati nel giorno (la pratica resta nella contabilità del suo anno)
+  const recuperi = [];
+  (state.pratiche || []).forEach(function (p) { (Array.isArray(p.recuperi) ? p.recuperi : []).forEach(function (r) { if (stesso(r.data)) recuperi.push({ p: p, importo: Number(r.importo || 0), metodoPagamento: r.metodo }); }); });
+  const contantiRec = somma(recuperi, 'importo', 'CONTANTI');
   const contantiIn = somma(incassi, 'pagato', 'CONTANTI'), contantiOut = somma(spese, 'importo', 'CONTANTI');
   const w = window.open('', '_blank');
   if (!w) { alert('Il browser ha bloccato la finestra: consenti i popup per questo sito e riprova.'); return; }
@@ -66,14 +72,18 @@ function stampaChiusuraGiorno(iso) {
     }).join('') + riga(['TOTALE', '', '', '', '<div style="text-align:right">' + fmtEuro(somma(incassi, 'compenso')) + '</div>', '<div style="text-align:right">' + fmtEuro(somma(incassi, 'pagato')) + '</div>', ''], 'tot') : vuoto(7, 'Nessun incasso in questo giorno'))
     + '</table>'
 
+    + (recuperi.length ? '<h2>✅ Pagamenti arretrati dei morosi incassati nel giorno</h2><table>' + testa(['Pratica', 'Cliente', 'Tipo', 'Pagamento', '<span class="n">Importo</span>'])
+      + recuperi.map(function (x) { return riga([esc(formattaProtocollo(x.p)), esc(x.p.nome || ''), esc(x.p.tipo || ''), etichettaPagamento(x.metodoPagamento), '<div style="text-align:right">' + fmtEuro(x.importo) + '</div>']); }).join('')
+      + riga(['TOTALE', '', '', '', '<div style="text-align:right">' + fmtEuro(somma(recuperi, 'importo')) + '</div>'], 'tot') + '</table>'
+      + '<div style="font-size:10.5px; color:#5b6b82; margin-top:3px">Questi importi restano nella contabilità dell\'anno della pratica.</div>' : '')
     + '<h2>🧾 Spese della sede pagate nel giorno</h2><table>' + testa(['Descrizione', 'Categoria', 'Pagamento', '<span class="n">Importo</span>'])
     + (spese.length ? spese.map(function (s) {
       return riga([esc(s.descrizione || ''), esc(s.categoria || ''), etichettaPagamento(s.metodoPagamento) + (s.prelevatiAngelo ? ' · anticipata da Angelo' : ''), '<div style="text-align:right">' + fmtEuro(s.importo) + '</div>']);
     }).join('') + riga(['TOTALE', '', '', '<div style="text-align:right">' + fmtEuro(somma(spese, 'importo')) + '</div>'], 'tot') : vuoto(4, 'Nessuna spesa in questo giorno'))
     + '</table>'
 
-    + '<h2>💰 Contanti in cassa</h2><div class="cassa">Contanti incassati: <b>' + fmtEuro(contantiIn) + '</b><br>Spese pagate in contanti: <b>− ' + fmtEuro(contantiOut) + '</b>'
-    + '<div class="fin">Contanti del giorno da mettere in cassa: ' + fmtEuro(contantiIn - contantiOut) + '</div>'
+    + '<h2>💰 Contanti in cassa</h2><div class="cassa">Contanti incassati: <b>' + fmtEuro(contantiIn) + '</b><br>' + (contantiRec ? 'Contanti da pagamenti arretrati: <b>' + fmtEuro(contantiRec) + '</b><br>' : '') + 'Spese pagate in contanti: <b>− ' + fmtEuro(contantiOut) + '</b>'
+    + '<div class="fin">Contanti del giorno da mettere in cassa: ' + fmtEuro(contantiIn + contantiRec - contantiOut) + '</div>'
     + '<div style="font-size:11px; color:#5b6b82; margin-top:4px">POS e bonifici non sono contanti: arrivano sul conto.</div></div>'
 
     + '<h2>📂 Pratiche aperte nel giorno (' + aperte.length + ')</h2><table>' + testa(['Protocollo', 'Cliente', 'Tipo', 'Stato', 'Operatore'])
