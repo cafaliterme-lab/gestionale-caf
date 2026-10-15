@@ -688,6 +688,7 @@ function applicaPermessi(){
     // Non autenticato
     bar.innerHTML = '<span>Non autenticato</span>';
     document.getElementById('nav-permessi').style.display = 'none';
+    const ns0 = document.getElementById('nav-storico'); if(ns0) ns0.style.display = 'none';
     Object.keys(TAB_LABELS).forEach(function(tab){
       const btn = document.querySelector('.navmenu button[data-tab="'+tab+'"]');
       if(btn) btn.style.display = 'none';
@@ -706,6 +707,9 @@ function applicaPermessi(){
     const visibile = isAdmin || tabs[tab];
     btn.style.display = visibile ? '' : 'none';
   });
+  // Storico contribuente: per chi vede l'inserimento o il registro (solo consultazione)
+  const ns = document.getElementById('nav-storico');
+  if(ns) ns.style.display = (isAdmin || tabs.registro || tabs.anagrafica) ? '' : 'none';
 
   document.body.classList.toggle('sola-lettura', !isAdmin && u.sola_lettura);
 
@@ -1244,6 +1248,7 @@ let ultimiTipi = '';
 // Chiamata da data.js dopo ogni caricamento dei dati (anche dopo ogni salvataggio)
 function onDatiAggiornati(){
   syncDataFromSupabase();
+  { const st = document.getElementById('tab-storico'); if(st && st.classList.contains('active') && typeof aggiornaStorico === 'function') aggiornaStorico(); }
   const tipi = JSON.stringify(getTipiList());
   if(tipi !== ultimiTipi){
     ultimiTipi = tipi;
@@ -1336,6 +1341,7 @@ function showTab(btn){
   if(tab === 'grafici') renderGrafici();
   if(tab === 'spese' && typeof renderSpese === 'function') renderSpese();
   if(tab === 'modulistica' && typeof renderModulistica === 'function') renderModulistica();
+  if(tab === 'storico' && typeof renderStorico === 'function'){ renderStorico(); setTimeout(function(){ const i = document.getElementById('storico-cerca'); if(i && !STORICO.scelto) i.focus(); }, 50); }
   if(tab === 'permessi'){ renderPermessi(); if(typeof renderPresenze === 'function') renderPresenze(); if(typeof renderTipiPratica === 'function'){ renderTipiPratica(true); renderEtichetteMenu(true); renderStatiPratica(true); } if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
 }
 function renderCollaboratori(){

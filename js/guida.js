@@ -187,6 +187,9 @@ const GUIDA = [
 <li>I numeri <b>non si riusano</b>: la pratica successiva prende sempre il numero seguente.</li>
 </ul>` },
 
+  { id: 'storico', icona: '🗂️', titolo: 'Storico contribuente', parole: 'storico contribuente cliente pratiche anni precedenti anno corrente ricerca cerca consultazione codice fiscale',
+    testo: `<p>Nel menu <b>STORICO CONTRIBUENTE</b> scrivi <b>cognome, nome o codice fiscale</b>: se ci sono più contribuenti con quel nome tocchi quello giusto (vedi data di nascita e codice fiscale).</p><ul><li>Vedi <b>tutte le sue pratiche</b>, dell'<b>anno in corso</b> e degli <b>anni precedenti</b>, anche quelle in cui è il <b>coniuge</b> di una congiunta: consegnate, da consegnare e annullate.</li><li>Per ogni pratica: protocollo, data, tipo, stato (con la data di consegna), numero e importo della fattura, richiesto, pagato e quanto <b>deve ancora</b>.</li><li>Con i tasti <b>Tutti gli anni</b> / <b>2026</b> / <b>2027</b>… vedi un anno solo.</li><li>In cima i totali e, se il cliente deve ancora pagare pratiche degli anni passati, il riquadro rosso con <b>✓ Pagato</b>.</li><li><b>Apri</b> (solo per le pratiche dell'anno di protocollo) porta la pratica nel registro; <b>🖨️ Stampa</b> stampa lo storico.</li></ul><p>È una sezione di <b>sola consultazione</b>: la vede chi vede l'inserimento pratica o il registro.</p>` },
+
   { id: 'ricevuta', icona: '🧾', titolo: 'Ricevuta di presa in carico', parole: 'ricevuta presa in carico stampa cliente copia documenti presentati mancanti',
     testo: `
 <p>Premi <b>🧾 Presa in carico</b> nella pratica (o 🧾 nel Registro): si apre la ricevuta di presa in carico, semplice, con il <b>numero di protocollo</b>, la <b>data di consegna</b>, il nome del cliente (e del coniuge, per le congiunte) con <b>data di nascita</b> e <b>codice fiscale</b>. Non ci sono importi né documenti. Si stampa in due copie: una per il cliente e una per il CAF.</p>
