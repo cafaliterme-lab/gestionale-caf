@@ -944,11 +944,12 @@ async function esportaRegistroExcel(){
 
   const anno = annoAttivo();
   const tutte = (state.pratiche||[]).filter(function(p){ return annoPratica(p) === anno; });
+  const annFatt = typeof fattureAnnullateAperte === 'function' ? fattureAnnullateAperte(anno) : [];
   const gruppi = {};
   tutte.forEach(function(p){ const k = p.tipo || 'SENZA TIPO'; if(!gruppi[k]) gruppi[k] = []; gruppi[k].push(p); });
   const nomiGruppi = getTipiList().concat(Object.keys(gruppi).filter(function(k){ return getTipiList().indexOf(k) < 0; }));
 
-  const fattureEmesse = tutte.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
+  const fattureEmesse = tutte.concat(annFatt).reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const incassoLordo = tutte.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
   const versAnno = (state.versamenti||[]).filter(function(v){ return annoVersamento(v) === anno; });
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
@@ -966,7 +967,7 @@ async function esportaRegistroExcel(){
     { 'Voce':'Da lavorare', 'Valore': daLavorare },
     { 'Voce':'Rinuncia alla compilazione (a parte)', 'Valore': rinunce },
     { 'Voce':'Pratiche annullate (a parte)', 'Valore': annullate },
-    { 'Voce':'Fatture emesse (€)', 'Valore': fattureEmesse },
+    { 'Voce':'Fatture emesse (€)' + (annFatt.length ? ' – comprese ' + annFatt.length + ' di pratiche annullate (nota di credito da fare)' : ''), 'Valore': fattureEmesse },
     { 'Voce':'Incasso totale (€)', 'Valore': incassoLordo },
     { 'Voce':'Versamenti CAF (€)', 'Valore': versatoCaf },
     { 'Voce':'Soldi in cassa: incasso − versamenti CAF − spese sede (€)', 'Valore': incasso - (typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0) + (typeof angeloInSospesoAnno === 'function' ? angeloInSospesoAnno(anno) : 0) },
@@ -1860,7 +1861,10 @@ function render(){
     // stato scelto dentro questo riquadro (oltre al filtro generale del registro)
     const statoGr = STATO_GRUPPO[k] || '';
     const items = statoGr ? tuttiTipo.filter(function(p){ return p.stato === statoGr; }) : tuttiTipo;
-    const fe = items.reduce(function(a,p){ return a + Number(p.compenso||0); }, 0);
+    // fatture di pratiche annullate di questo tipo senza nota di credito (restano tra le fatture)
+    const annK = (inRicerca || statoGr || typeof fattureAnnullateAperte !== 'function') ? [] : fattureAnnullateAperte(annoAttivo()).filter(function(p){ return (p.tipo || 'SENZA TIPO') === k; });
+    const feAnn = annK.reduce(function(a,p){ return a + Number(p.compenso||0); }, 0);
+    const fe = items.reduce(function(a,p){ return a + Number(p.compenso||0); }, 0) + feAnn;
     const inc = items.reduce(function(a,p){ return a + Number(p.pagato||0); }, 0);
     const accK = inRicerca ? 0 : totaleAcconti(annoAttivo(), function(t){ return t === k; });
     const open = aperti[k] === true;
@@ -1871,7 +1875,7 @@ function render(){
     const schede = sola ? [sola] : items.filter(vediNelRegistro);
     return '<details class="grp" data-k="' + esc(k) + '" style="--gc:' + col + '" ' + (open ? 'open' : '') + ' ontoggle="gToggle(this)">'
       + '<summary style="background:' + col + '; background-image:none"><span class="grp-name">' + esc(k) + '</span><span class="grp-n">' + sommaPeso(items) + '</span>'
-      + ('<span class="grp-soldi">Fatture ' + fmtEuro(fe) + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + '</span>') + '</summary>'
+      + ('<span class="grp-soldi">Fatture ' + fmtEuro(fe) + (feAnn ? '<br><small>di cui ' + fmtEuro(feAnn) + ' annullate</small>' : '') + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + '</span>') + '</summary>'
       + '<div class="grp-b">' + filtroStatoGruppoHTML(k, tuttiTipo) + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items.filter(vediNelRegistro), k)
       + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open; if(!this.open) delete SCHEDA_SOLA[this.dataset.k.replace(/\|schede$/, \'\')]" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 ' + (sola ? 'Scheda della pratica ' + esc(formattaProtocollo(sola)) + ' – ' + esc(sola.nome || '') : 'Schede complete delle pratiche (' + items.length + ')') + ' – per modificare, ricevuta, WhatsApp…</summary>'
         + (sola && items.length > 1 ? '<button type="button" onclick="mostraTutteSchede(this.dataset.k)" data-k="' + esc(k) + '" style="margin:0 0 8px; padding:5px 14px; border-radius:999px; border:1px dashed var(--sub); background:none; color:var(--sub); font-weight:700; cursor:pointer">📋 Mostra tutte le schede del gruppo (' + items.length + ')</button>' : '')

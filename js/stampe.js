@@ -104,17 +104,29 @@ function descrizioneFiltri() {
   return righe;
 }
 
+// Stampa contabilità: fatture di pratiche annullate senza nota di credito (restano tra le fatture emesse)
+function annullateFattStampa() {
+  if (STAMPA.origine !== 'contabilita' || typeof fattureAnnullateAperte !== 'function') return [];
+  const s = STAMPA, da = isoNum(s.da), a = isoNum(s.a);
+  return fattureAnnullateAperte(s.anno).filter(function (p) {
+    if (!s.tipi[p.tipo || 'SENZA TIPO']) return false;
+    if (da || a) { const d = dataNum(s.riferimento === 'fine' ? p.dataFine : p.data); if (d === null || (da && d < da) || (a && d > a)) return false; }
+    return true;
+  });
+}
 function riepilogoStampa(lista) {
-  const fatt = lista.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
+  const annF = annullateFattStampa(), fattAnn = annF.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
+  const fatt = lista.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0) + fattAnn;
   const inc = lista.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);
   const l730 = lista.filter(e730), altre = lista.filter(function (p) { return !e730(p); });
   const voci = [
     ['Pratiche (congiunte valgono 2)', sommaPeso(lista), false],
     ['Fatture emesse', fatt, true],
+  ].concat(annF.length ? [['di cui fatture di ' + annF.length + ' pratiche annullate (nota di credito da fare)', fattAnn, true]] : []).concat([
     ['Incasso totale', inc, true],
     ['Incasso solo 730', l730.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0), true],
     ['Incasso altre pratiche', altre.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0), true],
-  ];
+  ]);
   const perPag = datiPerPagamento(lista);
   METODI_PAGAMENTO.forEach(function (m) { voci.push(['Incasso ' + (m === 'POS' ? 'POS' : m.toLowerCase()), perPag[m].inc, true]); });
   if (perPag[''].inc) voci.push(['Incasso senza tipo di pagamento', perPag[''].inc, true]);
@@ -257,6 +269,9 @@ function stampaExcel() {
     const inc = g.lista.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);
     righe.push({ 'Voce': g.tipo + ' (' + sommaPeso(g.lista) + ' pratiche)', 'Valore': 'Fatture ' + fmtEuro(fe) + ' · Incasso ' + fmtEuro(inc) });
   });
+  annullateFattStampa().forEach(function (p) {
+    righe.push({ 'Voce': 'ANNULLATA ' + formattaProtocollo(p) + ' ' + (p.nome || '') + ' – fattura n. ' + (p.numFattura || '') + ' (nota di credito da fare)', 'Valore': 'Fattura ' + fmtEuro(p.compenso) });
+  });
 
   const wb = XLSX.utils.book_new();
   const wsRiep = XLSX.utils.json_to_sheet(righe);
@@ -307,6 +322,16 @@ function stampaPDF() {
     });
     corpo += '<tr class="subtot"><td colspan="5">Totale ' + esc(g.tipo) + '</td><td class="num">' + fmtEuro(fe) + '</td><td class="num">' + fmtEuro(inc) + '</td><td></td></tr>';
   });
+  const annF = annullateFattStampa();
+  if (annF.length) {
+    const fa = annF.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
+    totF += fa;
+    corpo += '<tr class="gruppo"><td colspan="8">🚫 Fatture di pratiche annullate · nota di credito da fare (contano nelle fatture emesse)</td></tr>';
+    annF.forEach(function (p) {
+      corpo += '<tr style="color:#7a3e00"><td style="text-decoration:line-through">' + esc(formattaProtocollo(p)) + '</td><td>' + esc(p.data || '') + '</td><td></td><td>' + esc(p.nome || '') + '<div class="sub">' + esc(p.tipo || '') + ' · fattura n. ' + esc(p.numFattura || '') + '</div></td><td>ANNULLATA</td><td class="num">' + fmtEuro(p.compenso) + '</td><td class="num">' + fmtEuro(0) + '</td><td></td></tr>';
+    });
+    corpo += '<tr class="subtot"><td colspan="5">Totale fatture di pratiche annullate</td><td class="num">' + fmtEuro(fa) + '</td><td class="num">' + fmtEuro(0) + '</td><td></td></tr>';
+  }
   corpo += '<tr class="tot"><td colspan="5">TOTALE GENERALE · ' + sommaPeso(lista) + ' pratiche</td><td class="num">' + fmtEuro(totF) + '</td><td class="num">' + fmtEuro(totI) + '</td><td></td></tr>';
   // Registro di protocollo: i numeri annullati restano elencati (non contano nei totali)
   const annullate = STAMPA.origine === 'contabilita' ? [] : (state.annullate || []).filter(function (p) { return annoPratica(p) === STAMPA.anno; }).sort(function (x, y) { return x.numero - y.numero; });
