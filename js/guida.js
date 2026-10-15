@@ -188,7 +188,7 @@ const GUIDA = [
 
   { id: 'ricevuta', icona: '🧾', titolo: 'Ricevuta di presa in carico', parole: 'ricevuta presa in carico stampa cliente copia documenti presentati mancanti',
     testo: `
-<p>Premi <b>🧾 Presa in carico</b> nella pratica (o 🧾 nel Registro): si apre la ricevuta di presa in carico da stampare con i dati del CAF, del cliente, il protocollo, gli importi con il tipo di pagamento, la <b>documentazione presentata</b> e quella <b>da portare</b>.</p>
+<p>Premi <b>🧾 Presa in carico</b> nella pratica (o 🧾 nel Registro): si apre la ricevuta di presa in carico, semplice, con il <b>numero di protocollo</b>, la <b>data di consegna</b> e il nome del cliente. Non ci sono importi né documenti. Si stampa in due copie: una per il cliente e una per il CAF.</p>
 <p>La presa in carico <b>non contiene la privacy</b>: il modulo privacy si stampa a parte con <b>🔏 Modulo privacy</b>.</p>
 <p class="g-nota">Le richieste CUD non compaiono sulla ricevuta.</p>` },
 

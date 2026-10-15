@@ -76,30 +76,16 @@ function stampaRicevuta(id) {
 function ricevutaHTML(p, perEmail) {
   const logo = document.querySelector('.hero-logo');
   const caf = (typeof datiCafStampa === 'function') ? datiCafStampa() : {};
-  const doc = documentiPratica(p);
-  // le richieste CUD sono interne al CAF: non vanno sulla ricevuta del cliente
-  if (typeof senzaCUD === 'function') { doc.presentati = senzaCUD(doc.presentati); doc.mancanti = senzaCUD(doc.mancanti); }
-  const riga = function (etichetta, valore) { return valore ? '<tr><th>' + etichetta + '</th><td>' + esc(valore) + '</td></tr>' : ''; };
   const copia = function (perChi) {
     return '<div class="ric">'
       + '<div class="testa">' + (logo ? '<img src="' + (perEmail ? location.origin + location.pathname.replace(/[^\/]*$/, '') + 'icone/icona-192.png' : logo.src) + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1>'
       + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div>'
       + '<div class="copia">' + perChi + '</div></div>'
       + '<div class="titolo">RICEVUTA DI PRESA IN CARICO</div>'
-      + '<div class="proto">Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b> del ' + esc(p.data || '') + '</div>'
-      + '<table>'
-      + riga('Contribuente', p.nome) + riga('Nato/a il', p.cf) + riga('Codice fiscale', p.codiceFiscale)
-      + riga('Coniuge (congiunta)', p.congiunta ? p.congiunta + (p.congData ? ' – nato/a il ' + p.congData : '') : '')
-      + riga('Tipo di pratica', p.tipo)
-      + riga('Importo', Number(p.compenso) ? fmtEuro(p.compenso) : '') + riga('Pagato', Number(p.pagato) ? fmtEuro(p.pagato) + (p.metodoPagamento ? ' – ' + p.metodoPagamento : '') : '')
-      + riga('Recapito', [p.telefono, p.telefonoFisso].filter(Boolean).join(' / '))
-      + (p.documentoScadenza ? '<tr><th>Documento d\'identità</th><td>' + (statoScadenzaDocumento(p.documentoScadenza) && !statoScadenzaDocumento(p.documentoScadenza).valido ? '<b style="color:#c0392b">SCADUTO il ' + esc(p.documentoScadenza) + ' – portare il nuovo documento</b>' : 'valido fino al ' + esc(p.documentoScadenza)) + '</td></tr>' : '')
-      + riga('Note', p.note)
-      + '</table>'
-      + (doc.presentati.length ? '<div class="docs"><b>Documentazione presentata</b><ul>' + doc.presentati.map(function (n) { return '<li>☑ ' + esc(n) + '</li>'; }).join('') + '</ul></div>' : '')
-      + (doc.mancanti.length ? '<div class="docs mancanti"><b>Documentazione mancante – da portare</b><ul>' + doc.mancanti.map(function (n) { return '<li>☐ ' + esc(n) + '</li>'; }).join('') + '</ul></div>' : '')
-      + (caf.orari ? '<div class="orari">🕘 Orari di apertura: ' + esc(caf.orari) + '</div>' : '')
-      + '<div class="nota">Conservare la ricevuta e presentarla al ritiro della pratica. Verrà avvisato/a quando la pratica sarà pronta.</div>'
+      + '<div class="proto">Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b></div>'
+      + '<div class="attesta">Si attesta che in data <b>' + esc(p.data || todayIT()) + '</b> è stata consegnata e <b>presa in carico</b> la pratica protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b>'
+      + (p.nome ? ' di <b>' + esc(p.nome) + '</b>' + (p.congiunta ? ' e <b>' + esc(p.congiunta) + '</b>' : '') : '') + '.</div>'
+      + '<div class="nota">Conservare la ricevuta e presentarla al ritiro della pratica.</div>'
       + '<div class="firme"><div>L\'operatore<br><span>' + esc(p.inseritoDa || '') + '</span></div><div>Il contribuente</div></div>'
       + '</div>';
   };
@@ -112,9 +98,7 @@ function ricevutaHTML(p, perEmail) {
     + '.copia{margin-left:auto; font-size:10px; font-weight:700; color:#5b6b82; text-transform:uppercase; border:1px solid #cfd8e3; border-radius:999px; padding:3px 10px; white-space:nowrap}'
     + '.titolo{text-align:center; font-size:15px; font-weight:800; letter-spacing:.06em; margin:10px 0 2px}'
     + '.proto{text-align:center; font-size:13px; margin-bottom:8px}'
-    + 'table{width:100%; border-collapse:collapse}th,td{text-align:left; padding:4px 6px; border-bottom:1px solid #e3e8ef; vertical-align:top}th{width:34%; color:#5b6b82; font-weight:600}'
-    + '.docs{margin-top:8px; font-size:11.5px}.docs ul{margin:3px 0 0; padding:0; list-style:none; columns:2; column-gap:20px}.docs li{padding:1px 0}'
-    + '.docs.mancanti{border:1.5px solid #c0392b; border-radius:8px; padding:6px 10px}.docs.mancanti b{color:#c0392b}'
+    + '.attesta{font-size:13.5px; line-height:1.6; margin:12px 4px}'
     + '.orari{margin-top:8px; font-size:11px}.nota{margin-top:6px; font-size:11px; color:#445}'
     + '.firme{display:flex; justify-content:space-between; gap:30px; margin-top:26px}.firme div{flex:1; border-top:1px solid #0f1b2d; padding-top:4px; text-align:center; font-size:11px}.firme span{color:#5b6b82}'
     + '.taglio{border:none; border-top:1px dashed #8a8f98; margin:18px 0; position:relative}.taglio:after{content:"✂ taglia qui"; position:absolute; left:50%; top:-8px; transform:translateX(-50%); background:#fff; padding:0 8px; font-size:10px; color:#8a8f98}'
