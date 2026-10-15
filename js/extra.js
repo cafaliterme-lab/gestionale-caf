@@ -835,3 +835,49 @@ async function svuotaAnno() {
     preparaSvuotaAnno();
   }
 }
+
+/* ---------- 🛟 Promemoria mensile: controllo dei backup (solo amministratore) ----------
+   Una volta al mese compare un riquadro con la data dell'ultimo backup sul server e dell'ultima copia
+   nella cartella Dropbox di questo PC. Con "✓ Controllato" non ricompare fino al mese dopo (per tutti i PC). */
+function meseCorrenteBackup() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function giorniFa(iso) { const t = Date.parse(iso || ''); return t ? Math.floor((Date.now() - t) / 86400000) : null; }
+async function promemoriaControlloBackup() {
+  const id = 'promemoria-backup-mese';
+  if (typeof isAdmin !== 'function' || !isAdmin() || typeof IMPOSTAZIONI === 'undefined') return;
+  const mese = meseCorrenteBackup();
+  if ((IMPOSTAZIONI.controllo_backup_mese || '') === mese || document.getElementById(id)) return;
+  let rimandato = 0; try { rimandato = Number(localStorage.getItem('promemoria-backup-rimandato') || 0); } catch (e) {}
+  if (Date.now() - rimandato < 20 * 3600 * 1000) return;
+  let server = '';
+  try { const r = await fetchSupabase('/rest/v1/backup_automatici?select=creato_il&order=creato_il.desc&limit=1'); if (r && r.ok && r.data && r.data[0]) server = r.data[0].creato_il; } catch (e) {}
+  let cartella = ''; try { cartella = localStorage.getItem('backup-cartella-ultimo') || ''; } catch (e) {}
+  const riga = function (titolo, iso, limite) {
+    const g = giorniFa(iso);
+    const ok = g !== null && g <= limite;
+    return '<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-top:1px solid #f0d9b5"><span>' + titolo + '</span><b style="color:' + (ok ? '#1a7f37' : '#c0392b') + '">'
+      + (iso ? new Date(iso).toLocaleDateString('it-IT') + ' (' + (g === 0 ? 'oggi' : g + (g === 1 ? ' giorno fa' : ' giorni fa')) + ')' : 'mai su questo PC') + (ok ? ' ✓' : ' ⚠️') + '</b></div>';
+  };
+  const box = document.createElement('div');
+  box.id = id;
+  box.style.cssText = 'position:fixed; right:16px; bottom:16px; z-index:385; width:min(440px, calc(100vw - 24px)); background:#fff7e6; color:#5c3d00; border:2px solid #b35f0c; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); padding:12px 14px; font-size:13.5px';
+  box.innerHTML = '<div style="font-weight:800; font-size:15px; margin-bottom:4px">🛟 Controllo mensile dei backup</div>'
+    + '<div style="margin-bottom:6px">Una volta al mese controlla che le copie di sicurezza siano recenti:</div>'
+    + riga('Ultimo backup sul server', server, 8)
+    + riga('Ultima copia nella cartella Dropbox (questo PC)', cartella, 8)
+    + '<div style="font-size:12.5px; margin:8px 0">Apri anche la cartella <b>Dropbox › Backup CAF</b> e guarda che il file <b>salvataggi-' + new Date().getFullYear() + '.json</b> abbia una data recente. Se qualcosa è ⚠️, vai in <b>Utenti e permessi › 🛟 Backup automatici</b> e premi <b>💾 Crea un backup adesso</b>.</div>'
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap">'
+    + '<button type="button" data-az="dopo" style="background:none; border:1px solid #b35f0c; color:#b35f0c; border-radius:999px; padding:7px 12px; cursor:pointer">Domani</button>'
+    + '<button type="button" data-az="ok" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:8px 14px; font-weight:800; cursor:pointer">✓ Controllato</button></div>';
+  box.addEventListener('click', async function (e) {
+    const az = e.target.getAttribute && e.target.getAttribute('data-az');
+    if (az === 'dopo') { try { localStorage.setItem('promemoria-backup-rimandato', String(Date.now())); } catch (er) {} box.remove(); }
+    else if (az === 'ok') {
+      IMPOSTAZIONI.controllo_backup_mese = mese;
+      try { await supabase.from('impostazioni').upsert([{ chiave: 'controllo_backup_mese', valore: mese, aggiornato_il: new Date().toISOString() }], { onConflict: 'chiave' }); } catch (er) {}
+      box.remove(); avviso('✓ Backup controllati: il promemoria torna il mese prossimo');
+    }
+  });
+  document.body.appendChild(box);
+}
+setTimeout(promemoriaControlloBackup, 12000);
+setInterval(function () { if (!document.hidden) promemoriaControlloBackup(); }, 60 * 60 * 1000);
