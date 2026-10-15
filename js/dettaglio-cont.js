@@ -232,9 +232,26 @@ function stampaDettaglioCont(titolo, html) {
   w.document.close();
 }
 
-// Clic su un riquadro della Contabilità
+// Clic su un riquadro della Contabilità.
+// Sui telefoni (soprattutto iPhone) il "clic" su un riquadro che non è un pulsante a volte non arriva:
+// il riquadro si apre anche al semplice tocco (se il dito non ha fatto scorrere la pagina).
+let DETT_TOCCO = null, DETT_TOCCO_IL = 0;
+function apriDettaglioDaRiquadro(t) { apriDettaglioCont(t.dataset.dett, t.dataset.gruppo || ''); }
+document.addEventListener('touchstart', function (e) {
+  const t = e.target.closest && e.target.closest('#summary [data-dett]');
+  DETT_TOCCO = t && e.touches.length === 1 ? { t: t, x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+}, { passive: true });
+document.addEventListener('touchend', function (e) {
+  const d = DETT_TOCCO; DETT_TOCCO = null;
+  if (!d || !e.changedTouches.length) return;
+  const c = e.changedTouches[0];
+  if (Math.abs(c.clientX - d.x) > 10 || Math.abs(c.clientY - d.y) > 10) return; // ha fatto scorrere la pagina
+  e.preventDefault(); // niente clic doppio
+  DETT_TOCCO_IL = Date.now();
+  apriDettaglioDaRiquadro(d.t);
+});
 document.addEventListener('click', function (e) {
   const t = e.target.closest('#summary [data-dett]');
-  if (!t) return;
-  apriDettaglioCont(t.dataset.dett, t.dataset.gruppo || '');
+  if (!t || Date.now() - DETT_TOCCO_IL < 600) return; // già aperto dal tocco
+  apriDettaglioDaRiquadro(t);
 });
