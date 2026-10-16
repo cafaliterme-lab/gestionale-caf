@@ -65,7 +65,7 @@ function tabellaMorosiHTML(lista, sola) {
   return '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>N.</th><th>Data</th><th>Cliente</th><th>Tipo</th><th>Stato</th><th>Fattura</th><th>Pagato</th><th>Da pagare</th><th></th></tr></thead><tbody>'
     + lista.map(function (p) {
       return '<tr><td class="n">' + formattaProtocollo(p) + '</td><td>' + esc(p.data || '-') + '</td>'
-        + '<td class="wrap"><b>' + esc((p.nome || '-').toUpperCase()) + '</b>' + (p.telefono ? '<div class="sub2">📱 ' + esc(p.telefono) + '</div>' : '') + '</td>'
+        + '<td class="wrap"><b>' + esc((p.nome || '-').toUpperCase()) + '</b>' + (p.telefono ? '<div class="sub2">📱 ' + esc(p.telefono) + '</div>' : '') + (p.note ? '<div class="sub2" style="white-space:normal">📝 ' + esc(p.note) + '</div>' : '') + '</td>'
         + '<td class="wrap">' + esc(p.tipo || '-') + '</td><td>' + pallino(p.stato) + esc(statoLabel(p.stato)) + '</td>'
         + '<td>' + fmtEuro(p.compenso) + '</td><td>' + fmtEuro(p.pagato) + '</td><td><b style="color:#c0392b">' + fmtEuro(residuoPratica(p)) + '</b></td>'
         + '<td style="white-space:nowrap">' + (sola ? '' : '<button type="button" onclick="incassaMoroso(\'' + p.id + '\')" style="background:#2f9e5f; color:#fff; border:none; border-radius:6px; padding:5px 10px; font-weight:800; cursor:pointer">✓ Pagato</button> ')

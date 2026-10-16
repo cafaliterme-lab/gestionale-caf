@@ -2888,6 +2888,7 @@ function consegnaPratica(id){
     + '<div><label>Importo pagato (€) <b style="color:#c0392b">*</b></label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
     + '<div><label>Pagamento</label><select id="cs-met">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div>'
     + '<div><label>' + (e730(p) ? 'Data di consegna' : 'Data') + ' <b style="color:#c0392b">*</b></label><input id="cs-data" value="' + todayIT() + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div></div>'
+    + '<div style="margin-top:8px"><label>📝 Note</label><textarea id="cs-note" rows="2" placeholder="Facoltative: es. paga la prossima settimana, ritirata dal figlio…" style="width:100%; resize:vertical">' + esc(p.note || '') + '</textarea></div>'
     + (p.iscrittoCisl && typeof selectPrezziCisl === 'function' ? selectPrezziCisl('cs-ric', 'cs-fatt') : '')
     + '<div style="margin-top:8px; padding:7px 10px; border-radius:8px; background:#e8f6ee; color:#1a7f37; font-size:12.5px">✓ Controlla gli importi: confermando la consegna, <b>fattura e incasso entrano in contabilità</b>.</div>'
     + '<div id="cs-resto" style="font-size:13.5px; font-weight:800; margin-top:6px"></div>'
@@ -2913,6 +2914,9 @@ function consegnaPratica(id){
       if(vuoto('cs-ric')) return segnaC('cs-ric', 'Scrivi l\'importo richiesto (obbligatorio; 0 se gratuita).');
     }
     const campi = { consegnataIl: dataC, consegnataDa: ((auth.profilo && auth.profilo.nome) || '').toUpperCase() };
+    // note scritte nella finestra di consegna (sostituiscono quelle della pratica)
+    const noteCs = (document.getElementById('cs-note') || {}).value;
+    if(noteCs != null && noteCs.trim() !== String(p.note || '').trim()) campi.note = noteCs.trim().slice(0, 1000);
     // fattura e richiesto si confermano (o correggono) alla consegna
     const fa = parseImporto(document.getElementById('cs-fatt').value), ri = parseImporto(document.getElementById('cs-ric').value);
     if(fa > 0 && fa !== Number(p.compenso || 0)) campi.compenso = fa;
@@ -2930,7 +2934,7 @@ function consegnaPratica(id){
       const manca = Math.round((dovuto - v) * 100) / 100;
       if(manca > 0.004 && confirm('Ha pagato ' + fmtEuro(v) + ' su ' + fmtEuro(dovuto) + ': deve ancora ' + fmtEuro(manca) + '.\n\nOK = la pratica resta tra i morosi («Da pagare») con la nota «Deve ancora ' + fmtEuro(manca) + '»\nAnnulla = considero saldato così')){
         if(!colf) campi.stato = statoVisibile('da_pagare', p.tipo) ? 'da_pagare' : 'non_paga';
-        campi.note = ((p.note ? p.note + ' · ' : '') + 'Deve ancora ' + fmtEuro(manca) + ' (pagati ' + fmtEuro(v) + ' su ' + fmtEuro(dovuto) + ' alla consegna del ' + dataC + ')').slice(0, 1000);
+        campi.note = (((campi.note != null ? campi.note : p.note) ? (campi.note != null ? campi.note : p.note) + ' · ' : '') + 'Deve ancora ' + fmtEuro(manca) + ' (pagati ' + fmtEuro(v) + ' su ' + fmtEuro(dovuto) + ' alla consegna del ' + dataC + ')').slice(0, 1000);
       } else if(manca > 0.004){ campi.richiesto = v; }
     } else if(!colf){
       campi.stato = (b.dataset.stato && STATI[b.dataset.stato]) ? b.dataset.stato : 'non_paga';
