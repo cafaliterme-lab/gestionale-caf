@@ -22,10 +22,10 @@ function etichettaCisl(x) {
   return [x.tipologia, fasciaCisl(x), x.applica && x.applica !== 'tutte' ? x.applica : ''].filter(Boolean).join(' · ') + ' → ' + fmtEuro(x.importo);
 }
 // Scelta rapida del prezzo (compila il campo idCampo)
-function selectPrezziCisl(idCampo) {
+function selectPrezziCisl(idCampo, idFattura) {
   const l = prezziCisl();
   if (!l.length) return '<div style="font-size:11.5px; color:var(--sub)">Prezzario iscritti CISL vuoto: l\'amministratore lo compila in Utenti e permessi.</div>';
-  return '<select style="width:100%; padding:6px 8px; margin-top:4px; border:2px solid #1d4f91" onchange="if(this.value!==\'\'){ var c=document.getElementById(\'' + idCampo + '\'); c.value = importoInCampo(this.value); c.dispatchEvent(new Event(\'input\')); this.value=\'\'; }">'
+  return '<select style="width:100%; padding:6px 8px; margin-top:4px; border:2px solid #1d4f91" onchange="if(this.value!==\'\'){ [\'' + idCampo + '\', \'' + (idFattura || '') + '\'].forEach(function(id){ var c = id && document.getElementById(id); if(c){ c.value = importoInCampo(this.value); c.dispatchEvent(new Event(\'input\')); } }, this); this.value=\'\'; }">'
     + '<option value="">👤 Prezzario iscritti CISL – scegli…</option>'
     + l.map(function (x) { return '<option value="' + Number(x.importo) + '">' + esc(etichettaCisl(x)) + '</option>'; }).join('') + '</select>';
 }
