@@ -2733,7 +2733,7 @@ function bottoneConsegna(p){
   if(!p || p.annullata) return '';
   if(!puoConsegnare(p)) return '';
   const w = parolaConsegna(p);
-  if(eConsegnata(p)) return '<button type="button" title="' + w.fatta + ' il ' + esc(p.consegnataIl) + (p.consegnataDa ? ' da ' + esc(p.consegnataDa) : '') + ' – tocca per riaprire la pratica (solo amministratore)" onclick="annullaConsegna(\'' + p.id + '\')" style="background:#e8f6ee; color:#1a7f37; border:1px solid #1a7f37; border-radius:6px; padding:4px 8px; font-size:11.5px; font-weight:700; cursor:pointer">' + w.icona + ' ' + esc(p.consegnataIl) + '</button>';
+  if(eConsegnata(p)) return '<button type="button" title="' + w.fatta + ' il ' + esc(p.consegnataIl) + (p.consegnataDa ? ' da ' + esc(p.consegnataDa) : '') + ' – tocca per riaprire la pratica (solo amministratore)" onclick="annullaConsegna(\'' + p.id + '\')" style="background:#e8f6ee; color:#1a7f37; border:1px solid #1a7f37; border-radius:6px; padding:4px 8px; font-size:11.5px; font-weight:700; cursor:pointer">' + w.icona + ' ' + esc(p.consegnataIl) + (auth.profilo && auth.profilo.ruolo === 'admin' ? ' · ↩️' : '') + '</button>';
   return '<button type="button" title="Segna la pratica come ' + w.fatta_m + '" onclick="consegnaPratica(\'' + p.id + '\')" style="background:#8d5a3b; color:#fff; border:none; border-radius:6px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer">' + w.icona + ' ' + w.fai + '</button>';
 }
 /* ---------- ▶ Avanti: la pratica passa al passo successivo con un clic ----------
@@ -2947,26 +2947,31 @@ function annullaConsegna(id){
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #1d4f91; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:480px; width:100%">'
     + '<div style="font-size:19px; font-weight:800; color:#1d4f91">↩️ Riapri la pratica</div>'
     + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + w.fatta + ' il ' + esc(p.consegnataIl || '') + ' · stato ' + esc(statoLabel(p.stato)) + '</div>'
-    + '<div style="font-size:13.5px; margin-bottom:8px">La pratica torna nel registro di lavoro (tolta la spunta «' + w.fatta + '»).</div>'
+    + '<div style="font-size:13.5px; margin-bottom:8px">La pratica torna nel registro di lavoro (tolta la spunta «' + w.fatta + '»)' + (eColf(p.tipo) ? '' : ' e la sua <b>fattura esce dalla contabilità</b> (resta «in attesa di consegna» finché non la riconsegni)') + '.</div>'
     + '<label>Nuovo stato</label><select id="rp-stato">' + statoOptions(statoDef, p.tipo) + '</select>'
     + (pag > 0 ? '<label class="chk" style="display:flex; gap:8px; align-items:flex-start; margin-top:10px"><input type="checkbox" id="rp-pagato" style="width:auto; margin-top:3px"> <span>Togli anche il pagato di <b>' + fmtEuro(pag) + '</b> (esce dalla contabilità). Se non lo spunti, il pagato resta.</span></label>' : '')
-    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:14px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
+    + (String(p.numFattura||'').trim() || Number(p.compenso||0) ? '<label class="chk" style="display:flex; gap:8px; align-items:flex-start; margin-top:10px"><input type="checkbox" id="rp-fattura" style="width:auto; margin-top:3px"> <span>Togli anche la <b>fattura' + (p.numFattura ? ' n. ' + esc(p.numFattura) : '') + (Number(p.compenso||0) ? ' (' + fmtEuro(p.compenso) + ')' : '') + '</b> per rifarla diversa: numero, data e importo si riscrivono a «Segna come lavorata» o alla consegna. <span style="color:#b35f0c">Se era già stata emessa, ricordati della nota di credito.</span></span></label>' : '')
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:14px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
+    + '<button type="button" data-az="annulla" style="background:#fdecea; color:#c0392b; border:1px solid #c0392b">🚫 Annulla la pratica</button>'
     + '<button type="button" data-az="si" style="background:#1d4f91; color:#fff; font-weight:800">↩️ Riapri</button></div></div>';
   document.body.appendChild(ov);
   ov.addEventListener('click', async function(e){
     const b = e.target.closest('button[data-az]');
     if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); return; }
     if(!b) return;
+    if(b.dataset.az === 'annulla'){ ov.remove(); annullaPratica(p.id); return; }
     const stato = document.getElementById('rp-stato').value;
     const campi = { consegnataIl: '', consegnataDa: '', stato: stato };
     const tp = document.getElementById('rp-pagato');
     if(tp && tp.checked) campi.pagato = '';
+    const tf = document.getElementById('rp-fattura');
+    if(tf && tf.checked){ campi.numFattura = ''; campi.dataFattura = ''; campi.compenso = ''; campi.fatt = 'dafatturare'; }
     if(!eColf(p.tipo)){ if(STATI_IN_LAVORAZIONE.indexOf(stato) >= 0) campi.dataFine = ''; else if(stato === 'lavorata' && !p.dataFine) campi.dataFine = todayIT(); }
     b.disabled = true;
     const r = await data.pratiche.aggiorna(p.id, campi);
     if(r && r.error){ b.disabled = false; avviso('❌ ' + r.error, true); return; }
     ov.remove();
-    avviso('↩️ ' + formattaProtocollo(p) + ' riaperta · ' + statoLabel(stato) + (campi.pagato === '' ? ' · pagato tolto' : ''));
+    avviso('↩️ ' + formattaProtocollo(p) + ' riaperta · ' + statoLabel(stato) + (campi.pagato === '' ? ' · pagato tolto' : '') + (campi.numFattura === '' ? ' · fattura tolta, da rifare' : ''));
     render();
   });
 }
