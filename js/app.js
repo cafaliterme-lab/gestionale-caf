@@ -712,6 +712,7 @@ function applicaPermessi(){
   if(ns) ns.style.display = (isAdmin || tabs.registro || tabs.anagrafica) ? '' : 'none';
 
   document.body.classList.toggle('sola-lettura', !isAdmin && u.sola_lettura);
+  if(typeof mostraStatoSync === 'function') setTimeout(mostraStatoSync, 0);
 
   const attivo = document.querySelector('.navmenu button.active');
   if(!attivo || attivo.style.display === 'none'){
@@ -1269,25 +1270,66 @@ let ULTIMA_FIRMA_SERVER = '';
 function firmaDati(){
   return JSON.stringify([state.pratiche, state.versamenti, state.isee, state.clienti, state.collaboratori, state.scadenze, state.speseSede, state.acconti], function(k, v){ return k.charAt(0) === '_' ? undefined : v; });
 }
+// Campi di ricerca e filtro: scriverci non deve fermare la sincronizzazione
+function eCampoRicerca(el){
+  if(!el) return false;
+  if(el.type === 'search') return true;
+  return ['cerca','filtro-contribuente','filtro-stato','anno-attivo','storico-cerca','rf-testo','rf-da','rf-a','rf-rif','rf-pag'].indexOf(el.id) >= 0 || !!(el.closest && el.closest('#morosi-box summary, .navmenu'));
+}
+// Si sta scrivendo in un campo che il ridisegno cancellerebbe (schede in modifica, finestre aperte)
 function staModificando(){
   const a = document.activeElement;
-  if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'checkbox' && a.type !== 'button') return true;
+  if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'checkbox' && a.type !== 'button' && !eCampoRicerca(a)) return true;
   if(document.querySelector('.scanner-overlay.open, #invio-multiplo, #finestra-stampa, #editor-documenti, .conferma-scritta, #popup-nuovo-contribuente, #popup-dettaglio-contab')) return true;
-  return [state.pratiche, state.versamenti, state.isee].some(function(l){ return (l||[]).some(function(x){ return x._editing || x._confirmDelete || x._editingFattura; }); });
+  return false;
 }
-async function aggiornaDaServer(){
-  if(AGGIORNAMENTO_IN_CORSO || document.hidden || !auth.profilo || !localStorage.getItem('auth_token') || staModificando()) return;
+// Le schede aperte in modifica restano aperte dopo l'aggiornamento, con quello che si stava scrivendo
+function salvaStatoSchede(){
+  const flag = {};
+  [state.pratiche, state.annullate, state.versamenti, state.isee].forEach(function(l){ (l||[]).forEach(function(x){ if(x._editing || x._confirmDelete || x._editingFattura) flag[x.id] = { _editing: x._editing, _confirmDelete: x._confirmDelete, _editingFattura: x._editingFattura, _apertaIl: x._apertaIl }; }); });
+  const campi = {};
+  document.querySelectorAll('#tab-registro .item input[id], #tab-registro .item select[id], #tab-registro .item textarea[id], #tab-caf input[id], #tab-caf select[id]').forEach(function(el){ campi[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? { c: el.checked } : { v: el.value }; });
+  return { flag: flag, campi: campi };
+}
+function ripristinaFlagSchede(st){
+  [state.pratiche, state.annullate, state.versamenti, state.isee].forEach(function(l){ (l||[]).forEach(function(x){ const f = st.flag[x.id]; if(f) Object.assign(x, f); }); });
+}
+function ripristinaCampiSchede(st){
+  Object.keys(st.campi).forEach(function(id){ const el = document.getElementById(id); const c = st.campi[id]; if(!el) return; if('c' in c) el.checked = c.c; else if(el.value !== c.v) el.value = c.v; });
+}
+// Stato della sincronizzazione mostrato in alto (🟢 aggiornato / ⏸ in pausa / 🔴 non collegato)
+let SYNC_ULTIMO_OK = 0, SYNC_ERRORE = false, DA_RIDISEGNARE = false, IMPOSTAZIONI_DA_RICARICARE = false;
+function mostraStatoSync(){
+  let el = document.getElementById('stato-sync');
+  const bar = document.getElementById('userbar');
+  if(!bar || !auth.profilo) return;
+  if(!el || !bar.contains(el)){ el = document.createElement('span'); el.id = 'stato-sync'; el.style.cssText = 'font-size:12px; font-weight:700; padding:3px 10px; border-radius:999px; cursor:pointer'; el.title = 'Tocca per aggiornare adesso'; el.onclick = function(){ ULTIMA_FIRMA_SERVER = null; aggiornaDaServer(true); }; bar.insertBefore(el, bar.firstChild ? bar.firstChild.nextSibling : null); }
+  const ora = SYNC_ULTIMO_OK ? new Date(SYNC_ULTIMO_OK).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '';
+  if(SYNC_ERRORE || !navigator.onLine){ el.textContent = '🔴 Non collegato: riprovo da solo'; el.style.background = '#fdecea'; el.style.color = '#c0392b'; }
+  else if(DA_RIDISEGNARE){ el.textContent = '⏸ Dati nuovi: si aggiornano appena finisci di scrivere'; el.style.background = '#fff4e5'; el.style.color = '#b35f0c'; }
+  else { el.textContent = '🟢 Sincronizzato' + (ora ? ' alle ' + ora : ''); el.style.background = '#e8f6ee'; el.style.color = '#1a7f37'; }
+}
+async function aggiornaDaServer(forza){
+  if(AGGIORNAMENTO_IN_CORSO || (document.hidden && !forza) || !auth.profilo || !localStorage.getItem('auth_token')) return;
+  // dati già arrivati ma non ancora mostrati perché si stava scrivendo
+  if((DA_RIDISEGNARE || IMPOSTAZIONI_DA_RICARICARE) && !staModificando() && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#tab-messaggi, #tab-permessi'))){
+    const st = salvaStatoSchede();
+    if(IMPOSTAZIONI_DA_RICARICARE){ IMPOSTAZIONI_DA_RICARICARE = false; try{ await caricaImpostazioni(); }catch(e){} }
+    DA_RIDISEGNARE = false; onDatiAggiornati(); ripristinaCampiSchede(st); mostraStatoSync();
+  }
   AGGIORNAMENTO_IN_CORSO = true;
   try{
     // Prima si chiede al server solo una "impronta" dei dati (pochi byte): si ricarica tutto solo se e' cambiata
     const { data: firma, error } = await supabase.rpc('firma_dati', {});
-    if(!error && firma){
-      if(firma === ULTIMA_FIRMA_SERVER) return;
-      ULTIMA_FIRMA_SERVER = firma;
-    }
+    if(error) throw error;
+    SYNC_ERRORE = false; SYNC_ULTIMO_OK = Date.now();
+    if(firma && firma === ULTIMA_FIRMA_SERVER) return;
+    // quello che si sta scrivendo nelle schede aperte (il ridisegno lo rimette al suo posto)
+    const st = salvaStatoSchede();
     // impostazioni (dati CAF, telefoni CUD, importi convenzioni) e modulistica cambiate da un altro utente
-    const inModifica = document.activeElement && document.activeElement.closest && document.activeElement.closest('#tab-messaggi, #tab-permessi');
-    if(!inModifica) await caricaImpostazioni();
+    const inModifica = staModificando() || (document.activeElement && document.activeElement.closest && document.activeElement.closest('#tab-messaggi, #tab-permessi'));
+    if(!inModifica){ await caricaImpostazioni(); ripristinaCampiSchede(st); IMPOSTAZIONI_DA_RICARICARE = false; }
+    else IMPOSTAZIONI_DA_RICARICARE = true;
     if(typeof MODULI_CARICATI !== 'undefined'){
       MODULI_CARICATI = false;
       const sm = document.getElementById('tab-modulistica');
@@ -1295,12 +1337,23 @@ async function aggiornaDaServer(){
     }
     const prima = firmaDati();
     const ok = await data.caricaTutto({ silenzioso: true });
-    if(ok && firmaDati() !== prima && !staModificando()) onDatiAggiornati();
-  }catch(e){ console.error('aggiornamento automatico', e); }
-  finally{ AGGIORNAMENTO_IN_CORSO = false; }
+    if(!ok) throw new Error('caricamento non riuscito');
+    ripristinaFlagSchede(st);
+    ULTIMA_FIRMA_SERVER = firma || null;
+    if(firmaDati() !== prima){
+      if(staModificando()) DA_RIDISEGNARE = true;
+      else { DA_RIDISEGNARE = false; onDatiAggiornati(); ripristinaCampiSchede(st); }
+    }
+  }catch(e){ SYNC_ERRORE = true; console.error('aggiornamento automatico', e); }
+  finally{ AGGIORNAMENTO_IN_CORSO = false; mostraStatoSync(); }
 }
+
 setInterval(aggiornaDaServer, 15000);
 window.addEventListener('focus', aggiornaDaServer);
+// finito di scrivere: se nel frattempo sono arrivati dati nuovi si mostrano subito
+document.addEventListener('focusout', function(){ setTimeout(function(){ if((DA_RIDISEGNARE || IMPOSTAZIONI_DA_RICARICARE) && !staModificando()) aggiornaDaServer(true); }, 400); });
+window.addEventListener('online', function(){ SYNC_ERRORE = false; aggiornaDaServer(true); });
+window.addEventListener('offline', mostraStatoSync);
 document.addEventListener('visibilitychange', function(){ if(!document.hidden) aggiornaDaServer(); });
 
 function syncDataFromSupabase(){
@@ -2903,7 +2956,7 @@ function apriPraticaDaTabella(id){
   aperti[k + '|schede'] = true;
   SCHEDA_SOLA[k] = id;
   if(eConsegnata(p)) MOSTRA_CONSEGNATE = true;
-  p._editing = true;
+  p._editing = true; p._apertaIl = p.aggiornatoIl || '';
   render();
   proponiInLavorazione(p);
   setTimeout(function(){
@@ -2913,7 +2966,7 @@ function apriPraticaDaTabella(id){
 }
 function modifica(id){
   const p = state.pratiche.find(x=>x.id===id);
-  if(p){ p._editing = true; render(); proponiInLavorazione(p); }
+  if(p){ p._editing = true; p._apertaIl = p.aggiornatoIl || ''; render(); proponiInLavorazione(p); }
 }
 // Aprendo una pratica "In arrivo" o "Scansionata" (con tutti i documenti) si propone "In lavorazione"
 function proponiInLavorazione(p){
@@ -2930,6 +2983,12 @@ function annullaModifica(id){
 async function salvaModifica(id){
   const p = state.pratiche.find(x=>x.id===id);
   if(!p) return;
+  // un altro utente ha salvato questa pratica mentre era aperta qui
+  const io = ((auth.profilo && auth.profilo.nome) || '').toUpperCase();
+  if(p._apertaIl && p.aggiornatoIl && p.aggiornatoIl !== p._apertaIl && String(p.modificatoDa || '').toUpperCase() !== io){
+    const chi = p.modificatoDa || 'un altro utente', quando = new Date(p.aggiornatoIl);
+    if(!confirm('⚠️ Mentre avevi aperta questa pratica l\'ha modificata ' + chi + (isNaN(quando) ? '' : ' alle ' + quando.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' })) + '.\n\nSe salvi, i dati che vedi nella scheda sostituiscono i suoi.\n\nOK = salvo lo stesso\nAnnulla = non salvo (chiudi la modifica e riaprila per vedere i dati aggiornati)')) return;
+  }
   const g = k => document.getElementById(k+'-'+id).value;
   var cc = g('e-congcognome').trim().toUpperCase();
   var cn = g('e-congnome').trim().toUpperCase();
