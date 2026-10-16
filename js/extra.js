@@ -120,7 +120,7 @@ const ETICHETTE_CAMPI = {
   compenso: 'Fattura', pagato: 'Pagato', metodo_pagamento: 'Tipo di pagamento', annullata: 'Annullata', annullata_motivo: 'Motivo annullamento', data: 'Data apertura', data_fine: 'Fine lavorazione', note: 'Note',
   num_fattura: 'N. fattura', data_fattura: 'Data fattura', fatt: 'Fatturazione', cf: 'Data di nascita', codice_fiscale: 'Codice fiscale',
   congiunta: 'Congiunta', cong_cognome: 'Cognome coniuge', cong_nome: 'Nome coniuge', cong_data: 'Nascita coniuge',
-  cong_codice_fiscale: 'CF coniuge', recuperi: 'Pagamenti arretrati (morosi)', cong_telefono: 'Cellulare coniuge', scadenza_assistenza: 'Scadenza assistenza',
+  cong_codice_fiscale: 'CF coniuge', iscritto_cisl: 'Iscritto CISL', via_email: 'Pervenuta via e-mail', recuperi: 'Pagamenti arretrati (morosi)', cong_telefono: 'Cellulare coniuge', scadenza_assistenza: 'Scadenza assistenza',
   whatsapp_inviato: 'Avviso WhatsApp', inserito_da: 'Inserito da', numero: 'Numero', anno: 'Anno',
 };
 function valoreStorico(campo, v) {
@@ -446,6 +446,7 @@ async function disegnaStatoCartella() {
 function renderBackupEStorico() {
   if (typeof isAdmin === 'function' && !isAdmin()) return;
   renderEditorImportiFPS();
+  if (typeof renderEditorCisl === 'function') renderEditorCisl();
   renderBackup();
   renderStoricoGlobale();
   preparaSvuotaAnno();

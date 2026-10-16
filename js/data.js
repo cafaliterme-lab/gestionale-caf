@@ -133,6 +133,7 @@ const schemas = {
     recuperi: 'recuperi',
     notaCredito: 'nota_credito',
     viaEmail: 'via_email',
+    iscrittoCisl: 'iscritto_cisl',
     notaCreditoData: 'nota_credito_data',
     consegnataIl: 'consegnata_il',
     consegnataDa: 'consegnata_da',
