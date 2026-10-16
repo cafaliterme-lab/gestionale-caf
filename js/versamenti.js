@@ -582,9 +582,14 @@ const BOLL = {
   casella: { larg: 31, alt: 38 }
 };
 
-function stampaBollettino(id) {
+function stampaBollettino(id, parti) {
   const v = cercaVersamento(id);
   if (!v) return;
+  // bollettino a 2 parti (attestazione + ricevuta di accredito, quello in uso) o a 3 parti
+  if (parti !== 2 && parti !== 3) { let sv = null; try { sv = localStorage.getItem('bollettino_parti'); } catch (e) {} parti = sv === '3' ? 3 : 2; }
+  try { localStorage.setItem('bollettino_parti', String(parti)); } catch (e) {}
+  const due = parti === 2, TAGLIO = BOLL.spostamentoParte2;
+  const largB = due ? BOLL.larg - TAGLIO : BOLL.larg;
   const d = datiVersamento();
   if (!d.cc && !confirm('Non è stato impostato il numero di conto corrente postale (⚙️ Dati per il modulo e il bollettino, in fondo ai versamenti). Stampo lo stesso con lo spazio vuoto?')) return;
   const versato = v.versato != null && v.versato !== '' ? Number(v.versato) : Number(v.importo || 0) - Number(v.pos || 0) - Number(v.cassa || 0) - Number(v.bonifico || 0);
@@ -641,7 +646,7 @@ function stampaBollettino(id) {
   };
 
   const s = BOLL.sinistra;
-  [0, BOLL.spostamentoParte2].forEach(function (dx) {
+  (due ? [0] : [0, BOLL.spostamentoParte2]).forEach(function (dx) {
     caselle({ x: s.cc.x + dx, y: s.cc.y, n: s.cc.n, passo: s.cc.passo }, dati.cc, true);
     caselle({ x: s.euro.x + dx, y: s.euro.y, n: 8, passo: s.euro.passo }, intero, true);
     caselle({ x: s.euro.x + dx + 8 * s.euro.passo, y: s.euro.y, n: 2, passo: s.euro.passo }, decimali);
@@ -653,7 +658,9 @@ function stampaBollettino(id) {
     riga(s.cap, dati.cap, dx);
     riga(s.localita, dati.localita, dx);
   });
-  const r3 = BOLL.destra;
+  // nella versione a 2 parti la ricevuta di accredito è subito dopo la prima parte
+  const sposta = function (o) { if (Array.isArray(o)) return o.map(sposta); const c = Object.assign({}, o); if (due) { c.x -= TAGLIO; if (c.x2 != null) c.x2 -= TAGLIO; } return c; };
+  const r3 = {}; Object.keys(BOLL.destra).forEach(function (k) { r3[k] = sposta(BOLL.destra[k]); });
   caselle(r3.cc, dati.cc, true);
   caselle({ x: r3.euro.x, y: r3.euro.y, n: 8, passo: r3.euro.passo }, intero, true);
   caselle({ x: r3.euro.x + 8 * r3.euro.passo, y: r3.euro.y, n: 2, passo: r3.euro.passo }, decimali);
@@ -665,9 +672,9 @@ function stampaBollettino(id) {
   caselle(r3.cap, dati.cap);
   caselleSuRighe([r3.localita], dati.localita);
 
-  const sfondo = new URL('modelli/bollettino-td123.jpg', location.href).href;
-  const W = mm(BOLL.larg), H = mm(BOLL.alt);
-  const scalaA4 = (287 / (BOLL.larg * 25.4 / 200)).toFixed(4);
+  const sfondo = new URL(due ? 'modelli/bollettino-td123-2parti.jpg' : 'modelli/bollettino-td123.jpg', location.href).href;
+  const W = mm(largB), H = mm(BOLL.alt);
+  const scalaA4 = Math.min(1, 287 / (largB * 25.4 / 200)).toFixed(4);
   const w = window.open('', '_blank');
   if (!w) { alert('Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito.'); return; }
   w.document.open();
@@ -697,9 +704,10 @@ function stampaBollettino(id) {
     + '<label><input type="radio" name="modo" value="a4" checked onchange="modo(this.value)"> Su foglio bianco A4 (con il disegno del bollettino)</label>'
     + '<label><input type="radio" name="modo" value="vero" onchange="modo(this.value)"> Solo i dati, sul bollettino di carta</label>'
     + '<span id="regola" style="display:none; gap:12px"><label>Sposta → <input type="number" id="dx" step="0.5" value="0" oninput="sposta()"> mm</label><label>↓ <input type="number" id="dy" step="0.5" value="0" oninput="sposta()"> mm</label></span>'
+    + '<span style="display:flex; gap:6px; align-items:center"><b>Bollettino:</b><button' + (due ? ' class="princ"' : '') + ' onclick="if(window.opener){window.opener.stampaBollettino(\'' + v.id + '\', 2); window.close();}">2 parti</button><button' + (due ? '' : ' class="princ"') + ' onclick="if(window.opener){window.opener.stampaBollettino(\'' + v.id + '\', 3); window.close();}">3 parti</button></span>'
     + '<button onclick="window.close()">Chiudi</button>'
-    + '<p class="nota" id="nota-a4">Il bollettino è leggermente rimpicciolito per entrare nel foglio A4.</p>'
-    + '<p class="nota" id="nota-vero" style="display:none">Metti il bollettino in bianco nel cassetto manuale della stampante e scegli il formato carta 333 × 102 mm (personalizzato), scala 100%. Se la scritta esce spostata, correggi con "Sposta" e riprova su un foglio di prova.</p>'
+    + '<p class="nota" id="nota-a4">' + (Number(scalaA4) < 1 ? 'Il bollettino è leggermente rimpicciolito per entrare nel foglio A4.' : 'Il bollettino è stampato a grandezza reale sul foglio A4.') + '</p>'
+    + '<p class="nota" id="nota-vero" style="display:none">Metti il bollettino in bianco nel cassetto manuale della stampante e scegli il formato carta ' + Math.round(largB * 25.4 / 200) + ' × 102 mm (personalizzato), scala 100%. Se la scritta esce spostata, correggi con "Sposta" e riprova su un foglio di prova.</p>'
     + '</div>'
     + '<div class="area"><div class="contenitore"><div class="boll">' + pezzi.join('') + '</div></div></div>'
     + '<script>'
