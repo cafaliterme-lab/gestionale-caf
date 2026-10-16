@@ -176,7 +176,7 @@ async function renderStoricoGlobale() {
 
 /* ---------------- Backup automatici ---------------- */
 
-const NOMI_BACKUP = { fine_anno: '🎆 Fine anno (31/12, conservato per sempre)', settimanale: '🗓️ Settimanale', manuale: '💾 Manuale', prima_di_svuotare: '🛡️ Prima di svuotare il registro', prima_di_importare: '🛡️ Prima di importare un backup' };
+const NOMI_BACKUP = { giornaliero: '🌙 Giornaliero (ogni notte, ultimi 14 giorni)', fine_anno: '🎆 Fine anno (31/12, conservato per sempre)', settimanale: '🗓️ Settimanale', manuale: '💾 Manuale', prima_di_svuotare: '🛡️ Prima di svuotare il registro', prima_di_importare: '🛡️ Prima di importare un backup' };
 async function renderBackup() {
   const box = document.getElementById('backup-lista');
   if (!box) return;
@@ -187,7 +187,7 @@ async function renderBackup() {
   const bottoniAnno = Object.keys(perAnno).sort().reverse().map(function (anno) {
     return '<button type="button" style="background:#1d4f91; color:#fff; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-size:13px; font-weight:700" onclick="scaricaSalvataggiAnno(' + Number(perAnno[anno].id) + ', ' + Number(anno) + ')" title="Ultimo backup del ' + anno + ' (' + esc(quandoStorico(perAnno[anno].creato_il)) + ')">⬇️ ' + nomeFileAnno(anno) + '</button>';
   }).join(' ');
-  box.innerHTML = (bottoniAnno ? '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px"><span style="font-size:12.5px; font-weight:700">📦 Salvataggi per anno:</span>' + bottoniAnno + '</div>' : '') + (data.length ? data.map(function (b) {
+  box.innerHTML = (bottoniAnno ? '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px"><span style="font-size:12.5px; font-weight:700">📦 Ultimo backup completo di ogni anno (tutti gli anni dentro):</span>' + bottoniAnno + '</div>' : '') + (data.length ? data.map(function (b) {
     return '<div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; flex-wrap:wrap">'
       + '<span style="flex:1; min-width:200px"><b>' + esc(quandoStorico(b.creato_il)) + '</b> · ' + esc(NOMI_BACKUP[b.tipo] || b.tipo) + ' <span style="color:var(--sub)">(' + (b.n_pratiche || 0) + ' pratiche' + (b.creato_da ? ', ' + esc(b.creato_da) : '') + ')</span></span>'
       + '<button type="button" style="background:var(--line); color:var(--ink); border:none; border-radius:8px; padding:5px 12px; cursor:pointer" onclick="scaricaBackup(' + Number(b.id) + ')">⬇️ Scarica</button>'
@@ -325,9 +325,12 @@ async function dimenticaCartellaBackup() {
   renderBackup();
 }
 // Nella cartella c'e' un solo file, sempre lo stesso nome: si riscrive con il backup piu' recente
-// Nella cartella c'e' un file per anno, "salvataggi-2026.json": durante l'anno viene riscritto con il backup
-// piu' recente di quell'anno; finito l'anno resta com'e' (= salvataggio completo al 31 dicembre) e si passa al file nuovo
-function nomeFileAnno(anno) { return 'salvataggi-' + anno + '.json'; }
+// Nella cartella: backup-completo.json (sempre l'ultimo), una copia per giorno (ultimi 30) e l'ultima copia di ogni anno.
+// Ogni file contiene tutto l'archivio di tutti gli anni.
+// ogni file contiene TUTTO l'archivio (tutti gli anni): l'anno nel nome dice solo quando è stato fatto
+function nomeFileAnno(anno) { return 'backup-completo-ultimo-del-' + anno + '.json'; }
+const CARTELLA_STORICO = 'backup-giorno-per-giorno', GIORNI_STORICO = 30;
+function nomeFileGiorno(b) { const d = new Date(b.creato_il); return 'backup-completo-' + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '.json'; }
 const NOME_FILE_COMPLETO = 'backup-completo.json';
 function annoBackup(b) { return new Date(b.creato_il).getFullYear(); }
 // l'ultimo backup di ogni anno (l'elenco arriva dal piu' recente)
@@ -360,6 +363,29 @@ async function sincronizzaCartellaBackup(chiedi) {
             try { localStorage.setItem(chiaveU, String(ult.id) + '|' + ult.creato_il); } catch (e) {}
           }
         }
+        // copia giorno per giorno (una per ogni giorno, le ultime 30): si può tornare a un giorno preciso
+        try {
+          const dir = await h.getDirectoryHandle(CARTELLA_STORICO, { create: true });
+          const giorni = {};
+          data.forEach(function (b) { const n = nomeFileGiorno(b); if (!giorni[n]) giorni[n] = b; });
+          const nomi = Object.keys(giorni).sort().reverse().slice(0, GIORNI_STORICO);
+          for (const n of nomi) {
+            let c = true; try { await dir.getFileHandle(n); } catch (e) { c = false; }
+            const chiaveG = 'backup-giorno-' + n, b = giorni[n];
+            let giaG = ''; try { giaG = localStorage.getItem(chiaveG) || ''; } catch (e) {}
+            if (c && giaG === String(b.id) + '|' + b.creato_il) continue;
+            const fG = await preparaBackup(b.id); if (!fG) continue;
+            const fhG = await dir.getFileHandle(n, { create: true }); const wG = await fhG.createWritable(); await wG.write(fG.testo); await wG.close();
+            try { localStorage.setItem(chiaveG, String(b.id) + '|' + b.creato_il); } catch (e) {}
+            scritti.push(CARTELLA_STORICO + '/' + n);
+          }
+          // si tengono solo gli ultimi 30 giorni
+          const presenti = [];
+          for await (const [nome] of dir.entries()) { if (/^backup-completo-\d{4}-\d{2}-\d{2}\.json$/.test(nome)) presenti.push(nome); }
+          presenti.sort().reverse().slice(GIORNI_STORICO).forEach(function (nome) { dir.removeEntry(nome).catch(function () {}); });
+        } catch (e) { console.warn('storico giorni', e); }
+        // i vecchi file "salvataggi-ANNO.json" (stesso contenuto, nome che confondeva) non servono più
+        try { for await (const [nome] of h.entries()) { if (/^salvataggi-\d{4}\.json$/.test(nome)) await h.removeEntry(nome); } } catch (e) {}
       }
       const per = ultimiBackupPerAnno(data);
       for (const anno of Object.keys(per)) {
@@ -399,7 +425,7 @@ async function disegnaStatoCartella() {
   if (!h) {
     box.innerHTML = '<div style="padding:10px 12px; border-radius:10px; border:2px dashed #0061fe">'
       + '<div style="font-weight:800; color:#0061fe; margin-bottom:4px">📁 Salva i backup in una cartella del PC (es. Dropbox)</div>'
-      + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">Scegli una volta la cartella, per esempio <b>Dropbox › Backup CAF</b>: il programma ci terrà <b>un file per anno</b>, per esempio <b>salvataggi-2026.json</b>, riscritto durante l\'anno con il backup più recente; finito l\'anno resta il salvataggio completo dell\'anno. Dropbox lo porterà nel cloud.</div>'
+      + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">Scegli una volta la cartella, per esempio <b>Dropbox › Backup CAF</b>: il programma ci terrà <b>backup-completo.json</b> (sempre l\'ultimo), una copia <b>per ogni giorno</b> (ultimi 30, cartella backup-giorno-per-giorno) e l\'ultima copia di ogni anno. <b>Ogni file contiene tutto l\'archivio, di tutti gli anni.</b> Dropbox o Google Drive li portano nel cloud.</div>'
       + '<button type="button" style="background:#0061fe; color:#fff; border:none; border-radius:8px; padding:7px 14px; cursor:pointer; font-weight:700" onclick="scegliCartellaBackup()">📁 Scegli la cartella</button></div>';
     return;
   }
@@ -409,7 +435,7 @@ async function disegnaStatoCartella() {
   box.innerHTML = '<div style="padding:10px 12px; border-radius:10px; border:2px solid ' + (attiva ? '#1a7f37' : '#b35f0c') + '">'
     + '<div style="font-weight:800; color:' + (attiva ? '#1a7f37' : '#b35f0c') + '">📁 Cartella dei backup: ' + esc(h.name) + (attiva ? ' ✓' : '') + '</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 8px">' + (attiva
-      ? 'Qui c\'è <b>' + NOME_FILE_COMPLETO + '</b>, sempre aggiornato con il backup più recente di <b>tutti gli anni</b> (è quello da usare per ripristinare tutto), e un file per anno (<b>' + nomeFileAnno(new Date().getFullYear()) + '</b>…) che a fine anno resta come fotografia al 31 dicembre. Ogni file contiene tutti i dati, non solo quell\'anno.' + (dataCopiato() ? ' Ultimo aggiornamento: backup del <b>' + esc(quandoStorico(dataCopiato())) + '</b>.' : '')
+      ? 'Qui c\'è <b>' + NOME_FILE_COMPLETO + '</b>, sempre aggiornato con il backup più recente di <b>tutti gli anni</b> (è quello da usare per ripristinare tutto), la cartella <b>' + CARTELLA_STORICO + '</b> con una copia per ogni giorno (ultimi ' + GIORNI_STORICO + ' giorni, per tornare a un giorno preciso) e <b>' + nomeFileAnno(new Date().getFullYear()) + '</b>, che a fine anno resta come fotografia al 31 dicembre. <b>Ogni file contiene tutto l\'archivio, di tutti gli anni</b>: l\'anno o la data nel nome dicono solo quando è stato fatto.' + (dataCopiato() ? ' Ultimo aggiornamento: backup del <b>' + esc(quandoStorico(dataCopiato())) + '</b>.' : '')
       : 'Il browser chiede di riconfermare l\'accesso alla cartella: premi "Riattiva" e poi "Consenti".') + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap">'
     + (attiva ? '<button type="button" style="' + stile + '" onclick="sincronizzaCartellaBackup(true)">🔄 Aggiorna ora i salvataggi</button>'
@@ -850,7 +876,7 @@ async function promemoriaControlloBackup() {
     + '<div style="margin-bottom:6px">Una volta al mese controlla che le copie di sicurezza siano recenti:</div>'
     + riga('Ultimo backup sul server', server, 8)
     + riga('Ultima copia nella cartella Dropbox (questo PC)', cartella, 8)
-    + '<div style="font-size:12.5px; margin:8px 0">Apri anche la cartella <b>Dropbox › Backup CAF</b> e guarda che il file <b>salvataggi-' + new Date().getFullYear() + '.json</b> abbia una data recente. Se qualcosa è ⚠️, vai in <b>Utenti e permessi › 🛟 Backup automatici</b> e premi <b>💾 Crea un backup adesso</b>.</div>'
+    + '<div style="font-size:12.5px; margin:8px 0">Apri anche la cartella <b>Dropbox › Backup CAF</b> e guarda che il file <b>' + NOME_FILE_COMPLETO + '</b> abbia una data recente (di oggi o di ieri). Se qualcosa è ⚠️, vai in <b>Utenti e permessi › 🛟 Backup automatici</b> e premi <b>💾 Crea un backup adesso</b>.</div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap">'
     + '<button type="button" data-az="dopo" style="background:none; border:1px solid #b35f0c; color:#b35f0c; border-radius:999px; padding:7px 12px; cursor:pointer">Domani</button>'
     + '<button type="button" data-az="ok" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:8px 14px; font-weight:800; cursor:pointer">✓ Controllato</button></div>';
