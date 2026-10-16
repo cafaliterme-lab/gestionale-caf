@@ -286,6 +286,23 @@ function praticheDelCliente(nomeCompleto, dataNascita, codiceFiscale){
     return comeTitolare || comeCongiunto;
   }).sort(function(a,b){ return (annoPratica(b)-annoPratica(a)) || (b.numero-a.numero); });
 }
+// Spunta "Iscritto CISL" in evidenza nell'inserimento; si ripropone da sola se il cliente era iscritto nelle pratiche precedenti
+function aspettoIscrittoCisl(){
+  const c = document.getElementById('f-iscritto-cisl'), box = document.getElementById('f-cisl-box');
+  if(!c || !box) return;
+  box.style.background = c.checked ? '#c0392b' : 'transparent';
+  box.style.color = c.checked ? '#fff' : '#c0392b';
+  const nota = document.getElementById('f-cisl-nota');
+  if(nota && !c.checked) nota.textContent = '';
+}
+function proponiIscrittoCisl(lista){
+  const c = document.getElementById('f-iscritto-cisl'), nota = document.getElementById('f-cisl-nota');
+  if(!c || c.dataset.manuale) return;
+  const prec = (lista||[]).find(function(p){ return p.iscrittoCisl; });
+  c.checked = !!prec;
+  if(nota) nota.textContent = prec ? '✓ già iscritto: risulta dalla pratica ' + formattaProtocollo(prec) + ' (' + annoPratica(prec) + ')' : '';
+  aspettoIscrittoCisl();
+}
 function aggiornaStoricoForm(){
   const box = document.getElementById('storico-cliente');
   if(!box) return;
@@ -295,6 +312,7 @@ function aggiornaStoricoForm(){
   const dataNascita = document.getElementById('f-cf').value.trim();
   const cfForm = document.getElementById('f-codfisc').value;
   const lista = cognome ? praticheDelCliente(nomeCompleto, /^\d{2}\/\d{2}\/\d{4}$/.test(dataNascita) ? dataNascita : '', cfValido(cfForm) ? cfForm : '') : [];
+  proponiIscrittoCisl(lista);
   if(!cognome){ box.style.display = 'none'; box.innerHTML = ''; return; }
   box.style.display = 'block';
   if(!lista.length){
@@ -2148,7 +2166,7 @@ async function addPraticaInterna(){
   document.getElementById('f-data-fine').value='';
   document.getElementById('f-stato').value='arrivo';
   document.getElementById('f-note').value='';
-  { const ve = document.getElementById('f-via-email'); if(ve) ve.checked = false; const ic = document.getElementById('f-iscritto-cisl'); if(ic) ic.checked = false; }
+  { const ve = document.getElementById('f-via-email'); if(ve) ve.checked = false; const ic = document.getElementById('f-iscritto-cisl'); if(ic){ ic.checked = false; delete ic.dataset.manuale; aspettoIscrittoCisl(); } }
   if(document.getElementById('f-desctipo')) document.getElementById('f-desctipo').value='';
   aggiornaDescTipoForm();
   document.getElementById('f-data').value=todayIT();

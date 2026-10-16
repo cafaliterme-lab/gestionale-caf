@@ -523,6 +523,12 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <input id="cli-cerca" placeholder="Scrivi per cercare tra i clienti gia' archiviati..." autocomplete="off" oninput="cercaClienti(this.value)" onfocus="cercaClienti(this.value)">
       <div class="cli-results" id="cli-results"></div>
     </div>
+    <div class="full">
+      <label id="f-cisl-box" style="display:inline-flex; align-items:center; gap:10px; margin:2px 0 4px; padding:9px 18px; border-radius:999px; border:3px solid #c0392b; color:#c0392b; background:transparent; font-size:16px; font-weight:800; cursor:pointer; user-select:none">
+        <input type="checkbox" id="f-iscritto-cisl" onchange="this.dataset.manuale='1'; aspettoIscrittoCisl()" style="width:22px; height:22px; margin:0; accent-color:#c0392b"> 👤 ISCRITTO CISL
+      </label>
+      <span id="f-cisl-nota" style="font-size:12.5px; color:var(--sub); margin-left:8px"></span>
+    </div>
     <div>
       <label>Cognome</label>
       <input id="f-cognome" placeholder="Es. Rossi" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); controllaCampoCF(); aggiornaStoricoForm()">
@@ -643,7 +649,6 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <label>Note</label>
       <input id="f-note" placeholder="Facoltativo">
       <label class="chk" style="margin-top:8px; display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#1d4f91"><input type="checkbox" id="f-via-email" style="width:auto; margin:0"> 📧 Pratica pervenuta via e-mail</label>
-      <label class="chk" style="margin-top:8px; margin-left:14px; display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#c0392b"><input type="checkbox" id="f-iscritto-cisl" style="width:auto; margin:0"> 👤 Iscritto CISL</label>
     </div>
   </div>
   <div style="text-align:left"><button class="btn-add btn-salva-pratica" onclick="addPratica()">💾 Salva pratica</button></div>
@@ -876,7 +881,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=3"></script>
 <script src="js/documenti.js?v=16"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=140"></script>
+<script src="js/guida.js?v=141"></script>
 <script src="js/scadenze.js?v=202610089"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -885,7 +890,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610139"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610278"></script>
+<script src="js/app.js?v=202610279"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=2"></script>
