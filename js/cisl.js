@@ -23,12 +23,29 @@ function etichettaCisl(x) {
   return [x.tipologia, fasciaCisl(x), x.applica && x.applica !== 'tutte' ? x.applica : ''].filter(Boolean).join(' · ') + ' → ' + fmtEuro(x.importo);
 }
 // Scelta rapida del prezzo (compila il campo idCampo)
+// Prezzario a schede colorate, in orizzontale: si tocca la fascia e si compilano richiesto e fattura
+const COLORI_CISL = { 'Lavoro dipendente': '#1d4f91', 'Pensionato': '#1a7f37', 'Lavoro dipendente e pensionato': '#8e5bd6', 'Lavoro autonomo': '#d98b1e', 'Altro': '#6b7280' };
+function coloreCisl(t) { return COLORI_CISL[t] || '#c0392b'; }
 function selectPrezziCisl(idCampo, idFattura) {
   const l = prezziCisl();
-  if (!l.length) return '<div style="font-size:11.5px; color:var(--sub)">Prezzario iscritti CISL vuoto: l\'amministratore lo compila in Utenti e permessi.</div>';
-  return '<select style="width:100%; padding:6px 8px; margin-top:4px; border:2px solid #1d4f91" onchange="if(this.value!==\'\'){ [\'' + idCampo + '\', \'' + (idFattura || '') + '\'].forEach(function(id){ var c = id && document.getElementById(id); if(c){ c.value = importoInCampo(this.value); c.dispatchEvent(new Event(\'input\')); } }, this); this.value=\'\'; }">'
-    + '<option value="">👤 Prezzario iscritti CISL – scegli…</option>'
-    + l.map(function (x) { return '<option value="' + Number(x.importo) + '">' + esc(etichettaCisl(x)) + '</option>'; }).join('') + '</select>';
+  if (!l.length) return '<div style="font-size:12px; color:var(--sub); margin-top:6px">👤 Prezzario iscritti CISL vuoto: l\'amministratore lo compila in Utenti e permessi.</div>';
+  const quale = function (x) { return x.applica && x.applica !== 'tutte' ? (x.applica === 'congiunta' ? '👥 Congiunta' : '👤 Singola') : 'Singola e congiunta'; };
+  return '<div class="cisl-prezzario" style="margin-top:10px; padding:10px 12px; border-radius:14px; background:linear-gradient(135deg, #fdecea, #fff7f6); border:2px solid #c0392b">'
+    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><b style="color:#c0392b; font-size:14.5px">👤 Prezzario iscritti CISL</b><span style="font-size:12px; color:#7f1d1d">Tocca la fascia: si compilano fattura e richiesto (puoi correggerli)</span></div>'
+    + '<div style="display:flex; gap:10px; overflow-x:auto; padding:5px 5px 8px; scroll-snap-type:x mandatory">'
+    + l.map(function (x) {
+      const col = coloreCisl(x.tipologia), fascia = fasciaCisl(x) || 'tutti i redditi';
+      return '<button type="button" class="cisl-scheda" onclick="scegliPrezzoCisl(this, \'' + idCampo + '\', \'' + (idFattura || '') + '\', ' + Number(x.importo) + ')" style="flex:0 0 auto; width:170px; min-height:0; scroll-snap-align:start; text-align:left; padding:0; border:2px solid ' + col + '; border-radius:12px; background:#fff; color:#0f1b2d; overflow:hidden; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.08)">'
+        + '<div style="background:' + col + '; color:#fff; font-weight:800; font-size:12.5px; padding:6px 10px; white-space:normal; line-height:1.2">' + esc(x.tipologia || 'Iscritti CISL') + '</div>'
+        + '<div style="padding:7px 10px 9px"><div style="font-size:11.5px; color:#5b6b82; line-height:1.25; white-space:normal">' + esc(fascia.charAt(0).toUpperCase() + fascia.slice(1)) + '</div>'
+        + '<div style="font-size:11px; margin-top:3px; display:inline-block; padding:1px 8px; border-radius:999px; background:color-mix(in srgb, ' + col + ' 14%, #fff); color:' + col + '; font-weight:700">' + quale(x) + '</div>'
+        + '<div style="font-size:22px; font-weight:900; color:' + col + '; margin-top:4px">' + fmtEuro(x.importo) + '</div></div></button>';
+    }).join('') + '</div></div>';
+}
+function scegliPrezzoCisl(btn, idCampo, idFattura, importo) {
+  [idCampo, idFattura].forEach(function (id) { const c = id && document.getElementById(id); if (c) { c.value = importoInCampo(importo); c.dispatchEvent(new Event('input')); c.style.background = '#e8f6ee'; } });
+  const box = btn.closest('.cisl-prezzario');
+  if (box) box.querySelectorAll('.cisl-scheda').forEach(function (b) { b.style.boxShadow = b === btn ? '0 0 0 4px #f2c200' : '0 2px 6px rgba(0,0,0,.08)'; });
 }
 
 // Editor in Utenti e permessi (solo amministratore)
