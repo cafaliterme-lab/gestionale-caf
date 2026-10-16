@@ -132,6 +132,7 @@ const schemas = {
     consensoPrivacy: 'consenso_privacy',
     recuperi: 'recuperi',
     notaCredito: 'nota_credito',
+    viaEmail: 'via_email',
     notaCreditoData: 'nota_credito_data',
     consegnataIl: 'consegnata_il',
     consegnataDa: 'consegnata_da',

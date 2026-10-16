@@ -179,6 +179,7 @@ const GUIDA = [
   { id: 'annulla', icona: '🚫', titolo: 'Annullare una pratica (numero di protocollo)', parole: 'annulla cancella elimina pratica annullata ripristina numero protocollo buco',
     testo: `
 <ul>
+<li><b>📧 Pratica pervenuta via e-mail</b>: nell'inserimento (sotto le Note) e nella modifica della pratica c'è la spunta per le pratiche arrivate per e-mail. Nel registro e nella scheda compare il segno <b>📧 e-mail</b>, e tra le caselle degli stati c'è <b>📧 Via e-mail</b> (con il numero) per vedere solo quelle, sia da consegnare sia consegnate.</li>
 <li>Le pratiche <b>non si cancellano</b>: si <b>annullano</b> con <b>🚫 Annulla pratica</b> nella scheda, scrivendo se vuoi il motivo.</li>
 <li>Si può annullare <b>in qualunque fase</b>, anche dopo la fattura o la consegna. Se la pratica ha già la <b>fattura</b>, compare un avviso arancione: la fattura emessa non si cancella (serve la <b>nota di credito</b>) e il suo <b>numero resta occupato</b>, così non viene riproposto a un'altra pratica. La <b>fattura resta in contabilità</b> (fatture emesse, da versare al CAF, guadagno; nel blocco Rinunce e annullate) finché nella riga della pratica annullata, nel registro, non premi <b>📝 Nota di credito emessa</b> e scrivi numero e data: da quel momento la fattura esce dalla contabilità. L'incasso di una pratica annullata non conta.</li>
 <li>La pratica resta nel Registro <b>con il suo numero</b>, barrata e segnata <b>ANNULLATA</b> (con data, chi l'ha annullata e motivo), così la numerazione non ha buchi.</li>

@@ -1592,6 +1592,7 @@ async function ripristinaPratica(id){
   if(!(esito && esito.error)) avviso('↩️ Pratica ' + formattaProtocollo(p) + ' ripristinata');
 }
 // Tasti rapidi con il numero di pratiche per ogni stato (anno attivo): un tocco filtra il registro
+let SOLO_VIA_EMAIL = false;
 function disegnaChipStati(pratiche){
   const box = document.getElementById('chip-stati');
   if(!box) return;
@@ -1603,6 +1604,8 @@ function disegnaChipStati(pratiche){
     return '<button type="button" onclick="document.getElementById(\'filtro-stato\').value=\''+k+'\'; render()" style="padding:5px 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:700; border:2px solid '+col+'; background:'+(attivo?col:'transparent')+'; color:'+(attivo?'#fff':col)+'">'+testo+' <b>'+n+'</b></button>';
   };
   box.innerHTML = chip('', 'Tutte', (pratiche||[]).length, '#374151') + Object.keys(STATI).filter(function(k){ return conta[k]; }).map(function(k){ return chip(k, STATI[k].e+' '+STATI[k].l, conta[k], STATI[k].c || '#1d4f91'); }).join('');
+  const nEmail = (pratiche||[]).filter(function(p){ return p.viaEmail; }).length;
+  if(nEmail || SOLO_VIA_EMAIL) box.innerHTML += '<button type="button" onclick="SOLO_VIA_EMAIL=!SOLO_VIA_EMAIL; render()" title="Solo le pratiche pervenute via e-mail" style="padding:5px 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:700; border:2px dashed #1d4f91; background:' + (SOLO_VIA_EMAIL ? '#1d4f91' : 'transparent') + '; color:' + (SOLO_VIA_EMAIL ? '#fff' : '#1d4f91') + '">📧 Via e-mail ' + nEmail + '</button>';
 }
 // Ricerca per stato dentro ogni riquadro di tipo pratica, con la stampa del report di quel tipo
 const STATO_GRUPPO = {};
@@ -1634,6 +1637,7 @@ function filtra(lista){
   initFiltroStato();
   const statoSel = (document.getElementById('filtro-stato')||{}).value || '';
   if(statoSel){ lista = lista.filter(function(p){ return p.stato === statoSel; }); }
+  if(SOLO_VIA_EMAIL){ lista = lista.filter(function(p){ return !!p.viaEmail; }); }
   // contribuente: titolare o coniuge, per nome o codice fiscale
   const cli = filtroContribuente();
   if(cli){ lista = lista.filter(function(p){ return [p.nome, p.congiunta, ((p.congCognome||'') + ' ' + (p.congNome||'')), p.codiceFiscale, p.congCodiceFiscale].join(' ').toUpperCase().indexOf(cli) >= 0; }); }
@@ -1763,7 +1767,7 @@ function render(){
               <td class="n">${formattaProtocollo(p)}</td>
               <td>${p.data||'-'}</td>
               <td>${eColf(p.tipo) ? (p.scadenzaAssistenza ? '<span title="Scadenza assistenza" style="color:#c0392b; font-weight:700">⏰ '+esc(p.scadenzaAssistenza)+'</span>' : '-') : (esc(p.dataFine)||'-')}</td>
-              <td class="wrap">${(p.nome||'-').toUpperCase()}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}${typeof segnaliDocumentiHTML === 'function' ? segnaliDocumentiHTML(p) : ''}</td>
+              <td class="wrap">${(p.nome||'-').toUpperCase()}${p.viaEmail ? ' <span title="Pratica pervenuta via e-mail" style="display:inline-block; background:#1d4f91; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; font-weight:700">📧 e-mail</span>' : ''}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}${typeof segnaliDocumentiHTML === 'function' ? segnaliDocumentiHTML(p) : ''}</td>
               <td class="wrap">${p.tipo ? esc(p.tipo) + (eAltrePratiche(p.tipo) && p.descrizioneTipo ? '<div class="sub2">' + esc(p.descrizioneTipo) + '</div>' : '') : '-'}</td>
               <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato, p.tipo)}</select></td>
               <td>${formattaInserimento(p)}${ultimaModifica(p) ? '<div class="sub2" title="Ultima modifica">✏️ ' + ultimaModifica(p) + '</div>' : ''}</td>
@@ -1792,7 +1796,7 @@ function render(){
     <div class="item" id="pratica-${p.id}">
       <div class="item-top">
         <div>
-          <div class="num">#${formattaProtocollo(p)} — ${(p.nome||'(senza nome)').toUpperCase()}</div>
+          <div class="num">#${formattaProtocollo(p)} — ${(p.nome||'(senza nome)').toUpperCase()}${p.viaEmail ? ' <span style="display:inline-block; background:#1d4f91; color:#fff; border-radius:999px; padding:1px 8px; font-size:12px; font-weight:700; vertical-align:middle">📧 pervenuta via e-mail</span>' : ''}</div>
           <div class="name">${esc(tipoConDescrizione(p))} ${p.cf ? '· nato il '+p.cf : ''}</div>
           ${p.congiunta ? `<div class="name">Congiunta con <b>${esc(p.congiunta)}</b>${p.congData ? ' (nato il '+esc(p.congData)+')' : ''}${p.congCodiceFiscale ? ' · CF '+esc(p.congCodiceFiscale) : ''}${p.congTelefono ? ' · Cell. <a href="tel:'+esc(p.congTelefono)+'" style="color:inherit">'+esc(p.congTelefono)+'</a>' : ''}</div>` : ''}
           ${p.telefono ? `<div class="name">Cell. <a href="tel:${esc(p.telefono)}" style="color:inherit">${esc(p.telefono)}</a></div>` : ''}
@@ -1839,7 +1843,8 @@ function render(){
           <div><label>Pagato effettivo (€)</label><div style="display:flex; gap:6px"><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0"><select id="e-met-${p.id}" title="Tipo di pagamento" style="width:auto; flex:0 0 auto">${metodoOptions(p.metodoPagamento)}</select></div></div>
           <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}" oninput="var d=document.getElementById('e-df-${p.id}'); if(this.value.trim() && d && !d.value.trim()) d.value=todayIT();"></div>
           <div><label>Data fattura</label><input id="e-df-${p.id}" value="${esc(p.dataFattura)}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
-          <div class="full"><label>Note</label><input id="e-note-${p.id}" value="${esc(p.note)}"></div>
+          <div class="full"><label>Note</label><input id="e-note-${p.id}" value="${esc(p.note)}">
+            <label class="chk" style="margin-top:6px; display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#1d4f91"><input type="checkbox" id="e-viaemail-${p.id}" ${p.viaEmail ? 'checked' : ''} style="width:auto; margin:0"> 📧 Pratica pervenuta via e-mail</label></div>
         </div>
         <div class="row-actions">
           <button onclick="salvaModifica('${p.id}')" style="background:var(--accent); color:var(--accent-ink)">Salva modifica</button>
@@ -1958,6 +1963,7 @@ async function addPraticaInterna(){
   const email = document.getElementById('f-email').value.trim().toLowerCase();
   const dataPratica = todayIT();
   const note = document.getElementById('f-note').value.trim();
+  const viaEmail = !!(document.getElementById('f-via-email')||{}).checked;
 
   if(!nome){
     msg.textContent = '⚠️ Inserisci almeno il cognome del contribuente prima di salvare.';
@@ -2039,7 +2045,7 @@ async function addPraticaInterna(){
   else if(!documenti.mancanti.length && documenti.presentati.length && statoNuovo === 'arrivo' && !eColf(tipo) && statoVisibile('da_lavorare_scansionata', tipo) && confirm('Ci sono tutti i documenti.\n\nSalvo la pratica come "' + statoLabel('da_lavorare_scansionata') + '" invece di "In arrivo"?')) statoNuovo = 'da_lavorare_scansionata';
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note,
+    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note, viaEmail,
     stato: statoNuovo,
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
@@ -2083,6 +2089,7 @@ async function addPraticaInterna(){
   document.getElementById('f-data-fine').value='';
   document.getElementById('f-stato').value='arrivo';
   document.getElementById('f-note').value='';
+  { const ve = document.getElementById('f-via-email'); if(ve) ve.checked = false; }
   if(document.getElementById('f-desctipo')) document.getElementById('f-desctipo').value='';
   aggiornaDescTipoForm();
   document.getElementById('f-data').value=todayIT();
@@ -2624,7 +2631,7 @@ function eConsegnata(p){ return !!(p && p.consegnataIl); }
 // Registro: due liste separate. Normale = pratiche da consegnare/definire; con il tasto = SOLO consegnate/definite
 function vediNelRegistro(p){
   // la ricerca per stato cerca in tutti e due gli archivi: da consegnare/definire e consegnate/definite
-  if(((document.getElementById('filtro-stato')||{}).value||'')) return true;
+  if(((document.getElementById('filtro-stato')||{}).value||'') || SOLO_VIA_EMAIL) return true;
   if(MOSTRA_CONSEGNATE) return eConsegnata(p);
   if(!eConsegnata(p)) return true;
   // cercando un contribuente o un testo si vedono anche le consegnate
@@ -2949,6 +2956,7 @@ async function salvaModifica(id){
     dataFattura: dataFattura,
     documentoScadenza: g('e-docscad').trim(),
     note: g('e-note').trim(),
+    viaEmail: !!(document.getElementById('e-viaemail-'+id)||{}).checked,
     fatt: (numFattura || dataFattura) ? 'fatturata' : 'dafatturare'
   };
   if(campi.email && !emailValida(campi.email)){ popupErroreCampo('E-mail non valida', 'L\'indirizzo <b>' + esc(campi.email) + '</b> non è corretto.', 'e-email-' + id); return; }

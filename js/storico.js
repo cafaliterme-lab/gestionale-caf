@@ -88,7 +88,7 @@ function schedaStoricoHTML(x) {
     const apribile = !p.annullata && a === annoProt;
     righe += '<tr' + (p.annullata ? ' style="color:var(--sub)"' : '') + '>'
       + '<td class="n"' + (p.annullata ? ' style="text-decoration:line-through"' : '') + '>' + formattaProtocollo(p) + '</td><td>' + esc(p.data || '-') + '</td>'
-      + '<td class="wrap">' + esc(p.tipo || '-') + (coniuge ? '<div class="sub2">come coniuge di ' + esc(p.nome || '') + '</div>' : (p.congiunta ? '<div class="sub2">congiunta con ' + esc(p.congiunta) + '</div>' : '')) + '</td>'
+      + '<td class="wrap">' + esc(p.tipo || '-') + (p.viaEmail ? ' <span style="background:#1d4f91; color:#fff; border-radius:999px; padding:0 6px; font-size:11px">📧 e-mail</span>' : '') + (coniuge ? '<div class="sub2">come coniuge di ' + esc(p.nome || '') + '</div>' : (p.congiunta ? '<div class="sub2">congiunta con ' + esc(p.congiunta) + '</div>' : '')) + '</td>'
       + '<td>' + (p.annullata ? '<b style="color:#c0392b">🚫 ANNULLATA</b>' : esc(statoLabel(p.stato))) + (p.consegnataIl ? '<div class="sub2">📦 ' + (e730(p) ? 'consegnata' : 'definita') + ' il ' + esc(p.consegnataIl) + '</div>' : '') + '</td>'
       + '<td>' + (p.numFattura ? 'n. ' + esc(p.numFattura) + (p.dataFattura ? '<div class="sub2">' + esc(p.dataFattura) + '</div>' : '') : '-') + '</td>'
       + '<td style="text-align:right">' + euro(p.compenso) + '</td><td style="text-align:right">' + euro(p.richiesto) + '</td><td style="text-align:right">' + euro(p.pagato) + (p.metodoPagamento && Number(p.pagato) ? '<div class="sub2">' + esc(p.metodoPagamento) + '</div>' : '') + '</td>'
