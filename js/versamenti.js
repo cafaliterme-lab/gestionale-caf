@@ -588,8 +588,7 @@ function stampaBollettino(id, parti) {
   // bollettino a 2 parti (attestazione + ricevuta di accredito, quello in uso) o a 3 parti
   if (parti !== 2 && parti !== 3) { let sv = null; try { sv = localStorage.getItem('bollettino_parti'); } catch (e) {} parti = sv === '3' ? 3 : 2; }
   try { localStorage.setItem('bollettino_parti', String(parti)); } catch (e) {}
-  const due = parti === 2, TAGLIO = BOLL.spostamentoParte2;
-  const largB = due ? BOLL.larg - TAGLIO : BOLL.larg;
+  let due = parti === 2; const TAGLIO = BOLL.spostamentoParte2;
   const d = datiVersamento();
   if (!d.cc && !confirm('Non è stato impostato il numero di conto corrente postale (⚙️ Dati per il modulo e il bollettino, in fondo ai versamenti). Stampo lo stesso con lo spazio vuoto?')) return;
   const versato = v.versato != null && v.versato !== '' ? Number(v.versato) : Number(v.importo || 0) - Number(v.pos || 0) - Number(v.cassa || 0) - Number(v.bonifico || 0);
@@ -603,7 +602,7 @@ function stampaBollettino(id, parti) {
     eseguito: d.eseguito || '', via: d.indirizzo || '', cap: String(d.cap || '').replace(/\s/g, ''), localita: d.localita || ''
   };
   const mm = function (p) { return (p * 25.4 / 200).toFixed(2) + 'mm'; };
-  const pezzi = [];
+  let pezzi = [];
   // una lettera per casella
   const caselle = function (c, testo, allineaDestra) {
     const t = String(testo || '').toUpperCase().slice(0, c.n).split('');
@@ -645,6 +644,8 @@ function stampaBollettino(id, parti) {
     linee.forEach(function (l, i) { riga(righe[i], l, dx); });
   };
 
+  const costruisci = function (d2) {
+    due = d2; pezzi = [];
   const s = BOLL.sinistra;
   (due ? [0] : [0, BOLL.spostamentoParte2]).forEach(function (dx) {
     caselle({ x: s.cc.x + dx, y: s.cc.y, n: s.cc.n, passo: s.cc.passo }, dati.cc, true);
@@ -671,56 +672,69 @@ function stampaBollettino(id, parti) {
   caselleSuRighe(r3.via, dati.via);
   caselle(r3.cap, dati.cap);
   caselleSuRighe([r3.localita], dati.localita);
+    return pezzi.join('');
+  };
+  const versioni = { 2: costruisci(true), 3: costruisci(false) };
+  due = parti === 2;
 
-  const sfondo = new URL(due ? 'modelli/bollettino-td123-2parti.jpg' : 'modelli/bollettino-td123.jpg', location.href).href;
-  const W = mm(largB), H = mm(BOLL.alt);
-  const scalaA4 = Math.min(1, 287 / (largB * 25.4 / 200)).toFixed(4);
+  const H = mm(BOLL.alt);
+  const misure = {};
+  [2, 3].forEach(function (n) { const larg = n === 2 ? BOLL.larg - TAGLIO : BOLL.larg; misure[n] = { W: mm(larg), mmLarg: Math.round(larg * 25.4 / 200), scala: Math.min(1, 287 / (larg * 25.4 / 200)).toFixed(4), sfondo: new URL(n === 2 ? 'modelli/bollettino-td123-2parti.jpg' : 'modelli/bollettino-td123.jpg', location.href).href }; });
   const w = window.open('', '_blank');
   if (!w) { alert('Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito.'); return; }
+  const tasto = 'padding:12px 18px; font-size:15px; border-radius:999px; border:2px solid #1d4f91; background:#fff; color:#1d4f91; cursor:pointer; touch-action:manipulation; min-height:46px';
+  const blocco = function (n) {
+    const m = misure[n];
+    return '<div class="contenitore" id="boll-' + n + '" style="width:calc(' + m.W + ' * var(--scala)); height:calc(' + H + ' * var(--scala))' + (n === parti ? '' : '; display:none') + '">'
+      + '<div class="boll" style="width:' + m.W + '; background-image:url(&quot;' + m.sfondo + '&quot;)">' + versioni[n] + '</div></div>';
+  };
   w.document.open();
-  w.document.write('<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Bollettino postale ' + esc(v.data || '') + '</title>'
+  w.document.write('<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Bollettino postale ' + esc(v.data || '') + '</title>'
     + '<style>'
     + 'body{margin:0; font-family:Arial,Helvetica,sans-serif; color:#111; background:#e9edf2; -webkit-print-color-adjust:exact; print-color-adjust:exact}'
-    + '.barra{padding:10px 12px; background:#fff; border-bottom:1px solid #ccd5e0; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; font-size:14px}'
-    + '.barra button{padding:8px 16px; font-size:14px; border-radius:999px; border:1px solid #1d4f91; background:#fff; color:#1d4f91; cursor:pointer}'
-    + '.barra button.princ{background:#1d4f91; color:#fff; font-weight:700}'
-    + '.barra label{display:flex; align-items:center; gap:6px} .barra input[type=number]{width:60px; padding:4px}'
-    + '.nota{flex-basis:100%; font-size:12px; color:#555; margin:0}'
+    + '.barra{padding:10px 12px; background:#fff; border-bottom:1px solid #ccd5e0; display:flex; flex-wrap:wrap; gap:10px 12px; align-items:center; font-size:15px}'
+    + '.barra button, .scelta{' + tasto + '} .barra button.on, .scelta.on{background:#1d4f91; color:#fff; font-weight:700}'
+    + '.gruppo{display:flex; flex-wrap:wrap; gap:8px; align-items:center} .gruppo b{margin-right:2px}'
+    + '.barra input[type=number]{width:70px; padding:8px; font-size:15px} .regola label{display:flex; align-items:center; gap:6px}'
+    + '.nota{flex-basis:100%; font-size:12.5px; color:#555; margin:0}'
     + '.area{padding:12px; overflow:auto}'
-    + '.contenitore{width:calc(' + W + ' * var(--scala)); height:calc(' + H + ' * var(--scala)); background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.18)}'
-    + '.boll{position:relative; width:' + W + '; height:' + H + '; transform-origin:0 0; transform:scale(var(--scala)) translate(var(--dx), var(--dy)); background:url("' + sfondo + '") 0 0 / 100% 100% no-repeat}'
-    + 'body.solo-testo .boll{background:none}'
+    + '.contenitore{background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.18)}'
+    + '.boll{position:relative; height:' + H + '; transform-origin:0 0; transform:scale(var(--scala)) translate(var(--dx), var(--dy)); background-position:0 0; background-size:100% 100%; background-repeat:no-repeat}'
+    + 'body.solo-testo .boll{background-image:none !important}'
     + '.car{position:absolute; width:' + mm(BOLL.casella.larg) + '; height:' + mm(BOLL.casella.alt) + '; line-height:' + mm(BOLL.casella.alt) + '; text-align:center; font-family:"Courier New",Courier,monospace; font-weight:bold; font-size:4.1mm; color:#000}'
     + '.riga{position:absolute; transform:translateY(-100%); white-space:nowrap; overflow:hidden; font-family:"Courier New",Courier,monospace; font-weight:bold; line-height:1.15; color:#000}'
     + ':root{--scala:1; --dx:0mm; --dy:0mm}'
-    + 'body.a4{--scala:' + scalaA4 + '}'
     + '@media print{body{background:none} .barra{display:none} .area{padding:0} .contenitore{box-shadow:none}}'
     + '</style>'
-    + '<style id="pagina-a4">@page{size:A4 landscape; margin:5mm}</style>'
-    + '<style id="pagina-reale" media="not all">@page{size:' + W + ' ' + H + '; margin:0}</style>'
+    + '<style id="pagina">@page{size:A4 landscape; margin:5mm}</style>'
     + '</head><body class="a4">'
     + '<div class="barra">'
-    + '<button class="princ" onclick="window.print()">🖨️ Stampa / Salva come PDF</button>'
-    + '<label><input type="radio" name="modo" value="a4" checked onchange="modo(this.value)"> Su foglio bianco A4 (con il disegno del bollettino)</label>'
-    + '<label><input type="radio" name="modo" value="vero" onchange="modo(this.value)"> Solo i dati, sul bollettino di carta</label>'
-    + '<span id="regola" style="display:none; gap:12px"><label>Sposta → <input type="number" id="dx" step="0.5" value="0" oninput="sposta()"> mm</label><label>↓ <input type="number" id="dy" step="0.5" value="0" oninput="sposta()"> mm</label></span>'
-    + '<span style="display:flex; gap:6px; align-items:center"><b>Bollettino:</b><button' + (due ? ' class="princ"' : '') + ' onclick="if(window.opener){window.opener.stampaBollettino(\'' + v.id + '\', 2); window.close();}">2 parti</button><button' + (due ? '' : ' class="princ"') + ' onclick="if(window.opener){window.opener.stampaBollettino(\'' + v.id + '\', 3); window.close();}">3 parti</button></span>'
-    + '<button onclick="window.close()">Chiudi</button>'
-    + '<p class="nota" id="nota-a4">' + (Number(scalaA4) < 1 ? 'Il bollettino è leggermente rimpicciolito per entrare nel foglio A4.' : 'Il bollettino è stampato a grandezza reale sul foglio A4.') + '</p>'
-    + '<p class="nota" id="nota-vero" style="display:none">Metti il bollettino in bianco nel cassetto manuale della stampante e scegli il formato carta ' + Math.round(largB * 25.4 / 200) + ' × 102 mm (personalizzato), scala 100%. Se la scritta esce spostata, correggi con "Sposta" e riprova su un foglio di prova.</p>'
+    + '<button class="on" type="button" onclick="window.print()">🖨️ Stampa / Salva come PDF</button>'
+    + '<span class="gruppo"><b>Bollettino:</b><button type="button" class="scelta" id="p2" onclick="parti(2)">2 parti</button><button type="button" class="scelta" id="p3" onclick="parti(3)">3 parti</button></span>'
+    + '<span class="gruppo"><b>Stampa:</b><button type="button" class="scelta" id="m-a4" onclick="modo(\'a4\')">Su foglio A4 con il disegno</button><button type="button" class="scelta" id="m-vero" onclick="modo(\'vero\')">Solo i dati, sul bollettino di carta</button></span>'
+    + '<span class="gruppo regola" id="regola" style="display:none"><label>Sposta → <input type="number" id="dx" step="0.5" value="0" oninput="sposta()"> mm</label><label>↓ <input type="number" id="dy" step="0.5" value="0" oninput="sposta()"> mm</label></span>'
+    + '<button type="button" onclick="window.close()">Chiudi</button>'
+    + '<p class="nota" id="nota"></p>'
     + '</div>'
-    + '<div class="area"><div class="contenitore"><div class="boll">' + pezzi.join('') + '</div></div></div>'
+    + '<div class="area">' + blocco(2) + blocco(3) + '</div>'
     + '<script>'
+    + 'var M=' + JSON.stringify(misure) + ', P=' + parti + ', MODO="a4";'
     + 'function leggi(k){try{return localStorage.getItem(k)}catch(e){return null}}'
     + 'function salva(k,v){try{localStorage.setItem(k,v)}catch(e){}}'
-    + 'function sposta(){var x=parseFloat(document.getElementById("dx").value)||0,y=parseFloat(document.getElementById("dy").value)||0;'
-    + 'document.documentElement.style.setProperty("--dx",x+"mm");document.documentElement.style.setProperty("--dy",y+"mm");salva("bollettino_dx",x);salva("bollettino_dy",y);}'
-    + 'function modo(m){var vero=m==="vero";document.body.className=vero?"solo-testo":"a4";'
-    + 'document.getElementById("pagina-a4").media=vero?"not all":"all";document.getElementById("pagina-reale").media=vero?"all":"not all";'
-    + 'document.getElementById("regola").style.display=vero?"flex":"none";document.getElementById("nota-a4").style.display=vero?"none":"";document.getElementById("nota-vero").style.display=vero?"":"none";'
-    + 'if(vero){document.getElementById("dx").value=leggi("bollettino_dx")||0;document.getElementById("dy").value=leggi("bollettino_dy")||0;sposta();}'
-    + 'else{document.documentElement.style.setProperty("--dx","0mm");document.documentElement.style.setProperty("--dy","0mm");}salva("bollettino_modo",m);}'
-    + 'if(leggi("bollettino_modo")==="vero"){document.querySelector("input[value=vero]").checked=true;modo("vero");}'
+    + 'function sposta(){var x=MODO==="vero"?(parseFloat(document.getElementById("dx").value)||0):0,y=MODO==="vero"?(parseFloat(document.getElementById("dy").value)||0):0;'
+    + 'document.documentElement.style.setProperty("--dx",x+"mm");document.documentElement.style.setProperty("--dy",y+"mm");if(MODO==="vero"){salva("bollettino_dx",x);salva("bollettino_dy",y);}}'
+    + 'function aggiorna(){var m=M[P],vero=MODO==="vero";document.body.className=vero?"solo-testo":"a4";'
+    + 'document.documentElement.style.setProperty("--scala",vero?1:m.scala);'
+    + 'document.getElementById("boll-2").style.display=P===2?"":"none";document.getElementById("boll-3").style.display=P===3?"":"none";'
+    + 'document.getElementById("p2").className="scelta"+(P===2?" on":"");document.getElementById("p3").className="scelta"+(P===3?" on":"");'
+    + 'document.getElementById("m-a4").className="scelta"+(vero?"":" on");document.getElementById("m-vero").className="scelta"+(vero?" on":"");'
+    + 'document.getElementById("regola").style.display=vero?"flex":"none";'
+    + 'document.getElementById("pagina").textContent=vero?"@page{size:"+m.mmLarg+"mm 102mm; margin:0}":"@page{size:A4 landscape; margin:5mm}";'
+    + 'document.getElementById("nota").textContent=vero?"Metti il bollettino in bianco nel cassetto manuale della stampante e scegli il formato carta "+m.mmLarg+" × 102 mm (personalizzato), scala 100%. Se la scritta esce spostata, correggi con Sposta e riprova su un foglio di prova.":(Number(m.scala)<1?"Il bollettino è leggermente rimpicciolito per entrare nel foglio A4.":"Il bollettino è stampato a grandezza reale sul foglio A4.");'
+    + 'if(vero){document.getElementById("dx").value=leggi("bollettino_dx")||0;document.getElementById("dy").value=leggi("bollettino_dy")||0;}sposta();}'
+    + 'function parti(n){P=n;salva("bollettino_parti",String(n));aggiorna();}'
+    + 'function modo(m){MODO=m;salva("bollettino_modo",m);aggiorna();}'
+    + 'if(leggi("bollettino_modo")==="vero")MODO="vero";aggiorna();'
     + '<\/script></body></html>');
   w.document.close();
 }
