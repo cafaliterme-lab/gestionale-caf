@@ -1592,7 +1592,7 @@ async function ripristinaPratica(id){
   if(!(esito && esito.error)) avviso('↩️ Pratica ' + formattaProtocollo(p) + ' ripristinata');
 }
 // Tasti rapidi con il numero di pratiche per ogni stato (anno attivo): un tocco filtra il registro
-let SOLO_VIA_EMAIL = false;
+let SOLO_VIA_EMAIL = false, VEDI_TUTTE = false;
 function disegnaChipStati(pratiche){
   const box = document.getElementById('chip-stati');
   if(!box) return;
@@ -1600,10 +1600,14 @@ function disegnaChipStati(pratiche){
   const conta = {};
   (pratiche||[]).forEach(function(p){ conta[p.stato] = (conta[p.stato]||0) + 1; });
   const chip = function(k, testo, n, col){
-    const attivo = sel === k;
-    return '<button type="button" onclick="document.getElementById(\'filtro-stato\').value=\''+k+'\'; render()" style="padding:5px 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:700; border:2px solid '+col+'; background:'+(attivo?col:'transparent')+'; color:'+(attivo?'#fff':col)+'">'+testo+' <b>'+n+'</b></button>';
+    const attivo = k === '' ? VEDI_TUTTE && !sel : sel === k;
+    return '<button type="button" onclick="document.getElementById(\'filtro-stato\').value=\''+k+'\'; VEDI_TUTTE=' + (k === '' ? 'true' : 'false') + '; MOSTRA_CONSEGNATE=false; render()" style="padding:5px 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:700; border:2px solid '+col+'; background:'+(attivo?col:'transparent')+'; color:'+(attivo?'#fff':col)+'">'+testo+' <b>'+n+'</b></button>';
   };
-  box.innerHTML = chip('', 'Tutte', (pratiche||[]).length, '#374151') + Object.keys(STATI).filter(function(k){ return conta[k]; }).map(function(k){ return chip(k, STATI[k].e+' '+STATI[k].l, conta[k], STATI[k].c || '#1d4f91'); }).join('');
+  // "Da consegnare / definire" = la vista normale; "Tutte" = anche le consegnate/definite
+  const nDaCons = (pratiche||[]).filter(function(p){ return !eConsegnata(p); }).length;
+  const normale = !sel && !VEDI_TUTTE && !MOSTRA_CONSEGNATE;
+  box.innerHTML = '<button type="button" onclick="document.getElementById(\'filtro-stato\').value=\'\'; VEDI_TUTTE=false; MOSTRA_CONSEGNATE=false; render()" style="padding:5px 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:700; border:2px solid #8d5a3b; background:'+(normale?'#8d5a3b':'transparent')+'; color:'+(normale?'#fff':'#8d5a3b')+'">📋 Da consegnare / definire <b>'+nDaCons+'</b></button>'
+    + chip('', 'Tutte (anche consegnate)', (pratiche||[]).length, '#374151') + Object.keys(STATI).filter(function(k){ return conta[k]; }).map(function(k){ return chip(k, STATI[k].e+' '+STATI[k].l, conta[k], STATI[k].c || '#1d4f91'); }).join('');
   const nEmail = (pratiche||[]).filter(function(p){ return p.viaEmail; }).length;
   if(nEmail || SOLO_VIA_EMAIL) box.innerHTML += '<button type="button" onclick="SOLO_VIA_EMAIL=!SOLO_VIA_EMAIL; render()" title="Solo le pratiche pervenute via e-mail" style="padding:5px 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:700; border:2px dashed #1d4f91; background:' + (SOLO_VIA_EMAIL ? '#1d4f91' : 'transparent') + '; color:' + (SOLO_VIA_EMAIL ? '#fff' : '#1d4f91') + '">📧 Via e-mail ' + nEmail + '</button>';
 }
@@ -1630,7 +1634,7 @@ function stampaReportStato(){
   const cli = filtroContribuente();
   // la stampa segue la lista che stai guardando: solo consegnate/definite oppure solo quelle ancora da consegnare
   // con lo stato scelto si stampano tutti e due gli archivi (da consegnare e consegnate), come nella ricerca
-  apriStampa('registro', { stato: sel, cliente: cli, consegna: (cli || sel) ? '' : (MOSTRA_CONSEGNATE ? 'solo' : 'escludi') });
+  apriStampa('registro', { stato: sel, cliente: cli, consegna: (cli || sel || VEDI_TUTTE) ? '' : (MOSTRA_CONSEGNATE ? 'solo' : 'escludi') });
 }
 function filtroContribuente(){ return ((document.getElementById('filtro-contribuente')||{}).value||'').trim().toUpperCase(); }
 function filtra(lista){
@@ -2631,7 +2635,7 @@ function eConsegnata(p){ return !!(p && p.consegnataIl); }
 // Registro: due liste separate. Normale = pratiche da consegnare/definire; con il tasto = SOLO consegnate/definite
 function vediNelRegistro(p){
   // la ricerca per stato cerca in tutti e due gli archivi: da consegnare/definire e consegnate/definite
-  if(((document.getElementById('filtro-stato')||{}).value||'') || SOLO_VIA_EMAIL) return true;
+  if(((document.getElementById('filtro-stato')||{}).value||'') || SOLO_VIA_EMAIL || VEDI_TUTTE) return true;
   if(MOSTRA_CONSEGNATE) return eConsegnata(p);
   if(!eConsegnata(p)) return true;
   // cercando un contribuente o un testo si vedono anche le consegnate
@@ -2886,7 +2890,7 @@ function annullaConsegna(id){
     render();
   });
 }
-function mostraConsegnate(){ MOSTRA_CONSEGNATE = !MOSTRA_CONSEGNATE; render(); }
+function mostraConsegnate(){ MOSTRA_CONSEGNATE = !MOSTRA_CONSEGNATE; VEDI_TUTTE = false; render(); }
 
 // Gruppo -> id della sola pratica aperta dal registro (si vede solo la sua scheda)
 const SCHEDA_SOLA = {};
