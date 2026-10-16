@@ -26,26 +26,39 @@ function etichettaCisl(x) {
 // Prezzario a schede colorate, in orizzontale: si tocca la fascia e si compilano richiesto e fattura
 const COLORI_CISL = { 'Lavoro dipendente': '#1d4f91', 'Pensionato': '#1a7f37', 'Lavoro dipendente e pensionato': '#8e5bd6', 'Lavoro autonomo': '#d98b1e', 'Altro': '#6b7280' };
 function coloreCisl(t) { return COLORI_CISL[t] || '#c0392b'; }
+// Fascia corta per i tasti: "≤ 15.000", "15.000–20.000", "> 20.000"
+function fasciaBreveCisl(x) {
+  const n = function (v) { return Math.round(Number(v)).toLocaleString('it-IT'); };
+  const haDal = x.dal !== '' && x.dal != null && Number(x.dal) > 0, haAl = x.al !== '' && x.al != null;
+  if (haDal && haAl) return n(x.dal) + '–' + n(x.al);
+  if (haAl) return '≤ ' + n(x.al);
+  if (haDal) return '> ' + n(x.dal);
+  return 'tutti';
+}
+// Prezzario a tasti piccoli colorati: si tocca la fascia e si compilano richiesto e fattura
 function selectPrezziCisl(idCampo, idFattura) {
   const l = prezziCisl();
   if (!l.length) return '<div style="font-size:12px; color:var(--sub); margin-top:6px">👤 Prezzario iscritti CISL vuoto: l\'amministratore lo compila in Utenti e permessi.</div>';
-  const quale = function (x) { return x.applica && x.applica !== 'tutte' ? (x.applica === 'congiunta' ? '👥 Congiunta' : '👤 Singola') : 'Singola e congiunta'; };
-  return '<div class="cisl-prezzario" style="margin-top:10px; padding:10px 12px; border-radius:14px; background:linear-gradient(135deg, #fdecea, #fff7f6); border:2px solid #c0392b">'
-    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px"><b style="color:#c0392b; font-size:14.5px">👤 Prezzario iscritti CISL</b><span style="font-size:12px; color:#7f1d1d">Tocca la fascia: si compilano fattura e richiesto (puoi correggerli)</span></div>'
-    + '<div style="display:flex; gap:10px; overflow-x:auto; padding:5px 5px 8px; scroll-snap-type:x mandatory">'
+  const sigla = function (t) { return ({ 'Lavoro dipendente': 'Dip.', 'Pensionato': 'Pens.', 'Lavoro dipendente e pensionato': 'Dip.+Pens.', 'Lavoro autonomo': 'Aut.' })[t] || (t || 'CISL'); };
+  return '<div class="cisl-prezzario" style="margin-top:8px; padding:6px 8px; border-radius:10px; border:1px solid #f0b4ad; background:#fff7f6">'
+    + '<div style="font-size:11.5px; font-weight:800; color:#c0392b; margin-bottom:4px">👤 Prezzario iscritti CISL <span style="font-weight:600; color:#7f1d1d">– tocca la fascia</span></div>'
+    + '<div style="display:flex; flex-wrap:wrap; gap:4px">'
     + l.map(function (x) {
-      const col = coloreCisl(x.tipologia), fascia = fasciaCisl(x) || 'tutti i redditi';
-      return '<button type="button" class="cisl-scheda" onclick="scegliPrezzoCisl(this, \'' + idCampo + '\', \'' + (idFattura || '') + '\', ' + Number(x.importo) + ')" style="flex:0 0 auto; width:170px; min-height:0; scroll-snap-align:start; text-align:left; padding:0; border:2px solid ' + col + '; border-radius:12px; background:#fff; color:#0f1b2d; overflow:hidden; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.08)">'
-        + '<div style="background:' + col + '; color:#fff; font-weight:800; font-size:12.5px; padding:6px 10px; white-space:normal; line-height:1.2">' + esc(x.tipologia || 'Iscritti CISL') + '</div>'
-        + '<div style="padding:7px 10px 9px"><div style="font-size:11.5px; color:#5b6b82; line-height:1.25; white-space:normal">' + esc(fascia.charAt(0).toUpperCase() + fascia.slice(1)) + '</div>'
-        + '<div style="font-size:11px; margin-top:3px; display:inline-block; padding:1px 8px; border-radius:999px; background:color-mix(in srgb, ' + col + ' 14%, #fff); color:' + col + '; font-weight:700">' + quale(x) + '</div>'
-        + '<div style="font-size:22px; font-weight:900; color:' + col + '; margin-top:4px">' + fmtEuro(x.importo) + '</div></div></button>';
-    }).join('') + '</div></div>';
+      const col = coloreCisl(x.tipologia);
+      const tit = etichettaCisl(x);
+      const dich = x.applica === 'congiunta' ? ' 👥' : x.applica === 'singola' ? ' 👤' : '';
+      return '<button type="button" class="cisl-scheda" title="' + esc(tit) + '" onclick="scegliPrezzoCisl(this, \'' + idCampo + '\', \'' + (idFattura || '') + '\', ' + Number(x.importo) + ')" style="min-height:0; display:inline-flex; align-items:center; gap:5px; padding:3px 8px 3px 6px; border-radius:999px; border:1.5px solid ' + col + '; background:#fff; color:#0f1b2d; font-size:11.5px; line-height:1.3; cursor:pointer; white-space:nowrap">'
+        + '<span style="width:8px; height:8px; border-radius:50%; background:' + col + '; flex:0 0 auto"></span>'
+        + '<span style="color:' + col + '; font-weight:700">' + esc(sigla(x.tipologia)) + '</span>'
+        + '<span style="color:#5b6b82">' + esc(fasciaBreveCisl(x)) + dich + '</span>'
+        + '<b>' + fmtEuro(x.importo) + '</b></button>';
+    }).join('') + '</div>'
+    + '<div style="font-size:10.5px; color:#7f1d1d; margin-top:3px">Dip. = lavoro dipendente · Pens. = pensionato · 👥 solo congiunte · 👤 solo singole · tieni il dito o il mouse sopra per il dettaglio</div></div>';
 }
 function scegliPrezzoCisl(btn, idCampo, idFattura, importo) {
   [idCampo, idFattura].forEach(function (id) { const c = id && document.getElementById(id); if (c) { c.value = importoInCampo(importo); c.dispatchEvent(new Event('input')); c.style.background = '#e8f6ee'; } });
   const box = btn.closest('.cisl-prezzario');
-  if (box) box.querySelectorAll('.cisl-scheda').forEach(function (b) { b.style.boxShadow = b === btn ? '0 0 0 4px #f2c200' : '0 2px 6px rgba(0,0,0,.08)'; });
+  if (box) box.querySelectorAll('.cisl-scheda').forEach(function (b) { b.style.boxShadow = b === btn ? '0 0 0 3px #f2c200' : ''; b.style.background = b === btn ? '#fff8d6' : '#fff'; });
 }
 
 // Editor in Utenti e permessi (solo amministratore)
