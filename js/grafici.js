@@ -68,7 +68,7 @@ function renderGrafici() {
   }
   const anno = annoAttivo();
   document.getElementById('grafici-anno').textContent = anno;
-  const pratAnno = (state.pratiche || []).filter(function (p) { return annoPratica(p) === anno; });
+  const pratAnno = (state.pratiche || []).filter(function (p) { return annoPratica(p) === anno; }).map((typeof praticaContabile === 'function' ? praticaContabile : function (x) { return x; }));
   const versAnno = (state.versamenti || []).filter(function (v) { return annoVersamento(v) === anno; });
   // anche le fatture di pratiche annullate senza nota di credito
   const fatture = sommaCampo(pratAnno.concat(typeof fattureAnnullateAperte === 'function' ? fattureAnnullateAperte(anno) : []), 'compenso');
@@ -217,7 +217,7 @@ function renderGrafici() {
     data: {
       labels: anni.map(String),
       datasets: [
-        { label: 'Fatture emesse', data: anni.map(function (a) { return sommaCampo((state.pratiche || []).filter(function (p) { return annoPratica(p) === a; }).concat(typeof fattureAnnullateAperte === 'function' ? fattureAnnullateAperte(a) : []), 'compenso'); }), backgroundColor: COL_FATTURE, borderRadius: 6, maxBarThickness: 40 },
+        { label: 'Fatture emesse', data: anni.map(function (a) { return sommaCampo((state.pratiche || []).filter(function (p) { return annoPratica(p) === a; }).map((typeof praticaContabile === 'function' ? praticaContabile : function (x) { return x; })).concat(typeof fattureAnnullateAperte === 'function' ? fattureAnnullateAperte(a) : []), 'compenso'); }), backgroundColor: COL_FATTURE, borderRadius: 6, maxBarThickness: 40 },
         { label: 'Incasso', data: anni.map(function (a) { return sommaCampo((state.pratiche || []).filter(function (p) { return annoPratica(p) === a; }), 'pagato'); }), backgroundColor: COL_INCASSO, borderRadius: 6, maxBarThickness: 40 },
       ],
     },

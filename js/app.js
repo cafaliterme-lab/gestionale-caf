@@ -972,7 +972,7 @@ async function esportaRegistroExcel(){
   tutte.forEach(function(p){ const k = p.tipo || 'SENZA TIPO'; if(!gruppi[k]) gruppi[k] = []; gruppi[k].push(p); });
   const nomiGruppi = getTipiList().concat(Object.keys(gruppi).filter(function(k){ return getTipiList().indexOf(k) < 0; }));
 
-  const fattureEmesse = tutte.concat(annFatt).reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
+  const fattureEmesse = praticheContabili(tutte).concat(annFatt).reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const incassoLordo = tutte.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
   const versAnno = (state.versamenti||[]).filter(function(v){ return annoVersamento(v) === anno; });
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
@@ -1765,7 +1765,9 @@ function render(){
   const conti = conteggi730(pratAnno);
   const tot = conti.tot, daLavorare = conti.daFare, lavorate = conti.lav;
   // per i conti: anche le fatture delle pratiche annullate senza nota di credito
-  const pratCont = pratAnno.concat(fattureAnnullateAperte(annoSel));
+  const pratC = praticheContabili(pratAnno);
+  const pratCont = pratC.concat(fattureAnnullateAperte(annoSel));
+  const fattAttesa = totaleFattureInAttesa(pratAnno);
   const fattureEmesse = pratCont.reduce((a,p)=>a+Number(p.compenso||0),0);
   const incassoLordo = pratAnno.reduce((a,p)=>a+Number(p.pagato||0),0);
   const versatoCaf = versAnno.reduce(function(a,v){ return a+Number(v.importo||0); }, 0);
@@ -1789,7 +1791,7 @@ function render(){
     <div class="stat c4" data-dett="p730lav" style="background:#2f9e5f; border-color:#2f9e5f; color:#fff"><b>${lavorate}</b><span style="color:rgba(255,255,255,.92); font-weight:600">730 LAVORATE</span></div>
     <div class="stat c4" data-dett="p730dalav" style="background:#e57373; border-color:#e57373; color:#fff"><b>${daLavorare}</b><span style="color:rgba(255,255,255,.95); font-weight:600">730 DA LAVORARE</span></div>
     <div class="stat c4" data-dett="paltre" style="background:#0e8a8a; border-color:#0e8a8a; color:#fff"><b>${sommaPeso(pratAnno.filter(eAltraConta))}</b><span style="color:rgba(255,255,255,.92); font-weight:600">ALTRE PRATICHE</span></div>` : '') + (vEco ? `
-    <div class="stat c5 verde" data-dett="fatture"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE</span></div>
+    <div class="stat c5 verde" data-dett="fatture"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE${fattAttesa > 0.004 ? '<br><small style="font-weight:600">⏳ in attesa di consegna ' + fmtEuro(fattAttesa) + '</small>' : ''}</span></div>
     <div class="stat c5 viola" data-dett="incasso"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
     ${(function(){ const p730 = pratAnno.filter(e730Conta), cons = p730.filter(eConsegnata), daC = p730.filter(function(p){ return !eConsegnata(p); });
       const som = function(l, c){ return l.reduce(function(t,p){ return t + Number(p[c]||0); }, 0); };
@@ -1800,8 +1802,8 @@ function render(){
     <div class="stat c5 blu" data-dett="versamenti"><b>${fmtEuro(CC.usciteCaf)}</b><span>VERSAMENTI CAF (bollettini${CC.bonifici > 0.004 ? ' + bonifici' : ''})<br>fatture coperte ${fmtEuro(versatoCaf)}${CC.detr > 0.004 ? ' (comprese ' + fmtEuro(CC.detr) + ' di spese sede detratte)' : ''}</span></div>
     <div class="stat c5" data-dett="cassa" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${fmtEuro(CC.cassa)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SOLDI IN CASSA<br>incasso − versamenti CAF − spese sede<br>💶 contanti ${fmtEuro(CC.d.contanti)} · 🏦 banca ${fmtEuro(CC.d.banca)}</span></div>
     ${vedeGuadagni() ? `<div class="stat c5" data-dett="spese" style="background:#b35f0c; border-color:#b35f0c; color:#fff"><b>${fmtEuro(CC.speseTutte)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">SPESE SEDE${CC.detr > 0.004 ? '<br>di cui ' + fmtEuro(CC.detr) + ' detratte al CAF' : ''}</span></div>${typeof debitoAngelo === 'function' && debitoAngelo().totale ? `<div class="stat c5" data-dett="angelo" style="background:#8e5bd6; border-color:#8e5bd6; color:#fff"><b>${fmtEuro(debitoAngelo().totale)}</b><span style="color:rgba(255,255,255,.92); font-weight:600">DA RESTITUIRE AD ANGELO</span></div>` : ''}<div class="stat c5 gray" data-dett="guadagno"><b>${fmtEuro(differenzaIncFatt)}</b><span>GUADAGNO NETTO<br>incasso − fatture − spese sede non detratte al CAF</span></div>` : ''}` : '') + ((vPrat || vEco) ? '</div>' : '') + (vBlocchi ? `
-    ${bloccoIntroito('SOLO 730', '#1d4f91', pratAnno.filter(e730Conta), true, 'GUADAGNO NETTO 730')}
-    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#0e8a8a', pratAnno.filter(eAltraConta), false, 'GUADAGNO NETTO ALTRE PRATICHE')}
+    ${bloccoIntroito('SOLO 730', '#1d4f91', pratC.filter(e730Conta), true, 'GUADAGNO NETTO 730')}
+    ${bloccoIntroito('ALTRE PRATICHE (IMU, ISEE, contratti di affitto, colf e badanti)', '#0e8a8a', pratC.filter(eAltraConta), false, 'GUADAGNO NETTO ALTRE PRATICHE')}
     ${bloccoRinunce(pratCont, annoSel)}
     ${vedeGuadagni() ? sommaGuadagniHTML(pratCont) : ''}` : '') + (vEco && vBlocchi && vedeGuadagni() ? riepilogoGuadagno(pratCont, versatoCaf, speseSede) : '');
   if(typeof renderSpese === 'function') renderSpese();
@@ -1822,8 +1824,8 @@ function render(){
   }
   document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso totale − fatture emesse − spese sede): ' + fmtEuro(incassoLordo - fattureEmesse - speseSede) : '';
   aggiornaGrafici(fattureEmesse, incassoLordo);
-  aggiornaGraficoTipi(pratAnno);
-  document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratAnno) + riepilogoPerPagamento(pratAnno);
+  aggiornaGraficoTipi(pratC);
+  document.getElementById('raff-tipi').innerHTML = riepilogoPerTipo(pratC) + riepilogoPerPagamento(pratC);
   if(typeof renderElencoFPS === 'function') renderElencoFPS(pratAnno);
   if(typeof renderSituazioneData === 'function') renderSituazioneData();
   if(typeof renderRicercaFatture === 'function') renderRicercaFatture();
@@ -1891,7 +1893,7 @@ function render(){
       ${p.emailInviata ? `<div class="meta" style="color:#1d4f91">📧 E-mail inviata: ${esc(p.emailInviata)}</div>` : ''}
       ${ultimaModifica(p) ? `<div class="meta" style="color:var(--sub)">✏️ Ultima modifica: <b>${ultimaModifica(p)}</b></div>` : ''}
       ${p.whatsappInviato ? `<div class="meta" style="color:#1a9e4b">💬 Avvisato su WhatsApp il ${esc(p.whatsappInviato)}</div>` : ''}
-      <div class="meta">${(Number(p.compenso||0) || Number(p.richiesto||0) || Number(p.pagato||0)) ? `<span style="font-weight:700">💶 Fattura ${Number(p.compenso||0) ? fmtEuro(p.compenso) : '-'} · Richiesto ${Number(p.richiesto||0) ? fmtEuro(p.richiesto) : '-'} · Pagato ${Number(p.pagato||0) ? fmtEuro(p.pagato) : '-'}${typeof residuoPratica === 'function' && residuoPratica(p) > 0.004 ? ' · <span style="color:#c0392b">manca ' + fmtEuro(residuoPratica(p)) + '</span>' : ''}</span> ` : ''}${bottoneAvanti(p)} ${p.consegnataIl ? `<span style="color:#8d5a3b; font-weight:700">${parolaConsegna(p).icona} ${parolaConsegna(p).fatta} il ${esc(p.consegnataIl)}${p.consegnataDa ? ' da ' + esc(p.consegnataDa) : ''}</span> ` : ''}${bottoneConsegna(p)}</div>
+      <div class="meta">${(Number(p.compenso||0) || Number(p.richiesto||0) || Number(p.pagato||0)) ? `<span style="font-weight:700">💶 Fattura ${Number(p.compenso||0) ? fmtEuro(p.compenso) : '-'}${praticaContabile(p)._fattAttesa ? ' <span style="color:#b35f0c">(⏳ in attesa di consegna: non ancora in contabilità)</span>' : ''} · Richiesto ${Number(p.richiesto||0) ? fmtEuro(p.richiesto) : '-'} · Pagato ${Number(p.pagato||0) ? fmtEuro(p.pagato) : '-'}${typeof residuoPratica === 'function' && residuoPratica(p) > 0.004 ? ' · <span style="color:#c0392b">manca ' + fmtEuro(residuoPratica(p)) + '</span>' : ''}</span> ` : ''}${bottoneAvanti(p)} ${p.consegnataIl ? `<span style="color:#8d5a3b; font-weight:700">${parolaConsegna(p).icona} ${parolaConsegna(p).fatta} il ${esc(p.consegnataIl)}${p.consegnataDa ? ' da ' + esc(p.consegnataDa) : ''}</span> ` : ''}${bottoneConsegna(p)}</div>
       ${p._editing ? `
         <div class="grid" style="margin-top:8px">
           <div><label>Cognome</label><input id="e-cognome-${p.id}" value="${esc(dividiNominativo(p).cognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
@@ -1952,7 +1954,8 @@ function render(){
     // fatture di pratiche annullate di questo tipo senza nota di credito (restano tra le fatture)
     const annK = (inRicerca || statoGr || typeof fattureAnnullateAperte !== 'function') ? [] : fattureAnnullateAperte(annoAttivo()).filter(function(p){ return (p.tipo || 'SENZA TIPO') === k; });
     const feAnn = annK.reduce(function(a,p){ return a + Number(p.compenso||0); }, 0);
-    const fe = items.reduce(function(a,p){ return a + Number(p.compenso||0); }, 0) + feAnn;
+    const fe = praticheContabili(items).reduce(function(a,p){ return a + Number(p.compenso||0); }, 0) + feAnn;
+    const feAtt = totaleFattureInAttesa(items);
     const inc = items.reduce(function(a,p){ return a + Number(p.pagato||0); }, 0);
     const accK = inRicerca ? 0 : totaleAcconti(annoAttivo(), function(t){ return t === k; });
     const open = aperti[k] === true;
@@ -1963,7 +1966,7 @@ function render(){
     const schede = sola ? [sola] : items.filter(vediNelGruppo(statoGr));
     return '<details class="grp" data-k="' + esc(k) + '" style="--gc:' + col + '" ' + (open ? 'open' : '') + ' ontoggle="gToggle(this)">'
       + '<summary style="background:' + col + '; background-image:none"><span class="grp-name">' + esc(k) + '</span><span class="grp-n">' + sommaPeso(items) + '</span>'
-      + ('<span class="grp-soldi">Fatture ' + fmtEuro(fe) + (feAnn ? '<br><small>di cui ' + fmtEuro(feAnn) + ' annullate</small>' : '') + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + '</span>') + '</summary>'
+      + ('<span class="grp-soldi">Fatture ' + fmtEuro(fe) + (feAnn ? '<br><small>di cui ' + fmtEuro(feAnn) + ' annullate</small>' : '') + (feAtt ? '<br><small>⏳ in attesa ' + fmtEuro(feAtt) + '</small>' : '') + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + '</span>') + '</summary>'
       + '<div class="grp-b">' + filtroStatoGruppoHTML(k, tuttiTipo) + contabilitaCollaboratoreHTML(k, items) + tabellaPraticheGruppoHTML(items.filter(vediNelGruppo(statoGr)), k)
       + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open; if(!this.open) delete SCHEDA_SOLA[this.dataset.k.replace(/\|schede$/, \'\')]" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 ' + (sola ? 'Scheda della pratica ' + esc(formattaProtocollo(sola)) + ' – ' + esc(sola.nome || '') : 'Schede complete delle pratiche (' + items.length + ')') + ' – per modificare, ricevuta, WhatsApp…</summary>'
         + (sola && items.length > 1 ? '<button type="button" onclick="mostraTutteSchede(this.dataset.k)" data-k="' + esc(k) + '" style="margin:0 0 8px; padding:5px 14px; border-radius:999px; border:1px dashed var(--sub); background:none; color:var(--sub); font-weight:700; cursor:pointer">📋 Mostra tutte le schede del gruppo (' + items.length + ')</button>' : '')
@@ -2776,9 +2779,10 @@ function popupLavorata(p){
     + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + (Number(p.richiesto||0) ? ' · richiesto ' + fmtEuro(p.richiesto) : '') + '</div>'
     + '<div class="grid">' + (conNumero ? '<div><label>N. fattura <b style="color:#c0392b">*</b></label><input id="lv-nf" value="' + esc(nfProposto) + '" inputmode="numeric" style="font-weight:800"><div style="font-size:11.5px; color:var(--sub)">' + (!giaNF && String(p.numero) === nfProposto ? 'come il protocollo n. ' + p.numero : '') + '</div></div>'
     + '<div><label>Data fattura <b style="color:#c0392b">*</b></label><input id="lv-df" value="' + esc(p.dataFattura || todayIT()) + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>' : '')
-    + '<div><label>Importo fattura (€) <b style="color:#c0392b">*</b></label><input id="lv-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800"></div>'
+    + '<div><label>Importo fattura (€)</label><input id="lv-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800"></div>'
     + '<div><label title="Quanto chiedi al cliente: promemoria, non entra in contabilità">Importo richiesto (€) <b style="color:#c0392b">*</b></label><input id="lv-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)">' + '</div>'
     + '</div>'
+    + '<div style="margin-top:8px; padding:7px 10px; border-radius:8px; background:#fff4e5; color:#7a3e00; font-size:12.5px">ℹ️ La fattura resta scritta nella pratica ma <b>entra in contabilità solo alla 📦 Consegna</b>, dove ritrovi questi importi da confermare. L\'importo della fattura si può lasciare vuoto e scriverlo alla consegna.</div>'
     + '<label class="chk" style="display:flex; gap:8px; align-items:center; margin-top:10px"><input type="checkbox" id="lv-wa" style="width:auto"> <span>💬 Avvisa il cliente su WhatsApp che la pratica è pronta' + (tel ? '' : ' <span style="color:#c0392b; font-size:12px">(manca il cellulare: te lo chiederà)</span>') + '</span></label>'
     + '<div id="lv-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px">'
@@ -2800,16 +2804,17 @@ function popupLavorata(p){
     if(b.dataset.az === 'si' && !conNumero){
       // altre pratiche: solo l'importo della fattura (0 se gratuita), senza numero
       const imv = document.getElementById('lv-imp').value.trim(), im = parseImporto(imv);
-      if(!imv || !(im >= 0)) return segna('lv-imp', 'Scrivi l\'importo della fattura (obbligatorio; 0 se gratuita).');
-      campi.compenso = im > 0 ? im : '';
+      if(imv && !(im >= 0)) return segna('lv-imp', 'Importo della fattura non valido.');
+      if(imv) campi.compenso = im > 0 ? im : '';
     } else if(b.dataset.az === 'si'){
       const nf = document.getElementById('lv-nf').value.trim(), df = document.getElementById('lv-df').value.trim(), im = parseImporto(document.getElementById('lv-imp').value);
       if(!nf) return segna('lv-nf', 'Scrivi il numero della fattura (obbligatorio).');
       if(!parseDataIT(df)) return segna('lv-df', 'La data della fattura deve essere GG/MM/AAAA.');
-      if(!(im > 0)) return segna('lv-imp', 'Scrivi l\'importo della fattura (obbligatorio).');
+      if(document.getElementById('lv-imp').value.trim() && !(im >= 0)) return segna('lv-imp', 'Importo della fattura non valido.');
       const doppia = praticheConFattura().find(function(x){ return x.id !== p.id && e730(x) && annoPratica(x) === annoPratica(p) && String(x.numFattura||'').trim() === nf; });
       if(doppia && !confirm('La fattura n. ' + nf + ' c\'è già (' + formattaProtocollo(doppia) + ' – ' + (doppia.nome||'') + (doppia.annullata ? ', pratica ANNULLATA: il numero resta occupato' : '') + ').\n\nUso lo stesso il numero ' + nf + '?')) return;
-      campi.numFattura = nf; campi.dataFattura = df; campi.compenso = im; campi.fatt = 'fatturata';
+      campi.numFattura = nf; campi.dataFattura = df; campi.fatt = 'fatturata';
+      if(im > 0) campi.compenso = im;
     }
     // il richiesto si salva in tutti e due i casi; il pagato si scrive alla consegna
     const ric = parseImporto(document.getElementById('lv-ric').value);
@@ -2873,6 +2878,7 @@ function consegnaPratica(id){
     + '<div><label>Importo pagato (€) <b style="color:#c0392b">*</b></label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
     + '<div><label>Pagamento</label><select id="cs-met">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div>'
     + '<div><label>' + (e730(p) ? 'Data di consegna' : 'Data') + ' <b style="color:#c0392b">*</b></label><input id="cs-data" value="' + todayIT() + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div></div>'
+    + '<div style="margin-top:8px; padding:7px 10px; border-radius:8px; background:#e8f6ee; color:#1a7f37; font-size:12.5px">✓ Controlla gli importi: confermando la consegna, <b>fattura e incasso entrano in contabilità</b>.</div>'
     + '<div id="cs-resto" style="font-size:13.5px; font-weight:800; margin-top:6px"></div>'
     + '<div id="cs-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px">'
@@ -3386,6 +3392,14 @@ function bloccoSpeseCaf(pratAnno, anno){
     + '<span style="flex-basis:100%; font-size:12.5px; color:var(--sub)">di cui guadagno della sede <b>' + fmtEuro(resta - daVers) + '</b>' + (daVers > 0.004 ? ' e <b style="color:#c0392b">' + fmtEuro(daVers) + '</b> ancora da versare al CAF' : ' · al CAF non si deve più niente') + '</span>'
     + '</div></div>';
 }
+// La fattura scritta a "lavorata" entra in contabilità solo quando la pratica è consegnata/definita.
+// Fino ad allora per i conti vale 0 e resta "in attesa di consegna" (_fattAttesa). I contratti colf restano come prima.
+function praticaContabile(p){
+  if(!p || p._annFatt || (typeof eColf === 'function' && eColf(p.tipo)) || eConsegnata(p) || !(Number(p.compenso||0) > 0)) return p;
+  return Object.assign({}, p, { compenso: 0, _fattAttesa: Number(p.compenso) });
+}
+function praticheContabili(lista){ return (lista||[]).map(praticaContabile); }
+function totaleFattureInAttesa(lista){ return (lista||[]).reduce(function(t,p){ const c = praticaContabile(p); return t + Number(c._fattAttesa||0); }, 0); }
 function annullateAnno(anno){ return (state.annullate||[]).filter(function(p){ return annoPratica(p) === anno; }); }
 // Pratiche annullate con la fattura già emessa e senza nota di credito: la fattura resta in contabilità
 // (fatture emesse, da versare al CAF, guadagno) insieme alle rinunce; l'incasso non conta.

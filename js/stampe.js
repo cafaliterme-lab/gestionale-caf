@@ -57,7 +57,8 @@ function praticheFiltrate() {
   const s = STAMPA;
   const da = isoNum(s.da), a = isoNum(s.a);
   const cerca = s.cliente.trim().toUpperCase();
-  return (state.pratiche || []).filter(function (p) {
+  const contabile = STAMPA.origine === 'contabilita' && typeof praticaContabile === 'function' ? praticaContabile : function (x) { return x; };
+  return (state.pratiche || []).map(contabile).filter(function (p) {
     if (annoPratica(p) !== s.anno) return false;
     if (!s.tipi[p.tipo || 'SENZA TIPO']) return false;
     if (!s.stati[p.stato]) return false;

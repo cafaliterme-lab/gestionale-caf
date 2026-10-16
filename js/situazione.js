@@ -37,7 +37,7 @@ function situazioneAnnoAOggi() {
 function calcolaSituazioneData() {
   const da = isoNum(SIT.da) || 0, a = isoNum(SIT.a) || 99999999;
   const dentro = function (n) { return n != null && n >= da && n <= a; };
-  const pratiche = (state.pratiche || []).filter(function (p) { return !p.annullata && dentro(dataNum(dataPraticaSit(p))); });
+  const pratiche = (state.pratiche || []).filter(function (p) { return !p.annullata && dentro(dataNum(dataPraticaSit(p))); }).map((typeof praticaContabile === 'function' ? praticaContabile : function (x) { return x; }));
   const versamenti = (state.versamenti || []).filter(function (v) { return dentro(dataNum(v.data)); });
   const mesi = {};
   const mese = function (n) { const k = Math.floor(n / 100); return mesi[k] || (mesi[k] = { fatt: 0, fpag: 0, inc: 0, vers: 0, spese: 0, ang: 0 }); };

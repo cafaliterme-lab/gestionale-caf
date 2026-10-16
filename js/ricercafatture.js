@@ -45,7 +45,7 @@ function periodoRicercaFatture(i) {
 function fattureTrovate() {
   const da = isoNum(RF.da), a = isoNum(RF.a);
   const q = String(RF.testo || '').trim().toUpperCase();
-  return (state.pratiche || []).filter(function (p) {
+  return (state.pratiche || []).map((typeof praticaContabile === 'function' ? praticaContabile : function (x) { return x; })).filter(function (p) {
     if (RF.soloFatturate && !Number(p.compenso) && !Number(p.pagato)) return false;
     const d = dataNum(dataRiferimento(p));
     if (da || a) { if (d === null) return false; if (da && d < da) return false; if (a && d > a) return false; }

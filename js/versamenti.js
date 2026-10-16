@@ -159,7 +159,7 @@ async function salvaContaCassa() {
 
 function quadraturaCassaHTML(versatoCaf) {
   const anno = typeof annoAttivo === 'function' ? annoAttivo() : null;
-  const prat = (state.pratiche || []).filter(function (p) { return !p.annullata && (!anno || typeof annoPratica !== 'function' || annoPratica(p) === anno); })
+  const prat = (state.pratiche || []).filter(function (p) { return !p.annullata && (!anno || typeof annoPratica !== 'function' || annoPratica(p) === anno); }).map((typeof praticaContabile === 'function' ? praticaContabile : function (x) { return x; }))
     .concat(typeof fattureAnnullateAperte === 'function' ? fattureAnnullateAperte(anno) : []);
   const fatt = prat.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
   const inc = prat.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);

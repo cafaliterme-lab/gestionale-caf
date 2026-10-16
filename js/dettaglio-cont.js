@@ -2,7 +2,7 @@
    Pratiche, fatture, incasso, versamenti CAF, soldi in cassa, spese sede, Angelo, guadagno:
    elenco delle voci che compongono il numero, con i totali e il tasto Stampa. */
 
-function praticheDettaglio(anno) { return (state.pratiche || []).filter(function (p) { return !p.annullata && annoPratica(p) === anno; }).concat(typeof fattureAnnullateAperte === 'function' ? fattureAnnullateAperte(anno) : []); }
+function praticheDettaglio(anno) { return (state.pratiche || []).filter(function (p) { return !p.annullata && annoPratica(p) === anno; }).map((typeof praticaContabile === 'function' ? praticaContabile : function (x) { return x; })).concat(typeof fattureAnnullateAperte === 'function' ? fattureAnnullateAperte(anno) : []); }
 function euroCella(v, colore) { return '<td style="text-align:right; white-space:nowrap' + (colore ? '; color:' + colore + '; font-weight:700' : '') + '">' + fmtEuro(v) + '</td>'; }
 
 // Elenchi lunghi: si mostrano subito le prime righe (apertura immediata), le altre con "Mostra tutte"
@@ -116,7 +116,9 @@ function apriDettaglioCont(chiave, gruppo, pronto) {
     const l = filtroGruppo(prat).filter(function (p) { return Number(p.compenso || 0) > 0; });
     const emesse = l.filter(function (p) { return p.numFattura; });
     titolo = 'Fatture emesse' + nomeGruppo; colore = '#2f9e5f';
-    corpo = rigaFormula([['Con numero di fattura', somma(emesse, 'compenso')], ['Ancora da fatturare', somma(l, 'compenso') - somma(emesse, 'compenso'), '+']], somma(l, 'compenso')) + tabellaPraticheDettaglio(l);
+    const attesa = filtroGruppo(prat).filter(function (p) { return p._fattAttesa; }).map(function (p) { return Object.assign({}, p, { compenso: p._fattAttesa }); });
+    corpo = rigaFormula([['Con numero di fattura', somma(emesse, 'compenso')], ['Ancora da fatturare', somma(l, 'compenso') - somma(emesse, 'compenso'), '+']], somma(l, 'compenso')) + tabellaPraticheDettaglio(l)
+      + (attesa.length ? '<h4 style="margin:14px 0 6px; color:#b35f0c">⏳ Fatture in attesa di consegna: ' + fmtEuro(somma(attesa, 'compenso')) + ' (entrano in contabilità alla consegna)</h4>' + tabellaPraticheDettaglio(attesa) : '');
   }
   else if (chiave === 'incasso' || chiave === 'g-incasso') {
     const l = filtroGruppo(prat).filter(function (p) { return Number(p.pagato || 0) > 0; });
