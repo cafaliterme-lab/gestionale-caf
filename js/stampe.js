@@ -14,6 +14,7 @@ function apriStampa(origine, opz) {
     tipi: {}, stati: {},
     operatore: '', cliente: '', pagamento: '',
     consegna: (opz && opz.consegna) || '',
+    cisl: (opz && opz.cisl) || '',
   };
   tipiPerStampa(anno).forEach(function (t) { STAMPA.tipi[t] = !(opz && opz.tipo) || t === opz.tipo; });
   if (opz && opz.tipo && !(opz.tipo in STAMPA.tipi)) STAMPA.tipi[opz.tipo] = true;
@@ -62,6 +63,7 @@ function praticheFiltrate() {
     if (annoPratica(p) !== s.anno) return false;
     if (!s.tipi[p.tipo || 'SENZA TIPO']) return false;
     if (!s.stati[p.stato]) return false;
+    if (s.cisl && typeof passaFiltroCisl === 'function') { const prima = FILTRO_CISL; FILTRO_CISL = s.cisl; const ok = passaFiltroCisl(p); FILTRO_CISL = prima; if (!ok) return false; }
     if (s.consegna === 'solo' && !p.consegnataIl) return false;
     if (s.consegna === 'escludi' && p.consegnataIl) return false;
     if (s.operatore && String(p.inseritoDa || '').toUpperCase() !== s.operatore) return false;
@@ -78,7 +80,7 @@ function praticheFiltrate() {
 }
 
 // Versamenti CAF e netto hanno senso solo sul totale (nessun filtro su tipo, stato, operatore, cliente)
-function stampaSuTotale() { return tuttiTipi() && tuttiStati() && !STAMPA.operatore && !STAMPA.cliente.trim() && !STAMPA.pagamento && !STAMPA.consegna; }
+function stampaSuTotale() { return !STAMPA.cisl && tuttiTipi() && tuttiStati() && !STAMPA.operatore && !STAMPA.cliente.trim() && !STAMPA.pagamento && !STAMPA.consegna; }
 function versamentiFiltrati() {
   const da = isoNum(STAMPA.da), a = isoNum(STAMPA.a);
   return (state.versamenti || []).filter(function (v) {
@@ -99,6 +101,7 @@ function descrizioneFiltri() {
   righe.push('Tipo pratica: ' + (tuttiTipi() ? 'tutti' : tipiSi.join(', ')));
   const statiSi = Object.keys(s.stati).filter(function (k) { return s.stati[k]; });
   righe.push('Stato: ' + (tuttiStati() ? 'tutti' : statiSi.map(statoLabel).join(', ')));
+  if (s.cisl) righe.push('Iscritti CISL: ' + (s.cisl === 'iscritti' ? 'solo iscritti (senza FPS e FILCA)' : 'iscritti + 730 FPS + 730 FILCA'));
   righe.push('Operatore: ' + (s.operatore || 'tutti'));
   if (s.pagamento) righe.push('Pagamento: ' + (s.pagamento === 'NESSUNO' ? 'non indicato' : s.pagamento));
   if (s.cliente.trim()) righe.push('Cliente: ' + s.cliente.trim());

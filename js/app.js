@@ -1663,7 +1663,10 @@ async function ripristinaPratica(id){
   if(!(esito && esito.error)) avviso('↩️ Pratica ' + formattaProtocollo(p) + ' ripristinata');
 }
 // Tasti rapidi con il numero di pratiche per ogni stato (anno attivo): un tocco filtra il registro
-let SOLO_VIA_EMAIL = false, VEDI_TUTTE = false;
+let SOLO_VIA_EMAIL = false, VEDI_TUTTE = false, FILTRO_CISL = '';
+// Iscritti CISL: 'iscritti' = solo iscritti (senza FPS e FILCA), 'tutti' = iscritti + 730 FPS + 730 FILCA
+function eConvenzioneCisl(p){ return typeof convenzioneDi === 'function' && !!convenzioneDi(p.tipo); }
+function passaFiltroCisl(p){ if(FILTRO_CISL === 'iscritti') return !!p.iscrittoCisl && !eConvenzioneCisl(p); if(FILTRO_CISL === 'tutti') return !!p.iscrittoCisl || eConvenzioneCisl(p); return true; }
 function disegnaChipStati(pratiche){
   const box = document.getElementById('chip-stati');
   if(!box) return;
@@ -1680,6 +1683,11 @@ function disegnaChipStati(pratiche){
   box.innerHTML = '<button type="button" onclick="document.getElementById(\'filtro-stato\').value=\'\'; VEDI_TUTTE=false; MOSTRA_CONSEGNATE=false; render()" style="padding:5px 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:700; border:2px solid #8d5a3b; background:'+(normale?'#8d5a3b':'transparent')+'; color:'+(normale?'#fff':'#8d5a3b')+'">📋 Da consegnare / definire <b>'+nDaCons+'</b></button>'
     + chip('', 'Tutte (anche consegnate)', (pratiche||[]).length, '#374151') + Object.keys(STATI).filter(function(k){ return conta[k]; }).map(function(k){ return chip(k, STATI[k].e+' '+STATI[k].l, conta[k], STATI[k].c || '#1d4f91'); }).join('');
   const nEmail = (pratiche||[]).filter(function(p){ return p.viaEmail; }).length;
+  { const nIscr = (pratiche||[]).filter(function(p){ return p.iscrittoCisl && !eConvenzioneCisl(p); }).length;
+    const nTutti = (pratiche||[]).filter(function(p){ return p.iscrittoCisl || eConvenzioneCisl(p); }).length;
+    const bott = function(k, testo, n, titolo){ const on = FILTRO_CISL === k; return '<button type="button" onclick="FILTRO_CISL = FILTRO_CISL === \'' + k + '\' ? \'\' : \'' + k + '\'; render()" title="' + titolo + '" style="padding:5px 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:700; border:2px dashed #c0392b; background:' + (on ? '#c0392b' : 'transparent') + '; color:' + (on ? '#fff' : '#c0392b') + '">' + testo + ' <b>' + n + '</b></button>'; };
+    box.innerHTML += bott('iscritti', '👤 Iscritti CISL', nIscr, 'Solo gli iscritti CISL (pensionati e dipendenti), senza 730 FPS e 730 FILCA')
+      + bott('tutti', '👤 Iscritti CISL + FPS + FILCA', nTutti, 'Iscritti CISL insieme alle pratiche 730 FPS in convenzione e 730 FILCA'); }
   if(nEmail || SOLO_VIA_EMAIL) box.innerHTML += '<button type="button" onclick="SOLO_VIA_EMAIL=!SOLO_VIA_EMAIL; render()" title="Solo le pratiche pervenute via e-mail" style="padding:5px 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:700; border:2px dashed #1d4f91; background:' + (SOLO_VIA_EMAIL ? '#1d4f91' : 'transparent') + '; color:' + (SOLO_VIA_EMAIL ? '#fff' : '#1d4f91') + '">📧 Via e-mail ' + nEmail + '</button>';
 }
 // Ricerca per stato dentro ogni riquadro di tipo pratica, con la stampa del report di quel tipo
@@ -1705,7 +1713,7 @@ function stampaReportStato(){
   const cli = filtroContribuente();
   // la stampa segue la lista che stai guardando: solo consegnate/definite oppure solo quelle ancora da consegnare
   // con lo stato scelto si stampano tutti e due gli archivi (da consegnare e consegnate), come nella ricerca
-  apriStampa('registro', { stato: sel, cliente: cli, consegna: (cli || sel || VEDI_TUTTE) ? '' : (MOSTRA_CONSEGNATE ? 'solo' : 'escludi') });
+  apriStampa('registro', { stato: sel, cliente: cli, cisl: FILTRO_CISL, consegna: (cli || sel || VEDI_TUTTE || FILTRO_CISL) ? '' : (MOSTRA_CONSEGNATE ? 'solo' : 'escludi') });
 }
 function filtroContribuente(){ return ((document.getElementById('filtro-contribuente')||{}).value||'').trim().toUpperCase(); }
 function filtra(lista){
@@ -1713,6 +1721,7 @@ function filtra(lista){
   const statoSel = (document.getElementById('filtro-stato')||{}).value || '';
   if(statoSel){ lista = lista.filter(function(p){ return p.stato === statoSel; }); }
   if(SOLO_VIA_EMAIL){ lista = lista.filter(function(p){ return !!p.viaEmail; }); }
+  if(FILTRO_CISL){ lista = lista.filter(passaFiltroCisl); }
   // contribuente: titolare o coniuge, per nome o codice fiscale
   const cli = filtroContribuente();
   if(cli){ lista = lista.filter(function(p){ return [p.nome, p.congiunta, ((p.congCognome||'') + ' ' + (p.congNome||'')), p.codiceFiscale, p.congCodiceFiscale].join(' ').toUpperCase().indexOf(cli) >= 0; }); }
@@ -2711,7 +2720,7 @@ function eConsegnata(p){ return !!(p && p.consegnataIl); }
 // Registro: due liste separate. Normale = pratiche da consegnare/definire; con il tasto = SOLO consegnate/definite
 function vediNelRegistro(p){
   // la ricerca per stato cerca in tutti e due gli archivi: da consegnare/definire e consegnate/definite
-  if(((document.getElementById('filtro-stato')||{}).value||'') || SOLO_VIA_EMAIL || VEDI_TUTTE) return true;
+  if(((document.getElementById('filtro-stato')||{}).value||'') || SOLO_VIA_EMAIL || VEDI_TUTTE || FILTRO_CISL) return true;
   if(MOSTRA_CONSEGNATE) return eConsegnata(p);
   if(!eConsegnata(p)) return true;
   // cercando un contribuente o un testo si vedono anche le consegnate
