@@ -23,7 +23,11 @@ function renderMorosi() {
   if (!box) return;
   const annoPrec = annoAttivo() - 1;
   // segue sempre l'anno di protocollo: nel 2027 mostra i morosi 2026, nel 2028 quelli 2027…
-  if (MOROSI.anno == null || MOROSI.annoBase !== annoAttivo()) { MOROSI.anno = annoPrec; MOROSI.annoBase = annoAttivo(); }
+  if (MOROSI.anno == null || MOROSI.annoBase !== annoAttivo()) {
+    // di solito l'anno precedente; se lì non c'è nessuno ma ci sono non pagate dell'anno in corso, si apre sull'anno in corso
+    MOROSI.anno = (!morosiAnno(annoPrec, MOROSI.collaboratori).length && morosiAnno(annoAttivo(), MOROSI.collaboratori).length) ? annoAttivo() : annoPrec;
+    MOROSI.annoBase = annoAttivo();
+  }
   const anni = Array.from(new Set((state.pratiche || []).map(annoPratica).filter(function (a) { return a < annoAttivo(); }))).sort(function (a, b) { return b - a; });
   if (MOROSI.anno && anni.indexOf(MOROSI.anno) < 0) anni.unshift(MOROSI.anno);
   if (anni.indexOf(annoAttivo()) < 0) anni.unshift(annoAttivo());
