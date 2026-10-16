@@ -21,11 +21,12 @@ function nomeAnnoMorosi(a) { return a ? String(a) : 'TUTTI GLI ANNI';
 function renderMorosi() {
   const box = document.getElementById('morosi-box');
   if (!box) return;
+  renderMorosiCorrente();
   const annoPrec = annoAttivo() - 1;
   // segue sempre l'anno di protocollo: nel 2027 mostra i morosi 2026, nel 2028 quelli 2027…
   if (MOROSI.anno == null || MOROSI.annoBase !== annoAttivo()) {
     // di solito l'anno precedente; se lì non c'è nessuno ma ci sono non pagate dell'anno in corso, si apre sull'anno in corso
-    MOROSI.anno = (!morosiAnno(annoPrec, MOROSI.collaboratori).length && morosiAnno(annoAttivo(), MOROSI.collaboratori).length) ? annoAttivo() : annoPrec;
+    MOROSI.anno = annoPrec; // l'anno in corso ha la sua barra a parte (renderMorosiCorrente)
     MOROSI.annoBase = annoAttivo();
   }
   const anni = Array.from(new Set((state.pratiche || []).map(annoPratica).filter(function (a) { return a < annoAttivo(); }))).sort(function (a, b) { return b - a; });
@@ -279,4 +280,30 @@ function stampaRegistroRecuperi() {
     + '<div class="tot"><div>TOTALE MOROSI<b>' + fmtEuro(tot + daRec) + '</b></div><div style="border-color:#2f9e5f">RECUPERATO<b>' + fmtEuro(tot) + '</b></div><div style="border-color:#c0392b">ANCORA DA RECUPERARE<b>' + fmtEuro(daRec) + '</b></div></div>'
     + tabellaRecuperiHTML(righe, tot) + '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>');
   w.document.close();
+}
+
+/* ---------------- Non pagate dell'anno in corso: barra a parte sotto il tabulato morosi ---------------- */
+// Pratiche dell'anno di protocollo già consegnate/definite ma non saldate (es. "Non ha pagato" alla consegna)
+const MOROSI_CORR = { aperto: false, collaboratori: false };
+function renderMorosiCorrente() {
+  const box = document.getElementById('morosi-corrente-box');
+  if (!box) return;
+  const anno = annoAttivo();
+  const lista = morosiAnno(anno, MOROSI_CORR.collaboratori);
+  const tot = lista.reduce(function (t, p) { return t + residuoPratica(p); }, 0);
+  const sola = document.body.classList.contains('sola-lettura');
+  box.innerHTML = '<details class="grp" style="--gc:#e67e22" ' + (MOROSI_CORR.aperto ? 'open' : '') + ' ontoggle="MOROSI_CORR.aperto=this.open">'
+    + '<summary style="background:#e67e22; color:#fff; background-image:none"><span class="grp-name">💸 NON PAGATE ' + anno + ' (anno in corso)</span><span class="grp-n">' + lista.length + '</span><span class="grp-soldi">Da pagare<br>' + fmtEuro(tot) + '</span></summary>'
+    + '<div class="grp-b" style="padding-top:10px">'
+    + '<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px">'
+    + '<span style="font-size:12.5px; color:var(--sub); flex:1; min-width:220px">Pratiche del ' + anno + ' già <b>consegnate o definite</b> ma non ancora pagate del tutto (per esempio "Non ha pagato" alla consegna). Quando il cliente paga premi <b>✓ Pagato</b>.</span>'
+    + '<label class="chk"><input type="checkbox" ' + (MOROSI_CORR.collaboratori ? 'checked' : '') + ' onchange="MOROSI_CORR.collaboratori=this.checked; renderMorosiCorrente()"> Includi pratiche dei collaboratori</label>'
+    + '<button type="button" onclick="stampaMorosiCorrente()" style="background:#374151; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">🖨️ Stampa</button></div>'
+    + tabellaMorosiHTML(lista, sola)
+    + '</div></details>';
+}
+function stampaMorosiCorrente() {
+  const prima = { anno: MOROSI.anno, coll: MOROSI.collaboratori };
+  MOROSI.anno = annoAttivo(); MOROSI.collaboratori = MOROSI_CORR.collaboratori;
+  try { stampaMorosi(); } finally { MOROSI.anno = prima.anno; MOROSI.collaboratori = prima.coll; }
 }
