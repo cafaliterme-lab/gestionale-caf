@@ -668,29 +668,15 @@ function accedi(id){
 }
 
 function cambiaUtente(){
-  // Logout e torna al login (prima il salvataggio di chi esce)
-  Promise.resolve(backupUscita()).then(function(){ return logout(); }).then(function(){
+  // Logout e torna al login
+  logout().then(function(){
     document.getElementById('login-overlay').style.display = 'flex';
     renderLogin();
     document.getElementById('login-msg').style.display = 'none';
   });
 }
 
-// Salvataggio completo sul server quando un utente esce o chiude il programma (anche gli operatori):
-// il server lo salta se i dati non sono cambiati dall'ultimo backup; il PC con la cartella Dropbox lo copia poi lì
-let ULTIMO_BACKUP_USCITA = 0;
-function backupUscita(){
-  if(typeof auth === 'undefined' || !auth.profilo || Date.now() - ULTIMO_BACKUP_USCITA < 60000) return Promise.resolve();
-  let token = ''; try{ token = localStorage.getItem('auth_token') || ''; }catch(e){}
-  if(!token) return Promise.resolve();
-  ULTIMO_BACKUP_USCITA = Date.now();
-  try{ return fetch(SUPABASE_URL + '/rest/v1/rpc/backup_uscita', { method: 'POST', keepalive: true, headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: '{}' }).catch(function(){}); }
-  catch(e){ return Promise.resolve(); }
-}
-document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') backupUscita(); });
-window.addEventListener('pagehide', function(){ backupUscita(); });
 async function esciDalProgramma(){
-  await backupUscita();
   await logout();
   cambiaUtente();
 }

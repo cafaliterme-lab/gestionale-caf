@@ -176,7 +176,7 @@ async function renderStoricoGlobale() {
 
 /* ---------------- Backup automatici ---------------- */
 
-const NOMI_BACKUP = { uscita: '🚪 All\'uscita di un utente (ultimi 10)', giornaliero: '🌙 Giornaliero (ogni notte, ultimi 14 giorni)', fine_anno: '🎆 Fine anno (31/12, conservato per sempre)', settimanale: '🗓️ Settimanale', manuale: '💾 Manuale', prima_di_svuotare: '🛡️ Prima di svuotare il registro', prima_di_importare: '🛡️ Prima di importare un backup' };
+const NOMI_BACKUP = { giornaliero: '🌙 Giornaliero (ogni notte, ultimi 14 giorni)', fine_anno: '🎆 Fine anno (31/12, conservato per sempre)', settimanale: '🗓️ Settimanale', manuale: '💾 Manuale', prima_di_svuotare: '🛡️ Prima di svuotare il registro', prima_di_importare: '🛡️ Prima di importare un backup' };
 async function renderBackup() {
   const box = document.getElementById('backup-lista');
   if (!box) return;
@@ -798,8 +798,7 @@ setInterval(function () {
   if (typeof isAdmin !== 'function' || !isAdmin() || !window.showDirectoryPicker || document.hidden) return;
   let ultimo = 0;
   try { ultimo = Date.parse(localStorage.getItem('backup-cartella-ultimo') || '') || 0; } catch (e) {}
-  // ogni 5 minuti: se c'è un backup nuovo (anche quello di un altro utente appena uscito) si copia nella cartella
-  if (Date.now() - ultimo > 5 * 60 * 1000) sincronizzaCartellaBackup(false);
+  if (Date.now() - ultimo > 6 * 3600 * 1000) sincronizzaCartellaBackup(false);
 }, 60 * 1000);
 
 
