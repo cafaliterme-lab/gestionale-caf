@@ -1000,7 +1000,7 @@ async function esportaRegistroExcel(){
     { 'Voce':'Dettaglio per collaboratore / tipo pratica', 'Valore':'' }
   ];
   nomiGruppi.forEach(function(k){
-    const items = gruppi[k] || [];
+    const items = praticheContabili(gruppi[k] || []);
     if(!items.length) return;
     const fe = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
     const inc = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
@@ -2537,6 +2537,7 @@ function bottoneStampaCollaboratore(k){
     + '<button type="button" onclick="stampaCollaboratore(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#374151; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer">🖨️ Stampa</button>';
 }
 function contabilitaCollaboratoreHTML(k, items){
+  items = praticheContabili(items); // la fattura conta solo dalla consegna
   const fatt0 = items.reduce(function(a,p){ return a+Number(p.compenso||0); }, 0);
   const inc0 = items.reduce(function(a,p){ return a+Number(p.pagato||0); }, 0);
   // la contabilità completa si vede in tutti i tipi di pratica (anche senza pratiche o senza importi)
@@ -2611,7 +2612,7 @@ function stampaCollaboratore(k){
 // Dettaglio di un riquadro della contabilita' del collaboratore: si apre toccando il riquadro
 var DETTAGLIO_CONTAB = {};
 function dettaglioContab(k, voce){
-  const items = (DETTAGLIO_CONTAB[k] || []).slice().sort(function(a,b){ return a.numero - b.numero; });
+  const items = praticheContabili(DETTAGLIO_CONTAB[k] || []).sort(function(a,b){ return a.numero - b.numero; });
   const accLista = accontiDi(annoAttivo(), function(t){ return t === k; }).slice().sort(function(a,b){
     const da = parseDataIT(a.data), db = parseDataIT(b.data);
     return (da ? da.a*10000 + da.m*100 + da.g : 0) - (db ? db.a*10000 + db.m*100 + db.g : 0);
