@@ -4,6 +4,7 @@
 
 const CHIAVE_CISL = 'iscritti_cisl_importi';
 let CISL_IN_MODIFICA = null;
+const TIPOLOGIE_CISL = ['Lavoro dipendente', 'Pensionato', 'Lavoro dipendente e pensionato', 'Lavoro autonomo', 'Altro'];
 
 function prezziCisl() {
   try {
@@ -42,7 +43,9 @@ function renderEditorCisl() {
   box.innerHTML = (CISL_IN_MODIFICA.length
     ? CISL_IN_MODIFICA.map(function (r, i) {
       return '<div class="importi-griglia" data-riga="' + i + '" style="display:grid; grid-template-columns:minmax(140px,2fr) minmax(90px,1fr) minmax(90px,1fr) minmax(100px,1fr) minmax(90px,1fr) auto; gap:6px 8px; align-items:end; margin-bottom:8px; padding:8px; border:1px solid var(--line); border-radius:10px">'
-        + cella('Tipologia di reddito', '<input placeholder="es. Pensione, Lavoro dipendente" value="' + esc(r.tipologia) + '" oninput="' + r0 + '[' + i + '].tipologia=this.value" style="' + campo + '">')
+        + cella('Tipologia di reddito', '<select onchange="' + r0 + '[' + i + '].tipologia=this.value" style="' + campo + '">'
+          + '<option value="">— scegli —</option>'
+          + TIPOLOGIE_CISL.concat(r.tipologia && TIPOLOGIE_CISL.indexOf(r.tipologia) < 0 ? [r.tipologia] : []).map(function (t) { return '<option' + (t === r.tipologia ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>')
         + cella('Reddito dal €', euro(i, 'dal', 'es. 0,00'))
         + cella('al € (vuoto = oltre)', euro(i, 'al', 'es. 15.000,00'))
         + cella('Dichiarazione', '<select onchange="' + r0 + '[' + i + '].applica=this.value" style="' + campo + '">' + [['tutte', 'Tutte'], ['singola', 'Singola'], ['congiunta', 'Congiunta']].map(function (o) { return '<option value="' + o[0] + '"' + (r.applica === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>')
