@@ -160,8 +160,8 @@ function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale, telef
 // MODIFICATO: caricaArchivioClienti ora usa i dati da Supabase
 function caricaArchivioClienti(){
   // I clienti sono caricati da Supabase via data.caricaTutto()
-  // Inizialmente vuoto, verrà popolato dopo il login
-  ARCHIVIO_CLIENTI = [];
+  // prende l'archivio già caricato (mai svuotarlo: la ricerca dei clienti non troverebbe più nessuno)
+  ARCHIVIO_CLIENTI = (window.state && state.clienti) || [];
 }
 function boxRisultatiClienti(ctx){ return document.getElementById(ctx==='cong' ? 'cli-results-cong' : ctx==='sc' ? 'cli-results-sc' : 'cli-results'); }
 function cercaClienti(q, ctx){
@@ -169,7 +169,7 @@ function cercaClienti(q, ctx){
   const box = boxRisultatiClienti(ctx);
   q = (q||'').trim().toLowerCase();
   if(!q){ box.classList.remove('open'); box.innerHTML=''; return; }
-  const match = ARCHIVIO_CLIENTI.filter(function(c){ return c.nomeCompleto.toLowerCase().indexOf(q) >= 0 || (c.codiceFiscale||'').toLowerCase().indexOf(q) >= 0; }).slice(0,8);
+  const match = ARCHIVIO_CLIENTI.filter(function(c){ return (c.nomeCompleto||"").toLowerCase().indexOf(q) >= 0 || (c.codiceFiscale||'').toLowerCase().indexOf(q) >= 0; }).slice(0,8);
   // nelle Scadenze si può inserire subito un cliente nuovo nell'archivio
   const rigaNuovo = ctx === 'sc' ? '<div class="cli-row" style="color:#1a7f37; font-weight:800" onclick="document.getElementById(\'cli-results-sc\').classList.remove(\'open\'); nuovoClienteArchivio(document.getElementById(\'sc-cliente\').value)">➕ Nuovo cliente: inseriscilo in archivio (codice fiscale, telefono…)</div>' : '';
   if(!match.length){ box.innerHTML = '<div class="cli-row" style="cursor:default">Nessun cliente trovato</div>' + rigaNuovo; box.classList.add('open'); return; }

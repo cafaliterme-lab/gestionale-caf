@@ -1411,7 +1411,7 @@ function apriSchedaClienteArchivio(d) {
       } else
       await registraClienteSeNuovo(c.cognome, c.nome, c.dataNascita, c.cf, c.tel, c.fisso, c.scad, c.email);
       if (typeof data !== 'undefined' && data.caricaTutto) await data.caricaTutto({ silenzioso: true });
-      if (typeof caricaArchivioClienti === 'function') caricaArchivioClienti();
+      if (typeof syncDataFromSupabase === 'function') syncDataFromSupabase();
     } catch (err) { b.disabled = false; return errore('Non salvato: ' + (err.message || err)); }
     ov.remove();
     const nome = (c.cognome + ' ' + c.nome).trim();
