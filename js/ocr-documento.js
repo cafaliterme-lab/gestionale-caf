@@ -26,8 +26,18 @@ function wasmSimdSupportato() {
   } catch (e) { return false; }
 }
 
+// Avanzamento della lettura: il motore si crea una volta sola (anche in anticipo, senza nessuno che guardi),
+// quindi la funzione che mostra la percentuale si aggiorna a ogni lettura invece di restare quella della creazione
+let ocrAvanzamento = null;
+let ocrInPreparazione = null;
 async function preparaOCR(progresso) {
+  if (progresso) ocrAvanzamento = progresso;
   if (ocrWorker) return ocrWorker;
+  if (ocrInPreparazione) return ocrInPreparazione;
+  ocrInPreparazione = creaWorkerOCR().finally(function () { ocrInPreparazione = null; });
+  return ocrInPreparazione;
+}
+async function creaWorkerOCR() {
   if (!window.Tesseract) await caricaScript(OCR_BASE + 'tesseract.min.js');
   const base = new URL(OCR_BASE, location.href).href;
   ocrWorker = await window.Tesseract.createWorker('ita', 1, {
@@ -35,13 +45,15 @@ async function preparaOCR(progresso) {
     corePath: base + (wasmSimdSupportato() ? 'tesseract-core-simd-lstm.wasm.js' : 'tesseract-core-lstm.wasm.js'),
     langPath: base.replace(/\/$/, ''),
     workerBlobURL: false,
-    logger: function (m) { if (progresso) progresso(m); },
+    logger: function (m) { if (ocrAvanzamento) ocrAvanzamento(m); },
   });
   return ocrWorker;
 }
 
 // Ritaglio (zona del documento), ingrandimento per testi piccoli e contrasto.
-// modo 'contrasto': grigi con livelli stirati; modo 'bn': bianco e nero (soglia di Otsu)
+// modo 'contrasto': grigi con livelli stirati; modo 'bn': bianco e nero (soglia di Otsu);
+// modo 'colore': grigio dal canale piu' chiaro, cosi' i disegni di sicurezza colorati (rosa, azzurri) diventano
+// quasi bianchi e resta solo il testo nero (e' il modo che legge il codice fiscale sul retro della carta d'identita')
 function preparaImmagine(sorgente, rett, modo) {
   const scala = Math.max(0.5, Math.min(3, 2400 / rett.w, Math.sqrt(9e6 / (rett.w * rett.h))));
   const w = Math.round(rett.w * scala), h = Math.round(rett.h * scala);
@@ -54,7 +66,7 @@ function preparaImmagine(sorgente, rett, modo) {
   const d = img.data;
   const istogramma = new Uint32Array(256);
   for (let i = 0; i < d.length; i += 4) {
-    const g = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+    const g = modo === 'colore' ? Math.max(d[i], d[i + 1], d[i + 2]) : Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
     d[i] = g;
     istogramma[g]++;
   }
@@ -181,6 +193,10 @@ function cercaCF(righe) {
 function cercaCFGrezzo(righe) {
   const simile = function (t) {
     if (t.length < 15 || t.length > 17) return false;
+    // nelle 7 posizioni numeriche (anno, giorno, comune) almeno 4 cifre vere: cosi' un nome o un'etichetta
+    // attaccati ("MARIACRISTINA", "EMISSIONEISSUING") non vengono scambiati per un codice fiscale
+    const cifre = [6, 7, 9, 10, t.length - 4, t.length - 3, t.length - 2].filter(function (i) { return /\d/.test(t[i] || ''); }).length;
+    if (cifre < 4 || /\d{4,}/.test(t)) return false; // nel CF non ci sono mai 4 cifre di fila (le date si')
     const comeLettera = function (c) { return /[A-Z0125689]/.test(c); };
     const comeCifra = function (c) { return /[0-9LMNPQRSTUVOIZSBGD]/.test(c); };
     // inizio (6 lettere, 2 cifre) e fine (lettera, 3 cifre, lettera): reggono anche se in mezzo manca un carattere
@@ -397,7 +413,7 @@ function campiPerPosizione(righe, nomeNoto) {
   const fino = rigaNascita >= 0 ? rigaNascita : righe.length;
   const nomi = righe.slice(0, fino)
     .map(function (r) { return r.replace(/[^A-ZÀ-Ü' ]/g, ' ').replace(/\s+/g, ' ').trim(); })
-    .filter(function (r) { return r.length >= 2 && !intestazione.test(r) && r !== 'ITA' && /^[A-ZÀ-Ü' ]+$/.test(r); });
+    .filter(function (r) { return r.length >= 3 && !intestazione.test(r) && r !== 'ITA' && /^[A-ZÀ-Ü' ]+$/.test(r); });
   const iNome = nomeNoto ? nomi.indexOf(nomeNoto) : -1;
   if (iNome > 0) { out.cognome = nomi[iNome - 1]; out.nome = nomeNoto; }
   else if (nomi.length >= 2) { out.cognome = nomi[nomi.length - 2]; out.nome = nomi[nomi.length - 1]; }
@@ -505,6 +521,10 @@ function rifinisciDati(dati, righe) {
     if (!dati.dataNascita || dati.dataNascita.slice(0, 6) !== daCF.dataNascita.slice(0, 6)) dati.dataNascita = daCF.dataNascita;
     dati.sesso = daCF.sesso;
   }
+  // Scadenza gia' passata e non nel giorno del compleanno (carta d'identita' e patente scadono il giorno del
+  // compleanno): quasi sempre e' la data di emissione letta al posto della scadenza, meglio lasciarla vuota
+  const sc = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dati.scadenzaDocumento || '');
+  if (sc && /^\d{2}\/\d{2}\/\d{4}$/.test(dati.dataNascita) && +sc[3] <= new Date().getFullYear() && sc[1] + '/' + sc[2] !== dati.dataNascita.slice(0, 5)) dati.scadenzaDocumento = '';
   return dati;
 }
 
@@ -674,22 +694,195 @@ async function leggiPdfDocumento(file) {
   // PDF "digitale" (non scansione): il codice fiscale si legge esatto dal testo del file, su tutte le pagine
   docLettura.cfTestoPdf = await cfDalTestoPdf(pdf).catch(function () { return ''; });
   const pagine = Math.min(pdf.numPages, 2);
+  // Su un foglio scansionato ci sono spesso fronte e retro insieme: si cerca ogni tessera sul foglio
+  // e la si legge da sola, ingrandita (prima si leggeva il foglio intero e il retro veniva perso)
+  const parti = [];
   for (let n = 1; n <= pagine; n++) {
     const pagina = await pdf.getPage(n);
     const base = pagina.getViewport({ scale: 1 });
-    // circa 3500 pixel sul lato lungo: anche un documento piccolo scansionato su un foglio A4 ha i caratteri leggibili
-    const scala = Math.min(6, 3500 / Math.max(base.width, base.height));
-    const vista = pagina.getViewport({ scale: scala });
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(vista.width); canvas.height = Math.round(vista.height);
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    await pagina.render({ canvasContext: ctx, viewport: vista }).promise;
-    if (n === 2) { docLettura.dati = datiRevisione(); docLettura.unisci = true; }
-    messaggioDoc('Lettura della pagina ' + n + ' di ' + pagine + '...');
-    await analizzaDocumento(canvas, canvas.width, canvas.height);
+    messaggioDoc('Ricerca dei documenti nella pagina ' + n + ' di ' + pagine + '...');
+    const sa = 1000 / Math.max(base.width, base.height);
+    const anteprima = await disegnaPaginaPdf(pagina, sa);
+    const ca = anteprima.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, anteprima.width, anteprima.height);
+    const zone = trovaDocumentiNellaPagina(ca.data, ca.width, ca.height);
+    if (!zone.length) {
+      // nessuna tessera riconoscibile: pagina intera, circa 3500 pixel sul lato lungo
+      parti.push(await disegnaPaginaPdf(pagina, Math.min(6, 3500 / Math.max(base.width, base.height))));
+      continue;
+    }
+    for (const z of zone) {
+      // ogni tessera a circa 2400 pixel sul lato lungo (se la scansione ha quella risoluzione)
+      const lato = Math.max(z.w, z.h) / sa;
+      const scala = Math.min(8, Math.max(sa, 2400 / lato));
+      let c = await disegnaPaginaPdf(pagina, scala, { x: z.x / sa, y: z.y / sa, w: z.w / sa, h: z.h / sa });
+      if (z.h > z.w * 1.15) c = await raddrizzaTessera(c); // tessera messa in verticale sul vetro dello scanner
+      parti.push(c);
+    }
   }
-  docLettura.cfTestoPdf = '';
+  const quante = Math.min(parti.length, 3);
+  docLettura.dati = null;
+  try {
+    for (let i = 0; i < quante; i++) {
+      // i lati successivi completano i dati del primo (gia' in docLettura.dati, la revisione non e' ancora aperta)
+      docLettura.unisci = i > 0 && !!docLettura.dati;
+      docLettura.altriLati = i < quante - 1;
+      docLettura.fase = quante > 1 ? 'Documento ' + (i + 1) + ' di ' + quante + (quante === 2 ? (i === 0 ? ' (primo lato)' : ' (secondo lato)') : '') : '';
+      messaggioDoc((docLettura.fase || 'Documento') + '...');
+      await analizzaDocumento(parti[i], parti[i].width, parti[i].height);
+    }
+  } finally {
+    docLettura.altriLati = false;
+    docLettura.fase = '';
+    docLettura.cfTestoPdf = '';
+  }
+  // se l'ultimo lato non si e' potuto leggere si mostrano comunque i dati dei lati gia' letti
+  if (docLettura.dati && document.getElementById('doc-revisione').style.display !== 'block') mostraRevisioneDocumento(docLettura.dati);
+}
+// Disegna una pagina del PDF (o solo un suo pezzo, in unita' della pagina a scala 1) su un canvas
+async function disegnaPaginaPdf(pagina, scala, pezzo) {
+  const p = pezzo || { x: 0, y: 0, w: pagina.getViewport({ scale: 1 }).width, h: pagina.getViewport({ scale: 1 }).height };
+  const vista = pagina.getViewport({ scale: scala, offsetX: -p.x * scala, offsetY: -p.y * scala });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(p.w * scala)); canvas.height = Math.max(1, Math.round(p.h * scala));
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await pagina.render({ canvasContext: ctx, viewport: vista }).promise;
+  return canvas;
+}
+function ruotaCanvas(c, gradi) {
+  const r = document.createElement('canvas');
+  r.width = c.height; r.height = c.width;
+  const ctx = r.getContext('2d');
+  ctx.translate(r.width / 2, r.height / 2);
+  ctx.rotate(gradi * Math.PI / 180);
+  ctx.drawImage(c, -c.width / 2, -c.height / 2);
+  return r;
+}
+// Tessera in verticale: si prova a ruotarla nei due versi e si tiene quello in cui si leggono piu' parole sicure
+async function raddrizzaTessera(c) {
+  const opzioni = [ruotaCanvas(c, 90), ruotaCanvas(c, -90)];
+  try {
+    const worker = await preparaOCR();
+    let migliore = opzioni[0], punti = -1;
+    for (const o of opzioni) {
+      const prova = preparaImmagine(o, { x: 0, y: 0, w: o.width, h: o.height }, 'contrasto');
+      await worker.setParameters({ tessedit_pageseg_mode: '6', user_defined_dpi: '300', tessedit_char_whitelist: '' });
+      const { data } = await worker.recognize(prova, {}, { text: true, blocks: true });
+      const n = testoAffidabile(data).split(/\s+/).filter(function (w) { return /[A-Z0-9]{3,}/i.test(w); }).length;
+      if (n > punti) { punti = n; migliore = o; }
+    }
+    return migliore;
+  } catch (e) { return opzioni[0]; }
+}
+
+// Tessere su un foglio scansionato (immagine RGBA piccola, circa 1000 pixel): si segnano le zone diverse
+// dallo sfondo del foglio, si uniscono in blocchi e si tengono quelli grandi come una tessera.
+// Due tessere attaccate (una sopra l'altra o affiancate) si separano nel punto con meno contenuto.
+// Restituisce i rettangoli in pixel dell'immagine, in ordine di lettura; [] se la pagina e' gia' una tessera sola.
+function trovaDocumentiNellaPagina(px, w, h) {
+  const lum = function (i) { return 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]; };
+  // sfondo: mediana della luminosita' sul bordo del foglio
+  const bordo = [];
+  for (let x = 0; x < w; x += 3) { bordo.push(lum(x * 4), lum(((h - 1) * w + x) * 4)); }
+  for (let y = 0; y < h; y += 3) { bordo.push(lum(y * w * 4), lum((y * w + w - 1) * 4)); }
+  bordo.sort(function (a, b) { return a - b; });
+  const sfondo = bordo[Math.floor(bordo.length / 2)];
+  const C = 4, gw = Math.ceil(w / C), gh = Math.ceil(h / C);
+  const pieno = new Uint8Array(gw * gh);
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+    let n = 0, t = 0;
+    for (let y = gy * C; y < Math.min(h, gy * C + C); y++) for (let x = gx * C; x < Math.min(w, gx * C + C); x++) {
+      const i = (y * w + x) * 4;
+      const sat = Math.max(px[i], px[i + 1], px[i + 2]) - Math.min(px[i], px[i + 1], px[i + 2]);
+      if (Math.abs(lum(i) - sfondo) > 18 || sat > 22) n++;
+      t++;
+    }
+    pieno[gy * gw + gx] = n / t > 0.2 ? 1 : 0;
+  }
+  // allargamento di 2 celle per unire le parti di una stessa tessera
+  const R = 2, largo = new Uint8Array(gw * gh);
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+    if (!pieno[gy * gw + gx]) continue;
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+      const y = gy + dy, x = gx + dx;
+      if (x >= 0 && y >= 0 && x < gw && y < gh) largo[y * gw + x] = 1;
+    }
+  }
+  const visto = new Int32Array(gw * gh).fill(-1);
+  const blocchi = [];
+  for (let s = 0; s < gw * gh; s++) {
+    if (!largo[s] || visto[s] >= 0) continue;
+    const b = { x0: gw, y0: gh, x1: 0, y1: 0, celle: 0 };
+    const pila = [s]; visto[s] = blocchi.length;
+    while (pila.length) {
+      const k = pila.pop(), x = k % gw, y = (k - x) / gw;
+      if (pieno[k]) { b.celle++; b.x0 = Math.min(b.x0, x); b.y0 = Math.min(b.y0, y); b.x1 = Math.max(b.x1, x); b.y1 = Math.max(b.y1, y); }
+      [k - 1, k + 1, k - gw, k + gw].forEach(function (v) {
+        if (v < 0 || v >= gw * gh || visto[v] >= 0 || !largo[v]) return;
+        if ((v === k - 1 && x === 0) || (v === k + 1 && x === gw - 1)) return;
+        visto[v] = blocchi.length; pila.push(v);
+      });
+    }
+    if (b.celle) blocchi.push(b);
+  }
+  const minimo = Math.min(gw, gh);
+  // pezzi vicini (una tessera chiara con zone bianche si spezza) si riuniscono
+  const vicino = Math.max(2, Math.round(minimo * 0.02));
+  for (let unito = true; unito;) {
+    unito = false;
+    for (let i = 0; i < blocchi.length && !unito; i++) for (let j = i + 1; j < blocchi.length && !unito; j++) {
+      const a = blocchi[i], b = blocchi[j];
+      if (a.x0 - vicino > b.x1 || b.x0 - vicino > a.x1 || a.y0 - vicino > b.y1 || b.y0 - vicino > a.y1) continue;
+      a.x0 = Math.min(a.x0, b.x0); a.y0 = Math.min(a.y0, b.y0); a.x1 = Math.max(a.x1, b.x1); a.y1 = Math.max(a.y1, b.y1); a.celle += b.celle;
+      blocchi.splice(j, 1); unito = true;
+    }
+  }
+  let zone = [];
+  const aggiungi = function (x0, y0, x1, y1) { zone.push({ x0: x0, y0: y0, x1: x1, y1: y1 }); };
+  // separa due tessere attaccate nel punto (riga o colonna) con meno celle piene, nella parte centrale
+  const separa = function (b, verticale) {
+    const da = verticale ? b.y0 : b.x0, a = verticale ? b.y1 : b.x1;
+    let taglio = -1, poco = Infinity;
+    // le tessere hanno tutte la stessa misura: il taglio e' vicino a meta', dove le due si toccano
+    const meta = (da + a) / 2, lungo = (verticale ? b.x1 - b.x0 : b.y1 - b.y0) + 1;
+    for (let t = Math.round(da + (a - da) * 0.4); t <= Math.round(da + (a - da) * 0.6); t++) {
+      let n = 0;
+      for (let u = verticale ? b.x0 : b.y0; u <= (verticale ? b.x1 : b.y1); u++) n += verticale ? pieno[t * gw + u] : pieno[u * gw + t];
+      const costo = n + lungo * 0.5 * Math.abs(t - meta) / (a - da);
+      if (costo < poco) { poco = costo; taglio = t; }
+    }
+    if (verticale) { aggiungi(b.x0, b.y0, b.x1, taglio); aggiungi(b.x0, taglio + 1, b.x1, b.y1); }
+    else { aggiungi(b.x0, b.y0, taglio, b.y1); aggiungi(taglio + 1, b.y0, b.x1, b.y1); }
+  };
+  blocchi.forEach(function (b) {
+    const bw = b.x1 - b.x0 + 1, bh = b.y1 - b.y0 + 1;
+    if (bw < minimo * 0.15 || bh < minimo * 0.15 || bw * bh < gw * gh * 0.03) return; // scritte, timbri, sporco
+    const r = bw / bh;
+    // una tessera e' 1,59 volte piu' larga che alta (0,63 se in verticale); due attaccate danno altre proporzioni
+    if ((r >= 1.35 && r <= 2.1) || (r >= 0.5 && r <= 0.74)) aggiungi(b.x0, b.y0, b.x1, b.y1); // una tessera
+    else if (r > 0.74 && r < 1.12) separa(b, true); // due tessere orizzontali una sopra l'altra (0,79)
+    else if (r >= 1.12 && r < 1.35) separa(b, false); // due tessere verticali affiancate (1,26)
+    else if (r > 2.4 && r < 4.4) separa(b, false); // due tessere orizzontali affiancate (3,2)
+    else if (r >= 0.24 && r < 0.5) separa(b, true); // due tessere verticali una sopra l'altra (0,32)
+  });
+  // una sola zona grande quasi quanto la pagina: la pagina e' gia' la tessera
+  if (zone.length === 1 && (zone[0].x1 - zone[0].x0 + 1) * (zone[0].y1 - zone[0].y0 + 1) > gw * gh * 0.7) return [];
+  zone.sort(function (a, b) { return Math.abs(a.y0 - b.y0) > 8 ? a.y0 - b.y0 : a.x0 - b.x0; });
+  return zone.map(function (z) {
+    // margine di qualche cella, ma senza entrare nella tessera vicina (confonderebbe la lettura)
+    const m = 3;
+    let x0 = z.x0 - m, y0 = z.y0 - m, x1 = z.x1 + 1 + m, y1 = z.y1 + 1 + m;
+    zone.forEach(function (o) {
+      if (o === z) return;
+      const sovrapY = o.y0 <= z.y1 && o.y1 >= z.y0, sovrapX = o.x0 <= z.x1 && o.x1 >= z.x0;
+      if (sovrapY && o.x0 > z.x1) x1 = Math.min(x1, Math.ceil((z.x1 + 1 + o.x0) / 2));
+      if (sovrapY && o.x1 < z.x0) x0 = Math.max(x0, Math.floor((o.x1 + 1 + z.x0) / 2));
+      if (sovrapX && o.y0 > z.y1) y1 = Math.min(y1, Math.ceil((z.y1 + 1 + o.y0) / 2));
+      if (sovrapX && o.y1 < z.y0) y0 = Math.max(y0, Math.floor((o.y1 + 1 + z.y0) / 2));
+    });
+    const x = Math.max(0, x0 * C), y = Math.max(0, y0 * C);
+    return { x: x, y: y, w: Math.min(w, x1 * C) - x, h: Math.min(h, y1 * C) - y };
+  });
 }
 async function cfDalTestoPdf(pdf) {
   for (let n = 1; n <= Math.min(pdf.numPages, 20); n++) {
@@ -716,6 +909,55 @@ function righeConPosizione(risultato, rett, scala) {
   });
   return out;
 }
+// Testo con le sole parole lette con sicurezza: lo sfondo del documento (foto, disegni di sicurezza)
+// viene letto come parole a caso ("RSS LEE", "POI LS") con confidenza bassa, mentre i dati stampati
+// hanno confidenza alta. Le righe MRZ e i pezzi lunghi (codice fiscale) si tengono comunque.
+function parolaAffidabile(w) {
+  const t = String(w.text || '').trim();
+  if (!t) return false;
+  const c = +w.confidence;
+  if (!isFinite(c) || /</.test(t) || c >= 60) return true;
+  // le etichette sono piccole e chiare (confidenza bassa) ma servono a capire dove sono i dati
+  if (c >= 15 && PAROLE_ETICHETTA.test(t.toUpperCase().replace(/[^A-Z]/g, ''))) return true;
+  if (/^\d{1,2}[.\/\-]\d{1,2}[.\/\-]\d{2,4}$/.test(t) && c >= 30) return true; // date
+  if (/^[A-ZÀ-Ü']{3,}$/.test(t) && c >= 45) return true; // parola maiuscola (cognome/nome un po' sfocato)
+  return t.replace(/[^A-Za-z0-9]/g, '').length >= 6 && c >= 35;
+}
+const PAROLE_ETICHETTA = /COGNOM|SURNAM|^NOM[EI]|NAMES?$|LUOGO|NASCIT|BIRTH|PLACE|^DATA$|^DATE$|SESSO|^SEX$|STATURA|HEIGHT|CITTADIN|NATIONAL|EMISSION|ISSU|SCADENZ|EXPIR|COMUNE|MUNICIPAL|CODICE|FISCAL|IDENTIT|CARTA|PATENTE|DRIVING|TESSERA|SANITARI|REPUBBLICA|ITALIANA|FIRMA|SIGNATUR/;
+function testoAffidabile(risultato) {
+  const righe = [];
+  let parole = 0;
+  (risultato.blocks || []).forEach(function (b) {
+    (b.paragraphs || []).forEach(function (p) {
+      (p.lines || []).forEach(function (l) {
+        const tenute = (l.words || []).filter(parolaAffidabile).map(function (w) { return String(w.text).trim(); });
+        parole += (l.words || []).length;
+        if (tenute.length) righe.push(tenute.join(' '));
+      });
+    });
+  });
+  return parole ? righe.join('\n') : String(risultato.text || '');
+}
+
+// Dati scelti tra i tentativi: per nome, cognome, luogo e data vince il valore letto piu' volte
+// (a parita' quello del tentativo precedente); gli altri campi dal primo tentativo che li ha
+function votaDati(lista) {
+  const dati = Object.assign({}, lista[0]);
+  Object.keys(dati).forEach(function (k) { if (!dati[k]) { const altro = lista.find(function (d) { return d[k]; }); if (altro) dati[k] = altro[k]; } });
+  ['cognome', 'nome', 'luogoNascita', 'dataNascita', 'sesso'].forEach(function (k) {
+    const conti = new Map();
+    lista.forEach(function (d) { if (d[k]) conti.set(d[k], (conti.get(d[k]) || 0) + 1); });
+    let migliore = '', n = 0;
+    conti.forEach(function (c, v) { if (c > n) { n = c; migliore = v; } });
+    if (migliore) dati[k] = migliore;
+  });
+  // scadenza: la data piu' lontana tra quelle lette (l'emissione viene sempre prima della scadenza)
+  const valore = function (t) { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t || ''); return m ? +(m[3] + m[2] + m[1]) : 0; };
+  lista.forEach(function (d) { if (valore(d.scadenzaDocumento) > valore(dati.scadenzaDocumento)) dati.scadenzaDocumento = d.scadenzaDocumento; });
+  return dati;
+}
+function concordano(a, b) { return !!(a && b && a.cognome && a.cognome === b.cognome && a.nome === b.nome && a.dataNascita === b.dataNascita); }
+
 function rettangoloDentro(x0, y0, x1, y1, w, h) {
   x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0));
   x1 = Math.min(w, Math.ceil(x1)); y1 = Math.min(h, Math.ceil(y1));
@@ -778,18 +1020,21 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
     messaggioDoc('Preparazione della lettura (la prima volta scarica circa 6 MB)...');
     let passo = '';
     const worker = await preparaOCR(function (m) {
-      if (m.status === 'recognizing text') messaggioDoc('Lettura del testo' + passo + '... ' + Math.round(m.progress * 100) + '%');
+      if (m.status === 'recognizing text') messaggioDoc((docLettura.fase ? docLettura.fase + ' — ' : '') + 'lettura del testo' + passo + '... ' + Math.round(m.progress * 100) + '%');
+      else if (/loading|initializ/.test(m.status || '')) messaggioDoc('Preparazione della lettura (la prima volta scarica circa 6 MB)... ' + Math.round((m.progress || 0) * 100) + '%');
     });
     // Codice a barre (tessera sanitaria): da' il CF esatto; poi lo si copre perche' confonde l'OCR
     const codici = await creaLettoreCodiciBarre().then(function (det) { return det.detect(sorgente); }).catch(function () { return []; });
     const cfBarre = cfDaCodiciLetti(codici) || docLettura.cfTestoPdf || null;
     const intera = { x: 0, y: 0, w: larghezza, h: altezza };
     const zona = ritaglio || intera;
-    const tentativi = [[zona, 'contrasto', '6'], [zona, 'contrasto', '11'], [zona, 'bn', '6']];
+    const tentativi = [[zona, 'contrasto', '6'], [zona, 'colore', '6'], [zona, 'contrasto', '11'], [zona, 'bn', '6']];
     if (ritaglio) tentativi.push([intera, 'contrasto', '6']);
 
     let testo = '';
+    let testoSicuro = ''; // solo le parole lette con sicurezza (senza lo "sporco" dello sfondo)
     let dati = null;
+    const letture = []; // dati ricavati da ogni tentativo, per scegliere quelli letti piu' volte
     const passate = []; // righe di ogni tentativo con la posizione nella foto
     for (let i = 0; i < tentativi.length; i++) {
       const [rett, modo, psm] = tentativi[i];
@@ -805,40 +1050,49 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
       const { data: risultato } = await worker.recognize(immagine, {}, { text: true, blocks: true });
       passate.push(righeConPosizione(risultato, rett, immagine.scala));
       testo += (testo ? '\n----\n' : '') + risultato.text;
-      const nuovi = estraiDatiDocumento(risultato.text, cfBarre);
-      if (!dati) dati = nuovi;
-      else Object.keys(nuovi).forEach(function (k) { if (!dati[k] && nuovi[k]) dati[k] = nuovi[k]; });
+      const sicuro = testoAffidabile(risultato);
+      testoSicuro += (testoSicuro ? '\n----\n' : '') + sicuro;
+      const nuovi = estraiDatiDocumento(sicuro, cfBarre);
+      letture.push(nuovi);
+      dati = votaDati(letture);
       const serveCF = (/FISCALE|FISCAL|<</.test(testo)) && !dati.codiceFiscale;
       const serveMRZ = /<</.test(testo) && !leggiMRZ(righeOCR(testo)).dataNascita;
-      if (dati.cognome && dati.nome && dati.dataNascita && !serveCF && !serveMRZ) break;
+      // ci si ferma quando due tentativi danno gli stessi dati (o quando MRZ / codice fiscale li confermano)
+      const certi = letture.length >= 2 ? concordano(letture[letture.length - 1], letture[letture.length - 2]) || concordano(nuovi, letture[0])
+        : !!(nuovi.codiceFiscale && cfValido(nuovi.codiceFiscale)) || !!leggiMRZ(righeOCR(sicuro)).cognome;
+      if (dati.cognome && dati.nome && dati.dataNascita && !serveCF && !serveMRZ && certi) break;
     }
 
     // Letture mirate: righe MRZ e codice fiscale, ritagliate e lette solo con i caratteri ammessi
     const zonaMRZ = trovaZonaMRZ(passate, larghezza, altezza);
     if (zonaMRZ) {
-      for (const modo of ['contrasto', 'bn']) {
+      for (const modo of ['contrasto', 'colore', 'bn']) {
         passo = ' (righe in basso)';
         const t = await leggiZona(worker, sorgente, zonaMRZ, modo, '6', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<');
-        testo += '\n----\n' + t;
+        testo += '\n----\n' + t; testoSicuro += '\n----\n' + t;
         const m = leggiMRZ(righeOCR(t));
         if (m.dataNascita && m.cognome) break;
       }
     }
     if (!cfBarre && /FISCAL|<</.test(testo) && !cercaCF(righeOCR(testo))) {
-      const zonaCF = trovaZonaCF(passate, larghezza, altezza) || trovaRigaCFPerPrefisso(passate, estraiDatiDocumento(testo, null), larghezza, altezza);
+      // se non si trova la riga, sul retro della carta d'identita' (quello con le righe MRZ) il codice fiscale
+      // e' in alto a sinistra: si legge quella parte della tessera
+      const zonaCF = trovaZonaCF(passate, larghezza, altezza) || trovaRigaCFPerPrefisso(passate, estraiDatiDocumento(testo, null), larghezza, altezza)
+        || (/<</.test(testo) ? rettangoloDentro(zona.x, zona.y, zona.x + zona.w * 0.75, zona.y + zona.h * 0.45, larghezza, altezza) : null);
       if (zonaCF) {
-        for (const [modo, psm] of [['contrasto', '7'], ['bn', '7'], ['contrasto', '6']]) {
+        for (const [modo, psm] of [['colore', '7'], ['contrasto', '7'], ['bn', '7'], ['colore', '6']]) {
           passo = ' (codice fiscale)';
           const t = await leggiZona(worker, sorgente, zonaCF, modo, psm, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
-          testo += '\n----\n' + t;
+          testo += '\n----\n' + t; testoSicuro += '\n----\n' + t;
           if (cercaCF(righeOCR(t))) break;
         }
       }
     }
     await worker.setParameters({ tessedit_char_whitelist: '' });
     // Tutto il testo letto insieme: il codice fiscale, l'MRZ e le etichette si completano a vicenda
-    const insieme = estraiDatiDocumento(testo, cfBarre);
-    Object.keys(insieme).forEach(function (k) { if (insieme[k] && (!dati[k] || k === 'codiceFiscale' || k === 'cognome' || k === 'nome' || k === 'dataNascita' || k === 'sesso')) dati[k] = insieme[k]; });
+    // (nome e cognome restano quelli scelti tra i tentativi; MRZ e codice fiscale li correggono dopo)
+    const insieme = estraiDatiDocumento(testoSicuro, cfBarre);
+    Object.keys(insieme).forEach(function (k) { if (insieme[k] && (!dati[k] || k === 'codiceFiscale')) dati[k] = insieme[k]; });
 
     // Secondo lato dello stesso documento: si completano i dati del primo
     if (docLettura.unisci && docLettura.dati) {
@@ -862,7 +1116,9 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
     if (dati.tipo === 'Documento' && cfDaCodiciLetti(codici)) dati.tipo = 'Tessera sanitaria';
     dati.testo = testo;
     docLettura.dati = dati;
-    mostraRevisioneDocumento(dati);
+    // PDF con piu' lati: i dati si mostrano solo alla fine, altrimenti si potrebbe premere "Usa questi dati"
+    // mentre il retro (con il codice fiscale) e' ancora in lettura
+    if (!docLettura.altriLati) mostraRevisioneDocumento(dati);
   } catch (e) {
     messaggioDoc('❌ Lettura non riuscita: ' + e.message, true);
   } finally {
