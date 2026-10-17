@@ -1960,6 +1960,7 @@ function render(){
         ${bottoneWhatsApp(p)}
         <button onclick="modifica('${p.id}')">Modifica</button>
         <button onclick="stampaRicevuta('${p.id}')" title="Ricevuta di presa in carico da consegnare al cliente">🧾 Presa in carico</button>
+        ${eConsegnata(p) ? `<button onclick="stampaRicevutaConsegna('${p.id}')" title="Ricevuta di consegna da far firmare a chi ritira la pratica" style="background:#8d5a3b; color:#fff">🧾 Ricevuta consegna</button>` : ''}
         <button onclick="emailRicevuta('${p.id}')" title="Invia la ricevuta al cliente per e-mail" style="background:#1d4f91; color:#fff">📧 Ricevuta</button>
         ${typeof bottoniPrivacyHTML === 'function' ? bottoniPrivacyHTML(p) : ''}
         <button onclick="annullaPratica('${p.id}')" title="La pratica resta nel registro con il suo numero, segnata ANNULLATA" style="color:#c0392b">🚫 Annulla pratica</button>
@@ -2908,7 +2909,8 @@ function consegnaPratica(id){
     + '<div><label>Importo pagato (€) <b style="color:#c0392b">*</b> <span style="font-weight:400; font-size:11px; color:var(--sub)">(solo se ha pagato)</span></label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
     + '<div><label>Pagamento</label><select id="cs-met">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div>'
     + '<div><label>' + (e730(p) ? 'Data di consegna' : 'Data') + ' <b style="color:#c0392b">*</b></label><input id="cs-data" value="' + todayIT() + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div></div>'
-    + '<div style="margin-top:8px"><label>📝 Note</label><textarea id="cs-note" rows="2" placeholder="Facoltative: es. paga la prossima settimana, ritirata dal figlio…" style="width:100%; resize:vertical">' + esc(p.note || '') + '</textarea></div>'
+    + '<div style="margin-top:8px"><label>🙋 Ritirata da</label><input id="cs-ritira" value="' + esc(p.ritirataDa || '') + '" placeholder="Vuoto = il contribuente · se è un\'altra persona scrivi nome e cognome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>'
+    + '<div style="margin-top:8px"><label>📝 Note</label><textarea id="cs-note" rows="2" placeholder="Facoltative: es. paga la prossima settimana…" style="width:100%; resize:vertical">' + esc(p.note || '') + '</textarea></div>'
     + (p.iscrittoCisl && typeof selectPrezziCisl === 'function' ? selectPrezziCisl('cs-ric', 'cs-fatt') : '')
     + '<div style="margin-top:8px; padding:7px 10px; border-radius:8px; background:#e8f6ee; color:#1a7f37; font-size:12.5px">✓ Controlla gli importi: confermando la consegna, <b>fattura e incasso entrano in contabilità</b>. Se <b>non paga</b> basta la fattura: entra tra le fatture emesse, ma in cassa non entra niente.</div>'
     + '<div id="cs-resto" style="font-size:13.5px; font-weight:800; margin-top:6px"></div>'
@@ -2935,6 +2937,8 @@ function consegnaPratica(id){
       if(b.dataset.az === 'pagato' && vuoto('cs-ric')) return segnaC('cs-ric', 'Scrivi l\'importo richiesto (obbligatorio; 0 se gratuita).');
     }
     const campi = { consegnataIl: dataC, consegnataDa: ((auth.profilo && auth.profilo.nome) || '').toUpperCase() };
+    const ritira = ((document.getElementById('cs-ritira') || {}).value || '').trim().toUpperCase().slice(0, 120);
+    if(ritira !== String(p.ritirataDa || '')) campi.ritirataDa = ritira;
     // note scritte nella finestra di consegna (sostituiscono quelle della pratica)
     const noteCs = (document.getElementById('cs-note') || {}).value;
     if(noteCs != null && noteCs.trim() !== String(p.note || '').trim()) campi.note = noteCs.trim().slice(0, 1000);
@@ -2968,6 +2972,26 @@ function consegnaPratica(id){
     ov.remove();
     avviso(parolaConsegna(p).icona + ' ' + formattaProtocollo(p) + ' ' + parolaConsegna(p).fatta_m + (campi.stato ? ' · ' + statoLabel(campi.stato) : ''));
     render();
+    proponiRicevutaConsegna(Object.assign({}, p, campi));
+  });
+}
+// Dopo la consegna: stampa della ricevuta da far firmare a chi ritira
+function proponiRicevutaConsegna(p){
+  if(typeof stampaRicevutaConsegna !== 'function') return;
+  const v = document.getElementById('popup-ric-consegna'); if(v) v.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-ric-consegna';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:14px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #8d5a3b; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:420px; width:100%; text-align:center">'
+    + '<div style="font-size:30px">🧾</div><div style="font-size:17px; font-weight:800; margin:4px 0">Ricevuta di consegna</div>'
+    + '<div style="font-size:13px; color:var(--sub); margin-bottom:14px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + (p.ritirataDa ? '<br>ritirata da <b>' + esc(p.ritirataDa) + '</b>' : '') + '<br>Stampala e falla firmare a chi ritira: la copia firmata resta al CAF.</div>'
+    + '<div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Non ora</button>'
+    + '<button type="button" data-az="si" style="background:#8d5a3b; color:#fff; font-weight:800">🖨️ Stampa ricevuta</button></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function(e){
+    const b = e.target.closest('button[data-az]');
+    if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); return; }
+    if(b && b.dataset.az === 'si'){ ov.remove(); stampaRicevutaConsegna(p.id, p); }
   });
 }
 // Riaprire una pratica consegnata/definita (es. per riportarla a "Lavorata"): solo l'amministratore

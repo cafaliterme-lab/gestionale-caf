@@ -139,6 +139,7 @@ const schemas = {
     notaCreditoData: 'nota_credito_data',
     consegnataIl: 'consegnata_il',
     consegnataDa: 'consegnata_da',
+    ritirataDa: 'ritirata_da',
   },
   acconto: {
     id: 'id',

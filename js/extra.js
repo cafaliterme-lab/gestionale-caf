@@ -113,6 +113,70 @@ function ricevutaHTML(p, perEmail) {
   return html;
 }
 
+/* ---------------- Ricevuta di consegna (ritiro della pratica, firmata da chi ritira) ---------------- */
+
+function stampaRicevutaConsegna(id, pratica) {
+  const p = pratica || (state.pratiche || []).find(function (x) { return x.id === id; });
+  if (!p) { avviso('❌ Pratica non trovata: riprova tra qualche secondo.', true); return; }
+  const w = window.open('', '_blank');
+  if (!w) { alert('Il browser ha bloccato la finestra della ricevuta: consenti i popup per questo sito e riprova.'); return; }
+  w.document.open(); w.document.write(ricevutaConsegnaHTML(p)); w.document.close();
+}
+function ricevutaConsegnaHTML(p) {
+  const logo = document.querySelector('.hero-logo');
+  const caf = (typeof datiCafStampa === 'function') ? datiCafStampa() : {};
+  const delegato = String(p.ritirataDa || '').trim();
+  const quando = p.consegnataIl || todayIT();
+  const e7 = typeof e730 === 'function' && e730(p);
+  const intestatario = '<b>' + esc(p.nome || '') + '</b>' + (p.comuneNascita ? ', nato/a a ' + esc(p.comuneNascita) : '') + (p.cf ? (p.comuneNascita ? ' il ' : ', nato/a il ') + esc(p.cf) : '') + (p.codiceFiscale ? ', codice fiscale <b>' + esc(p.codiceFiscale) + '</b>' : '')
+    + (p.congiunta ? ' e del coniuge <b>' + esc(p.congiunta) + '</b>' + (p.congCodiceFiscale ? ', codice fiscale <b>' + esc(p.congCodiceFiscale) + '</b>' : '') : '');
+  const fatt = Number(p.compenso || 0), pag = Number(p.pagato || 0);
+  const pagamento = (p.numFattura ? 'Fattura n. <b>' + esc(p.numFattura) + '</b>' + (p.dataFattura ? ' del ' + esc(p.dataFattura) : '') + (fatt ? ' di <b>' + fmtEuro(fatt) + '</b>' : '') + ' · ' : (fatt ? 'Importo <b>' + fmtEuro(fatt) + '</b> · ' : ''))
+    + (pag > 0 ? 'pagato <b>' + fmtEuro(pag) + '</b>' + (p.metodoPagamento ? ' (' + esc(String(p.metodoPagamento).toLowerCase()) + ')' : '') : (fatt ? '<b>non ancora pagato</b>' : 'nessun importo dovuto'));
+  const elenco = (e7
+    ? ['copia della dichiarazione modello 730 elaborata e del prospetto di liquidazione (modello 730-3)', 'ricevuta di presentazione della dichiarazione (ove già disponibile)']
+    : ['copia della pratica elaborata e delle relative ricevute (ove previste)'])
+    .concat(['restituzione dei documenti originali eventualmente lasciati al CAF']);
+  const copia = function (perChi) {
+    return '<div class="ric">'
+      + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1>'
+      + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div>'
+      + '<div class="copia">' + perChi + '</div></div>'
+      + '<div class="titolo">RICEVUTA DI CONSEGNA</div>'
+      + '<div class="proto">Pratica <b>' + esc(p.tipo || '') + '</b> · Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b></div>'
+      + '<div class="attesta">' + (delegato
+          ? 'Il/La sottoscritto/a <b>' + esc(delegato) + '</b>, <b>delegato/a</b> dal contribuente, dichiara di aver ritirato'
+          : 'Il/La sottoscritto/a ' + intestatario + ', dichiara di aver ritirato')
+      + ' in data <b>' + esc(quando) + '</b> presso il CAF CISL – Sede di Alì Terme la pratica <b>' + esc(p.tipo || '') + '</b> protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b>'
+      + (delegato ? ' intestata a ' + intestatario : '') + ', comprensiva di:</div>'
+      + '<ul class="elenco">' + elenco.map(function (t) { return '<li>☐ ' + t + '</li>'; }).join('') + '</ul>'
+      + '<div class="pag">' + pagamento + '</div>'
+      + '<div class="nota">Il contribuente dichiara di aver controllato la pratica ricevuta. ' + (delegato ? 'Il delegato allega la delega firmata e la copia del documento d\'identità del delegante e del delegato. ' : '') + 'Si prega di conservare la presente ricevuta.</div>'
+      + '<div class="firme"><div>L\'operatore CAF<br><span>' + esc(p.consegnataDa || ((auth.profilo && auth.profilo.nome) || '')) + '</span></div><div>Firma di chi ritira' + (delegato ? '<br><span>' + esc(delegato) + '</span>' : '<br><span>' + esc(p.nome || '') + '</span>') + '</div></div>'
+      + '</div>';
+  };
+  return '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ricevuta di consegna ' + esc(formattaProtocollo(p)) + '</title><style>'
+    + '@page{size:A4 portrait; margin:10mm}'
+    + 'body{font-family:Arial,Helvetica,sans-serif; color:#0f1b2d; background:#fff; margin:0; padding:12px; font-size:12px}'
+    + '.ric{border:1px solid #cfd8e3; border-radius:10px; padding:12px 18px; page-break-inside:avoid}'
+    + '.testa{display:flex; align-items:center; gap:12px; border-bottom:3px solid #8d5a3b; padding-bottom:8px}'
+    + '.testa img{width:48px}.testa h1{font-size:15px; margin:0; color:#1d4f91}.caf{font-size:10.5px; color:#445; margin-top:3px}'
+    + '.copia{margin-left:auto; font-size:10px; font-weight:700; color:#5b6b82; text-transform:uppercase; border:1px solid #cfd8e3; border-radius:999px; padding:3px 10px; white-space:nowrap}'
+    + '.titolo{text-align:center; font-size:15px; font-weight:800; letter-spacing:.06em; margin:10px 0 2px; color:#8d5a3b}'
+    + '.proto{text-align:center; font-size:13px; margin-bottom:6px}'
+    + '.attesta{font-size:13px; line-height:1.55; margin:10px 4px 4px}'
+    + '.elenco{list-style:none; margin:4px 4px 6px; padding:0; font-size:12.5px; line-height:1.6}'
+    + '.pag{font-size:12.5px; margin:4px}.nota{margin:6px 4px 0; font-size:10.5px; color:#445}'
+    + '.firme{display:flex; justify-content:space-between; gap:30px; margin-top:30px}.firme div{flex:1; border-top:1px solid #0f1b2d; padding-top:4px; text-align:center; font-size:11px}.firme span{color:#5b6b82}'
+    + '.taglio{border:none; border-top:1px dashed #8a8f98; margin:16px 0; position:relative}.taglio:after{content:"✂ taglia qui"; position:absolute; left:50%; top:-8px; transform:translateX(-50%); background:#fff; padding:0 8px; font-size:10px; color:#8a8f98}'
+    + '.barra{display:flex; gap:8px; margin-bottom:10px}.barra button{font-size:14px; padding:8px 16px; border:none; border-radius:999px; background:#1d4f91; color:#fff; cursor:pointer}.barra button.chiudi{background:#e3e8ef; color:#0f1b2d}'
+    + '@media print{.barra{display:none} body{padding:0}}'
+    + '</style></head><body>'
+    + '<div class="barra"><button onclick="window.print()">🖨️ Stampa / Salva come PDF</button><button class="chiudi" onclick="window.close()">Chiudi</button></div>'
+    + copia('Copia per il CAF (firmata)') + '<hr class="taglio">' + copia('Copia per il contribuente')
+    + '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>';
+}
+
 /* ---------------- Storico delle modifiche ---------------- */
 
 const ETICHETTE_CAMPI = {
