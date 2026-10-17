@@ -72,6 +72,10 @@ function modificaClienteArchivio(c, dopo) {
     + '<div style="font-size:19px; font-weight:800; color:#1d4f91">✏️ ' + esc(c.nomeCompleto) + '</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">Modifichi la scheda dell\'archivio: i nuovi dati si useranno nelle prossime pratiche e in tutte le ricerche.'
     + (pratiche.length ? ' Ha ' + pratiche.length + (pratiche.length === 1 ? ' pratica' : ' pratiche') + ' nell\'anno caricato.' : '') + '</div>'
+    + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px">'
+    + '<button type="button" onclick="apriLetturaDocumentoPer(\'modifica\')" style="background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:800; cursor:pointer">📷 Leggi documento</button>'
+    + '<button type="button" onclick="apriInserisciDocumento(\'modifica\')" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:800; cursor:pointer">📥 Inserisci PDF / foto</button>'
+    + '<span style="font-size:12px; color:var(--sub); align-self:center">i dati della carta d\'identità o della tessera sanitaria aggiornano questa scheda</span></div>'
     + '<div class="grid">'
     + campo('cognome', 'Cognome *', c.cognome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('nome', 'Nome *', c.nome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
