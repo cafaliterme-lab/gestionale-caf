@@ -463,9 +463,9 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <div class="search-box"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input id="cerca" type="search" placeholder="Cerca nel registro: nome, n. protocollo, tipo, congiunta..." oninput="render()"></div>
 <div style="margin-bottom:14px; padding:10px 12px; border:2px solid #1d4f91; border-radius:12px; background:var(--card)">
   <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap">
-    <div style="flex:1; min-width:200px"><label style="font-weight:800; color:#1d4f91">🔎 Ricerca per stato pratica</label><select id="filtro-stato" onchange="render()"></select></div>
+    <div style="flex:1; min-width:200px"><label style="font-weight:800; color:#1d4f91">🔎 Ricerca per stato pratica</label><select id="filtro-stato" onchange="scegliStatoRegistro(this.value)"></select></div>
     <div style="flex:1; min-width:200px"><label style="font-weight:800; color:#1d4f91">👤 Ricerca per contribuente</label><input id="filtro-contribuente" type="search" placeholder="Cognome, nome o codice fiscale…" autocomplete="off" style="text-transform:uppercase" oninput="render()"></div>
-    <button type="button" id="btn-consegnate" onclick="mostraConsegnate()" style="padding:9px 16px; border:none; border-radius:999px; background:#8d5a3b; color:#fff; font-weight:800; cursor:pointer">📦 Mostra le consegnate</button>
+    <button type="button" id="btn-consegnate" onclick="mostraConsegnate()" style="display:none; padding:9px 16px; border:none; border-radius:999px; background:#8d5a3b; color:#fff; font-weight:800; cursor:pointer">📦 Mostra le consegnate</button>
     <button type="button" onclick="stampaReportStato()" style="padding:9px 16px; border:none; border-radius:999px; background:#1d4f91; color:#fff; font-weight:800; cursor:pointer">🖨️ Stampa report</button>
   </div>
   <div id="chip-stati" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px"></div>
@@ -892,13 +892,13 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/comuni.js?v=1"></script>
 <script src="js/ocr-documento.js?v=21"></script>
 <script src="js/grafici.js?v=24"></script>
-<script src="js/stampe.js?v=28"></script>
+<script src="js/stampe.js?v=29"></script>
 <script src="js/extra.js?v=42"></script>
 <script src="js/privacy.js?v=2"></script>
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=16"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=150"></script>
+<script src="js/guida.js?v=151"></script>
 <script src="js/scadenze.js?v=202610089"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -907,7 +907,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610142"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610293"></script>
+<script src="js/app.js?v=202610295"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=4"></script>

@@ -101,7 +101,7 @@ function descrizioneFiltri() {
   righe.push('Tipo pratica: ' + (tuttiTipi() ? 'tutti' : tipiSi.join(', ')));
   const statiSi = Object.keys(s.stati).filter(function (k) { return s.stati[k]; });
   righe.push('Stato: ' + (tuttiStati() ? 'tutti' : statiSi.map(statoLabel).join(', ')));
-  if (s.cisl) righe.push('Iscritti CISL: ' + (s.cisl === 'iscritti' ? 'solo iscritti (senza FPS e FILCA)' : 'iscritti + 730 FPS + 730 FILCA'));
+  if (s.cisl) righe.push('CISL: ' + ({ iscritti: 'solo iscritti (senza FPS e FILCA)', fps: 'solo 730 CISL FPS', filca: 'solo 730 CISL FILCA', tutti: 'iscritti + 730 FPS + 730 FILCA' }[s.cisl] || s.cisl));
   righe.push('Operatore: ' + (s.operatore || 'tutti'));
   if (s.pagamento) righe.push('Pagamento: ' + (s.pagamento === 'NESSUNO' ? 'non indicato' : s.pagamento));
   if (s.cliente.trim()) righe.push('Cliente: ' + s.cliente.trim());
