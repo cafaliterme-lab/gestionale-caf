@@ -5,6 +5,27 @@ const MOROSI = { anno: null, annoBase: null, collaboratori: false, cerca: '', ap
 // Quanto deve pagare il cliente: l'importo richiesto se c'è, altrimenti la fattura
 function dovutoPratica(p) { return Number(p.richiesto || 0) > 0 ? Number(p.richiesto) : Number(p.compenso || 0); }
 function residuoPratica(p) { return Math.max(0, Math.round((dovutoPratica(p) - Number(p.pagato || 0)) * 100) / 100); }
+// Note automatiche di pagamento ("Deve ancora …", "Pagato arretrato …"): si tolgono quando la pratica è saldata,
+// si aggiornano (nuovo importo) quando paga solo una parte. Le altre note restano.
+function togliNoteMorosita(note) {
+  return String(note || '').split('·').map(function (x) { return x.trim(); }).filter(function (x) { return x && !/^(Deve ancora|Pagato arretrato)\b/i.test(x); }).join(' · ');
+}
+function notePagamentoSistemate(id, campi) {
+  const p = (state.pratiche || []).concat(state.annullate || []).find(function (x) { return x.id === id; });
+  if (!p || !campi) return campi;
+  const note = campi.note !== undefined ? campi.note : p.note;
+  if (!note || !/(Deve ancora|Pagato arretrato)/i.test(note)) return campi;
+  const nuova = Object.assign({}, p, campi);
+  const res = residuoPratica(nuova);
+  if (res <= 0.004 || nuova.stato === 'pagato') return Object.assign({}, campi, { note: togliNoteMorosita(note) });
+  // pagamento parziale successivo: si aggiorna quanto manca
+  if (campi.pagato !== undefined && campi.note === undefined && /Deve ancora/i.test(note)) {
+    const resto = String(note).split('·').map(function (x) { return x.trim(); }).filter(function (x) { return x && !/^(Deve ancora|Pagato arretrato)\b/i.test(x); });
+    resto.push('Deve ancora ' + fmtEuro(res) + ' (aggiornato il ' + todayIT() + ')');
+    return Object.assign({}, campi, { note: resto.join(' · ').slice(0, 1000) });
+  }
+  return campi;
+}
 function eMorosa(p) { return !p.annullata && p.stato !== 'rinuncia_compilazione' && !p.saldataCollaboratore && residuoPratica(p) > 0; }
 
 function morosiAnno(anno, conCollaboratori) {
@@ -93,6 +114,8 @@ function incassaMoroso(id) {
     + '<div style="font-size:13px; color:var(--sub); margin:2px 0 12px">' + esc(p.nome || '') + ' · ' + formattaProtocolloTesto(p) + ' · ' + esc(p.tipo || '') + '<br>Fattura ' + fmtEuro(p.compenso) + ' · già pagato ' + fmtEuro(p.pagato) + ' · <b style="color:#c0392b">da pagare ' + fmtEuro(res) + '</b></div>'
     + '<div class="grid" style="gap:8px"><div><label>Importo pagato ora (€)</label><input id="mo-importo" type="text" inputmode="decimal" value="' + String(res.toFixed(2)).replace('.', ',') + '" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800"></div>'
     + '<div><label>Pagamento</label><select id="mo-metodo">' + METODI_PAGAMENTO.map(function (m) { return '<option' + (m === 'CONTANTI' ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select></div></div>'
+    + (togliNoteMorosita(p.note) ? '<label class="chk" style="display:flex; gap:8px; align-items:flex-start; margin-top:10px; font-size:13px"><input type="checkbox" id="mo-note" checked style="width:auto; margin-top:3px"> <span>Se paga tutto, cancella anche le note: <i>' + esc(togliNoteMorosita(p.note)) + '</i></span></label>' : '')
+    + '<div style="font-size:12px; color:var(--sub); margin-top:6px">La nota «Deve ancora…» si toglie da sola quando la pratica è pagata tutta.</div>'
     + '<div id="mo-esito" style="font-size:13px; margin-top:6px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px"><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Annulla</button><button type="button" data-azione="si" style="background:#2f9e5f; color:#fff; font-weight:800">💾 Registra pagamento</button></div></div>';
   document.body.appendChild(ov);
@@ -110,9 +133,10 @@ function incassaMoroso(id) {
     const campi = {
       pagato: nuovoPagato,
       metodoPagamento: Number(p.pagato || 0) > 0 && p.metodoPagamento ? p.metodoPagamento : metodo,
-      recuperi: (Array.isArray(p.recuperi) ? p.recuperi : []).concat([recupero]),
-      note: ((p.note ? p.note + ' · ' : '') + 'Pagato arretrato ' + fmtEuro(imp) + ' il ' + todayIT() + ' (' + metodo + ')').slice(0, 1000)
+      recuperi: (Array.isArray(p.recuperi) ? p.recuperi : []).concat([recupero])
     };
+    const cancNote = document.getElementById('mo-note');
+    if (cancNote && cancNote.checked && nuovoPagato >= dovutoPratica(p) - 0.004) campi.note = '';
     if (nuovoPagato >= dovutoPratica(p) && (['da_pagare', 'non_paga', 'lavorata', 'lavorata_da_fatturare', 'filca_non_paga', 'fps_non_paga'].indexOf(p.stato) >= 0 || (typeof eStatoNonPagato === 'function' && eStatoNonPagato(p.stato)))) campi.stato = 'pagato';
     b.disabled = true;
     const r = await data.pratiche.aggiorna(p.id, campi);

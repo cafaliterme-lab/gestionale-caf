@@ -408,6 +408,8 @@ async function aggiungiPratica(pratica) {
  */
 async function aggiornaPratica(id, aggiornamenti) {
   try {
+    // pratica saldata: via la nota automatica "Deve ancora …"
+    if (typeof notePagamentoSistemate === 'function') aggiornamenti = notePagamentoSistemate(id, aggiornamenti);
     const db = praticaToDb(aggiornamenti);
 
     const { data: righe, error } = await supabase
