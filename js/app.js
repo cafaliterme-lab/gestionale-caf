@@ -164,12 +164,15 @@ function caricaArchivioClienti(){
   ARCHIVIO_CLIENTI = (window.state && state.clienti) || [];
 }
 function boxRisultatiClienti(ctx){ return document.getElementById(ctx==='cong' ? 'cli-results-cong' : ctx==='sc' ? 'cli-results-sc' : 'cli-results'); }
+// Testo per le ricerche: senza apostrofi (' e ’), spazi, punti e accenti, così «D'ANDREA», «D’ANDREA», «D ANDREA» e «DANDREA» si trovano allo stesso modo
+function chiaveRicerca(s){ return String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,''); }
 function cercaClienti(q, ctx){
   ctx = ctx || 'main';
   const box = boxRisultatiClienti(ctx);
   q = (q||'').trim().toLowerCase();
   if(!q){ box.classList.remove('open'); box.innerHTML=''; return; }
-  const match = ARCHIVIO_CLIENTI.filter(function(c){ return (c.nomeCompleto||"").toLowerCase().indexOf(q) >= 0 || (c.codiceFiscale||'').toLowerCase().indexOf(q) >= 0; }).slice(0,8);
+  const kq = chiaveRicerca(q);
+  const match = ARCHIVIO_CLIENTI.filter(function(c){ const k = chiaveRicerca(c.nomeCompleto) + ' ' + chiaveRicerca(c.codiceFiscale); return (c.nomeCompleto||"").toLowerCase().indexOf(q) >= 0 || (kq && k.indexOf(kq) >= 0) || (kq && (chiaveRicerca(c.nome) + chiaveRicerca(c.cognome)).indexOf(kq) >= 0); }).slice(0,8);
   // nelle Scadenze si può inserire subito un cliente nuovo nell'archivio
   const rigaNuovo = ctx === 'sc' ? '<div class="cli-row" style="color:#1a7f37; font-weight:800" onclick="document.getElementById(\'cli-results-sc\').classList.remove(\'open\'); nuovoClienteArchivio(document.getElementById(\'sc-cliente\').value)">➕ Nuovo cliente: inseriscilo in archivio (codice fiscale, telefono…)</div>' : '';
   if(!match.length){ box.innerHTML = '<div class="cli-row" style="cursor:default">Nessun cliente trovato</div>' + rigaNuovo; box.classList.add('open'); return; }

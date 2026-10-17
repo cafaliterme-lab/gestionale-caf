@@ -11,7 +11,7 @@ function personeStorico(q) {
   const aggiungi = function (nome, nascita, cf, telefono) {
     nome = String(nome || '').trim().toUpperCase(); if (!nome) return;
     cf = String(cf || '').trim().toUpperCase();
-    if ((nome + ' ' + cf).indexOf(q) < 0) return;
+    if ((nome + ' ' + cf).indexOf(q) < 0 && !(chiaveRicerca(q) && chiaveRicerca(nome + cf).indexOf(chiaveRicerca(q)) >= 0)) return;
     const k = cf || (nome + '|' + (nascita || ''));
     const x = persone[k] || (persone[k] = { nome: nome, nascita: nascita || '', cf: cf, telefono: '', n: 0 });
     x.n++; if (!x.nascita && nascita) x.nascita = nascita; if (!x.telefono && telefono) x.telefono = telefono;

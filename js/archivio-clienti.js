@@ -29,7 +29,9 @@ function apriArchivioClienti(testo) {
       if (senzaTel && c.telefono) return false;
       if (doc && c.documentoScadenza && (dataNum(c.documentoScadenza) || 0) >= oggi) return false;
       if (!q) return true;
-      return [c.nomeCompleto, c.codiceFiscale, c.telefono, c.telefonoFisso, c.email].join(' ').toUpperCase().indexOf(q) >= 0;
+      if ([c.nomeCompleto, c.codiceFiscale, c.telefono, c.telefonoFisso, c.email].join(' ').toUpperCase().indexOf(q) >= 0) return true;
+      const kq = typeof chiaveRicerca === 'function' ? chiaveRicerca(q) : '';
+      return !!kq && (chiaveRicerca(c.nomeCompleto) + '|' + chiaveRicerca(c.nome) + chiaveRicerca(c.cognome) + '|' + chiaveRicerca(c.codiceFiscale) + '|' + chiaveRicerca(c.telefono) + '|' + chiaveRicerca(c.telefonoFisso)).indexOf(kq) >= 0;
     });
     const mostra = filtrati.slice(0, 80);
     document.getElementById('arc-lista').innerHTML = mostra.length ? mostra.map(function (c) {

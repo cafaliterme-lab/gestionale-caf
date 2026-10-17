@@ -82,7 +82,7 @@ function statoRichiamo(x) {
 function filtraRichiami(lista) {
   const q = RICHIAMI.cerca.trim().toUpperCase();
   return lista.filter(function (x) {
-    if (q && (x.nome + ' ' + x.cf).indexOf(q) < 0) return false;
+    if (q && (x.nome + ' ' + x.cf).indexOf(q) < 0 && chiaveRicerca(x.nome + x.cf).indexOf(chiaveRicerca(q)) < 0) return false;
     const e = statoRichiamo(x);
     if (RICHIAMI.filtro === 'da_chiamare') return !e || ESITI_CHIUSI.indexOf(e.esito) < 0;
     if (RICHIAMI.filtro === 'contattati') return !!e;
