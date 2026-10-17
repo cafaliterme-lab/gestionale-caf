@@ -2884,13 +2884,13 @@ function consegnaPratica(id){
     + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + ' · ' + esc(p.tipo || '') + (Number(p.compenso || 0) ? ' · fattura ' + fmtEuro(p.compenso) : '') + (Number(p.richiesto || 0) ? ' · <b>richiesto ' + fmtEuro(p.richiesto) + '</b>' : '') + '</div>'
     + '<div style="font-size:15px; font-weight:800; margin-bottom:8px">Il cliente ha pagato?</div>'
     + '<div class="grid"><div><label>Importo fattura (€) <b style="color:#c0392b">*</b></label><input id="cs-fatt" type="text" inputmode="decimal" value="' + (Number(p.compenso||0) ? importoInCampo(p.compenso) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)"></div>'
-    + '<div><label title="Promemoria: non entra in contabilità">Importo richiesto (€) <b style="color:#c0392b">*</b></label><input id="cs-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)"></div>'
-    + '<div><label>Importo pagato (€) <b style="color:#c0392b">*</b></label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
+    + '<div><label title="Promemoria: non entra in contabilità">Importo richiesto (€) <b style="color:#c0392b">*</b> <span style="font-weight:400; font-size:11px; color:var(--sub)">(se non paga: libero)</span></label><input id="cs-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)"></div>'
+    + '<div><label>Importo pagato (€) <b style="color:#c0392b">*</b> <span style="font-weight:400; font-size:11px; color:var(--sub)">(solo se ha pagato)</span></label><input id="cs-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this); restoConsegna()" onblur="formattaCampoImporto(this)" style="font-weight:800; font-size:16px"></div>'
     + '<div><label>Pagamento</label><select id="cs-met">' + metodoOptions(p.metodoPagamento || 'CONTANTI') + '</select></div>'
     + '<div><label>' + (e730(p) ? 'Data di consegna' : 'Data') + ' <b style="color:#c0392b">*</b></label><input id="cs-data" value="' + todayIT() + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div></div>'
     + '<div style="margin-top:8px"><label>📝 Note</label><textarea id="cs-note" rows="2" placeholder="Facoltative: es. paga la prossima settimana, ritirata dal figlio…" style="width:100%; resize:vertical">' + esc(p.note || '') + '</textarea></div>'
     + (p.iscrittoCisl && typeof selectPrezziCisl === 'function' ? selectPrezziCisl('cs-ric', 'cs-fatt') : '')
-    + '<div style="margin-top:8px; padding:7px 10px; border-radius:8px; background:#e8f6ee; color:#1a7f37; font-size:12.5px">✓ Controlla gli importi: confermando la consegna, <b>fattura e incasso entrano in contabilità</b>.</div>'
+    + '<div style="margin-top:8px; padding:7px 10px; border-radius:8px; background:#e8f6ee; color:#1a7f37; font-size:12.5px">✓ Controlla gli importi: confermando la consegna, <b>fattura e incasso entrano in contabilità</b>. Se <b>non paga</b> basta la fattura: entra tra le fatture emesse, ma in cassa non entra niente.</div>'
     + '<div id="cs-resto" style="font-size:13.5px; font-weight:800; margin-top:6px"></div>'
     + '<div id="cs-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px">'
@@ -2911,7 +2911,8 @@ function consegnaPratica(id){
     if(!eColf(p.tipo)){
       const vuoto = function(id){ const v = document.getElementById(id).value.trim(); return !v || !(parseImporto(v) >= 0); };
       if(vuoto('cs-fatt')) return segnaC('cs-fatt', 'Scrivi l\'importo della fattura (obbligatorio; 0 se gratuita).');
-      if(vuoto('cs-ric')) return segnaC('cs-ric', 'Scrivi l\'importo richiesto (obbligatorio; 0 se gratuita).');
+      // se non paga, il richiesto può restare vuoto: conta solo la fattura
+      if(b.dataset.az === 'pagato' && vuoto('cs-ric')) return segnaC('cs-ric', 'Scrivi l\'importo richiesto (obbligatorio; 0 se gratuita).');
     }
     const campi = { consegnataIl: dataC, consegnataDa: ((auth.profilo && auth.profilo.nome) || '').toUpperCase() };
     // note scritte nella finestra di consegna (sostituiscono quelle della pratica)
@@ -2938,6 +2939,8 @@ function consegnaPratica(id){
       } else if(manca > 0.004){ campi.richiesto = v; }
     } else if(!colf){
       campi.stato = (b.dataset.stato && STATI[b.dataset.stato]) ? b.dataset.stato : 'non_paga';
+      // non paga: la fattura entra in contabilità, ma in cassa non entra niente
+      if(Number(p.pagato || 0)) campi.pagato = '';
     }
     b.disabled = true;
     const r = await data.pratiche.aggiorna(p.id, campi);
