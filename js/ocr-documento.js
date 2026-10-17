@@ -671,12 +671,14 @@ async function leggiPdfDocumento(file) {
   if (!window.pdfjsLib) await caricaScript(PDFJS_BASE + 'pdf.min.js');
   window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js';
   const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  // PDF "digitale" (non scansione): il codice fiscale si legge esatto dal testo del file, su tutte le pagine
+  docLettura.cfTestoPdf = await cfDalTestoPdf(pdf).catch(function () { return ''; });
   const pagine = Math.min(pdf.numPages, 2);
   for (let n = 1; n <= pagine; n++) {
     const pagina = await pdf.getPage(n);
     const base = pagina.getViewport({ scale: 1 });
-    // circa 2500 pixel sul lato lungo: abbastanza per leggere bene i caratteri piccoli
-    const scala = Math.min(4, 2500 / Math.max(base.width, base.height));
+    // circa 3500 pixel sul lato lungo: anche un documento piccolo scansionato su un foglio A4 ha i caratteri leggibili
+    const scala = Math.min(6, 3500 / Math.max(base.width, base.height));
     const vista = pagina.getViewport({ scale: scala });
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(vista.width); canvas.height = Math.round(vista.height);
@@ -687,6 +689,19 @@ async function leggiPdfDocumento(file) {
     messaggioDoc('Lettura della pagina ' + n + ' di ' + pagine + '...');
     await analizzaDocumento(canvas, canvas.width, canvas.height);
   }
+  docLettura.cfTestoPdf = '';
+}
+async function cfDalTestoPdf(pdf) {
+  for (let n = 1; n <= Math.min(pdf.numPages, 20); n++) {
+    const contenuto = await (await pdf.getPage(n)).getTextContent();
+    const righe = [], tutto = contenuto.items.map(function (it) { return it.str; }).join(' ').toUpperCase();
+    righe.push(tutto, tutto.replace(/\s+/g, ''));
+    for (const r of righe) {
+      const trovati = r.match(/[A-Z]{6}[0-9LMNPQRSTUV]{2}[A-Z][0-9LMNPQRSTUV]{2}[A-Z][0-9LMNPQRSTUV]{3}[A-Z]/g) || [];
+      for (const cf of trovati) if (cfValido(cf)) return cf;
+    }
+  }
+  return '';
 }
 
 // Righe lette con la loro posizione nella foto originale
@@ -767,7 +782,7 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
     });
     // Codice a barre (tessera sanitaria): da' il CF esatto; poi lo si copre perche' confonde l'OCR
     const codici = await creaLettoreCodiciBarre().then(function (det) { return det.detect(sorgente); }).catch(function () { return []; });
-    const cfBarre = cfDaCodiciLetti(codici);
+    const cfBarre = cfDaCodiciLetti(codici) || docLettura.cfTestoPdf || null;
     const intera = { x: 0, y: 0, w: larghezza, h: altezza };
     const zona = ritaglio || intera;
     const tentativi = [[zona, 'contrasto', '6'], [zona, 'contrasto', '11'], [zona, 'bn', '6']];
@@ -844,7 +859,7 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
     if (!dati.codiceFiscale && !dati.cfGrezzo) dati.cfGrezzo = cercaCFGrezzo(righeTutte);
     rifinisciDati(dati, righeTutte);
     if (dati.codiceFiscale) dati.cfGrezzo = '';
-    if (dati.tipo === 'Documento' && cfBarre) dati.tipo = 'Tessera sanitaria';
+    if (dati.tipo === 'Documento' && cfDaCodiciLetti(codici)) dati.tipo = 'Tessera sanitaria';
     dati.testo = testo;
     docLettura.dati = dati;
     mostraRevisioneDocumento(dati);
