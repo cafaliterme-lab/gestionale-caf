@@ -913,7 +913,48 @@ function usaDatiECorreggo() {
   docLettura.forza = false;
 }
 
+// Parole del cognome/nome che sembrano errori di lettura (pezzi corti, lettere sparse, simboli):
+// si avvisa e si propone di toglierle con un tocco
+const PARTICELLE_NOME = ['DE', 'DI', 'DA', 'DEL', 'DAL', 'DEI', 'DEGLI', 'DELLA', 'DELLE', 'DELLO', 'DALLA', 'LA', 'LO', 'LE', 'LI', 'DU', 'DOS', 'DAS', 'VAN', 'VON', 'MC', 'MAC', 'SAN', 'ST', 'AL', 'EL', 'BEN', 'IBN', 'ABU', 'BIN'];
+function paroleDubbieNome(valore) {
+  return String(valore || '').toUpperCase().split(/\s+/).filter(Boolean).filter(function (w) {
+    const lettere = w.replace(/['’]/g, '');
+    if (/[^A-ZÀ-Ý]/.test(lettere)) return true;
+    return lettere.length <= 3 && PARTICELLE_NOME.indexOf(lettere) < 0 && !/^[DL]$/.test(lettere) && !/^(ANA|EVA|IDA|UGO|EMA|ADA|EDO|ELIO|LEA|PIA|RITA|LIA|OLGA|ZOE|NOE|ASIA|GIO|ALI|LUZ|EVE|ANN|AMY|LEO|IVO|IVA|EZIO|ODA|ALBA|LEI|ZOE)$/.test(lettere);
+  });
+}
+function togliParolaDoc(campo, parola) {
+  const el = document.getElementById(campo);
+  el.value = el.value.toUpperCase().split(/\s+/).filter(function (w) { return w && w !== parola; }).join(' ');
+  verificaRevisioneDocumento();
+}
+function avvisiNomeDoc() {
+  const mrz = leggiMRZ(righeOCR((docLettura.dati || {}).testo || ''));
+  let html = '';
+  [['doc-cognome', 'cognome'], ['doc-nome', 'nome']].forEach(function (c) {
+    const el = document.getElementById(c[0]);
+    const val = el.value.trim().toUpperCase();
+    const dubbie = paroleDubbieNome(val);
+    const dalRetro = mrz[c[1]] && mrz[c[1]] !== val ? mrz[c[1]] : '';
+    el.style.outline = dubbie.length || dalRetro ? '3px solid #e08a00' : '';
+    if (!dubbie.length && !dalRetro) return;
+    html += '<div style="margin-top:6px; padding:7px 10px; border-radius:8px; background:#fff4e0; color:#8a4b00; font-weight:700">⚠️ Controlla il ' + c[1] + ' «' + esc(val) + '» sul documento'
+      + (dubbie.length ? ': «' + esc(dubbie.join(' ')) + '» potrebbe essere un errore di lettura.' : '.')
+      + (dalRetro ? ' Nelle righe in basso del documento c\'è scritto «' + esc(dalRetro) + '».' : '')
+      + '<div style="margin-top:5px; display:flex; gap:6px; flex-wrap:wrap">'
+      + dubbie.map(function (w) { return '<button type="button" onclick="togliParolaDoc(\'' + c[0] + '\', \'' + esc(w).replace(/'/g, "\\'") + '\')" style="background:#e08a00; color:#fff; border:none; border-radius:999px; padding:5px 12px; font-weight:800; cursor:pointer">✂️ Togli «' + esc(w) + '»</button>'; }).join('')
+      + (dalRetro ? '<button type="button" onclick="document.getElementById(\'' + c[0] + '\').value=\'' + esc(dalRetro).replace(/'/g, "\\'") + '\'; verificaRevisioneDocumento()" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:5px 12px; font-weight:800; cursor:pointer">Usa «' + esc(dalRetro) + '»</button>' : '')
+      + '</div></div>';
+  });
+  return html;
+}
 function verificaRevisioneDocumento() {
+  verificaCFRevisioneDocumento();
+  const el = document.getElementById('doc-verifica');
+  const avvisi = avvisiNomeDoc();
+  if (avvisi) el.insertAdjacentHTML('afterbegin', avvisi);
+}
+function verificaCFRevisioneDocumento() {
   const el = document.getElementById('doc-verifica');
   const cf = normalizzaCF(document.getElementById('doc-cf').value);
   const g = function (id) { return document.getElementById(id).value.trim(); };
