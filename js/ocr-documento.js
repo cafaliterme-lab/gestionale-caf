@@ -181,6 +181,10 @@ function cercaCF(righe) {
 function cercaCFGrezzo(righe) {
   const simile = function (t) {
     if (t.length < 15 || t.length > 17) return false;
+    // nelle 7 posizioni numeriche (anno, giorno, comune) almeno 4 cifre vere: cosi' un nome o un'etichetta
+    // attaccati ("MARIACRISTINA", "EMISSIONEISSUING") non vengono scambiati per un codice fiscale
+    const cifre = [6, 7, 9, 10, t.length - 4, t.length - 3, t.length - 2].filter(function (i) { return /\d/.test(t[i] || ''); }).length;
+    if (cifre < 4 || /\d{4,}/.test(t)) return false; // nel CF non ci sono mai 4 cifre di fila (le date si')
     const comeLettera = function (c) { return /[A-Z0125689]/.test(c); };
     const comeCifra = function (c) { return /[0-9LMNPQRSTUVOIZSBGD]/.test(c); };
     // inizio (6 lettere, 2 cifre) e fine (lettera, 3 cifre, lettera): reggono anche se in mezzo manca un carattere
@@ -397,7 +401,7 @@ function campiPerPosizione(righe, nomeNoto) {
   const fino = rigaNascita >= 0 ? rigaNascita : righe.length;
   const nomi = righe.slice(0, fino)
     .map(function (r) { return r.replace(/[^A-ZÀ-Ü' ]/g, ' ').replace(/\s+/g, ' ').trim(); })
-    .filter(function (r) { return r.length >= 2 && !intestazione.test(r) && r !== 'ITA' && /^[A-ZÀ-Ü' ]+$/.test(r); });
+    .filter(function (r) { return r.length >= 3 && !intestazione.test(r) && r !== 'ITA' && /^[A-ZÀ-Ü' ]+$/.test(r); });
   const iNome = nomeNoto ? nomi.indexOf(nomeNoto) : -1;
   if (iNome > 0) { out.cognome = nomi[iNome - 1]; out.nome = nomeNoto; }
   else if (nomi.length >= 2) { out.cognome = nomi[nomi.length - 2]; out.nome = nomi[nomi.length - 1]; }
@@ -716,6 +720,52 @@ function righeConPosizione(risultato, rett, scala) {
   });
   return out;
 }
+// Testo con le sole parole lette con sicurezza: lo sfondo del documento (foto, disegni di sicurezza)
+// viene letto come parole a caso ("RSS LEE", "POI LS") con confidenza bassa, mentre i dati stampati
+// hanno confidenza alta. Le righe MRZ e i pezzi lunghi (codice fiscale) si tengono comunque.
+function parolaAffidabile(w) {
+  const t = String(w.text || '').trim();
+  if (!t) return false;
+  const c = +w.confidence;
+  if (!isFinite(c) || /</.test(t) || c >= 60) return true;
+  // le etichette sono piccole e chiare (confidenza bassa) ma servono a capire dove sono i dati
+  if (c >= 15 && PAROLE_ETICHETTA.test(t.toUpperCase().replace(/[^A-Z]/g, ''))) return true;
+  if (/^\d{1,2}[.\/\-]\d{1,2}[.\/\-]\d{2,4}$/.test(t) && c >= 30) return true; // date
+  if (/^[A-ZÀ-Ü']{3,}$/.test(t) && c >= 45) return true; // parola maiuscola (cognome/nome un po' sfocato)
+  return t.replace(/[^A-Za-z0-9]/g, '').length >= 6 && c >= 35;
+}
+const PAROLE_ETICHETTA = /COGNOM|SURNAM|^NOM[EI]|NAMES?$|LUOGO|NASCIT|BIRTH|PLACE|^DATA$|^DATE$|SESSO|^SEX$|STATURA|HEIGHT|CITTADIN|NATIONAL|EMISSION|ISSU|SCADENZ|EXPIR|COMUNE|MUNICIPAL|CODICE|FISCAL|IDENTIT|CARTA|PATENTE|DRIVING|TESSERA|SANITARI|REPUBBLICA|ITALIANA|FIRMA|SIGNATUR/;
+function testoAffidabile(risultato) {
+  const righe = [];
+  let parole = 0;
+  (risultato.blocks || []).forEach(function (b) {
+    (b.paragraphs || []).forEach(function (p) {
+      (p.lines || []).forEach(function (l) {
+        const tenute = (l.words || []).filter(parolaAffidabile).map(function (w) { return String(w.text).trim(); });
+        parole += (l.words || []).length;
+        if (tenute.length) righe.push(tenute.join(' '));
+      });
+    });
+  });
+  return parole ? righe.join('\n') : String(risultato.text || '');
+}
+
+// Dati scelti tra i tentativi: per nome, cognome, luogo e data vince il valore letto piu' volte
+// (a parita' quello del tentativo precedente); gli altri campi dal primo tentativo che li ha
+function votaDati(lista) {
+  const dati = Object.assign({}, lista[0]);
+  Object.keys(dati).forEach(function (k) { if (!dati[k]) { const altro = lista.find(function (d) { return d[k]; }); if (altro) dati[k] = altro[k]; } });
+  ['cognome', 'nome', 'luogoNascita', 'dataNascita', 'sesso'].forEach(function (k) {
+    const conti = new Map();
+    lista.forEach(function (d) { if (d[k]) conti.set(d[k], (conti.get(d[k]) || 0) + 1); });
+    let migliore = '', n = 0;
+    conti.forEach(function (c, v) { if (c > n) { n = c; migliore = v; } });
+    if (migliore) dati[k] = migliore;
+  });
+  return dati;
+}
+function concordano(a, b) { return !!(a && b && a.cognome && a.cognome === b.cognome && a.nome === b.nome && a.dataNascita === b.dataNascita); }
+
 function rettangoloDentro(x0, y0, x1, y1, w, h) {
   x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0));
   x1 = Math.min(w, Math.ceil(x1)); y1 = Math.min(h, Math.ceil(y1));
@@ -789,7 +839,9 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
     if (ritaglio) tentativi.push([intera, 'contrasto', '6']);
 
     let testo = '';
+    let testoSicuro = ''; // solo le parole lette con sicurezza (senza lo "sporco" dello sfondo)
     let dati = null;
+    const letture = []; // dati ricavati da ogni tentativo, per scegliere quelli letti piu' volte
     const passate = []; // righe di ogni tentativo con la posizione nella foto
     for (let i = 0; i < tentativi.length; i++) {
       const [rett, modo, psm] = tentativi[i];
@@ -805,12 +857,17 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
       const { data: risultato } = await worker.recognize(immagine, {}, { text: true, blocks: true });
       passate.push(righeConPosizione(risultato, rett, immagine.scala));
       testo += (testo ? '\n----\n' : '') + risultato.text;
-      const nuovi = estraiDatiDocumento(risultato.text, cfBarre);
-      if (!dati) dati = nuovi;
-      else Object.keys(nuovi).forEach(function (k) { if (!dati[k] && nuovi[k]) dati[k] = nuovi[k]; });
+      const sicuro = testoAffidabile(risultato);
+      testoSicuro += (testoSicuro ? '\n----\n' : '') + sicuro;
+      const nuovi = estraiDatiDocumento(sicuro, cfBarre);
+      letture.push(nuovi);
+      dati = votaDati(letture);
       const serveCF = (/FISCALE|FISCAL|<</.test(testo)) && !dati.codiceFiscale;
       const serveMRZ = /<</.test(testo) && !leggiMRZ(righeOCR(testo)).dataNascita;
-      if (dati.cognome && dati.nome && dati.dataNascita && !serveCF && !serveMRZ) break;
+      // ci si ferma quando due tentativi danno gli stessi dati (o quando MRZ / codice fiscale li confermano)
+      const certi = letture.length >= 2 ? concordano(letture[letture.length - 1], letture[letture.length - 2]) || concordano(nuovi, letture[0])
+        : !!(nuovi.codiceFiscale && cfValido(nuovi.codiceFiscale)) || !!leggiMRZ(righeOCR(sicuro)).cognome;
+      if (dati.cognome && dati.nome && dati.dataNascita && !serveCF && !serveMRZ && certi) break;
     }
 
     // Letture mirate: righe MRZ e codice fiscale, ritagliate e lette solo con i caratteri ammessi
@@ -819,7 +876,7 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
       for (const modo of ['contrasto', 'bn']) {
         passo = ' (righe in basso)';
         const t = await leggiZona(worker, sorgente, zonaMRZ, modo, '6', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<');
-        testo += '\n----\n' + t;
+        testo += '\n----\n' + t; testoSicuro += '\n----\n' + t;
         const m = leggiMRZ(righeOCR(t));
         if (m.dataNascita && m.cognome) break;
       }
@@ -830,15 +887,16 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
         for (const [modo, psm] of [['contrasto', '7'], ['bn', '7'], ['contrasto', '6']]) {
           passo = ' (codice fiscale)';
           const t = await leggiZona(worker, sorgente, zonaCF, modo, psm, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
-          testo += '\n----\n' + t;
+          testo += '\n----\n' + t; testoSicuro += '\n----\n' + t;
           if (cercaCF(righeOCR(t))) break;
         }
       }
     }
     await worker.setParameters({ tessedit_char_whitelist: '' });
     // Tutto il testo letto insieme: il codice fiscale, l'MRZ e le etichette si completano a vicenda
-    const insieme = estraiDatiDocumento(testo, cfBarre);
-    Object.keys(insieme).forEach(function (k) { if (insieme[k] && (!dati[k] || k === 'codiceFiscale' || k === 'cognome' || k === 'nome' || k === 'dataNascita' || k === 'sesso')) dati[k] = insieme[k]; });
+    // (nome e cognome restano quelli scelti tra i tentativi; MRZ e codice fiscale li correggono dopo)
+    const insieme = estraiDatiDocumento(testoSicuro, cfBarre);
+    Object.keys(insieme).forEach(function (k) { if (insieme[k] && (!dati[k] || k === 'codiceFiscale')) dati[k] = insieme[k]; });
 
     // Secondo lato dello stesso documento: si completano i dati del primo
     if (docLettura.unisci && docLettura.dati) {
