@@ -44,7 +44,10 @@ function renderStorico() {
     box.innerHTML = '<div class="card"><div class="raff-title">🗂️ Storico contribuente</div>'
       + '<div style="font-size:13px; color:var(--sub); margin-bottom:8px">Scrivi cognome, nome o codice fiscale: vedi tutte le pratiche del contribuente, dell\'anno in corso e degli anni precedenti (anche come coniuge nelle congiunte), consegnate, da consegnare e annullate. Qui si consulta soltanto.</div>'
       + '<input id="storico-cerca" type="search" placeholder="Es. ROSSI MARIO oppure RSSMRA60…" autocomplete="off" oninput="STORICO.cerca=this.value; STORICO.scelto=null; aggiornaStorico()" style="font-size:16px">'
-      + '<div id="storico-risultati" style="margin-top:10px"></div></div>';
+      + '<div id="storico-risultati" style="margin-top:10px"></div></div>'
+      + '<div class="card" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap"><div><div class="raff-title" style="margin:0">📞 Clienti da richiamare</div>'
+      + '<div style="font-size:13px; color:var(--sub)">Fine campagna 730: i clienti dell\'anno scorso che quest\'anno non si sono ancora presentati, con telefoni, WhatsApp ed esito del contatto.</div></div>'
+      + '<button type="button" onclick="apriRichiami()" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:9px 18px; font-weight:800; cursor:pointer">📞 Apri l\'elenco</button></div>';
   }
   aggiornaStorico();
 }
