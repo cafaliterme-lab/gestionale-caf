@@ -1268,6 +1268,7 @@ function usaDatiDocumento() {
     document.getElementById('f-cong-nome').value = v('doc-nome').toUpperCase();
     document.getElementById('f-cong-data').value = v('doc-nascita');
     if (cf) document.getElementById('f-cong-cf').value = cf;
+    if (typeof comuneNelCampo === 'function') comuneNelCampo('f-cong-cf', 'f-cong-comune');
     document.getElementById('cli-cerca-cong').value = (v('doc-cognome') + ' ' + v('doc-nome')).trim().toUpperCase();
     chiudiLetturaDocumento();
     avviso('✓ Dati del coniuge inseriti nel modulo');
@@ -1314,6 +1315,7 @@ function compilaModuloDaDocumento(d) {
     const on = document.getElementById('f-congiunta-on'); if (on && !on.checked) { on.checked = true; on.dispatchEvent(new Event('change')); }
     metti('f-cong-cognome', d.cognome); metti('f-cong-nome', d.nome); metti('f-cong-data', d.dataNascita);
     if (cf) metti('f-cong-cf', cf);
+    if (typeof comuneNelCampo === 'function') comuneNelCampo('f-cong-cf', 'f-cong-comune');
     metti('cli-cerca-cong', ((d.cognome || '') + ' ' + (d.nome || '')).trim());
     avviso('✓ Dati del coniuge inseriti nel modulo');
     return;

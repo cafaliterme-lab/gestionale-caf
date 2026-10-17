@@ -118,6 +118,8 @@ const schemas = {
     codiceFiscale: 'codice_fiscale',
     congCodiceFiscale: 'cong_codice_fiscale',
     congTelefono: 'cong_telefono',
+    comuneNascita: 'comune_nascita',
+    congComuneNascita: 'cong_comune_nascita',
     documentoScadenza: 'documento_scadenza',
     documenti: 'documenti',
     metodoPagamento: 'metodo_pagamento',

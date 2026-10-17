@@ -100,7 +100,7 @@ function toggleCong(cbId, inId){
 function toggleCongBox(){
   const on = document.getElementById('f-congiunta-on').checked;
   document.getElementById('f-cong-box').style.display = on ? '' : 'none';
-  if(!on){ ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel'].forEach(function(id){ document.getElementById(id).value=''; }); document.getElementById('cli-cerca-cong').value=''; }
+  if(!on){ ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel','f-cong-comune'].forEach(function(id){ document.getElementById(id).value=''; }); document.getElementById('cli-cerca-cong').value=''; }
   // importo convenzione: singola e congiunta possono avere importi predefiniti diversi
   const tipo = document.getElementById('f-tipo').value;
   applicaFatturaAutomatica(tipo);
@@ -198,6 +198,7 @@ function scegliCliente(i, ctx){
     document.getElementById('f-cong-data').value = c.dataNascita;
     document.getElementById('cli-cerca-cong').value = c.nomeCompleto;
     document.getElementById('f-cong-cf').value = c.codiceFiscale || '';
+    comuneNelCampo('f-cong-cf', 'f-cong-comune');
     document.getElementById('f-cong-tel').value = c.telefono || '';
   } else {
     document.getElementById('f-cognome').value = c.cognome.toUpperCase();
@@ -340,7 +341,18 @@ function aggiornaStoricoForm(){
     + '</tbody></table></div>';
 }
 // Messaggio sotto il campo codice fiscale: validita', dati ricavati e coerenza con il modulo
+// Comune di nascita ricavato dal codice fiscale: si scrive se il campo è vuoto o era già stato compilato in automatico
+function comuneNelCampo(idCF, idComune){
+  const c = document.getElementById(idComune), cfEl = document.getElementById(idCF);
+  if(!c || !cfEl || typeof comuneDaCF !== 'function') return;
+  const cf = normalizzaCF(cfEl.value);
+  const auto = !c.value.trim() || c.dataset.auto === '1';
+  if(!auto) return;
+  const comune = cf.length === 16 && cfValido(cf) ? comuneDaCF(cf) : '';
+  c.value = comune; c.dataset.auto = comune ? '1' : '';
+}
 function controllaCampoCF(){
+  comuneNelCampo('f-codfisc', 'f-comune');
   const el = document.getElementById('f-codfisc-msg');
   const cf = document.getElementById('f-codfisc').value;
   if(!cf){ el.style.display = 'none'; return; }
@@ -349,10 +361,12 @@ function controllaCampoCF(){
   if(!cfValido(cf)){ el.style.color = '#c0392b'; el.textContent = '❌ Codice fiscale non valido (controlla i caratteri)'; return; }
   riempiDaArchivioPerCF(cf);
   const dati = datiDaCF(cf);
+  // data di nascita vuota: si prende dal codice fiscale
+  const dn = document.getElementById('f-cf'); if(dn && !dn.value.trim() && dati.dataNascita) dn.value = dati.dataNascita;
   const avvisi = controllaCoerenzaCF(cf, document.getElementById('f-cognome').value, document.getElementById('f-nome').value, document.getElementById('f-cf').value);
   if(avvisi.length){ el.style.color = '#b5842a'; el.textContent = '⚠️ Attenzione: ' + avvisi.join('; ') + '.'; return; }
   el.style.color = 'var(--accent)';
-  el.textContent = '✓ Codice valido · ' + (dati.sesso === 'F' ? 'Donna nata il ' : 'Uomo nato il ') + dati.dataNascita;
+  el.textContent = '✓ Codice valido · ' + (dati.sesso === 'F' ? 'Donna nata il ' : 'Uomo nato il ') + dati.dataNascita + (typeof comuneDaCF === 'function' && comuneDaCF(cf) ? ' a ' + comuneDaCF(cf) : '');
 }
 // Codice fiscale scritto a mano: se il cliente e' in archivio si compilano i campi ancora vuoti
 let ULTIMO_CF_RIEMPITO = '';
@@ -2048,6 +2062,8 @@ async function addPraticaInterna(){
   const congData = document.getElementById('f-cong-data').value.trim();
   const congCodiceFiscale = (congCognome || congNome) ? normalizzaCF(document.getElementById('f-cong-cf').value) : '';
   const congTelefono = (congCognome || congNome) ? document.getElementById('f-cong-tel').value.trim() : '';
+  const congComuneNascita = (congCognome || congNome) ? (document.getElementById('f-cong-comune')||{value:''}).value.trim().toUpperCase() : '';
+  const comuneNascita = (document.getElementById('f-comune')||{value:''}).value.trim().toUpperCase();
   const congiunta = [congCognome, congNome].filter(Boolean).join(' ');
   const telefono = document.getElementById('f-tel').value.trim();
   const telefonoFisso = document.getElementById('f-tel-fisso').value.trim();
@@ -2137,7 +2153,7 @@ async function addPraticaInterna(){
   else if(!documenti.mancanti.length && documenti.presentati.length && statoNuovo === 'arrivo' && !eColf(tipo) && statoVisibile('da_lavorare_scansionata', tipo) && confirm('Ci sono tutti i documenti.\n\nSalvo la pratica come "' + statoLabel('da_lavorare_scansionata') + '" invece di "In arrivo"?')) statoNuovo = 'da_lavorare_scansionata';
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note, viaEmail, iscrittoCisl,
+    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, comuneNascita, congComuneNascita, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note, viaEmail, iscrittoCisl,
     stato: statoNuovo,
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
@@ -2163,6 +2179,7 @@ async function addPraticaInterna(){
   document.getElementById('f-nome').value='';
   document.getElementById('f-cf').value='';
   document.getElementById('f-codfisc').value='';
+  if(document.getElementById('f-comune')){ document.getElementById('f-comune').value=''; document.getElementById('f-comune').dataset.auto=''; }
   controllaCampoCF();
   impostaTipoPredefinito();
   document.getElementById('f-compenso').value=''; document.getElementById('f-compenso').dataset.auto='';

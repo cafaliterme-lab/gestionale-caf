@@ -84,8 +84,8 @@ function ricevutaHTML(p, perEmail) {
       + '<div class="titolo">RICEVUTA DI PRESA IN CARICO</div>'
       + '<div class="proto">Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b></div>'
       + '<div class="attesta">Si attesta che in data <b>' + esc(p.data || todayIT()) + '</b> è stata consegnata e <b>presa in carico</b> la pratica protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b>'
-      + (p.nome ? ' di <b>' + esc(p.nome) + '</b>' + (p.cf ? ', nato/a il <b>' + esc(p.cf) + '</b>' : '') + (p.codiceFiscale ? ', codice fiscale <b>' + esc(p.codiceFiscale) + '</b>' : '')
-        + (p.congiunta ? ' e del coniuge <b>' + esc(p.congiunta) + '</b>' + (p.congData ? ', nato/a il <b>' + esc(p.congData) + '</b>' : '') + (p.congCodiceFiscale ? ', codice fiscale <b>' + esc(p.congCodiceFiscale) + '</b>' : '') : '') : '') + '.</div>'
+      + (p.nome ? ' di <b>' + esc(p.nome) + '</b>' + (p.comuneNascita ? ', nato/a a <b>' + esc(p.comuneNascita) + '</b>' : '') + (p.cf ? (p.comuneNascita ? ' il' : ', nato/a il') + ' <b>' + esc(p.cf) + '</b>' : '') + (p.codiceFiscale ? ', codice fiscale <b>' + esc(p.codiceFiscale) + '</b>' : '')
+        + (p.congiunta ? ' e del coniuge <b>' + esc(p.congiunta) + '</b>' + (p.congComuneNascita ? ', nato/a a <b>' + esc(p.congComuneNascita) + '</b>' : '') + (p.congData ? (p.congComuneNascita ? ' il' : ', nato/a il') + ' <b>' + esc(p.congData) + '</b>' : '') + (p.congCodiceFiscale ? ', codice fiscale <b>' + esc(p.congCodiceFiscale) + '</b>' : '') : '') : '') + '.</div>'
       + '<div class="nota">Conservare la ricevuta e presentarla al ritiro della pratica.</div>'
       + '<div class="firme"><div>L\'operatore<br><span>' + esc(p.inseritoDa || '') + '</span></div><div>Il contribuente</div></div>'
       + '</div>';
