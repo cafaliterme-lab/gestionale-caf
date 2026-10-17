@@ -39,7 +39,7 @@ function apriArchivioClienti(testo) {
       const scaduto = c.documentoScadenza && (dataNum(c.documentoScadenza) || 0) < oggi;
       return '<div data-id="' + esc(String(c.id || '')) + '" data-nome="' + esc(c.nomeCompleto) + '" style="display:flex; gap:10px; align-items:center; padding:8px 10px; border-bottom:1px solid var(--line); cursor:pointer">'
         + '<span style="flex:1"><b>' + esc(c.nomeCompleto) + '</b><div style="font-size:12px; color:var(--sub)">'
-        + (c.dataNascita ? 'nato/a il ' + esc(c.dataNascita) : 'data di nascita mancante') + (c.codiceFiscale ? ' · CF ' + esc(c.codiceFiscale) : '')
+        + (c.dataNascita ? 'nato/a il ' + esc(c.dataNascita) : 'data di nascita mancante') + ((c.comuneNascita || (c.codiceFiscale && typeof comuneDaCF === 'function' && comuneDaCF(c.codiceFiscale))) ? ' a ' + esc(c.comuneNascita || comuneDaCF(c.codiceFiscale)) : '') + (c.codiceFiscale ? ' · CF ' + esc(c.codiceFiscale) : '')
         + (c.telefono || c.telefonoFisso ? ' · 📞 ' + esc(c.telefono || c.telefonoFisso) : '') + (c.email ? ' · ✉️ ' + esc(c.email) : '')
         + (c.documentoScadenza ? ' · 🪪 ' + esc(c.documentoScadenza) + (scaduto ? ' <b style="color:#c0392b">scaduto</b>' : '') : '') + '</div>'
         + (manca.length ? '<div style="font-size:11.5px; color:#b35f0c; font-weight:700">Manca: ' + manca.join(', ') + '</div>' : '') + '</span>'
@@ -81,8 +81,9 @@ function modificaClienteArchivio(c, dopo) {
     + '<div class="grid">'
     + campo('cognome', 'Cognome *', c.cognome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('nome', 'Nome *', c.nome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
-    + campo('cf', 'Codice fiscale', c.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"')
+    + campo('cf', 'Codice fiscale', c.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); comuneNelCampo(\'mc-cf\', \'mc-comune\')"')
     + campo('nascita', 'Data di nascita', c.dataNascita, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
+    + campo('comune', 'Comune di nascita', c.comuneNascita || (c.codiceFiscale && typeof comuneDaCF === 'function' ? comuneDaCF(c.codiceFiscale) : ''), 'placeholder="Si compila dal codice fiscale" style="text-transform:uppercase"' + (c.comuneNascita ? '' : ' data-auto="1"') + ' oninput="this.value=this.value.toUpperCase(); this.dataset.auto=\'\'"')
     + campo('tel', 'Cellulare', c.telefono, 'type="tel" inputmode="tel"')
     + campo('fisso', 'Telefono fisso', c.telefonoFisso, 'type="tel" inputmode="tel"')
     + campo('email', 'E-mail', c.email, 'type="email" inputmode="email" style="text-transform:lowercase"')
@@ -101,7 +102,7 @@ function modificaClienteArchivio(c, dopo) {
     const msg = document.getElementById('mc-msg');
     const cognome = v('cognome').toUpperCase(), nome = v('nome').toUpperCase(), cf = normalizzaCF(v('cf'));
     let nascita = v('nascita');
-    const tel = v('tel'), fisso = v('fisso'), email = v('email').toLowerCase(), scad = v('scad');
+    const tel = v('tel'), fisso = v('fisso'), email = v('email').toLowerCase(), scad = v('scad'), comune = v('comune').toUpperCase();
     if (!cognome || !nome) { msg.textContent = 'Cognome e nome sono obbligatori.'; return; }
     if (cf && !cfValido(cf)) { msg.textContent = 'Il codice fiscale non è valido: controllalo o lascialo vuoto.'; return; }
     if (cf && !nascita) nascita = datiDaCF(cf).dataNascita;
@@ -115,7 +116,7 @@ function modificaClienteArchivio(c, dopo) {
       const avvisi = controllaCoerenzaCF(cf, cognome, nome, nascita);
       if (avvisi.length && !confirm('Attenzione: ' + avvisi.join('; ') + '.\n\nSalvo lo stesso?')) return;
     }
-    const campi = { nomeCompleto: (cognome + ' ' + nome).trim(), cognome: cognome, nome: nome, dataNascita: nascita || '', codiceFiscale: cf || null, telefono: tel || null, telefonoFisso: fisso || null, email: email || null, documentoScadenza: scad || null };
+    const campi = { nomeCompleto: (cognome + ' ' + nome).trim(), cognome: cognome, nome: nome, dataNascita: nascita || '', codiceFiscale: cf || null, telefono: tel || null, telefonoFisso: fisso || null, email: email || null, documentoScadenza: scad || null, comuneNascita: comune || null };
     b.disabled = true; b.textContent = 'Salvataggio…';
     const r = await data.clienti.aggiorna(c.id, campi);
     if (r && r.error) {

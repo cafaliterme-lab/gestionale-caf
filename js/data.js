@@ -205,6 +205,7 @@ const schemas = {
     telefonoFisso: 'telefono_fisso',
     email: 'email',
     documentoScadenza: 'documento_scadenza',
+    comuneNascita: 'comune_nascita',
   },
   scadenza: {
     id: 'id',

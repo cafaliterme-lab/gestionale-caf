@@ -1256,6 +1256,10 @@ function usaDatiDocumento() {
     };
     metti('cognome', v('doc-cognome').toUpperCase()); metti('nome', v('doc-nome').toUpperCase());
     metti('nascita', v('doc-nascita')); metti('cf', cf); metti('scad', v('doc-scad'));
+    // comune di nascita: dal codice fiscale (sicuro), altrimenti quello letto sul documento
+    const comune = (cf && cfValido(cf) && typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '') || v('doc-luogo').toUpperCase();
+    const elC = document.getElementById('mc-comune');
+    if (elC && comune && elC.value.trim().toUpperCase() !== comune) { elC.value = comune; elC.dataset.auto = '1'; elC.style.outline = '3px solid #1a7f37'; elC.style.background = '#e8f6ee'; }
     chiudiLetturaDocumento();
     const msg = document.getElementById('mc-msg');
     if (msg) msg.innerHTML = '<span style="color:#1a7f37">✓ Dati del documento inseriti (in verde quelli cambiati): controlla e premi <b>💾 Salva modifiche</b>.</span>';
@@ -1269,6 +1273,7 @@ function usaDatiDocumento() {
     document.getElementById('f-cong-data').value = v('doc-nascita');
     if (cf) document.getElementById('f-cong-cf').value = cf;
     if (typeof comuneNelCampo === 'function') comuneNelCampo('f-cong-cf', 'f-cong-comune');
+    const ccom = document.getElementById('f-cong-comune'); if (ccom && !ccom.value.trim() && v('doc-luogo')) ccom.value = v('doc-luogo').toUpperCase();
     document.getElementById('cli-cerca-cong').value = (v('doc-cognome') + ' ' + v('doc-nome')).trim().toUpperCase();
     chiudiLetturaDocumento();
     avviso('✓ Dati del coniuge inseriti nel modulo');
@@ -1284,6 +1289,8 @@ function usaDatiDocumento() {
   if (cf && cfValido(cf)) onCFLetto(cf);
   else {
     controllaCampoCF(); aggiornaStoricoForm();
+    const fc = document.getElementById('f-comune');
+    if (fc && !fc.value.trim() && v('doc-luogo')) { fc.value = v('doc-luogo').toUpperCase(); fc.dataset.auto = ''; }
     // si porta al codice fiscale da sistemare, evidenziato
     const campo = document.getElementById('f-codfisc');
     if (campo) { campo.scrollIntoView({ block: 'center', behavior: 'smooth' }); campo.focus(); campo.style.outline = '3px solid #b35f0c'; setTimeout(function () { campo.style.outline = ''; }, 6000); }
