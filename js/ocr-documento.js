@@ -720,14 +720,23 @@ async function leggiPdfDocumento(file) {
     }
   }
   const quante = Math.min(parti.length, 3);
-  for (let i = 0; i < quante; i++) {
-    if (i > 0) { docLettura.dati = datiRevisione(); docLettura.unisci = true; }
-    docLettura.fase = quante > 1 ? 'Documento ' + (i + 1) + ' di ' + quante + (quante === 2 ? (i === 0 ? ' (primo lato)' : ' (secondo lato)') : '') : '';
-    messaggioDoc((docLettura.fase || 'Documento') + '...');
-    await analizzaDocumento(parti[i], parti[i].width, parti[i].height);
+  docLettura.dati = null;
+  try {
+    for (let i = 0; i < quante; i++) {
+      // i lati successivi completano i dati del primo (gia' in docLettura.dati, la revisione non e' ancora aperta)
+      docLettura.unisci = i > 0 && !!docLettura.dati;
+      docLettura.altriLati = i < quante - 1;
+      docLettura.fase = quante > 1 ? 'Documento ' + (i + 1) + ' di ' + quante + (quante === 2 ? (i === 0 ? ' (primo lato)' : ' (secondo lato)') : '') : '';
+      messaggioDoc((docLettura.fase || 'Documento') + '...');
+      await analizzaDocumento(parti[i], parti[i].width, parti[i].height);
+    }
+  } finally {
+    docLettura.altriLati = false;
+    docLettura.fase = '';
+    docLettura.cfTestoPdf = '';
   }
-  docLettura.fase = '';
-  docLettura.cfTestoPdf = '';
+  // se l'ultimo lato non si e' potuto leggere si mostrano comunque i dati dei lati gia' letti
+  if (docLettura.dati && document.getElementById('doc-revisione').style.display !== 'block') mostraRevisioneDocumento(docLettura.dati);
 }
 // Disegna una pagina del PDF (o solo un suo pezzo, in unita' della pagina a scala 1) su un canvas
 async function disegnaPaginaPdf(pagina, scala, pezzo) {
@@ -1107,7 +1116,9 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
     if (dati.tipo === 'Documento' && cfDaCodiciLetti(codici)) dati.tipo = 'Tessera sanitaria';
     dati.testo = testo;
     docLettura.dati = dati;
-    mostraRevisioneDocumento(dati);
+    // PDF con piu' lati: i dati si mostrano solo alla fine, altrimenti si potrebbe premere "Usa questi dati"
+    // mentre il retro (con il codice fiscale) e' ancora in lettura
+    if (!docLettura.altriLati) mostraRevisioneDocumento(dati);
   } catch (e) {
     messaggioDoc('❌ Lettura non riuscita: ' + e.message, true);
   } finally {
