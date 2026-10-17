@@ -166,7 +166,7 @@ function ricevutaConsegnaHTML(p) {
     + '.firme{display:flex; justify-content:space-between; gap:30px; margin-top:26px}.firme div{flex:1; border-top:1px solid #0f1b2d; padding-top:4px; text-align:center; font-size:11px}.firme span{color:#5b6b82}'
     + '.taglio{border:none; border-top:1px dashed #8a8f98; margin:12px 0; position:relative}.taglio:after{content:"✂ taglia qui"; position:absolute; left:50%; top:-8px; transform:translateX(-50%); background:#fff; padding:0 8px; font-size:10px; color:#8a8f98}'
     + '.barra{display:flex; gap:8px; margin-bottom:10px}.barra button{font-size:14px; padding:8px 16px; border:none; border-radius:999px; background:#1d4f91; color:#fff; cursor:pointer}.barra button.chiudi{background:#e3e8ef; color:#0f1b2d}'
-    + '@media print{.barra{display:none} body{padding:0} .ric{height:132mm; box-sizing:border-box; display:flex; flex-direction:column} .ric .firme{margin-top:auto; padding-top:20px} .taglio{margin:5mm 0}}'
+    + '@media print{.barra{display:none} body{padding:0} .ric{height:118mm; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column} .ric .firme{margin-top:auto; padding-top:20px} .taglio{margin:4mm 0}}'
     + '</style></head><body>'
     + '<div class="barra"><button onclick="window.print()">🖨️ Stampa / Salva come PDF</button><button class="chiudi" onclick="window.close()">Chiudi</button></div>'
     + copia('Copia per il CAF (firmata)') + '<hr class="taglio">' + copia('Copia per il contribuente')

@@ -2792,6 +2792,42 @@ function prossimoNumeroFattura(anno){
   praticheConFattura().forEach(function(x){ if(e730(x) && annoPratica(x) === anno){ const n = numeroFatturaPratica(x); if(n != null && n > max) max = n; } });
   return max + 1;
 }
+// Pratica dello stesso contribuente nell'anno precedente (stesso codice fiscale, o stesso nome e data di nascita) e dello stesso tipo
+function praticaAnnoPrecedente(p){
+  if(!p) return null;
+  const prec = annoPratica(p) - 1;
+  const cf = String(p.codiceFiscale || '').toUpperCase(), nome = String(p.nome || '').trim().toUpperCase();
+  const stessoTipo = function(q){ return e730(p) ? e730(q) : String(q.tipo || '') === String(p.tipo || ''); };
+  const cand = (state.pratiche || []).filter(function(q){
+    if(q.id === p.id || q.annullata || annoPratica(q) !== prec || !stessoTipo(q)) return false;
+    const qcf = String(q.codiceFiscale || '').toUpperCase();
+    if(cf && qcf) return cf === qcf;
+    return String(q.nome || '').trim().toUpperCase() === nome && (!p.cf || !q.cf || p.cf === q.cf);
+  });
+  return cand.sort(function(a, b){ return Number(b.compenso || 0) - Number(a.compenso || 0); })[0] || null;
+}
+// Riquadro con gli importi dell'anno precedente e tasto per riportarli nei campi
+function importiAnnoPrecHTML(p, idFatt, idRic){
+  const q = praticaAnnoPrecedente(p);
+  if(!q) return '<div style="margin-top:8px; padding:6px 10px; border-radius:8px; background:var(--bg); color:var(--sub); font-size:12.5px">📅 ' + (annoPratica(p) - 1) + ': nessuna pratica ' + esc(e730(p) ? '730' : (p.tipo || '')) + ' di questo cliente.</div>';
+  const f = Number(q.compenso || 0), r = Number(q.richiesto || 0), g = Number(q.pagato || 0);
+  return '<div style="margin-top:8px; padding:7px 10px; border-radius:8px; background:#eef3fa; border:1px solid #1d4f91; font-size:13px; display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap">'
+    + '<span>📅 <b>Anno ' + (annoPratica(p) - 1) + '</b> (' + esc(formattaProtocollo(q)) + '): fattura <b>' + (f ? fmtEuro(f) : '—') + '</b> · richiesto <b>' + (r ? fmtEuro(r) : '—') + '</b> · pagato <b style="color:#1a7f37">' + (g ? fmtEuro(g) : '—') + '</b></span>'
+    + ((f || r) ? '<button type="button" onclick="usaImportiAnnoPrec(\'' + p.id + '\', \'' + idFatt + '\', \'' + idRic + '\', true)" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:5px 12px; font-size:12.5px; font-weight:800; cursor:pointer">↙ Usa questi importi</button>' : '')
+    + '</div>';
+}
+// Riporta fattura e richiesto dell'anno precedente: con tutti=false solo nei campi vuoti (proposta automatica, in giallo)
+function usaImportiAnnoPrec(id, idFatt, idRic, tutti){
+  const p = (state.pratiche || []).find(function(x){ return x.id === id; });
+  const q = praticaAnnoPrecedente(p); if(!q) return;
+  const metti = function(idc, v){
+    const el = document.getElementById(idc); if(!el || !(Number(v) > 0)) return;
+    if(!tutti && el.value.trim()) return;
+    el.value = importoInCampo(Number(v)); el.style.background = '#fff6d6'; el.title = 'Proposto dall\'anno ' + annoPratica(q) + ': controlla';
+    el.dispatchEvent(new Event('input'));
+  };
+  metti(idFatt, q.compenso); metti(idRic, q.richiesto || q.pagato);
+}
 function popupLavorata(p){
   const v = document.getElementById('popup-lavorata'); if(v) v.remove();
   const ov = document.createElement('div');
@@ -2813,6 +2849,7 @@ function popupLavorata(p){
     + '<div><label>Importo fattura (€)</label><input id="lv-imp" type="text" inputmode="decimal" value="' + (imp ? importoInCampo(imp) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="font-weight:800"></div>'
     + '<div><label title="Quanto chiedi al cliente: promemoria, non entra in contabilità">Importo richiesto (€) <b style="color:#c0392b">*</b></label><input id="lv-ric" type="text" inputmode="decimal" value="' + (Number(p.richiesto||0) ? importoInCampo(p.richiesto) : '') + '" placeholder="0,00" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)">' + '</div>'
     + '</div>'
+    + importiAnnoPrecHTML(p, 'lv-imp', 'lv-ric')
     + '<div style="margin-top:8px; padding:7px 10px; border-radius:8px; background:#fff4e5; color:#7a3e00; font-size:12.5px">ℹ️ La fattura resta scritta nella pratica ma <b>entra in contabilità solo alla 📦 Consegna</b>, dove ritrovi questi importi da confermare. L\'importo della fattura si può lasciare vuoto e scriverlo alla consegna.</div>'
     + '<label class="chk" style="display:flex; gap:8px; align-items:center; margin-top:10px"><input type="checkbox" id="lv-wa" style="width:auto"> <span>💬 Avvisa il cliente su WhatsApp che la pratica è pronta' + (tel ? '' : ' <span style="color:#c0392b; font-size:12px">(manca il cellulare: te lo chiederà)</span>') + '</span></label>'
     + '<div id="lv-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
@@ -2822,6 +2859,7 @@ function popupLavorata(p){
       + '<button type="button" data-az="si" style="background:#2f7de1; color:#fff; font-weight:800">✓ Lavorata con fattura</button>'
       : '<button type="button" data-az="si" style="background:#2f7de1; color:#fff; font-weight:800">✓ Lavorata</button>') + '</div></div>';
   document.body.appendChild(ov);
+  usaImportiAnnoPrec(p.id, 'lv-imp', 'lv-ric', false);
   ov.addEventListener('click', async function(e){
     const b = e.target.closest('button[data-az]');
     if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); return; }
@@ -2911,6 +2949,7 @@ function consegnaPratica(id){
     + '<div><label>' + (e730(p) ? 'Data di consegna' : 'Data') + ' <b style="color:#c0392b">*</b></label><input id="cs-data" value="' + todayIT() + '" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div></div>'
     + '<div style="margin-top:8px"><label>🙋 Ritirata da</label><input id="cs-ritira" value="' + esc(p.ritirataDa || '') + '" placeholder="Vuoto = il contribuente · se è un\'altra persona scrivi nome e cognome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>'
     + '<div style="margin-top:8px"><label>📝 Note</label><textarea id="cs-note" rows="2" placeholder="Facoltative: es. paga la prossima settimana…" style="width:100%; resize:vertical">' + esc(p.note || '') + '</textarea></div>'
+    + (eColf(p.tipo) ? '' : importiAnnoPrecHTML(p, 'cs-fatt', 'cs-ric'))
     + (p.iscrittoCisl && typeof selectPrezziCisl === 'function' ? selectPrezziCisl('cs-ric', 'cs-fatt') : '')
     + '<div style="margin-top:8px; padding:7px 10px; border-radius:8px; background:#e8f6ee; color:#1a7f37; font-size:12.5px">✓ Controlla gli importi: confermando la consegna, <b>fattura e incasso entrano in contabilità</b>. Se <b>non paga</b> basta la fattura: entra tra le fatture emesse, ma in cassa non entra niente.</div>'
     + '<div id="cs-resto" style="font-size:13.5px; font-weight:800; margin-top:6px"></div>'
@@ -2920,6 +2959,7 @@ function consegnaPratica(id){
     + tastiNonPag
     + '<button type="button" data-az="pagato" style="background:#2f9e5f; color:#fff; font-weight:800">✓ Ha pagato</button></div></div>';
   document.body.appendChild(ov);
+  if(!eColf(p.tipo)) usaImportiAnnoPrec(p.id, 'cs-fatt', 'cs-ric', false);
   restoConsegna();
   ov.addEventListener('click', async function(e){
     const b = e.target.closest('button[data-az]');
