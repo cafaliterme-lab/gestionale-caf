@@ -130,11 +130,8 @@ function ricevutaConsegnaHTML(p) {
   const e7 = typeof e730 === 'function' && e730(p);
   const intestatario = '<b>' + esc(p.nome || '') + '</b>' + (p.comuneNascita ? ', nato/a a ' + esc(p.comuneNascita) : '') + (p.cf ? (p.comuneNascita ? ' il ' : ', nato/a il ') + esc(p.cf) : '') + (p.codiceFiscale ? ', codice fiscale <b>' + esc(p.codiceFiscale) + '</b>' : '')
     + (p.congiunta ? ' e del coniuge <b>' + esc(p.congiunta) + '</b>' + (p.congCodiceFiscale ? ', codice fiscale <b>' + esc(p.congCodiceFiscale) + '</b>' : '') : '');
-  const fatt = Number(p.compenso || 0), pag = Number(p.pagato || 0);
-  const pagamento = (p.numFattura ? 'Fattura n. <b>' + esc(p.numFattura) + '</b>' + (p.dataFattura ? ' del ' + esc(p.dataFattura) : '') + (fatt ? ' di <b>' + fmtEuro(fatt) + '</b>' : '') + ' · ' : (fatt ? 'Importo <b>' + fmtEuro(fatt) + '</b> · ' : ''))
-    + (pag > 0 ? 'pagato <b>' + fmtEuro(pag) + '</b>' + (p.metodoPagamento ? ' (' + esc(String(p.metodoPagamento).toLowerCase()) + ')' : '') : (fatt ? '<b>non ancora pagato</b>' : 'nessun importo dovuto'));
   const elenco = (e7
-    ? ['copia della dichiarazione modello 730 elaborata e del prospetto di liquidazione (modello 730-3)', 'ricevuta di presentazione della dichiarazione (ove già disponibile)']
+    ? ['copia della dichiarazione modello 730 elaborata e del prospetto di liquidazione (modello 730-3)']
     : ['copia della pratica elaborata e delle relative ricevute (ove previste)'])
     .concat(['restituzione dei documenti originali eventualmente lasciati al CAF']);
   const copia = function (perChi) {
@@ -150,7 +147,6 @@ function ricevutaConsegnaHTML(p) {
       + ' in data <b>' + esc(quando) + '</b> presso il CAF CISL – Sede di Alì Terme la pratica <b>' + esc(p.tipo || '') + '</b> protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b>'
       + (delegato ? ' intestata a ' + intestatario : '') + ', comprensiva di:</div>'
       + '<ul class="elenco">' + elenco.map(function (t) { return '<li>☐ ' + t + '</li>'; }).join('') + '</ul>'
-      + '<div class="pag">' + pagamento + '</div>'
       + '<div class="nota">Il contribuente dichiara di aver controllato la pratica ricevuta. ' + (delegato ? 'Il delegato allega la delega firmata e la copia del documento d\'identità del delegante e del delegato. ' : '') + 'Si prega di conservare la presente ricevuta.</div>'
       + '<div class="firme"><div>L\'operatore CAF<br><span>' + esc(p.consegnataDa || ((auth.profilo && auth.profilo.nome) || '')) + '</span></div><div>Firma di chi ritira' + (delegato ? '<br><span>' + esc(delegato) + '</span>' : '<br><span>' + esc(p.nome || '') + '</span>') + '</div></div>'
       + '</div>';
