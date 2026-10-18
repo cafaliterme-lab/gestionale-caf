@@ -219,7 +219,8 @@ function ricevutaPagamentoHTML(p) {
   const righePag = [];
   if (pag - arretrati > 0.004) righePag.push(esc(p.consegnataIl || p.data || '') + ' · ' + fmtEuro(pag - arretrati) + (p.metodoPagamento ? ' · ' + esc(String(p.metodoPagamento).toLowerCase()) : ''));
   recuperi.forEach(function (r) { righePag.push(esc(r.data || '') + ' · ' + fmtEuro(r.importo) + (r.metodo ? ' · ' + esc(String(r.metodo).toLowerCase()) : '')); });
-  const dataRic = (recuperi.length ? recuperi[recuperi.length - 1].data : '') || p.consegnataIl || todayIT();
+  // data di emissione della ricevuta: il giorno in cui si stampa
+  const dataRic = todayIT();
   const anno = annoPratica(p);
   const servizio = (typeof e730 === 'function' && e730(p))
     ? 'assistenza fiscale per la compilazione e la trasmissione della dichiarazione dei redditi <b>modello 730/' + anno + '</b> (redditi ' + (anno - 1) + ')'
@@ -230,7 +231,7 @@ function ricevutaPagamentoHTML(p) {
       + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div>'
       + '<div class="copia">' + perChi + '</div></div>'
       + '<div class="titolo">RICEVUTA DI PAGAMENTO</div>'
-      + '<div class="proto">Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b>' + (p.numFattura ? ' · Fattura n. <b>' + esc(p.numFattura) + '</b>' + (p.dataFattura ? ' del ' + esc(p.dataFattura) : '') : '') + '</div>'
+      + '<div class="proto">Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b> · Data di emissione <b>' + esc(dataRic) + '</b></div>'
       + '<div class="attesta">Si dichiara di aver ricevuto da <b>' + esc(p.nome || '') + '</b>' + (p.codiceFiscale ? ', codice fiscale <b>' + esc(p.codiceFiscale) + '</b>' : '')
       + (p.congiunta ? ' (dichiarazione congiunta con <b>' + esc(p.congiunta) + '</b>' + (p.congCodiceFiscale ? ', codice fiscale ' + esc(p.congCodiceFiscale) : '') + ')' : '')
       + ', la somma di <b>' + fmtEuro(pag) + '</b> (euro <i>' + euroInLettere(pag) + '</i>) per il servizio di ' + servizio + '.</div>'
