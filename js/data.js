@@ -140,6 +140,7 @@ const schemas = {
     consegnataIl: 'consegnata_il',
     consegnataDa: 'consegnata_da',
     ritirataDa: 'ritirata_da',
+    ricevutaUfficiale: 'ricevuta_ufficiale',
   },
   acconto: {
     id: 'id',

@@ -173,6 +173,81 @@ function ricevutaConsegnaHTML(p) {
     + '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>';
 }
 
+/* ---------------- Ricevuta di pagamento (solo quando il cliente la chiede) ---------------- */
+
+// Importo in lettere, es. 50,00 → "cinquanta/00"
+function euroInLettere(v) {
+  const u = ['', 'uno', 'due', 'tre', 'quattro', 'cinque', 'sei', 'sette', 'otto', 'nove', 'dieci', 'undici', 'dodici', 'tredici', 'quattordici', 'quindici', 'sedici', 'diciassette', 'diciotto', 'diciannove'];
+  const d = ['', '', 'venti', 'trenta', 'quaranta', 'cinquanta', 'sessanta', 'settanta', 'ottanta', 'novanta'];
+  const sotto100 = function (n) {
+    if (n < 20) return u[n];
+    let t = d[Math.floor(n / 10)], r = n % 10;
+    if (r === 1 || r === 8) t = t.slice(0, -1);
+    return t + (r === 3 ? 'tré' : u[r]);
+  };
+  const sotto1000 = function (n) {
+    const c = Math.floor(n / 100), r = n % 100;
+    const cento = c ? (c === 1 ? 'cento' : u[c] + 'cento') : '';
+    // "centottanta", "centotto": la o di cento cade davanti a otto/ottanta
+    return (c && ((r >= 80 && r < 90) || r === 8) ? cento.slice(0, -1) : cento) + sotto100(r);
+  };
+  const lettere = function (n) {
+    if (n === 0) return 'zero';
+    const mil = Math.floor(n / 1000), r = n % 1000;
+    return (mil ? (mil === 1 ? 'mille' : sotto1000(mil) + 'mila') : '') + sotto1000(r);
+  };
+  const tot = Math.round(Number(v || 0) * 100);
+  return lettere(Math.floor(tot / 100)) + '/' + String(tot % 100).padStart(2, '0');
+}
+function stampaRicevutaPagamento(id, pratica) {
+  const p = pratica || (state.pratiche || []).find(function (x) { return x.id === id; });
+  if (!p) { avviso('❌ Pratica non trovata: riprova tra qualche secondo.', true); return; }
+  if (!(Number(p.pagato || 0) > 0)) { alert('Nella pratica non risulta nessun pagamento: scrivi prima l\'importo pagato.'); return; }
+  const html = ricevutaPagamentoHTML(p);
+  if (typeof mostraPaginaNelProgramma === 'function') { mostraPaginaNelProgramma(html, '💶 Ricevuta di pagamento ' + formattaProtocollo(p)); return; }
+  const w = window.open('', '_blank');
+  if (!w) { alert('Il browser ha bloccato la finestra della ricevuta: consenti i popup per questo sito e riprova.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+function ricevutaPagamentoHTML(p) {
+  const logo = document.querySelector('.hero-logo');
+  const caf = (typeof datiCafStampa === 'function') ? datiCafStampa() : {};
+  const pag = Number(p.pagato || 0);
+  // pagamenti: quello alla consegna e gli eventuali arretrati
+  const recuperi = Array.isArray(p.recuperi) ? p.recuperi : [];
+  const arretrati = recuperi.reduce(function (t, r) { return t + Number(r.importo || 0); }, 0);
+  const righePag = [];
+  if (pag - arretrati > 0.004) righePag.push(esc(p.consegnataIl || p.data || '') + ' · ' + fmtEuro(pag - arretrati) + (p.metodoPagamento ? ' · ' + esc(String(p.metodoPagamento).toLowerCase()) : ''));
+  recuperi.forEach(function (r) { righePag.push(esc(r.data || '') + ' · ' + fmtEuro(r.importo) + (r.metodo ? ' · ' + esc(String(r.metodo).toLowerCase()) : '')); });
+  const dataRic = (recuperi.length ? recuperi[recuperi.length - 1].data : '') || p.consegnataIl || todayIT();
+  const anno = annoPratica(p);
+  const servizio = (typeof e730 === 'function' && e730(p))
+    ? 'assistenza fiscale per la compilazione e la trasmissione della dichiarazione dei redditi <b>modello 730/' + anno + '</b> (redditi ' + (anno - 1) + ')'
+    : 'pratica <b>' + esc(p.tipo || '') + '</b>';
+  const copia = function (perChi) {
+    return '<div class="ric">'
+      + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1>'
+      + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div>'
+      + '<div class="copia">' + perChi + '</div></div>'
+      + '<div class="titolo">RICEVUTA DI PAGAMENTO</div>'
+      + '<div class="proto">Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b>' + (p.numFattura ? ' · Fattura n. <b>' + esc(p.numFattura) + '</b>' + (p.dataFattura ? ' del ' + esc(p.dataFattura) : '') : '') + '</div>'
+      + '<div class="attesta">Si dichiara di aver ricevuto da <b>' + esc(p.nome || '') + '</b>' + (p.codiceFiscale ? ', codice fiscale <b>' + esc(p.codiceFiscale) + '</b>' : '')
+      + (p.congiunta ? ' (dichiarazione congiunta con <b>' + esc(p.congiunta) + '</b>' + (p.congCodiceFiscale ? ', codice fiscale ' + esc(p.congCodiceFiscale) : '') + ')' : '')
+      + ', la somma di <b>' + fmtEuro(pag) + '</b> (euro <i>' + euroInLettere(pag) + '</i>) per il servizio di ' + servizio + '.</div>'
+      + (righePag.length > 1 ? '<div class="nota">Pagamenti: ' + righePag.join(' — ') + '</div>' : (p.metodoPagamento ? '<div class="nota">Pagamento: ' + esc(String(p.metodoPagamento).toLowerCase()) + '</div>' : ''))
+      + '<div class="nota">Alì Terme, ' + esc(dataRic) + '</div>'
+      + '<div class="firme"><div>Il contribuente</div><div>Per il CAF CISL (timbro e firma)<br><span>' + esc(p.consegnataDa || ((auth.profilo && auth.profilo.nome) || '')) + '</span></div></div>'
+      + '</div>';
+  };
+  // stessa impaginazione della ricevuta di presa in carico: due copie su un foglio
+  const base = ricevutaHTML(p, false);
+  const stile = base.slice(base.indexOf('<style>'), base.indexOf('</style>') + 8);
+  return '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ricevuta di pagamento ' + esc(formattaProtocollo(p)) + '</title>' + stile.replace('</style>', '.titolo{color:#1a7f37}</style>') + '</head><body>'
+    + '<div class="barra"><button onclick="window.print()">🖨️ Stampa / Salva come PDF</button><button class="chiudi" onclick="window.close()">Chiudi</button></div>'
+    + copia('Copia per il contribuente') + '<hr class="taglio">' + copia('Copia per il CAF')
+    + '</body></html>';
+}
+
 /* ---------------- Storico delle modifiche ---------------- */
 
 const ETICHETTE_CAMPI = {
