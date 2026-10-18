@@ -1074,17 +1074,28 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
       const nuovi = estraiDatiDocumento(sicuro, cfBarre);
       letture.push(nuovi);
       dati = votaDati(letture);
+      // codice fiscale cercato anche in tutto il testo letto (non solo nelle parole "sicure"): vale se torna con i dati
+      if (!dati.codiceFiscale && dati.cognome && dati.nome && dati.dataNascita) {
+        const rt = righeOCR(testo);
+        const cfT = cfBarre || cercaCF(rt) || cfDaPrefisso(rt, dati);
+        if (cfT && cfValido(cfT) && controllaCoerenzaCF(cfT, dati.cognome, dati.nome, dati.dataNascita).length === 0) dati.codiceFiscale = cfT;
+      }
       const serveCF = (/FISCALE|FISCAL|<</.test(testo)) && !dati.codiceFiscale;
       const serveMRZ = /<</.test(testo) && !leggiMRZ(righeOCR(testo)).dataNascita;
       // ci si ferma quando due tentativi danno gli stessi dati (o quando MRZ / codice fiscale li confermano)
-      const certi = letture.length >= 2 ? concordano(letture[letture.length - 1], letture[letture.length - 2]) || concordano(nuovi, letture[0])
-        : !!(nuovi.codiceFiscale && cfValido(nuovi.codiceFiscale)) || !!leggiMRZ(righeOCR(sicuro)).cognome;
+      // dati gia' sicuri alla prima lettura: codice fiscale valido e coerente con cognome, nome e data (o righe MRZ complete)
+      const cfCoerente = !!(dati.codiceFiscale && cfValido(dati.codiceFiscale) && dati.cognome && dati.nome && dati.dataNascita
+        && typeof controllaCoerenzaCF === 'function' && controllaCoerenzaCF(dati.codiceFiscale, dati.cognome, dati.nome, dati.dataNascita).length === 0);
+      const mrzOk = (function () { const m = leggiMRZ(righeOCR(testo)); return !!(m.cognome && m.dataNascita); })();
+      const certi = cfCoerente || mrzOk || (letture.length >= 2 ? concordano(letture[letture.length - 1], letture[letture.length - 2]) || concordano(nuovi, letture[0])
+        : !!(nuovi.codiceFiscale && cfValido(nuovi.codiceFiscale)) || !!leggiMRZ(righeOCR(sicuro)).cognome);
       if (dati.cognome && dati.nome && dati.dataNascita && !serveCF && !serveMRZ && certi) break;
     }
 
     // Letture mirate: righe MRZ e codice fiscale, ritagliate e lette solo con i caratteri ammessi
     const zonaMRZ = trovaZonaMRZ(passate, larghezza, altezza);
-    if (zonaMRZ && !docLettura.ferma) {
+    // righe MRZ rilette da sole solo se dalle letture intere non sono uscite complete
+    if (zonaMRZ && !docLettura.ferma && !(function () { const m = leggiMRZ(righeOCR(testo)); return m.cognome && m.dataNascita; })()) {
       for (const modo of ['contrasto', 'colore', 'bn']) {
         if (docLettura.ferma) break;
         passo = ' (righe in basso)'; docLettura.letture = (docLettura.letture || 0) + 1;
