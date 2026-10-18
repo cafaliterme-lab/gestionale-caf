@@ -275,6 +275,8 @@ const GUIDA = [
 <li><b>📅 Chiusura di cassa del giorno</b>: scegli il giorno (di solito oggi) e stampi gli <b>incassi</b> divisi per contanti, POS e bonifico, le <b>spese della sede</b> pagate quel giorno, i <b>contanti da mettere in cassa</b> (contanti incassati meno spese pagate in contanti) e le <b>pratiche aperte</b> nel giorno. L'incasso di una pratica conta nel giorno della consegna; se non è ancora consegnata, nel giorno di apertura.</li>
 </ul>` },
 
+  { id: 'resoconto', icona: '📊', titolo: 'Resoconto annuale e divisione del guadagno', parole: 'resoconto annuale anno guadagno netto divisione soci federica angelo 50 percento bilancio fine anno',
+    testo: `<p>In <b>CONTABILITÀ</b> il tasto <b>📊 Resoconto annuale e divisione guadagno</b> (solo amministratore) apre una pagina da stampare con i conti dell'anno scelto:</p><ul><li><b>730</b> e <b>altre pratiche</b>: pratiche fatte, consegnate, fatture emesse, incasso, <b>differenza (guadagno)</b>, prezzo e incasso medio, fatture in attesa di consegna e quanto resta da incassare dai morosi.</li><li><b>Totale dell'anno</b>: fatture, incasso, spese della sede e <b>GUADAGNO NETTO</b>; per controllo anche versamenti fatti al CAF e fatture ancora da versare.</li><li><b>Divisione del guadagno netto</b> tra i due soci (di base <b>50% Federica e 50% Angelo</b>; nomi e percentuale si cambiano nella finestra e il programma li ricorda), con lo spazio per le firme.</li></ul>` },
   { id: 'ricercafatture', icona: '🔎', titolo: 'Ricerca fatture dal… al… per tipo di pagamento', parole: 'ricerca fatture dal al periodo pagamento contanti pos bonifico incasso totale excel stampa',
     testo: `
 <ul>

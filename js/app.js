@@ -1887,6 +1887,7 @@ function render(){
       <div id="box-ch-tipi" style="margin-top:14px"><div class="chart-cap">Fatture emesse, incasso e guadagno netto per tipo di pratica</div><div class="chart-wrap"><canvas id="ch-tipi"></canvas></div></div>
       <div id="raff-tipi" style="margin-top:14px"></div>`;
   }
+  { const br = document.getElementById('btn-resoconto'); if(br) br.style.display = vedeGuadagni() ? 'inline-flex' : 'none'; }
   document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso totale − fatture emesse − spese sede): ' + fmtEuro(incassoLordo - fattureEmesse - speseSede) : '';
   aggiornaGrafici(fattureEmesse, incassoLordo);
   aggiornaGraficoTipi(pratC);
