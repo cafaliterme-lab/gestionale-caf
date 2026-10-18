@@ -634,7 +634,26 @@ async function leggiFileDocumento(file) {
   try {
     if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) { await leggiPdfDocumento(file); return; }
     const img = await createImageBitmap(file);
-    await analizzaDocumento(img, img.width, img.height);
+    // foto o scansione con fronte e retro sullo stesso foglio: si cerca ogni tessera e la si legge da sola
+    messaggioDoc('Ricerca dei documenti nella foto...');
+    const sa = Math.min(1, 1000 / Math.max(img.width, img.height));
+    const anteprima = document.createElement('canvas');
+    anteprima.width = Math.max(1, Math.round(img.width * sa)); anteprima.height = Math.max(1, Math.round(img.height * sa));
+    const actx = anteprima.getContext('2d', { willReadFrequently: true });
+    actx.drawImage(img, 0, 0, anteprima.width, anteprima.height);
+    const ca = actx.getImageData(0, 0, anteprima.width, anteprima.height);
+    const zone = trovaDocumentiNellaPagina(ca.data, ca.width, ca.height);
+    if (zone.length < 2) { await analizzaDocumento(img, img.width, img.height); return; }
+    const parti = [];
+    for (const z of zone) {
+      const x = Math.round(z.x / sa), y = Math.round(z.y / sa), w = Math.round(z.w / sa), h = Math.round(z.h / sa);
+      let c = document.createElement('canvas'); c.width = w; c.height = h;
+      const cctx = c.getContext('2d'); cctx.fillStyle = '#fff'; cctx.fillRect(0, 0, w, h);
+      cctx.drawImage(img, x, y, w, h, 0, 0, w, h);
+      if (h > w * 1.15) c = await raddrizzaTessera(c);
+      parti.push(c);
+    }
+    await leggiPartiDocumento(parti);
   } catch (e) {
     messaggioDoc('❌ File non leggibile: ' + e.message, true);
   }
@@ -723,6 +742,10 @@ async function leggiPdfDocumento(file) {
       parti.push(c);
     }
   }
+  await leggiPartiDocumento(parti);
+}
+// Legge una dopo l'altra le tessere trovate sul foglio (fronte e retro): i dati si uniscono
+async function leggiPartiDocumento(parti) {
   const quante = Math.min(parti.length, 3);
   docLettura.dati = null;
   try {
@@ -1080,6 +1103,13 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
         const cfT = cfBarre || cercaCF(rt) || cfDaPrefisso(rt, dati);
         if (cfT && cfValido(cfT) && controllaCoerenzaCF(cfT, dati.cognome, dati.nome, dati.dataNascita).length === 0) dati.codiceFiscale = cfT;
       }
+      // secondo lato (retro): nome e data ci sono già dal primo; basta il codice fiscale che torna con quei dati
+      const primoLato = docLettura.unisci && docLettura.dati && docLettura.dati.cognome && docLettura.dati.nome && docLettura.dati.dataNascita ? docLettura.dati : null;
+      if (primoLato) {
+        const rt = righeOCR(testo);
+        const cfR = (dati.codiceFiscale && cfValido(dati.codiceFiscale) ? dati.codiceFiscale : '') || cfBarre || cercaCF(rt) || cfDaPrefisso(rt, primoLato);
+        if (cfR && cfValido(cfR) && controllaCoerenzaCF(cfR, primoLato.cognome, primoLato.nome, primoLato.dataNascita).length === 0) { dati.codiceFiscale = cfR; break; }
+      }
       const serveCF = (/FISCALE|FISCAL|<</.test(testo)) && !dati.codiceFiscale;
       const serveMRZ = /<</.test(testo) && !leggiMRZ(righeOCR(testo)).dataNascita;
       // ci si ferma quando due tentativi danno gli stessi dati (o quando MRZ / codice fiscale li confermano)
@@ -1095,7 +1125,8 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
     // Letture mirate: righe MRZ e codice fiscale, ritagliate e lette solo con i caratteri ammessi
     const zonaMRZ = trovaZonaMRZ(passate, larghezza, altezza);
     // righe MRZ rilette da sole solo se dalle letture intere non sono uscite complete
-    if (zonaMRZ && !docLettura.ferma && !(function () { const m = leggiMRZ(righeOCR(testo)); return m.cognome && m.dataNascita; })()) {
+    const retroGiaOk = !!(docLettura.unisci && dati.codiceFiscale && cfValido(dati.codiceFiscale));
+    if (zonaMRZ && !docLettura.ferma && !retroGiaOk && !(function () { const m = leggiMRZ(righeOCR(testo)); return m.cognome && m.dataNascita; })()) {
       for (const modo of ['contrasto', 'colore', 'bn']) {
         if (docLettura.ferma) break;
         passo = ' (righe in basso)'; docLettura.letture = (docLettura.letture || 0) + 1;
@@ -1124,7 +1155,8 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
     // Tutto il testo letto insieme: il codice fiscale, l'MRZ e le etichette si completano a vicenda
     // (nome e cognome restano quelli scelti tra i tentativi; MRZ e codice fiscale li correggono dopo)
     const insieme = estraiDatiDocumento(testoSicuro, cfBarre);
-    Object.keys(insieme).forEach(function (k) { if (insieme[k] && (!dati[k] || k === 'codiceFiscale')) dati[k] = insieme[k]; });
+    const cfGiaBuono = !!(dati.codiceFiscale && cfValido(dati.codiceFiscale));
+    Object.keys(insieme).forEach(function (k) { if (insieme[k] && (!dati[k] || (k === 'codiceFiscale' && !cfGiaBuono))) dati[k] = insieme[k]; });
 
     // Secondo lato dello stesso documento: si completano i dati del primo
     if (docLettura.unisci && docLettura.dati) {
