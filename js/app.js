@@ -1921,22 +1921,36 @@ function render(){
               <td>${bottoneAvanti(p)} ${bottoneConsegna(p)} <button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)} <button type="button" title="Ricevuta da consegnare al cliente" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer" onclick="stampaRicevuta('${p.id}')">🧾</button></td>
             </tr>`;
   // Due registri con numerazioni separate: 730 e altre pratiche (AP)
-  const tabellaRegistro = function(titolo, colore, lista, totale){
+  // registro vuoto: si indica dove sono le pratiche (consegnate nascoste, o un altro anno)
+  const suggerimentoRegistroVuoto = function(serie, ciSono){
+    const diSerie = function(p){ return serie === '730' ? serieDi(p) === '730' : serieDi(p) !== '730'; };
+    const tasto = function(onclick, testo){ return ' <button type="button" onclick="' + onclick + '" style="margin-left:6px; padding:5px 12px; border:none; border-radius:999px; background:#1d4f91; color:#fff; font-weight:800; cursor:pointer">' + testo + '</button>'; };
+    if(ciSono){
+      const nCons = pratAnno.filter(function(p){ return diSerie(p) && eConsegnata(p); }).length;
+      return (modoArchivio() === 'aperte' && nCons && !ricercaAttiva() && !((document.getElementById('filtro-stato')||{}).value) && !FILTRO_CISL && !SOLO_VIA_EMAIL)
+        ? '<div style="margin-top:6px">Ci sono <b>' + nCons + '</b> pratiche già consegnate / definite.' + tasto("impostaArchivio('consegnate')", '📦 Vedi le consegnate') + '</div>' : '';
+    }
+    const altri = {};
+    (state.pratiche || []).forEach(function(p){ const a = annoPratica(p); if(a !== annoSel && diSerie(p)) altri[a] = (altri[a] || 0) + 1; });
+    const anni = Object.keys(altri).map(Number).sort(function(a, b){ return b - a; });
+    return anni.length ? '<div style="margin-top:6px">Le pratiche sono in un altro anno:' + anni.slice(0, 3).map(function(a){ return tasto('cambiaAnnoAttivo(' + a + ')', '📅 ' + a + ' (' + altri[a] + ')'); }).join('') + '</div>' : '';
+  };
+  const tabellaRegistro = function(titolo, colore, lista, totale, serie){
     const nVis = lista.filter(function(p){ return !p.annullata; }).length;
     return `<div class="raff-title" style="margin-top:14px; color:${colore}">${titolo} <span style="color:var(--sub); font-weight:600">(${nVis === totale ? totale : 'ne vedi ' + nVis + ' su ' + totale})</span></div>
     <div class="tab-wrap">
       <table class="tab-proto tab-registro">
         <thead><tr><th>N.</th><th>Apertura</th><th>Fine lav.</th><th>Mittente</th><th>Tipo</th><th>Stato</th><th>Inserito da</th><th></th></tr></thead>
         <tbody>
-          ${lista.length ? lista.map(rigaRegistro).join('') : '<tr><td colspan="8" class="empty">'+(totale ? 'Nessun risultato' : 'Nessuna registrazione per l\'anno '+annoSel)+'</td></tr>'}
+          ${lista.length ? lista.map(rigaRegistro).join('') : '<tr><td colspan="8" class="empty">'+(totale ? 'Nessun risultato' + suggerimentoRegistroVuoto(serie, true) : 'Nessuna registrazione per l\'anno '+annoSel + suggerimentoRegistroVuoto(serie, false))+'</td></tr>'}
         </tbody>
       </table>
     </div>`;
   };
   const di730 = ordinate.filter(function(p){ return serieDi(p) === '730'; }), diAP = ordinate.filter(function(p){ return serieDi(p) !== '730'; });
   tab.innerHTML = (typeof avvisoRitiriHTML === 'function' ? avvisoRitiriHTML(pratAnno) : '')
-    + tabellaRegistro('📘 Registro di protocollo 730', '#1d4f91', di730, pratAnno.filter(function(p){ return serieDi(p) === '730'; }).length)
-    + tabellaRegistro('📗 Registro di protocollo altre pratiche (AP)', '#2f9e5f', diAP, pratAnno.filter(function(p){ return serieDi(p) !== '730'; }).length);
+    + tabellaRegistro('📘 Registro di protocollo 730', '#1d4f91', di730, pratAnno.filter(function(p){ return serieDi(p) === '730'; }).length, '730')
+    + tabellaRegistro('📗 Registro di protocollo altre pratiche (AP)', '#2f9e5f', diAP, pratAnno.filter(function(p){ return serieDi(p) !== '730'; }).length, 'AP');
 
 
   const sorted = [...pratAnno].sort((a,b)=> b.numero - a.numero);
