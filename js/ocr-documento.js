@@ -616,6 +616,7 @@ async function scattaDocumento() {
   canvas.getContext('2d').drawImage(video, 0, 0);
   const guida = rettangoloGuida(video);
   fermaFotocameraDoc();
+  docLettura.ferma = false; docLettura.letture = 0;
   await analizzaDocumento(canvas, canvas.width, canvas.height, guida);
 }
 
@@ -628,6 +629,7 @@ async function caricaFotoDocumento(input) {
 // Un file (PDF o foto) arrivato in qualsiasi modo: scelto, trascinato o incollato
 async function leggiFileDocumento(file) {
   fermaFotocameraDoc();
+  docLettura.ferma = false; docLettura.letture = 0;
   if (!(file.type === 'application/pdf' || /\.pdf$/i.test(file.name) || /^image\//.test(file.type))) { messaggioDoc('❌ Questo file non è un PDF né una foto.', true); return; }
   try {
     if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) { await leggiPdfDocumento(file); return; }
@@ -725,6 +727,7 @@ async function leggiPdfDocumento(file) {
   docLettura.dati = null;
   try {
     for (let i = 0; i < quante; i++) {
+      if (i > 0 && docLettura.ferma) break;
       // i lati successivi completano i dati del primo (gia' in docLettura.dati, la revisione non e' ancora aperta)
       docLettura.unisci = i > 0 && !!docLettura.dati;
       docLettura.altriLati = i < quante - 1;
@@ -736,6 +739,7 @@ async function leggiPdfDocumento(file) {
     docLettura.altriLati = false;
     docLettura.fase = '';
     docLettura.cfTestoPdf = '';
+    mostraTastoFerma(false);
   }
   // se l'ultimo lato non si e' potuto leggere si mostrano comunque i dati dei lati gia' letti
   if (docLettura.dati && document.getElementById('doc-revisione').style.display !== 'block') mostraRevisioneDocumento(docLettura.dati);
@@ -1015,14 +1019,25 @@ async function leggiZona(worker, sorgente, zona, modo, psm, ammessi) {
   return data.text || '';
 }
 
+// Ferma le letture successive: si finisce quella in corso e si mostrano i dati già letti
+function fermaLetturaDocumento() {
+  docLettura.ferma = true;
+  const b = document.getElementById('doc-ferma'); if (b) { b.disabled = true; b.textContent = '⏳ Finisco questa lettura e mostro i dati…'; }
+}
+function mostraTastoFerma(si) {
+  const box = document.getElementById('doc-ferma-box'); if (!box) return;
+  box.style.display = si ? 'block' : 'none';
+  const b = document.getElementById('doc-ferma'); if (b && si && !docLettura.ferma) { b.disabled = false; b.textContent = '⏹ Basta così: usa i dati già letti'; }
+}
 async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
-  const pulsanti = document.querySelectorAll('#doc-cattura button, #doc-cattura label');
+  const pulsanti = document.querySelectorAll('#doc-cattura button:not(#doc-ferma), #doc-cattura label');
   pulsanti.forEach(function (b) { b.style.pointerEvents = 'none'; b.style.opacity = '.5'; });
+  mostraTastoFerma(true);
   try {
     messaggioDoc('Preparazione della lettura (la prima volta scarica circa 6 MB)...');
     let passo = '';
     const worker = await preparaOCR(function (m) {
-      if (m.status === 'recognizing text') messaggioDoc((docLettura.fase ? docLettura.fase + ' — ' : '') + 'lettura del testo' + passo + '... ' + Math.round(m.progress * 100) + '%');
+      if (m.status === 'recognizing text') messaggioDoc((docLettura.fase ? docLettura.fase + ' — ' : '') + 'lettura n. ' + (docLettura.letture || 1) + passo + '... ' + Math.round(m.progress * 100) + '%');
       else if (/loading|initializ/.test(m.status || '')) messaggioDoc('Preparazione della lettura (la prima volta scarica circa 6 MB)... ' + Math.round((m.progress || 0) * 100) + '%');
     });
     // Codice a barre (tessera sanitaria): da' il CF esatto; poi lo si copre perche' confonde l'OCR
@@ -1039,8 +1054,10 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
     const letture = []; // dati ricavati da ogni tentativo, per scegliere quelli letti piu' volte
     const passate = []; // righe di ogni tentativo con la posizione nella foto
     for (let i = 0; i < tentativi.length; i++) {
+      if (i > 0 && docLettura.ferma) break;
       const [rett, modo, psm] = tentativi[i];
-      passo = ' (tentativo ' + (i + 1) + ')';
+      passo = ' (prova ' + (i + 1) + ' di ' + tentativi.length + ')';
+      docLettura.letture = (docLettura.letture || 0) + 1;
       const immagine = preparaImmagine(sorgente, rett, modo);
       const ctx = immagine.getContext('2d');
       ctx.fillStyle = '#fff';
@@ -1067,23 +1084,25 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
 
     // Letture mirate: righe MRZ e codice fiscale, ritagliate e lette solo con i caratteri ammessi
     const zonaMRZ = trovaZonaMRZ(passate, larghezza, altezza);
-    if (zonaMRZ) {
+    if (zonaMRZ && !docLettura.ferma) {
       for (const modo of ['contrasto', 'colore', 'bn']) {
-        passo = ' (righe in basso)';
+        if (docLettura.ferma) break;
+        passo = ' (righe in basso)'; docLettura.letture = (docLettura.letture || 0) + 1;
         const t = await leggiZona(worker, sorgente, zonaMRZ, modo, '6', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<');
         testo += '\n----\n' + t; testoSicuro += '\n----\n' + t;
         const m = leggiMRZ(righeOCR(t));
         if (m.dataNascita && m.cognome) break;
       }
     }
-    if (!cfBarre && /FISCAL|<</.test(testo) && !cercaCF(righeOCR(testo))) {
+    if (!cfBarre && !docLettura.ferma && /FISCAL|<</.test(testo) && !cercaCF(righeOCR(testo))) {
       // se non si trova la riga, sul retro della carta d'identita' (quello con le righe MRZ) il codice fiscale
       // e' in alto a sinistra: si legge quella parte della tessera
       const zonaCF = trovaZonaCF(passate, larghezza, altezza) || trovaRigaCFPerPrefisso(passate, estraiDatiDocumento(testo, null), larghezza, altezza)
         || (/<</.test(testo) ? rettangoloDentro(zona.x, zona.y, zona.x + zona.w * 0.75, zona.y + zona.h * 0.45, larghezza, altezza) : null);
       if (zonaCF) {
         for (const [modo, psm] of [['colore', '7'], ['contrasto', '7'], ['bn', '7'], ['colore', '6']]) {
-          passo = ' (codice fiscale)';
+          if (docLettura.ferma) break;
+          passo = ' (codice fiscale)'; docLettura.letture = (docLettura.letture || 0) + 1;
           const t = await leggiZona(worker, sorgente, zonaCF, modo, psm, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
           testo += '\n----\n' + t; testoSicuro += '\n----\n' + t;
           if (cercaCF(righeOCR(t))) break;
@@ -1120,11 +1139,12 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
     docLettura.dati = dati;
     // PDF con piu' lati: i dati si mostrano solo alla fine, altrimenti si potrebbe premere "Usa questi dati"
     // mentre il retro (con il codice fiscale) e' ancora in lettura
-    if (!docLettura.altriLati) mostraRevisioneDocumento(dati);
+    if (!docLettura.altriLati || docLettura.ferma) mostraRevisioneDocumento(dati);
   } catch (e) {
     messaggioDoc('❌ Lettura non riuscita: ' + e.message, true);
   } finally {
     pulsanti.forEach(function (b) { b.style.pointerEvents = ''; b.style.opacity = ''; });
+    if (!docLettura.altriLati || docLettura.ferma) mostraTastoFerma(false);
   }
 }
 

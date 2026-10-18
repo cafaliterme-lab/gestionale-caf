@@ -398,6 +398,8 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <div class="doc-guida"></div>
       </div>
       <div id="doc-msg" style="font-size:12.5px; margin-top:8px"></div>
+      <div id="doc-ferma-box" style="display:none; margin-top:8px"><button type="button" id="doc-ferma" onclick="fermaLetturaDocumento()" style="background:#b35f0c; color:#fff; border:none; border-radius:999px; padding:8px 16px; font-weight:800; cursor:pointer">⏹ Basta così: usa i dati già letti</button>
+        <div style="font-size:11px; color:var(--sub); margin-top:4px">Il programma legge il documento più volte per essere sicuro dei dati: puoi fermarlo e controllare tu.</div></div>
       <div style="display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap">
         <button type="button" class="btn-add" style="margin:0" onclick="scattaDocumento()">📸 Scatta</button>
         <label class="btn-add" style="margin:0; cursor:pointer; background:var(--line); color:var(--ink)" title="Puoi anche trascinare il file in questa finestra">📎 Carica foto o PDF<input type="file" accept="image/*,application/pdf,.pdf" style="display:none" onchange="caricaFotoDocumento(this)"></label>
@@ -897,7 +899,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
 <script src="js/comuni.js?v=1"></script>
-<script src="js/ocr-documento.js?v=21"></script>
+<script src="js/ocr-documento.js?v=22"></script>
 <script src="js/grafici.js?v=24"></script>
 <script src="js/stampe.js?v=29"></script>
 <script src="js/extra.js?v=45"></script>
@@ -905,7 +907,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=16"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=157"></script>
+<script src="js/guida.js?v=158"></script>
 <script src="js/scadenze.js?v=202610089"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
