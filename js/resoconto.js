@@ -126,7 +126,8 @@ function mostraPaginaNelProgramma(html, titolo) {
     + '<iframe title="' + esc(titolo || 'pagina') + '" style="flex:1; width:100%; border:none; border-radius:10px; background:#fff"></iframe>';
   document.body.appendChild(ov);
   const fr = ov.querySelector('iframe');
-  fr.srcdoc = html.replace(/<div class="barra">[\s\S]*?<\/div>/, '');
+  // via i tasti della pagina e la stampa automatica: qui si stampa con il tasto in alto
+  fr.srcdoc = html.replace(/<div class="barra">[\s\S]*?<\/div>/, '').replace(/<script>window\.onload[\s\S]*?<\/script>/, '');
   ov.addEventListener('click', function (e) {
     const b = e.target.closest('button[data-az]'); if (!b) return;
     if (b.dataset.az === 'chiudi') { ov.remove(); return; }

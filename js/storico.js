@@ -85,7 +85,7 @@ function schedaStoricoHTML(x) {
   let righe = '', annoPrec = null;
   lista.forEach(function (p) {
     const a = annoPratica(p);
-    if (a !== annoPrec) { annoPrec = a; righe += '<tr><td colspan="10" style="background:var(--bg); font-weight:800; color:#1d4f91">Anno ' + a + (a === annoProt ? ' (anno in corso)' : '') + '</td></tr>'; }
+    if (a !== annoPrec) { annoPrec = a; righe += '<tr><td colspan="11" style="background:var(--bg); font-weight:800; color:#1d4f91">Anno ' + a + (a === annoProt ? ' (anno in corso)' : '') + '</td></tr>'; }
     const coniuge = String(p.nome || '').trim().toUpperCase() !== x.nome;
     const m = !p.annullata && typeof residuoPratica === 'function' && p.stato !== 'rinuncia_compilazione' && !p.saldataCollaboratore ? residuoPratica(p) : 0;
     const apribile = !p.annullata && a === annoProt;
@@ -96,7 +96,8 @@ function schedaStoricoHTML(x) {
       + '<td>' + (p.numFattura ? 'n. ' + esc(p.numFattura) + (p.dataFattura ? '<div class="sub2">' + esc(p.dataFattura) + '</div>' : '') : '-') + '</td>'
       + '<td style="text-align:right">' + euro(p.compenso) + '</td><td style="text-align:right">' + euro(p.richiesto) + '</td><td style="text-align:right">' + euro(p.pagato) + (p.metodoPagamento && Number(p.pagato) ? '<div class="sub2">' + esc(p.metodoPagamento) + '</div>' : '') + '</td>'
       + '<td style="text-align:right; font-weight:800; color:' + (m > 0.004 ? '#c0392b' : '#1a7f37') + '">' + (p.annullata ? '' : (m > 0.004 ? fmtEuro(m) : '✓')) + '</td>'
-      + '<td style="white-space:nowrap">' + esc(p.inseritoDa || '-') + (apribile ? ' <button type="button" onclick="apriDaStorico(\'' + p.id + '\')" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:4px 9px; font-size:12px; cursor:pointer">Apri</button>' : '') + '</td></tr>';
+      + '<td style="white-space:nowrap">' + esc(p.inseritoDa || '-') + (apribile ? ' <button type="button" onclick="apriDaStorico(\'' + p.id + '\')" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:4px 9px; font-size:12px; cursor:pointer">Apri</button>' : '') + '</td>'
+      + '<td>' + documentiStoricoHTML(p) + '</td></tr>';
   });
   return '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-bottom:8px">'
     + '<div><div style="font-size:19px; font-weight:800">' + esc(x.nome) + '</div><div class="sub2">' + [x.nascita ? 'nato/a il ' + esc(x.nascita) : '', x.cf ? 'CF ' + esc(x.cf) : '', x.telefono ? '📱 ' + esc(x.telefono) : ''].filter(Boolean).join(' · ') + '</div></div>'
@@ -106,10 +107,18 @@ function schedaStoricoHTML(x) {
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">' + tasto('Tutti gli anni', '') + anni.map(function (a) { return tasto(a + (a === annoProt ? ' (in corso)' : ''), a); }).join('') + '</div>'
     + '<div class="meta" style="margin:0 0 8px">' + valide.length + ' pratiche' + (lista.length > valide.length ? ' (+ ' + (lista.length - valide.length) + ' annullate)' : '') + ' · Fatture <b>' + fmtEuro(somma(valide, 'compenso')) + '</b> · Richiesto <b>' + fmtEuro(somma(valide, 'richiesto')) + '</b> · Pagato <b>' + fmtEuro(somma(valide, 'pagato')) + '</b>'
     + (manca > 0.004 ? ' · <b style="color:#c0392b">Deve ancora ' + fmtEuro(manca) + '</b>' : ' · <b style="color:#1a7f37">nulla da pagare</b>') + '</div>'
-    + (lista.length ? '<div class="tab-wrap" id="storico-tabella"><table class="tab-proto"><thead><tr><th>Protocollo</th><th>Apertura</th><th>Tipo</th><th>Stato</th><th>N. fattura</th><th style="text-align:right">Fattura</th><th style="text-align:right">Richiesto</th><th style="text-align:right">Pagato</th><th style="text-align:right">Da pagare</th><th>Operatore</th></tr></thead><tbody>' + righe + '</tbody></table></div>'
+    + (lista.length ? '<div class="tab-wrap" id="storico-tabella"><table class="tab-proto"><thead><tr><th>Protocollo</th><th>Apertura</th><th>Tipo</th><th>Stato</th><th>N. fattura</th><th style="text-align:right">Fattura</th><th style="text-align:right">Richiesto</th><th style="text-align:right">Pagato</th><th style="text-align:right">Da pagare</th><th>Operatore</th><th>Documenti da stampare</th></tr></thead><tbody>' + righe + '</tbody></table></div>'
       : '<div class="empty">Nessuna pratica</div>');
 }
 
+// Ricevute ristampabili in ogni momento, anche anni dopo: presa in carico, consegna, pagamento (730)
+function documentiStoricoHTML(p) {
+  if (p.annullata) return '';
+  const t = function (fn, testo, titolo, colore) { return '<button type="button" onclick="' + fn + '(\'' + p.id + '\')" title="' + titolo + '" style="background:' + colore + '; color:#fff; border:none; border-radius:6px; padding:4px 8px; font-size:11.5px; font-weight:700; cursor:pointer; margin:1px">' + testo + '</button>'; };
+  return t('stampaRicevuta', '🧾 Presa in carico', 'Ricevuta di presa in carico', '#5b6b82')
+    + (eConsegnata(p) && typeof stampaRicevutaConsegna === 'function' ? t('stampaRicevutaConsegna', '📦 Consegna', 'Ricevuta di consegna', '#8d5a3b') : '')
+    + (e730(p) && Number(p.pagato || 0) > 0 && typeof stampaRicevutaPagamento === 'function' ? t('stampaRicevutaPagamento', '💶 Pagamento' + (p.ricevutaUfficiale ? ' ⭐' : ''), 'Ricevuta di pagamento', '#1a7f37') : '');
+}
 function apriDaStorico(id) {
   const tb = document.querySelector('.navmenu button[data-tab="registro"]');
   if (tb && tb.style.display !== 'none' && typeof showTab === 'function') showTab(tb);
