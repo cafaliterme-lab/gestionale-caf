@@ -109,7 +109,27 @@ function stampaResocontoAnnuale(anno, soci) {
     + (d.daVersare > 0.004 ? '<div class="sub" style="margin-top:8px">Attenzione: ci sono ancora ' + e(d.daVersare) + ' di fatture da versare al CAF. Il guadagno è già calcolato al netto delle fatture: quei soldi non vanno divisi.</div>' : '')
     + '<div class="firme"><div>' + esc(soci.a) + '</div><div>' + esc(soci.b) + '</div></div></div>'
     + '</body></html>';
-  const w = window.open('', '_blank');
-  if (!w) { alert('Il browser ha bloccato la finestra del resoconto: consenti i popup per questo sito e riprova.'); return; }
-  w.document.open(); w.document.write(html); w.document.close();
+  mostraPaginaNelProgramma(html, '📊 Resoconto ' + anno);
+}
+
+// Mostra una pagina da stampare dentro il programma (a tutto schermo), senza aprire nuove finestre:
+// funziona anche su tablet e telefono e con l'app installata
+function mostraPaginaNelProgramma(html, titolo) {
+  const vecchio = document.getElementById('pagina-in-app'); if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'pagina-in-app';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:480; background:#0f1b2d; display:flex; flex-direction:column; padding:8px';
+  ov.innerHTML = '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:6px 4px 8px">'
+    + '<b style="color:#fff; font-size:16px; flex:1">' + esc(titolo || '') + '</b>'
+    + '<button type="button" data-az="stampa" style="background:#c2185b; color:#fff; border:none; border-radius:999px; padding:9px 18px; font-weight:800; font-size:15px; cursor:pointer">🖨️ Stampa / PDF</button>'
+    + '<button type="button" data-az="chiudi" style="background:#fff; color:#0f1b2d; border:none; border-radius:999px; padding:9px 18px; font-weight:800; font-size:15px; cursor:pointer">✕ Chiudi</button></div>'
+    + '<iframe title="' + esc(titolo || 'pagina') + '" style="flex:1; width:100%; border:none; border-radius:10px; background:#fff"></iframe>';
+  document.body.appendChild(ov);
+  const fr = ov.querySelector('iframe');
+  fr.srcdoc = html.replace(/<div class="barra">[\s\S]*?<\/div>/, '');
+  ov.addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-az]'); if (!b) return;
+    if (b.dataset.az === 'chiudi') { ov.remove(); return; }
+    try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (er) { alert('Stampa non riuscita: ' + er.message); }
+  });
 }
