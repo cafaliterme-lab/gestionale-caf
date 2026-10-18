@@ -511,7 +511,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <section class="tabsec" id="tab-contabilita">
 <div id="cont-excel" style="margin-bottom:14px">
   <button type="button" onclick="apriStampa('contabilita')" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border:none; border-radius:999px; background:var(--accent); color:var(--accent-ink); font-size:12.5px; font-weight:600; cursor:pointer">🖨️ Stampa contabilità (Excel / PDF)</button>
-  <button type="button" id="btn-resoconto" onclick="apriResocontoAnnuale()" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border:none; border-radius:999px; background:#c2185b; color:#fff; font-size:12.5px; font-weight:600; cursor:pointer">📊 Resoconto annuale e divisione guadagno</button>
+  <button type="button" id="btn-resoconto" onclick="apriResocontoAnnuale()" style="display:none; align-items:center; gap:6px; padding:8px 14px; border:none; border-radius:999px; background:#c2185b; color:#fff; font-size:12.5px; font-weight:600; cursor:pointer">📊 Resoconto annuale e divisione guadagno</button>
   <button type="button" onclick="apriChiusuraGiorno()" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border:none; border-radius:999px; background:#1a7f37; color:#fff; font-size:12.5px; font-weight:600; cursor:pointer">📅 Chiusura di cassa del giorno</button>
 </div>
 <div class="summary" id="summary"></div>
@@ -899,7 +899,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=16"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=153"></script>
+<script src="js/guida.js?v=154"></script>
 <script src="js/scadenze.js?v=202610089"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -908,14 +908,14 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610143"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610297"></script>
+<script src="js/app.js?v=202610298"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=4"></script>
 <script src="js/richiami.js?v=3"></script>
 <script src="js/ricercafatture.js?v=2"></script>
 <script src="js/chiusura.js?v=2"></script>
-<script src="js/resoconto.js?v=2"></script>
+<script src="js/resoconto.js?v=3"></script>
 <script src="js/situazione.js?v=7"></script>
 <script src="js/versamenti.js?v=34"></script>
 <script src="js/spese.js?v=11"></script>

@@ -3,7 +3,7 @@
    guadagno netto e divisione del guadagno tra i soci (di base 50% Federica e 50% Angelo). */
 
 function apriResocontoAnnuale() {
-  if (typeof vedeGuadagni === 'function' && !vedeGuadagni()) { alert('Il resoconto annuale con il guadagno è visibile solo all\'amministratore.'); return; }
+  if (!(auth.profilo && auth.profilo.ruolo === 'admin')) { alert('Il resoconto annuale è visibile solo all\'amministratore.'); return; }
   const anni = Array.from(new Set((state.pratiche || []).map(annoPratica))).sort(function (a, b) { return b - a; });
   if (anni.indexOf(annoAttivo()) < 0) anni.unshift(annoAttivo());
   let soci = { a: 'FEDERICA', b: 'ANGELO', perc: 50 };
@@ -60,6 +60,7 @@ function datiResocontoAnnuale(anno) {
 }
 
 function stampaResocontoAnnuale(anno, soci) {
+  if (!(auth.profilo && auth.profilo.ruolo === 'admin')) return;
   const d = datiResocontoAnnuale(anno);
   const e = function (v) { return fmtEuro(v || 0); };
   const quotaA = Math.round(d.netto * soci.perc) / 100, quotaB = Math.round((d.netto - quotaA) * 100) / 100;
