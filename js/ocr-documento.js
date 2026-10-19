@@ -1203,6 +1203,10 @@ function mostraRevisioneDocumento(d) {
   document.getElementById('doc-scad').value = d.scadenzaDocumento || '';
   if (document.getElementById('doc-numero')) document.getElementById('doc-numero').value = d.numeroDocumento || '';
   document.getElementById('doc-cf').value = d.codiceFiscale || d.cfGrezzo || '';
+  document.getElementById('doc-cf').dataset.auto = '';
+  document.getElementById('doc-sesso').dataset.manuale = d.sesso ? '1' : '';
+  // codice fiscale non letto: si calcola da cognome, nome, data, sesso e luogo di nascita letti
+  if (!document.getElementById('doc-cf').value && typeof proponiCFCampi === 'function') proponiCFCampi(CAMPI_CF_LETTURA);
   document.getElementById('doc-testo').textContent = d.testo || '';
   verificaRevisioneDocumento();
 }
@@ -1298,7 +1302,7 @@ function verificaCFRevisioneDocumento() {
   const avvisi = controllaCoerenzaCF(cf, document.getElementById('doc-cognome').value, document.getElementById('doc-nome').value, document.getElementById('doc-nascita').value);
   el.style.color = avvisi.length ? '#b5842a' : 'var(--accent)';
   if (avvisi.length) el.innerHTML = '⚠️ ' + esc(avvisi.join('; ')) + ': controlla cognome, nome e data, o il codice.' + tastoProposta;
-  else el.textContent = '✓ Codice fiscale valido e coerente con nome, cognome e data';
+  else el.textContent = '✓ Codice fiscale valido e coerente con nome, cognome e data' + (document.getElementById('doc-cf').dataset.auto === '1' ? ' · 🧮 calcolato (non letto): controllalo sulla tessera sanitaria' : '');
 }
 
 function usaDatiDocumento() {
@@ -1307,7 +1311,7 @@ function usaDatiDocumento() {
   const forza = !!docLettura.forza;
   if (cf && !cfValido(cf) && !forza) { verificaRevisioneDocumento(); document.getElementById('doc-verifica').scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
   if (docLettura.destinazione === 'archivio') {
-    const dati = { cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, documentoScadenza: v('doc-scad'), documentoNumero: v('doc-numero').toUpperCase(), comuneNascita: (cf && cfValido(cf) && typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '') || v('doc-luogo').toUpperCase() };
+    const dati = { cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, documentoScadenza: v('doc-scad'), documentoNumero: v('doc-numero').toUpperCase(), sesso: v('doc-sesso'), comuneNascita: (cf && cfValido(cf) && typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '') || v('doc-luogo').toUpperCase() };
     chiudiLetturaDocumento();
     apriSchedaClienteArchivio(dati);
     return;
@@ -1321,6 +1325,8 @@ function usaDatiDocumento() {
     };
     metti('cognome', v('doc-cognome').toUpperCase()); metti('nome', v('doc-nome').toUpperCase());
     metti('nascita', v('doc-nascita')); metti('cf', cf); metti('scad', v('doc-scad')); metti('docnum', v('doc-numero'));
+    const ms = document.getElementById('mc-sesso'); if (ms && v('doc-sesso')) { ms.value = v('doc-sesso'); ms.dataset.manuale = '1'; }
+    if (!cf && typeof proponiCFCampi === 'function') { proponiCFCampi({ cognome: 'mc-cognome', nome: 'mc-nome', data: 'mc-nascita', sesso: 'mc-sesso', comune: 'mc-comune', cf: 'mc-cf' }); }
     // comune di nascita: dal codice fiscale (sicuro), altrimenti quello letto sul documento
     const comune = (cf && cfValido(cf) && typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '') || v('doc-luogo').toUpperCase();
     const elC = document.getElementById('mc-comune');
@@ -1477,6 +1483,7 @@ function apriSchedaClienteArchivio(d) {
     + campo('ca-cognome', 'Cognome', d.cognome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('ca-nome', 'Nome', d.nome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('ca-nascita', 'Data di nascita', d.dataNascita, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
+    + (typeof htmlSessoComune === 'function' ? htmlSessoComune('ca-', d.sesso || '', d.comuneNascita || '') : '')
     + campo('ca-cf', 'Codice fiscale *', d.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"')
     + campo('ca-scad', 'Scadenza documento', d.documentoScadenza || (esiste && esiste.documentoScadenza), 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + campo('ca-docnum', 'N. documento', d.documentoNumero || (esiste && esiste.documentoNumero), 'style="text-transform:uppercase; font-family:monospace"')
@@ -1489,6 +1496,7 @@ function apriSchedaClienteArchivio(d) {
     + '<button type="button" data-azione="pratica" style="background:#1d4f91; color:#fff">✍️ Salva e apri nuova pratica</button>'
     + '<button type="button" data-azione="salva" style="background:#2f9e9e; color:#fff; font-weight:800">💾 Salva in archivio</button></div></div>';
   document.body.appendChild(ov);
+  if (typeof collegaCFAuto === 'function') collegaCFAuto({ cognome: 'ca-cognome', nome: 'ca-nome', data: 'ca-nascita', sesso: 'ca-sesso', comune: 'ca-comune', cf: 'ca-cf' });
   ov.addEventListener('click', async function (e) {
     const b = e.target.closest('button[data-azione]');
     if (!b && e.target !== ov) return;
@@ -1515,7 +1523,7 @@ function apriSchedaClienteArchivio(d) {
         Object.assign(scelto, campi);
       } else
       await registraClienteSeNuovo(c.cognome, c.nome, c.dataNascita, c.cf, c.tel, c.fisso, c.scad, c.email);
-      if (!scelto && data.clienti.salvaDocumento) await data.clienti.salvaDocumento({ codiceFiscale: c.cf, nomeCompleto: (c.cognome + ' ' + c.nome).trim(), dataNascita: c.dataNascita, documentoNumero: c.docnum, comuneNascita: d.comuneNascita || '' });
+      if (!scelto && data.clienti.salvaDocumento) await data.clienti.salvaDocumento({ codiceFiscale: c.cf, nomeCompleto: (c.cognome + ' ' + c.nome).trim(), dataNascita: c.dataNascita, documentoNumero: c.docnum, comuneNascita: ((document.getElementById('ca-comune') || {}).value || d.comuneNascita || '').trim().toUpperCase() });
       if (typeof data !== 'undefined' && data.caricaTutto) await data.caricaTutto({ silenzioso: true });
       if (typeof syncDataFromSupabase === 'function') syncDataFromSupabase();
     } catch (err) { b.disabled = false; return errore('Non salvato: ' + (err.message || err)); }

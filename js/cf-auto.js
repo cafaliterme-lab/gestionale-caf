@@ -133,3 +133,31 @@ function numeroDocumentoDaTesto(testo) {
   if (m) return m[1];
   return '';
 }
+
+// ---- Calcolo automatico anche nelle schede dell'archivio clienti e nella finestra della lettura del documento ----
+// Caselle sesso e comune per le schede che non le hanno (prefisso es. 'mc-', 'nc-', 'ca-')
+function htmlSessoComune(prefisso, sesso, comune) {
+  return '<div><label>Sesso</label><select id="' + prefisso + 'sesso" title="Serve per calcolare il codice fiscale (proposto dal nome)"><option value=""></option><option value="M"' + (sesso === 'M' ? ' selected' : '') + '>M</option><option value="F"' + (sesso === 'F' ? ' selected' : '') + '>F</option></select></div>'
+    + (comune === null ? '' : '<div><label>Comune di nascita</label><input id="' + prefisso + 'comune" list="lista-comuni" autocomplete="off" placeholder="Es. MESSINA (ME)" value="' + esc(comune || '') + '" style="text-transform:uppercase"></div>');
+}
+// Collega le caselle: cambiando cognome, nome, data, sesso o comune il codice fiscale (se vuoto o già calcolato) si ricalcola
+function collegaCFAuto(ids, dopo) {
+  const el = function (k) { return document.getElementById(ids[k]); };
+  const ricalcola = function () { proponiCFCampi(ids); if (typeof dopo === 'function') dopo(); };
+  ['cognome', 'nome', 'data'].forEach(function (k) { const e = el(k); if (e) e.addEventListener('input', ricalcola); });
+  const se = el('sesso'); if (se) se.addEventListener('change', function () { se.dataset.manuale = '1'; ricalcola(); });
+  const co = el('comune'); if (co) { co.addEventListener('input', function () { co.value = co.value.toUpperCase(); co.dataset.auto = ''; suggerisciComuni(co); ricalcola(); }); co.addEventListener('change', ricalcola); }
+  const cf = el('cf'); if (cf) cf.addEventListener('input', function () { cf.dataset.auto = ''; });
+  if (se && se.value) se.dataset.manuale = '1';
+  ricalcola();
+}
+// Finestra di controllo della lettura: se il codice fiscale non è stato letto, si calcola da nome, data, sesso e luogo di nascita
+const CAMPI_CF_LETTURA = { cognome: 'doc-cognome', nome: 'doc-nome', data: 'doc-nascita', sesso: 'doc-sesso', comune: 'doc-luogo', cf: 'doc-cf' };
+document.addEventListener('DOMContentLoaded', function () {
+  if (!document.getElementById('doc-cf')) return;
+  const ricalcola = function () { const cf = document.getElementById('doc-cf'); if (cf.value.trim() && cf.dataset.auto !== '1') return; proponiCFCampi(CAMPI_CF_LETTURA); if (typeof verificaRevisioneDocumento === 'function') verificaRevisioneDocumento(); };
+  ['doc-cognome', 'doc-nome', 'doc-nascita', 'doc-luogo'].forEach(function (id) { const e = document.getElementById(id); if (e) e.addEventListener('input', ricalcola); });
+  const se = document.getElementById('doc-sesso'); if (se) se.addEventListener('change', function () { se.dataset.manuale = '1'; ricalcola(); });
+  const lu = document.getElementById('doc-luogo'); if (lu) { lu.setAttribute('list', 'lista-comuni'); lu.addEventListener('input', function () { suggerisciComuni(lu); }); }
+  document.getElementById('doc-cf').addEventListener('input', function () { this.dataset.auto = ''; });
+});

@@ -286,6 +286,7 @@ function nuovoClienteArchivio(testo, dopo) {
     + campo('nome', 'Nome *', 'value="' + esc(nome0) + '" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('cf', 'Codice fiscale', 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); ncControllaCF()"')
     + campo('nascita', 'Data di nascita', 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
+    + (typeof htmlSessoComune === 'function' ? htmlSessoComune('nc-', '', '') : '')
     + '<div class="full" id="nc-cf-msg" style="font-size:12px; margin-top:-4px"></div>'
     + campo('tel', 'Cellulare', 'type="tel" inputmode="tel"')
     + campo('fisso', 'Telefono fisso', 'type="tel" inputmode="tel"')
@@ -295,7 +296,9 @@ function nuovoClienteArchivio(testo, dopo) {
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
     + '<button type="button" data-az="si" style="background:#1a7f37; color:#fff; font-weight:800">💾 Salva in archivio</button></div></div>';
   document.body.appendChild(ov);
-  setTimeout(function () { const el = document.getElementById(cognome0 ? 'nc-cf' : 'nc-cognome'); if (el) el.focus(); }, 50);
+  // codice fiscale calcolato da cognome, nome, data, sesso e comune (se non lo scrivi)
+  if (typeof collegaCFAuto === 'function') collegaCFAuto({ cognome: 'nc-cognome', nome: 'nc-nome', data: 'nc-nascita', sesso: 'nc-sesso', comune: 'nc-comune', cf: 'nc-cf' }, ncControllaCF);
+  setTimeout(function () { const el = document.getElementById(cognome0 ? 'nc-nascita' : 'nc-cognome'); if (el) el.focus(); }, 50);
   ov.addEventListener('click', async function (e) {
     const b = e.target.closest('button[data-az]');
     if (e.target === ov || (b && b.dataset.az === 'no')) { ov.remove(); return; }
@@ -317,6 +320,8 @@ function nuovoClienteArchivio(testo, dopo) {
     b.disabled = true; b.textContent = 'Salvataggio…';
     try {
       await registraClienteSeNuovo(cognome, nome, nascita, cf, v('tel'), v('fisso'), scad, email);
+      const comuneNc = document.getElementById('nc-comune') ? v('comune').toUpperCase() : '';
+      if (comuneNc && data.clienti.salvaDocumento) await data.clienti.salvaDocumento({ codiceFiscale: cf, nomeCompleto: nc, dataNascita: nascita, comuneNascita: comuneNc });
       ov.remove();
       avviso('📇 ' + nc + (gia ? ': dati aggiornati in archivio' : ' aggiunto all\'archivio clienti'));
       const finale = gia ? gia.nomeCompleto : nc;

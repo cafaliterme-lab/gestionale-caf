@@ -102,7 +102,8 @@ function modificaClienteArchivio(c, dopo) {
     + campo('nome', 'Nome *', c.nome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('cf', 'Codice fiscale', c.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); comuneNelCampo(\'mc-cf\', \'mc-comune\')"')
     + campo('nascita', 'Data di nascita', c.dataNascita, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
-    + campo('comune', 'Comune di nascita', c.comuneNascita || (c.codiceFiscale && typeof comuneDaCF === 'function' ? comuneDaCF(c.codiceFiscale) : ''), 'placeholder="Si compila dal codice fiscale" style="text-transform:uppercase"' + (c.comuneNascita ? '' : ' data-auto="1"') + ' oninput="this.value=this.value.toUpperCase(); this.dataset.auto=\'\'"')
+    + (typeof htmlSessoComune === 'function' ? htmlSessoComune('mc-', '', null) : '')
+    + campo('comune', 'Comune di nascita', c.comuneNascita || (c.codiceFiscale && typeof comuneDaCF === 'function' ? comuneDaCF(c.codiceFiscale) : ''), 'list="lista-comuni" autocomplete="off" placeholder="Es. MESSINA (ME)" style="text-transform:uppercase"' + (c.comuneNascita ? '' : ' data-auto="1"') + ' oninput="this.value=this.value.toUpperCase(); this.dataset.auto=\'\'"')
     + campo('tel', 'Cellulare', c.telefono, 'type="tel" inputmode="tel"')
     + campo('fisso', 'Telefono fisso', c.telefonoFisso, 'type="tel" inputmode="tel"')
     + campo('email', 'E-mail', c.email, 'type="email" inputmode="email" style="text-transform:lowercase"')
@@ -114,6 +115,8 @@ function modificaClienteArchivio(c, dopo) {
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
     + '<button type="button" data-az="si" style="background:#1d4f91; color:#fff; font-weight:800">💾 Salva modifiche</button></div></div>';
   document.body.appendChild(ov);
+  // codice fiscale vuoto: si calcola da cognome, nome, data, sesso e comune
+  if (typeof collegaCFAuto === 'function') collegaCFAuto({ cognome: 'mc-cognome', nome: 'mc-nome', data: 'mc-nascita', sesso: 'mc-sesso', comune: 'mc-comune', cf: 'mc-cf' });
   ov.addEventListener('click', async function (e) {
     const b = e.target.closest('button[data-az]');
     if (e.target === ov || (b && b.dataset.az === 'no')) { ov.remove(); return; }
