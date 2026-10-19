@@ -25,6 +25,24 @@ function renderOggi() {
   const docScad = recenti.filter(function (c) { return !c.documentoScadenza || (dataNum(c.documentoScadenza) || 0) < oggiN; }).length;
   const senzaCfTutti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return !c.codiceFiscale; }).length;
 
+  // attività di oggi
+  const oggiIT = todayIT();
+  const aperteOggi = pratAnno.filter(function (p) { return p.data === oggiIT; }).length;
+  const consegnateOggi = (state.pratiche || []).filter(function (p) { return !p.annullata && p.consegnataIl === oggiIT; });
+  const consegnateAnno = pratAnno.filter(eConsegnata).length;
+  const admin = auth.profilo && auth.profilo.ruolo === 'admin';
+  // incassato oggi: pagamenti alla consegna di oggi (senza gli arretrati) + arretrati incassati oggi
+  let incassoOggi = 0;
+  (state.pratiche || []).forEach(function (p) {
+    if (p.annullata) return;
+    const rec = Array.isArray(p.recuperi) ? p.recuperi : [];
+    const arretrati = rec.reduce(function (t, r) { return t + Number(r.importo || 0); }, 0);
+    if (p.consegnataIl === oggiIT) incassoOggi += Math.max(0, Number(p.pagato || 0) - arretrati);
+    rec.forEach(function (r) { if (r.data === oggiIT) incassoOggi += Number(r.importo || 0); });
+  });
+  const docMancanti = pratAnno.filter(function (p) { return !eConsegnata(p) && typeof documentiPratica === 'function' && documentiPratica(p).mancanti.length; }).length;
+  const mese = new Date().getMonth() + 1;
+  const daRichiamare = mese >= 7 && mese <= 10 && typeof clientiDaRichiamare === 'function' ? clientiDaRichiamare(anno).length : null;
   const tile = function (icona, n, testo, colore, onclick, nota) {
     const vuoto = !n;
     return '<button type="button" onclick="' + onclick + '" style="flex:1 1 150px; min-width:140px; text-align:left; border:2px solid ' + (vuoto ? 'var(--line)' : colore) + '; background:' + (vuoto ? 'var(--card)' : 'color-mix(in srgb, ' + colore + ' 10%, var(--card))') + '; color:var(--ink); border-radius:14px; padding:10px 12px; cursor:pointer">'
@@ -35,14 +53,23 @@ function renderOggi() {
   const oggiTesto = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
   box.innerHTML = '<details class="card" style="padding:10px 14px; margin-bottom:12px; border:2px solid #1d4f91"' + (oggiAperto() ? ' open' : '') + ' ontoggle="try{localStorage.setItem(\'oggi-chiuso\', this.open ? \'0\' : \'1\')}catch(e){}">'
     + '<summary style="cursor:pointer; font-weight:800; font-size:16px; color:#1d4f91">📅 Oggi, ' + esc(oggiTesto) + ' <span style="font-weight:600; font-size:12.5px; color:var(--sub)">· cosa c\'è da fare (anno ' + anno + ')</span></summary>'
-    + '<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px">'
+    + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">✅ OGGI IN SEDE</div>'
+    + '<div style="display:flex; flex-wrap:wrap; gap:8px">'
+    + tile('🆕', aperteOggi, 'Pratiche aperte oggi', '#1d4f91', "oggiVaiRegistroCerca('tutte', todayIT())", '')
+    + tile('✅', consegnateOggi.length, 'Consegnate oggi', '#1a7f37', "oggiVaiRegistroCerca('consegnate', todayIT())", 'nell\'anno: ' + consegnateAnno + ' consegnate / definite')
+    + (admin ? tile('💶', incassoOggi > 0 ? fmtEuro(incassoOggi) : 0, 'Incassato oggi', '#2f9e5f', 'apriChiusuraGiorno()', 'tocca per la chiusura di cassa') : '')
+    + '</div>'
+    + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">📋 DA FARE</div>'
+    + '<div style="display:flex; flex-wrap:wrap; gap:8px">'
     + tile('📥', daLavorare.length, 'Da lavorare', '#c0392b', "oggiVaiRegistro('aperte')", 'in arrivo, scansionate, in lavorazione')
     + tile('📦', daConsegnare.length, 'Pronte da consegnare', '#8d5a3b', "oggiVaiRegistro('aperte')", 'lavorate, non ancora consegnate')
+    + tile('📎', docMancanti, 'Documenti mancanti', '#b35f0c', "oggiVaiStato('arrivo')", 'pratiche che aspettano documenti')
     + tile('💬', daAvvisare.length, 'Da avvisare su WhatsApp', '#25a35a', 'apriInvioMultiplo()', 'lavorate da più di ' + (typeof GIORNI_AVVISO_RITIRO !== 'undefined' ? GIORNI_AVVISO_RITIRO : 7) + ' giorni')
     + tile('💸', nonPagate, 'Non pagate', '#e67e22', 'oggiVaiMorosi()', 'quest\'anno e anni precedenti')
     + tile('⏰', scad.length, 'Scadenze entro 7 giorni', '#7b3fa0', 'oggiVaiScadenze()', scadutePassate ? scadutePassate + ' già passate' : '')
     + tile('📞', senzaTel, 'Clienti senza telefono', '#1d4f91', "apriArchivioClienti('', { conPratiche: true, senzaTel: true })", 'venuti quest\'anno o l\'anno scorso')
     + tile('🪪', docScad, 'Documenti scaduti o mancanti', '#c0392b', "apriArchivioClienti('', { conPratiche: true, doc: true })", 'clienti venuti di recente')
+    + (daRichiamare !== null ? tile('☎️', daRichiamare, 'Clienti da richiamare', '#0e8a8a', 'apriRichiami()', '730 dell\'anno scorso non ancora tornati') : '')
     + '</div>'
     + (senzaCfTutti ? '<div style="font-size:12px; color:var(--sub); margin-top:8px">📋 Archivio da completare: <a href="#" onclick="apriArchivioClienti(\'\', { senzaCf: true }); return false" style="font-weight:700">' + senzaCfTutti + ' clienti senza codice fiscale</a> · completali quando vengono: <b>✏️ Modifica</b> → <b>📷 Leggi documento</b></div>' : '')
     + '</details>';
@@ -61,3 +88,17 @@ function oggiVaiMorosi() {
   setTimeout(function () { const el = document.getElementById('morosi-corrente-box'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
 }
 function oggiVaiScadenze() { oggiTab('scadenze'); }
+// registro con una ricerca (es. la data di oggi) nell'archivio scelto
+function oggiVaiRegistroCerca(modo, testo) {
+  if (!oggiTab('registro')) return;
+  if (typeof azzeraFiltriRegistro === 'function') azzeraFiltriRegistro();
+  const c = document.getElementById('cerca'); if (c) c.value = testo || '';
+  if (typeof impostaArchivio === 'function') impostaArchivio(modo || 'tutte'); else render();
+  setTimeout(function () { const el = document.getElementById('tabella'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
+}
+function oggiVaiStato(stato) {
+  if (!oggiTab('registro')) return;
+  if (typeof azzeraFiltriRegistro === 'function') azzeraFiltriRegistro();
+  if (typeof scegliStatoRegistro === 'function') scegliStatoRegistro(stato);
+  setTimeout(function () { const el = document.getElementById('tabella'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
+}

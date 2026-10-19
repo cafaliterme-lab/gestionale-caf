@@ -1800,7 +1800,7 @@ function filtra(lista, escludi){
   const q = ((document.getElementById('cerca')||{}).value||'').trim().toLowerCase();
   if(!q) return lista;
   return lista.filter(function(p){
-    return [String(p.numero).padStart(4,'0'), formattaProtocollo(p), p.nome, p.congiunta, p.congData, p.telefono, p.telefonoFisso, p.tipo, p.cf, p.data, p.note, statoLabel(p.stato), p.numFattura, p.inseritoDa].join(' ').toLowerCase().indexOf(q) >= 0;
+    return [String(p.numero).padStart(4,'0'), formattaProtocollo(p), p.nome, p.congiunta, p.congData, p.telefono, p.telefonoFisso, p.tipo, p.cf, p.data, p.consegnataIl, p.note, statoLabel(p.stato), p.numFattura, p.inseritoDa].join(' ').toLowerCase().indexOf(q) >= 0;
   });
 }
 
