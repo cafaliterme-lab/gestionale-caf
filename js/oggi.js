@@ -40,6 +40,14 @@ function renderOggi() {
     if (p.consegnataIl === oggiIT) incassoOggi += Math.max(0, Number(p.pagato || 0) - arretrati);
     rec.forEach(function (r) { if (r.data === oggiIT) incassoOggi += Number(r.importo || 0); });
   });
+  // solo amministratore: fatture ancora da versare al CAF = fatture emesse (contano dalla consegna) − dato al CAF (bollettini, bonifici e spese detratte)
+  let daVersare = 0, fattAnno = 0, versAnno = 0;
+  if (admin) {
+    const pratCont = (typeof praticheContabili === 'function' ? praticheContabili(pratAnno) : pratAnno).concat(typeof fattureAnnullateAperte === 'function' ? fattureAnnullateAperte(anno) : []);
+    fattAnno = pratCont.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
+    versAnno = (state.versamenti || []).filter(function (v) { return annoVersamento(v) === anno; }).reduce(function (t, v) { return t + Number(v.importo || 0); }, 0);
+    daVersare = Math.round((fattAnno - versAnno) * 100) / 100;
+  }
   const docMancanti = pratAnno.filter(function (p) { return !eConsegnata(p) && typeof documentiPratica === 'function' && documentiPratica(p).mancanti.length; }).length;
   const mese = new Date().getMonth() + 1;
   const daRichiamare = mese >= 7 && mese <= 10 && typeof clientiDaRichiamare === 'function' ? clientiDaRichiamare(anno).length : null;
@@ -58,6 +66,7 @@ function renderOggi() {
     + tile('🆕', aperteOggi, 'Pratiche aperte oggi', '#1d4f91', "oggiVaiRegistroCerca('tutte', todayIT())", '')
     + tile('✅', consegnateOggi.length, 'Consegnate oggi', '#1a7f37', "oggiVaiRegistroCerca('consegnate', todayIT())", 'nell\'anno: ' + consegnateAnno + ' consegnate / definite')
     + (admin ? tile('💶', incassoOggi > 0 ? fmtEuro(incassoOggi) : 0, 'Incassato oggi', '#2f9e5f', 'apriChiusuraGiorno()', 'tocca per la chiusura di cassa') : '')
+    + (admin ? tile('🏦', Math.abs(daVersare) > 0.004 ? fmtEuro(daVersare) : 0, 'Fatture da versare al CAF', daVersare > 0.004 ? '#c0392b' : '#1a7f37', "oggiTab('caf')", 'fatture ' + fmtEuro(fattAnno) + ' − già dato ' + fmtEuro(versAnno) + ' (con le spese detratte)') : '')
     + '</div>'
     + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">📋 DA FARE</div>'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px">'
