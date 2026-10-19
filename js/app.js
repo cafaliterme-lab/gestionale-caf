@@ -1791,6 +1791,7 @@ function filtra(lista, escludi){
 function render(){
   if(typeof renderGrafici === 'function') renderGrafici();
   if(typeof renderMorosi === 'function') renderMorosi();
+  if(typeof renderOggi === 'function') renderOggi();
   const list = document.getElementById('gruppi'); const oldList = document.getElementById('list'); if(oldList) oldList.innerHTML = '';
   const summary = document.getElementById('summary');
   initSelettoreAnno();
@@ -2015,16 +2016,21 @@ function render(){
           <button onclick="annullaModifica('${p.id}')">Annulla</button>
         </div>
       ` : `
-      <div class="row-actions">
+      <div class="row-actions" style="align-items:center">
         <select class="stato-tab-sel" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato, p.tipo)}</select>
         ${bottoneWhatsApp(p)}
-        <button onclick="modifica('${p.id}')">Modifica</button>
+        <button onclick="modifica('${p.id}')">✏️ Modifica</button>
+      </div>
+      <div class="row-actions" style="align-items:center; padding-top:6px; border-top:1px dashed var(--line)">
+        <span style="font-size:11.5px; font-weight:800; color:var(--sub)">🖨️ Stampe:</span>
         <button onclick="stampaRicevuta('${p.id}')" title="Ricevuta di presa in carico da consegnare al cliente">🧾 Presa in carico</button>
+        ${eConsegnata(p) ? `<button onclick="stampaRicevutaConsegna('${p.id}')" title="Ricevuta di consegna da far firmare a chi ritira la pratica" style="background:#8d5a3b; color:#fff">📦 Ricevuta consegna</button>` : ''}
         ${e730(p) && Number(p.pagato||0) > 0 ? `<button onclick="stampaRicevutaPagamento('${p.id}')" title="Ricevuta di pagamento da dare al cliente quando la chiede" style="background:${p.ricevutaUfficiale ? '#1a7f37' : 'var(--line)'}; color:${p.ricevutaUfficiale ? '#fff' : 'var(--ink)'}">💶 Ricevuta pagamento${p.ricevutaUfficiale ? ' ⭐' : ''}</button>` : ''}
-        ${eConsegnata(p) ? `<button onclick="stampaRicevutaConsegna('${p.id}')" title="Ricevuta di consegna da far firmare a chi ritira la pratica" style="background:#8d5a3b; color:#fff">🧾 Ricevuta consegna</button>` : ''}
         <button onclick="emailRicevuta('${p.id}')" title="Invia la ricevuta al cliente per e-mail" style="background:#1d4f91; color:#fff">📧 Ricevuta</button>
         ${typeof bottoniPrivacyHTML === 'function' ? bottoniPrivacyHTML(p) : ''}
-        <button onclick="annullaPratica('${p.id}')" title="La pratica resta nel registro con il suo numero, segnata ANNULLATA" style="color:#c0392b">🚫 Annulla pratica</button>
+      </div>
+      <div class="row-actions" style="justify-content:flex-end; margin-top:10px">
+        <button onclick="annullaPratica('${p.id}')" title="La pratica resta nel registro con il suo numero, segnata ANNULLATA" style="background:none; color:#c0392b; border:1px solid #c0392b; font-size:12px; padding:5px 10px">🚫 Annulla pratica</button>
       </div>
       `}
     </div>

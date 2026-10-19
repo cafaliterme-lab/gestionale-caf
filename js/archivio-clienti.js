@@ -2,7 +2,9 @@
    Si completano i dati mancanti (codice fiscale, telefoni, e-mail, scadenza documento…)
    direttamente nell'archivio, che è quello usato da tutte le ricerche del programma. */
 
-function apriArchivioClienti(testo) {
+// filtri: { senzaCf, senzaTel, doc, conPratiche } per aprire l'archivio già filtrato (es. dal riquadro "Oggi")
+function apriArchivioClienti(testo, filtri) {
+  filtri = filtri || {};
   const vecchio = document.getElementById('popup-archivio'); if (vecchio) vecchio.remove();
   const ov = document.createElement('div');
   ov.id = 'popup-archivio';
@@ -13,18 +15,22 @@ function apriArchivioClienti(testo) {
     + '<button type="button" data-az="chiudi" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">✕ Chiudi</button></span></div>'
     + '<input id="arc-cerca" type="search" placeholder="Cerca per cognome, nome, codice fiscale o telefono…" autocomplete="off" value="' + esc(testo || '') + '" style="margin-bottom:6px">'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; font-size:12.5px">'
-    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-senza-cf"> Senza codice fiscale</label>'
-    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-senza-tel"> Senza cellulare</label>'
-    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-doc"> Documento scaduto o mancante</label></div>'
+    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-senza-cf"' + (filtri.senzaCf ? ' checked' : '') + '> Senza codice fiscale</label>'
+    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-senza-tel"' + (filtri.senzaTel ? ' checked' : '') + '> Senza cellulare</label>'
+    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-doc"' + (filtri.doc ? ' checked' : '') + '> Documento scaduto o mancante</label>'
+    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-con-pratiche"' + (filtri.conPratiche ? ' checked' : '') + '> Solo clienti con pratiche (quest\'anno e l\'anno scorso)</label></div>'
     + '<div id="arc-lista" style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px"></div>'
     + '<div id="arc-conta" style="font-size:12px; color:var(--sub); margin-top:6px"></div></div>';
   document.body.appendChild(ov);
   const disegna = function () {
     const q = (document.getElementById('arc-cerca').value || '').trim().toUpperCase();
     const senzaCf = document.getElementById('arc-senza-cf').checked, senzaTel = document.getElementById('arc-senza-tel').checked, doc = document.getElementById('arc-doc').checked;
+    const conPrat = document.getElementById('arc-con-pratiche').checked;
+    const recenti = conPrat ? clientiConPraticheRecenti() : null;
     const oggi = typeof dataNum === 'function' ? dataNum(todayIT()) : 0;
     const tutti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []);
     const filtrati = tutti.filter(function (c) {
+      if (recenti && !(c.codiceFiscale && recenti.cf[c.codiceFiscale]) && !recenti.nome[String(c.nomeCompleto || '').toUpperCase()]) return false;
       if (senzaCf && c.codiceFiscale) return false;
       if (senzaTel && c.telefono) return false;
       if (doc && c.documentoScadenza && (dataNum(c.documentoScadenza) || 0) >= oggi) return false;
@@ -62,6 +68,19 @@ function apriArchivioClienti(testo) {
   });
 }
 
+// Clienti che hanno pratiche nell'anno in corso o in quello prima (per completare prima i dati di chi viene davvero)
+function clientiConPraticheRecenti() {
+  const da = annoAttivo() - 1, cf = {}, nome = {};
+  (state.pratiche || []).concat(state.annullate || []).forEach(function (p) {
+    if (annoPratica(p) < da) return;
+    if (p.codiceFiscale) cf[String(p.codiceFiscale).toUpperCase()] = true;
+    if (p.nome) nome[String(p.nome).trim().toUpperCase()] = true;
+    if (p.congCodiceFiscale) cf[String(p.congCodiceFiscale).toUpperCase()] = true;
+    const con = ((p.congCognome || '') + ' ' + (p.congNome || '')).trim() || p.congiunta;
+    if (con) nome[String(con).trim().toUpperCase()] = true;
+  });
+  return { cf: cf, nome: nome };
+}
 function modificaClienteArchivio(c, dopo) {
   if (!c.id) { avviso('Cliente appena inserito: riapri l\'archivio tra qualche secondo per modificarlo', true); return; }
   const vecchio = document.getElementById('popup-mod-cliente'); if (vecchio) vecchio.remove();

@@ -37,11 +37,13 @@ function coloraScadenzaDocumento() {
   if (wa) wa.style.display = st && !st.valido ? '' : 'none';
   const em = document.getElementById('f-doc-scad-mail');
   if (em) em.style.display = st && !st.valido ? '' : 'none';
+  const lg = document.getElementById('f-doc-scad-leggi');
+  if (lg) lg.style.display = st && (!st.valido || st.giorni <= 30) ? '' : 'none';
   if (msg) {
     msg.style.color = st ? (st.valido ? '#1a7f37' : '#c0392b') : 'var(--sub)';
     msg.textContent = !st ? '' : st.valido
       ? '✓ Documento valido' + (st.giorni <= 60 ? ' (scade tra ' + st.giorni + (st.giorni === 1 ? ' giorno' : ' giorni') + ')' : '')
-      : '✗ Documento SCADUTO da ' + (-st.giorni) + (st.giorni === -1 ? ' giorno' : ' giorni') + ': chiedi il nuovo al cliente';
+      : '✗ Documento SCADUTO da ' + (-st.giorni) + (st.giorni === -1 ? ' giorno' : ' giorni') + ': se il cliente ha il nuovo, leggilo con 📷 «Leggi il nuovo»; altrimenti chiediglielo';
   }
 }
 
