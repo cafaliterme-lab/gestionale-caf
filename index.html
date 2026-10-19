@@ -44,6 +44,8 @@ h1{font-size:19px; margin:0 0 2px}
 .sub{color:var(--sub); font-size:13px; margin:0 0 16px}
 .card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px}
 .grid{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+/* modulo di inserimento sul telefono: una colonna sola, così codice fiscale e documento si leggono bene */
+@media (max-width:560px){ .form-anagrafica .grid{grid-template-columns:1fr} }
 label{font-size:12px; color:var(--sub); display:block; margin-bottom:3px}
 input,select{
   width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px;
@@ -581,18 +583,15 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <div id="f-codfisc-msg" style="font-size:12px; margin-top:4px; display:none"></div>
     </div>
     <div>
-      <label>Scadenza documento d'identità</label>
-      <div style="display:flex; gap:6px; align-items:stretch">
-        <input id="f-doc-scad" placeholder="GG/MM/AAAA" inputmode="numeric" autocomplete="off" style="flex:0 1 170px; min-width:0; font-weight:700" oninput="autoSlashData(this); coloraScadenzaDocumento()">
+      <label>Documento d'identità: scadenza e numero</label>
+      <div style="display:flex; gap:6px; align-items:stretch; flex-wrap:wrap">
+        <input id="f-doc-scad" placeholder="Scadenza GG/MM/AAAA" title="Scadenza del documento" inputmode="numeric" autocomplete="off" style="flex:0 1 150px; min-width:110px; font-weight:700" oninput="autoSlashData(this); coloraScadenzaDocumento()">
+        <input id="f-doc-num" placeholder="N. es. CA12345AB" title="Numero del documento" autocomplete="off" style="flex:1 1 120px; min-width:100px; text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,'')">
         <button type="button" id="f-doc-scad-leggi" class="btn-scan-cf" style="display:none; background:#c0392b; color:#fff" onclick="apriLetturaDocumentoPer('titolare')" title="Il cliente ha portato il documento nuovo: leggilo subito">📷 Leggi il nuovo</button>
         <button type="button" id="f-doc-scad-wa" class="btn-scan-cf" style="display:none; background:#25d366; color:#fff" onclick="richiediNuovoDocumentoModulo()" title="Chiedi al cliente il nuovo documento su WhatsApp">💬 Richiedi nuovo</button>
         <button type="button" id="f-doc-scad-mail" class="btn-scan-cf" style="display:none; background:#1d4f91; color:#fff" onclick="emailNuovoDocumentoModulo()" title="Chiedi al cliente il nuovo documento per e-mail">📧</button>
       </div>
       <div id="f-doc-scad-msg" style="font-size:12px; font-weight:700; margin-top:4px"></div>
-    </div>
-    <div>
-      <label>N. documento d'identità</label>
-      <input id="f-doc-num" placeholder="Es. CA12345AB" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,'')">
     </div>
     <div class="full">
       <label class="chk"><input type="checkbox" id="f-congiunta-on" onchange="toggleCongBox()"> Congiunta</label>
@@ -609,10 +608,10 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <div><label>Comune di nascita coniuge</label><input id="f-cong-comune" list="lista-comuni" autocomplete="off" placeholder="Es. MESSINA (ME)" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); this.dataset.auto=''; suggerisciComuni(this); controllaCFConiuge()" onchange="controllaCFConiuge()"></div>
         <div><label>Codice fiscale coniuge *</label><input id="f-cong-cf" placeholder="16 caratteri (si calcola da solo)" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); this.dataset.auto=''; controllaCFConiuge()">
           <div id="f-cong-cf-msg" style="font-size:12px; margin-top:4px; display:none"></div></div>
-        <div><label>Scadenza documento coniuge</label><div style="display:flex; gap:6px; align-items:stretch"><input id="f-cong-doc-scad" placeholder="GG/MM/AAAA" inputmode="numeric" autocomplete="off" style="flex:0 1 170px; min-width:0; font-weight:700" oninput="autoSlashData(this); coloraScadenzaConiuge()">
+        <div><label>Documento coniuge: scadenza e numero</label><div style="display:flex; gap:6px; align-items:stretch; flex-wrap:wrap"><input id="f-cong-doc-scad" placeholder="Scadenza GG/MM/AAAA" title="Scadenza del documento del coniuge" inputmode="numeric" autocomplete="off" style="flex:0 1 150px; min-width:110px; font-weight:700" oninput="autoSlashData(this); coloraScadenzaConiuge()">
+          <input id="f-cong-doc-num" placeholder="N. es. CA12345AB" title="Numero del documento del coniuge" autocomplete="off" style="flex:1 1 120px; min-width:100px; text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,'')">
           <button type="button" id="f-cong-doc-scad-leggi" class="btn-scan-cf" style="display:none; background:#c0392b; color:#fff" onclick="apriLetturaDocumentoPer('coniuge')" title="Il coniuge ha portato il documento nuovo: leggilo subito">📷 Leggi il nuovo</button></div>
           <div id="f-cong-doc-scad-msg" style="font-size:12px; font-weight:700; margin-top:4px"></div></div>
-        <div><label>N. documento coniuge</label><input id="f-cong-doc-num" placeholder="Es. CA12345AB" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,'')"></div>
         <div><label>Cellulare coniuge</label><input id="f-cong-tel" type="tel" inputmode="tel" placeholder="Facoltativo"></div>
         <div style="display:flex; align-items:flex-end"><button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('coniuge')" title="Leggi i dati del coniuge da carta d'identita', tessera sanitaria o patente">📄 Leggi documento coniuge</button></div>
       </div>
