@@ -210,6 +210,9 @@ function scegliCliente(i, ctx){
     if(c.telefonoFisso) document.getElementById('f-tel-fisso').value = c.telefonoFisso;
     if(c.email) document.getElementById('f-email').value = c.email;
     if(c.documentoScadenza){ document.getElementById('f-doc-scad').value = c.documentoScadenza; coloraScadenzaDocumento(); }
+    if(document.getElementById('f-doc-num')) document.getElementById('f-doc-num').value = c.documentoNumero || '';
+    if(c.comuneNascita && document.getElementById('f-comune')){ document.getElementById('f-comune').value = c.comuneNascita; document.getElementById('f-comune').dataset.auto = ''; }
+    document.getElementById('f-codfisc').dataset.auto = '';
     controllaCampoCF();
     aggiornaStoricoForm();
   }
@@ -352,6 +355,7 @@ function comuneNelCampo(idCF, idComune){
   c.value = comune; c.dataset.auto = comune ? '1' : '';
 }
 function controllaCampoCF(){
+  if(typeof proponiCFCalcolato === 'function') proponiCFCalcolato();
   comuneNelCampo('f-codfisc', 'f-comune');
   const el = document.getElementById('f-codfisc-msg');
   const cf = document.getElementById('f-codfisc').value;
@@ -367,6 +371,8 @@ function controllaCampoCF(){
   if(avvisi.length){ el.style.color = '#b5842a'; el.textContent = '⚠️ Attenzione: ' + avvisi.join('; ') + '.'; return; }
   el.style.color = 'var(--accent)';
   el.textContent = '✓ Codice valido · ' + (dati.sesso === 'F' ? 'Donna nata il ' : 'Uomo nato il ') + dati.dataNascita + (typeof comuneDaCF === 'function' && comuneDaCF(cf) ? ' a ' + comuneDaCF(cf) : '');
+  if(document.getElementById('f-codfisc').dataset.auto === '1') el.textContent += ' · 🧮 calcolato in automatico: controllalo sulla tessera sanitaria';
+  else if(typeof aggiornaSessoModulo === 'function') aggiornaSessoModulo();
 }
 // Codice fiscale scritto a mano: se il cliente e' in archivio si compilano i campi ancora vuoti
 let ULTIMO_CF_RIEMPITO = '';
@@ -375,7 +381,7 @@ function riempiDaArchivioPerCF(cf){
   if(!c) return;
   const campo = function(id, valore){ const el = document.getElementById(id); if(el && !el.value.trim() && valore){ el.value = valore; return 1; } return 0; };
   const n = campo('f-cognome', (c.cognome||'').toUpperCase()) + campo('f-nome', (c.nome||'').toUpperCase()) + campo('f-cf', c.dataNascita)
-    + campo('f-tel', c.telefono) + campo('f-tel-fisso', c.telefonoFisso) + campo('f-email', c.email) + campo('f-doc-scad', c.documentoScadenza);
+    + campo('f-tel', c.telefono) + campo('f-tel-fisso', c.telefonoFisso) + campo('f-email', c.email) + campo('f-doc-scad', c.documentoScadenza) + campo('f-doc-num', c.documentoNumero);
   if(n){
     if(typeof coloraScadenzaDocumento === 'function') coloraScadenzaDocumento();
     const cerca = document.getElementById('cli-cerca'); if(cerca && !cerca.value.trim()) cerca.value = c.nomeCompleto;
@@ -401,6 +407,7 @@ function onCFLetto(cf){
     campo('f-tel-fisso', archiviato.telefonoFisso);
     campo('f-email', archiviato.email);
     campo('f-doc-scad', archiviato.documentoScadenza);
+    campo('f-doc-num', archiviato.documentoNumero);
     coloraScadenzaDocumento();
     document.getElementById('cli-cerca').value = archiviato.nomeCompleto;
   }
@@ -1999,6 +2006,7 @@ function render(){
           <div><label>📧 E-mail</label><input id="e-email-${p.id}" type="email" inputmode="email" value="${esc(p.email)}" style="text-transform:lowercase"></div>
           <div><label>Data di nascita</label><input id="e-cf-${p.id}" value="${esc(p.cf)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>Scadenza documento</label><input id="e-docscad-${p.id}" value="${esc(p.documentoScadenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
+          <div><label>N. documento</label><input id="e-docnum-${p.id}" value="${esc(p.documentoNumero||'')}" style="text-transform:uppercase; font-family:monospace"></div>
           <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="aggiornaCongiuntaEdit('${p.id}', this.value); document.getElementById('e-desctipo-box-${p.id}').style.display = eAltrePratiche(this.value) ? '' : 'none'; document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
           <div id="e-desctipo-box-${p.id}" style="${eAltrePratiche(p.tipo) ? '' : 'display:none'}"><label>Descrizione della pratica *</label><input id="e-desctipo-${p.id}" value="${esc(p.descrizioneTipo)}" maxlength="120"></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
@@ -2167,6 +2175,7 @@ async function addPraticaInterna(){
     return;
   }
   const documentoScadenza = document.getElementById('f-doc-scad').value.trim();
+  const documentoNumero = ((document.getElementById('f-doc-num')||{}).value || '').trim().toUpperCase();
   if(documentoScadenza && !parseDataIT(documentoScadenza)){
     msg.textContent = '⚠️ La scadenza del documento deve essere nel formato GG/MM/AAAA.';
     msg.style.display = 'block';
@@ -2213,6 +2222,7 @@ async function addPraticaInterna(){
   }
   // prima si salva il cliente in archivio (cognome e nome separati bene), poi la pratica
   try{ await registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso, documentoScadenza, email); }catch(e){ console.error('archivio clienti', e); }
+  if(documentoNumero || comuneNascita){ try{ await data.clienti.salvaDocumento({ codiceFiscale: codiceFiscale, nomeCompleto: (cognome + ' ' + nomeProprio).trim(), dataNascita: cf, documentoNumero: documentoNumero, comuneNascita: comuneNascita }); }catch(e){ console.error('numero documento', e); } }
   if(congCognome || congNome){ try{ await registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono); }catch(e){ console.error('archivio clienti coniuge', e); } }
 
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
@@ -2221,7 +2231,7 @@ async function addPraticaInterna(){
   else if(!documenti.mancanti.length && documenti.presentati.length && statoNuovo === 'arrivo' && !eColf(tipo) && statoVisibile('da_lavorare_scansionata', tipo) && confirm('Ci sono tutti i documenti.\n\nSalvo la pratica come "' + statoLabel('da_lavorare_scansionata') + '" invece di "In arrivo"?')) statoNuovo = 'da_lavorare_scansionata';
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, comuneNascita, congComuneNascita, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note, viaEmail, iscrittoCisl,
+    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, comuneNascita, congComuneNascita, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documentoNumero, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note, viaEmail, iscrittoCisl,
     stato: statoNuovo,
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
@@ -2248,6 +2258,8 @@ async function addPraticaInterna(){
   document.getElementById('f-cf').value='';
   document.getElementById('f-codfisc').value='';
   if(document.getElementById('f-comune')){ document.getElementById('f-comune').value=''; document.getElementById('f-comune').dataset.auto=''; }
+  ['f-doc-num'].forEach(function(id){ const el = document.getElementById(id); if(el) el.value = ''; });
+  { const se = document.getElementById('f-sesso'); if(se){ se.value = ''; se.dataset.manuale = ''; } document.getElementById('f-codfisc').dataset.auto = ''; }
   controllaCampoCF();
   impostaTipoPredefinito();
   document.getElementById('f-compenso').value=''; document.getElementById('f-compenso').dataset.auto='';
@@ -3216,6 +3228,7 @@ async function salvaModifica(id){
     numFattura: numFattura,
     dataFattura: dataFattura,
     documentoScadenza: g('e-docscad').trim(),
+    documentoNumero: g('e-docnum').trim().toUpperCase().replace(/\s+/g, ''),
     note: g('e-note').trim(),
     viaEmail: !!(document.getElementById('e-viaemail-'+id)||{}).checked,
     iscrittoCisl: !!(document.getElementById('e-cisl-'+id)||{}).checked,
@@ -3261,6 +3274,7 @@ async function salvaModifica(id){
   const esito = await data.pratiche.aggiorna(id, campi);
   if(esito && esito.error) return;
   await aggiornaArchivioCliente(vecchiTit, { cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf, codiceFiscale: p.codiceFiscale });
+  if(campi.documentoNumero && data.clienti.salvaDocumento) data.clienti.salvaDocumento({ codiceFiscale: p.codiceFiscale || '', nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), dataNascita: campi.cf || '', documentoNumero: campi.documentoNumero });
   if(campi.telefono || campi.telefonoFisso || campi.documentoScadenza || campi.email) data.clienti.salvaTelefono({ nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf || '', codiceFiscale: p.codiceFiscale || '', telefono: campi.telefono, telefonoFisso: campi.telefonoFisso, documentoScadenza: campi.documentoScadenza, email: campi.email });
   if(cc || cn) await aggiornaArchivioCliente(vecchiCong, { cognome: cc, nome: cn, dataNascita: campi.congData });
   if((cc || cn) && (campi.congCodiceFiscale || campi.congTelefono)) registraClienteSeNuovo(cc, cn, campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', campi.congTelefono);

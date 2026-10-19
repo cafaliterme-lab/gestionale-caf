@@ -416,6 +416,7 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <div><label>Sesso</label><select id="doc-sesso"><option value=""></option><option value="M">M</option><option value="F">F</option></select></div>
         <div><label>Luogo di nascita</label><input id="doc-luogo" style="text-transform:uppercase"></div>
         <div><label>Scadenza documento</label><input id="doc-scad" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
+        <div><label>N. documento</label><input id="doc-numero" style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,'')"></div>
         <div class="full"><label>Codice fiscale</label><input id="doc-cf" maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); verificaRevisioneDocumento()"></div>
       </div>
       <div id="doc-verifica" style="font-size:12.5px; margin-top:8px"></div>
@@ -559,17 +560,21 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       <input id="f-nome" placeholder="Es. Mario" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); controllaCampoCF(); aggiornaStoricoForm()">
     </div>
     <div>
-      <label>Data di nascita</label>
-      <input id="f-cf" type="text" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this); controllaCampoCF(); aggiornaStoricoForm()">
+      <label>Data di nascita e sesso</label>
+      <div style="display:flex; gap:6px">
+        <input id="f-cf" type="text" placeholder="GG/MM/AAAA" inputmode="numeric" style="flex:1; min-width:0" oninput="autoSlashData(this); controllaCampoCF(); aggiornaStoricoForm()">
+        <select id="f-sesso" title="Sesso: serve per calcolare il codice fiscale (proposto dal nome)" style="width:auto; flex:0 0 70px" onchange="this.dataset.manuale='1'; controllaCampoCF()"><option value=""></option><option value="M">M</option><option value="F">F</option></select>
+      </div>
     </div>
     <div>
-      <label>Comune di nascita <span style="font-weight:400; font-size:11px; color:var(--sub)">(dal codice fiscale)</span></label>
-      <input id="f-comune" placeholder="Si compila dal codice fiscale" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); this.dataset.auto=''">
+      <label>Comune di nascita <span style="font-weight:400; font-size:11px; color:var(--sub)">(dal codice fiscale, o scrivilo per calcolarlo)</span></label>
+      <input id="f-comune" list="lista-comuni" autocomplete="off" placeholder="Es. MESSINA (ME)" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); this.dataset.auto=''; suggerisciComuni(this); controllaCampoCF()" onchange="controllaCampoCF()">
+      <datalist id="lista-comuni"></datalist>
     </div>
     <div>
       <label>Codice fiscale *</label>
       <div style="display:flex; gap:6px">
-        <input id="f-codfisc" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace; letter-spacing:.04em" oninput="this.value=normalizzaCF(this.value); controllaCampoCF(); aggiornaStoricoForm()">
+        <input id="f-codfisc" placeholder="16 caratteri (si calcola da solo)" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace; letter-spacing:.04em" oninput="this.value=normalizzaCF(this.value); this.dataset.auto=''; controllaCampoCF(); aggiornaStoricoForm()">
         <button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('titolare')" title="Leggi i dati da carta d'identita', tessera sanitaria o patente">📄 Leggi documento</button>
       </div>
       <button type="button" onclick="apriInserisciDocumento('titolare')" title="Trascina o incolla il PDF del documento" style="margin-top:6px; width:100%; background:#1d4f91; color:#fff; border:none; border-radius:10px; padding:8px 12px; font-size:13px; font-weight:800; cursor:pointer">📥 Inserisci PDF documento</button>
@@ -584,6 +589,10 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
         <button type="button" id="f-doc-scad-mail" class="btn-scan-cf" style="display:none; background:#1d4f91; color:#fff" onclick="emailNuovoDocumentoModulo()" title="Chiedi al cliente il nuovo documento per e-mail">📧</button>
       </div>
       <div id="f-doc-scad-msg" style="font-size:12px; font-weight:700; margin-top:4px"></div>
+    </div>
+    <div>
+      <label>N. documento d'identità</label>
+      <input id="f-doc-num" placeholder="Es. CA12345AB" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,'')">
     </div>
     <div class="full">
       <label class="chk"><input type="checkbox" id="f-congiunta-on" onchange="toggleCongBox()"> Congiunta</label>
@@ -900,8 +909,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/qrcode.js?v=1"></script>
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
-<script src="js/comuni.js?v=1"></script>
-<script src="js/ocr-documento.js?v=25"></script>
+<script src="js/comuni.js?v=2"></script>
+<script src="js/cf-auto.js?v=1"></script>
+<script src="js/ocr-documento.js?v=26"></script>
 <script src="js/grafici.js?v=24"></script>
 <script src="js/stampe.js?v=29"></script>
 <script src="js/extra.js?v=45"></script>
@@ -909,16 +919,16 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=17"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=160"></script>
+<script src="js/guida.js?v=161"></script>
 <script src="js/scadenze.js?v=202610089"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610144"></script>
+<script src="js/data.js?v=202610145"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610301"></script>
+<script src="js/app.js?v=202610302"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=5"></script>
@@ -938,7 +948,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/chat.js?v=8"></script>
 <script src="js/accesso-qr.js?v=5"></script>
 <script src="js/dettaglio-cont.js?v=15"></script>
-<script src="js/archivio-clienti.js?v=6"></script>
+<script src="js/archivio-clienti.js?v=7"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

@@ -121,6 +121,7 @@ const schemas = {
     comuneNascita: 'comune_nascita',
     congComuneNascita: 'cong_comune_nascita',
     documentoScadenza: 'documento_scadenza',
+    documentoNumero: 'documento_numero',
     documenti: 'documenti',
     metodoPagamento: 'metodo_pagamento',
     annullata: 'annullata',
@@ -207,6 +208,7 @@ const schemas = {
     telefonoFisso: 'telefono_fisso',
     email: 'email',
     documentoScadenza: 'documento_scadenza',
+    documentoNumero: 'documento_numero',
     comuneNascita: 'comune_nascita',
   },
   scadenza: {
@@ -695,6 +697,15 @@ async function salvaClienteCF(cliente) {
 /**
  * Clienti - Salva cellulare e telefono fisso nell'archivio (aggiorna il cliente o lo crea)
  */
+// Numero del documento d'identità e comune di nascita nella scheda dell'archivio clienti
+async function salvaDocumentoCliente(c) {
+  if (!c || (!c.documentoNumero && !c.comuneNascita)) return {};
+  try {
+    const { error } = await supabase.rpc('salva_documento_cliente', { p_codice_fiscale: c.codiceFiscale || '', p_nome_completo: c.nomeCompleto || '', p_data_nascita: c.dataNascita || '', p_numero: c.documentoNumero || '', p_comune: c.comuneNascita || '' });
+    if (error) throw new Error(error.message);
+    return {};
+  } catch (err) { console.error('Errore numero documento cliente:', err.message); return { error: err.message }; }
+}
 async function salvaTelefonoCliente(cliente) {
   try {
     const { error } = await supabase.rpc('salva_recapiti_cliente', {
@@ -963,6 +974,7 @@ window.data = {
     elimina: eliminaCliente,
     salvaCF: salvaClienteCF,
     salvaTelefono: salvaTelefonoCliente,
+    salvaDocumento: salvaDocumentoCliente,
     aggiungiLista: aggiungiListaClienti,
   },
   collaboratori: {

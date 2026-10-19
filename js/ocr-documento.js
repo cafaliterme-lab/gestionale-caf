@@ -554,7 +554,7 @@ function leggiAltroLato() {
 function datiRevisione() {
   const v = function (id) { return document.getElementById(id).value.trim(); };
   return { tipo: (docLettura.dati || {}).tipo || 'Documento', cognome: v('doc-cognome'), nome: v('doc-nome'), dataNascita: v('doc-nascita'), sesso: v('doc-sesso'),
-    luogoNascita: v('doc-luogo'), scadenzaDocumento: v('doc-scad'), codiceFiscale: cfValido(v('doc-cf')) ? normalizzaCF(v('doc-cf')) : '', cfGrezzo: v('doc-cf'), testo: (docLettura.dati || {}).testo || '' };
+    luogoNascita: v('doc-luogo'), scadenzaDocumento: v('doc-scad'), numeroDocumento: v('doc-numero'), codiceFiscale: cfValido(v('doc-cf')) ? normalizzaCF(v('doc-cf')) : '', cfGrezzo: v('doc-cf'), testo: (docLettura.dati || {}).testo || '' };
 }
 
 // Documento del titolare o del coniuge (dichiarazione congiunta)
@@ -1178,6 +1178,7 @@ async function analizzaDocumento(sorgente, larghezza, altezza, ritaglio) {
     rifinisciDati(dati, righeTutte);
     if (dati.codiceFiscale) dati.cfGrezzo = '';
     if (dati.tipo === 'Documento' && cfDaCodiciLetti(codici)) dati.tipo = 'Tessera sanitaria';
+    if (!dati.numeroDocumento && typeof numeroDocumentoDaTesto === 'function') dati.numeroDocumento = numeroDocumentoDaTesto(testo);
     dati.testo = testo;
     docLettura.dati = dati;
     // PDF con piu' lati: i dati si mostrano solo alla fine, altrimenti si potrebbe premere "Usa questi dati"
@@ -1200,6 +1201,7 @@ function mostraRevisioneDocumento(d) {
   document.getElementById('doc-sesso').value = d.sesso;
   document.getElementById('doc-luogo').value = d.luogoNascita;
   document.getElementById('doc-scad').value = d.scadenzaDocumento || '';
+  if (document.getElementById('doc-numero')) document.getElementById('doc-numero').value = d.numeroDocumento || '';
   document.getElementById('doc-cf').value = d.codiceFiscale || d.cfGrezzo || '';
   document.getElementById('doc-testo').textContent = d.testo || '';
   verificaRevisioneDocumento();
@@ -1305,7 +1307,7 @@ function usaDatiDocumento() {
   const forza = !!docLettura.forza;
   if (cf && !cfValido(cf) && !forza) { verificaRevisioneDocumento(); document.getElementById('doc-verifica').scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
   if (docLettura.destinazione === 'archivio') {
-    const dati = { cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, documentoScadenza: v('doc-scad') };
+    const dati = { cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, documentoScadenza: v('doc-scad'), documentoNumero: v('doc-numero').toUpperCase(), comuneNascita: (cf && cfValido(cf) && typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '') || v('doc-luogo').toUpperCase() };
     chiudiLetturaDocumento();
     apriSchedaClienteArchivio(dati);
     return;
@@ -1318,7 +1320,7 @@ function usaDatiDocumento() {
       el.value = val; el.style.outline = '3px solid #1a7f37'; el.style.background = '#e8f6ee';
     };
     metti('cognome', v('doc-cognome').toUpperCase()); metti('nome', v('doc-nome').toUpperCase());
-    metti('nascita', v('doc-nascita')); metti('cf', cf); metti('scad', v('doc-scad'));
+    metti('nascita', v('doc-nascita')); metti('cf', cf); metti('scad', v('doc-scad')); metti('docnum', v('doc-numero'));
     // comune di nascita: dal codice fiscale (sicuro), altrimenti quello letto sul documento
     const comune = (cf && cfValido(cf) && typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '') || v('doc-luogo').toUpperCase();
     const elC = document.getElementById('mc-comune');
@@ -1329,7 +1331,7 @@ function usaDatiDocumento() {
     avviso('✓ Dati del documento inseriti nella scheda: premi 💾 Salva modifiche');
     return;
   }
-  if (docLettura.destinazione !== 'archivio') inviaDocumentoAgliAltriDispositivi({ destinazione: docLettura.destinazione, cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, scadenza: v('doc-scad') });
+  if (docLettura.destinazione !== 'archivio') inviaDocumentoAgliAltriDispositivi({ destinazione: docLettura.destinazione, cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, scadenza: v('doc-scad'), numero: v('doc-numero') });
   if (docLettura.destinazione === 'coniuge') {
     document.getElementById('f-cong-cognome').value = v('doc-cognome').toUpperCase();
     document.getElementById('f-cong-nome').value = v('doc-nome').toUpperCase();
@@ -1347,6 +1349,8 @@ function usaDatiDocumento() {
   document.getElementById('f-cf').value = v('doc-nascita');
   document.getElementById('f-codfisc').value = cf;
   if (v('doc-scad')) { document.getElementById('f-doc-scad').value = v('doc-scad'); coloraScadenzaDocumento(); }
+  if (v('doc-numero') && document.getElementById('f-doc-num')) document.getElementById('f-doc-num').value = v('doc-numero').toUpperCase();
+  document.getElementById('f-codfisc').dataset.auto = '';
   document.getElementById('cli-cerca').value = (v('doc-cognome') + ' ' + v('doc-nome')).trim().toUpperCase();
   chiudiLetturaDocumento();
   if (cf && cfValido(cf)) onCFLetto(cf);
@@ -1392,6 +1396,7 @@ function compilaModuloDaDocumento(d) {
   }
   metti('f-cognome', d.cognome); metti('f-nome', d.nome); metti('f-cf', d.dataNascita); metti('f-codfisc', cf);
   if (d.scadenza) { metti('f-doc-scad', d.scadenza); if (typeof coloraScadenzaDocumento === 'function') coloraScadenzaDocumento(); }
+  if (d.numero) metti('f-doc-num', d.numero);
   metti('cli-cerca', ((d.cognome || '') + ' ' + (d.nome || '')).trim());
   if (cf && cfValido(cf) && typeof onCFLetto === 'function') onCFLetto(cf);
   else {
@@ -1464,6 +1469,7 @@ function apriSchedaClienteArchivio(d) {
     + campo('ca-nascita', 'Data di nascita', d.dataNascita, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + campo('ca-cf', 'Codice fiscale *', d.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"')
     + campo('ca-scad', 'Scadenza documento', d.documentoScadenza || (esiste && esiste.documentoScadenza), 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
+    + campo('ca-docnum', 'N. documento', d.documentoNumero || (esiste && esiste.documentoNumero), 'style="text-transform:uppercase; font-family:monospace"')
     + campo('ca-tel', 'Cellulare', esiste && esiste.telefono, 'type="tel" inputmode="tel"')
     + campo('ca-fisso', 'Telefono fisso', esiste && esiste.telefonoFisso, 'type="tel" inputmode="tel"')
     + campo('ca-email', 'E-mail', esiste && esiste.email, 'type="email" inputmode="email" style="text-transform:lowercase"')
@@ -1479,7 +1485,7 @@ function apriSchedaClienteArchivio(d) {
     if (!b || b.dataset.azione === 'no') { ov.remove(); return; }
     const g = function (id) { return document.getElementById(id).value.trim(); };
     const c = { cognome: g('ca-cognome').toUpperCase(), nome: g('ca-nome').toUpperCase(), dataNascita: g('ca-nascita'), cf: normalizzaCF(g('ca-cf')),
-      scad: g('ca-scad'), tel: g('ca-tel'), fisso: g('ca-fisso'), email: g('ca-email').toLowerCase() };
+      scad: g('ca-scad'), docnum: g('ca-docnum').toUpperCase().replace(/\s+/g, ''), tel: g('ca-tel'), fisso: g('ca-fisso'), email: g('ca-email').toLowerCase() };
     const esito = document.getElementById('ca-esito');
     const errore = function (t) { esito.innerHTML = '<b style="color:#c0392b">❌ ' + t + '</b>'; };
     if (!c.cognome) return errore('Manca il cognome');
@@ -1493,12 +1499,13 @@ function apriSchedaClienteArchivio(d) {
       if (scelto) {
         // aggiorna il cliente già in archivio (omonimo senza CF scelto dall'operatore)
         const campi = { nomeCompleto: (c.cognome + ' ' + c.nome).trim(), cognome: c.cognome, nome: c.nome, dataNascita: c.dataNascita || scelto.dataNascita || '', codiceFiscale: c.cf,
-          telefono: c.tel || scelto.telefono || null, telefonoFisso: c.fisso || scelto.telefonoFisso || null, email: c.email || scelto.email || null, documentoScadenza: c.scad || scelto.documentoScadenza || null };
+          telefono: c.tel || scelto.telefono || null, telefonoFisso: c.fisso || scelto.telefonoFisso || null, email: c.email || scelto.email || null, documentoScadenza: c.scad || scelto.documentoScadenza || null, documentoNumero: c.docnum || scelto.documentoNumero || null };
         const r = await data.clienti.aggiorna(scelto.id, campi);
         if (r && r.error) throw new Error(/duplicate|unique/i.test(r.error) ? 'c\'è già in archivio un cliente con questo codice fiscale o con lo stesso nome e data di nascita' : r.error);
         Object.assign(scelto, campi);
       } else
       await registraClienteSeNuovo(c.cognome, c.nome, c.dataNascita, c.cf, c.tel, c.fisso, c.scad, c.email);
+      if (!scelto && data.clienti.salvaDocumento) await data.clienti.salvaDocumento({ codiceFiscale: c.cf, nomeCompleto: (c.cognome + ' ' + c.nome).trim(), dataNascita: c.dataNascita, documentoNumero: c.docnum, comuneNascita: d.comuneNascita || '' });
       if (typeof data !== 'undefined' && data.caricaTutto) await data.caricaTutto({ silenzioso: true });
       if (typeof syncDataFromSupabase === 'function') syncDataFromSupabase();
     } catch (err) { b.disabled = false; return errore('Non salvato: ' + (err.message || err)); }
@@ -1507,7 +1514,7 @@ function apriSchedaClienteArchivio(d) {
     if (b.dataset.azione === 'pratica') {
       const metti = function (id, v) { const el = document.getElementById(id); if (el) el.value = v || ''; };
       metti('f-cognome', c.cognome); metti('f-nome', c.nome); metti('f-cf', c.dataNascita); metti('f-codfisc', c.cf);
-      metti('f-doc-scad', c.scad); metti('f-tel', c.tel); metti('f-tel-fisso', c.fisso); metti('f-email', c.email); metti('cli-cerca', nome);
+      metti('f-doc-scad', c.scad); metti('f-doc-num', c.docnum); metti('f-tel', c.tel); metti('f-tel-fisso', c.fisso); metti('f-email', c.email); metti('cli-cerca', nome);
       if (typeof coloraScadenzaDocumento === 'function') coloraScadenzaDocumento();
       if (typeof controllaCampoCF === 'function') controllaCampoCF();
       if (typeof aggiornaStoricoForm === 'function') aggiornaStoricoForm();
