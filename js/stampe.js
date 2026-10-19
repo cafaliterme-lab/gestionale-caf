@@ -17,6 +17,9 @@ function apriStampa(origine, opz) {
     cisl: (opz && opz.cisl) || '',
     fattDa: opz && opz.fattDa !== undefined ? opz.fattDa : NaN,
     fattA: opz && opz.fattA !== undefined ? opz.fattA : NaN,
+    // dal registro: solo le pratiche che si vedono con i filtri scelti
+    ids: opz && opz.ids ? new Set(opz.ids) : null,
+    filtriRegistro: (opz && opz.filtriRegistro) || '',
   };
   tipiPerStampa(anno).forEach(function (t) { STAMPA.tipi[t] = !(opz && opz.tipo) || t === opz.tipo; });
   if (opz && opz.tipo && !(opz.tipo in STAMPA.tipi)) STAMPA.tipi[opz.tipo] = true;
@@ -63,6 +66,7 @@ function praticheFiltrate() {
   const contabile = STAMPA.origine === 'contabilita' && typeof praticaContabile === 'function' ? praticaContabile : function (x) { return x; };
   return (state.pratiche || []).map(contabile).filter(function (p) {
     if (annoPratica(p) !== s.anno) return false;
+    if (s.ids && !s.ids.has(p.id)) return false;
     if (!s.tipi[p.tipo || 'SENZA TIPO']) return false;
     if (!s.stati[p.stato]) return false;
     if (s.cisl && typeof passaFiltroCisl === 'function') { const prima = FILTRO_CISL; FILTRO_CISL = s.cisl; const ok = passaFiltroCisl(p); FILTRO_CISL = prima; if (!ok) return false; }
@@ -83,7 +87,14 @@ function praticheFiltrate() {
 }
 
 // Versamenti CAF e netto hanno senso solo sul totale (nessun filtro su tipo, stato, operatore, cliente)
-function stampaSuTotale() { return !STAMPA.cisl && isNaN(STAMPA.fattDa) && isNaN(STAMPA.fattA) && tuttiTipi() && tuttiStati() && !STAMPA.operatore && !STAMPA.cliente.trim() && !STAMPA.pagamento && !STAMPA.consegna; }
+// dal registro filtrato a tutto l'anno: si tolgono i filtri venuti dal registro
+function stampaTuttoAnno() {
+  const s = STAMPA; if (!s) return;
+  s.ids = null; s.filtriRegistro = ''; s.cisl = ''; s.consegna = ''; s.cliente = ''; s.fattDa = NaN; s.fattA = NaN;
+  Object.keys(s.stati).forEach(function (k) { s.stati[k] = true; });
+  disegnaStampa();
+}
+function stampaSuTotale() { return !STAMPA.ids && !STAMPA.cisl && isNaN(STAMPA.fattDa) && isNaN(STAMPA.fattA) && tuttiTipi() && tuttiStati() && !STAMPA.operatore && !STAMPA.cliente.trim() && !STAMPA.pagamento && !STAMPA.consegna; }
 function versamentiFiltrati() {
   const da = isoNum(STAMPA.da), a = isoNum(STAMPA.a);
   return (state.versamenti || []).filter(function (v) {
@@ -109,6 +120,7 @@ function descrizioneFiltri() {
   if (!isNaN(s.fattDa) || !isNaN(s.fattA)) righe.push('Importo fattura: ' + (!isNaN(s.fattDa) && s.fattDa === s.fattA ? fmtEuro(s.fattDa) : (!isNaN(s.fattDa) ? 'da ' + fmtEuro(s.fattDa) + ' ' : '') + (!isNaN(s.fattA) ? 'fino a ' + fmtEuro(s.fattA) : 'in su')));
   if (s.pagamento) righe.push('Pagamento: ' + (s.pagamento === 'NESSUNO' ? 'non indicato' : s.pagamento));
   if (s.cliente.trim()) righe.push('Cliente: ' + s.cliente.trim());
+  if (s.ids && s.filtriRegistro) righe.push('Filtri del registro: ' + s.filtriRegistro);
   return righe;
 }
 
@@ -173,6 +185,7 @@ function disegnaStampa() {
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; max-width:640px; width:100%; max-height:92vh; overflow:auto; padding:18px 20px; box-shadow:0 20px 50px rgba(0,0,0,.3)">'
     + '<div style="font-size:18px; font-weight:800; margin-bottom:2px">🖨️ ' + (s.origine === 'contabilita' ? 'Stampa contabilità' : 'Stampa registro') + '</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:12px">Scegli cosa stampare, poi premi Excel oppure PDF.</div>'
+    + (s.ids ? '<div style="margin-bottom:12px; padding:9px 12px; border-radius:10px; background:#e8f0fb; border:2px solid #1d4f91; color:#1d4f91; font-size:13px; font-weight:700">🔎 Stampi solo le <b>' + s.ids.size + '</b> pratiche che vedi nel registro' + (s.filtriRegistro ? ' (' + esc(s.filtriRegistro) + ')' : '') + '. <button type="button" onclick="stampaTuttoAnno()" style="margin-left:6px; padding:3px 10px; border-radius:999px; border:1px solid #1d4f91; background:#fff; color:#1d4f91; font-size:12px; font-weight:700; cursor:pointer">Stampa invece tutto l\'anno</button></div>' : '')
 
     + '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px">'
     + '<div><label>Anno di protocollo</label><select id="st-anno" onchange="cambiaAnnoStampa(this.value)">'
@@ -204,7 +217,7 @@ function disegnaStampa() {
     + '<div><label>Tipo di pagamento</label><select id="st-pag" onchange="STAMPA.pagamento=this.value; disegnaStampa()"><option value="">Tutti</option>'
     + METODI_PAGAMENTO.concat(['NESSUNO']).map(function (m) { return '<option value="' + m + '"' + (m === s.pagamento ? ' selected' : '') + '>' + (m === 'NESSUNO' ? 'Non indicato' : m) + '</option>'; }).join('') + '</select></div>'
     + '<div><label>Consegnate / definite</label><select onchange="STAMPA.consegna=this.value; disegnaStampa()"><option value=""' + (!s.consegna ? ' selected' : '') + '>Tutte</option><option value="escludi"' + (s.consegna === 'escludi' ? ' selected' : '') + '>Solo da consegnare / definire</option><option value="solo"' + (s.consegna === 'solo' ? ' selected' : '') + '>Solo consegnate / definite</option></select></div>'
-    + '<div><label>Importo fattura (€)</label><div style="display:flex; gap:6px; align-items:center">da <input type="text" inputmode="decimal" placeholder="min" value="' + (isNaN(s.fattDa) ? '' : importoInCampo(s.fattDa)) + '" oninput="filtraImporto(this)" onchange="STAMPA.fattDa=parseImporto(this.value); disegnaStampa()" style="width:80px"> a <input type="text" inputmode="decimal" placeholder="max" value="' + (isNaN(s.fattA) ? '' : importoInCampo(s.fattA)) + '" oninput="filtraImporto(this)" onchange="STAMPA.fattA=parseImporto(this.value); disegnaStampa()" style="width:80px"></div></div>'
+    + '<div><label>Importo fattura (€)</label><div style="display:flex; gap:6px; align-items:center">da <input type="text" inputmode="decimal" placeholder="min" value="' + (isNaN(s.fattDa) ? '' : importoInCampo(s.fattDa)) + '" oninput="filtraImporto(this)" onchange="STAMPA.fattDa=parseImporto(this.value); disegnaStampa()" style="flex:1; min-width:0; width:auto"> a <input type="text" inputmode="decimal" placeholder="max" value="' + (isNaN(s.fattA) ? '' : importoInCampo(s.fattA)) + '" oninput="filtraImporto(this)" onchange="STAMPA.fattA=parseImporto(this.value); disegnaStampa()" style="flex:1; min-width:0; width:auto"></div></div>'
     + '<div><label>Cliente (cognome e nome)</label><input id="st-cliente" type="text" placeholder="Tutti i clienti" value="' + esc(s.cliente) + '" oninput="STAMPA.cliente=this.value; aggiornaContoStampa()"></div>'
     + '</div>'
 

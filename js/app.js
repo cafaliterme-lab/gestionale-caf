@@ -1785,7 +1785,11 @@ function disegnaChipStati(pratiche){
     + (filtroFatturaAttivo() ? '<span style="font-size:12.5px; font-weight:800; color:#1d4f91">' + trovate.length + ' pratiche · totale fatture ' + fmtEuro(trovate.reduce(function(t, p){ return t + Number(p.compenso || 0); }, 0)) + '</span>' : '')
     + Object.keys(importi).map(Number).sort(function(a, b){ return a - b; }).slice(0, 15).map(function(v){ return tasto(FATT_DA === v && FATT_A === v, '#0f766e', 'scegliImportoFattura(' + v + ')', v ? fmtEuro(v) : 'Senza fattura', importi[v], v ? 'Solo le fatture da ' + fmtEuro(v) : 'Solo le pratiche senza importo di fattura', true); }).join(''));
   const filtriAttivi = sel || FILTRO_CISL || SOLO_VIA_EMAIL || filtroFatturaAttivo() || modo !== 'aperte' || ricercaAttiva();
-  if(filtriAttivi) html += '<div style="width:100%"><button type="button" onclick="azzeraFiltriRegistro()" style="padding:4px 12px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:700; border:1px solid var(--sub); background:none; color:var(--sub)">✕ Togli tutti i filtri</button></div>';
+  // stampa di quello che si vede con i filtri scelti
+  const visibili = filtra(pratiche).filter(function(p){ return passaArchivio(p); }).length;
+  html += '<div style="width:100%; display:flex; gap:8px; flex-wrap:wrap; align-items:center">'
+    + '<button type="button" onclick="stampaReportStato()" title="Stampa (PDF o Excel) solo le pratiche che vedi con i filtri scelti" style="padding:6px 14px; border-radius:999px; cursor:pointer; font-size:13px; font-weight:800; border:none; background:#1d4f91; color:#fff">🖨️ Stampa queste ' + visibili + ' pratiche</button>'
+    + (filtriAttivi ? '<button type="button" onclick="azzeraFiltriRegistro()" style="padding:4px 12px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:700; border:1px solid var(--sub); background:none; color:var(--sub)">✕ Togli tutti i filtri</button>' : '') + '</div>';
   box.innerHTML = html;
 }
 // Ricerca per stato dentro ogni riquadro di tipo pratica, con la stampa del report di quel tipo
@@ -1809,9 +1813,25 @@ function filtroStatoGruppoHTML(k, pratiche){
 function stampaReportStato(){
   const sel = (document.getElementById('filtro-stato')||{}).value || '';
   const cli = filtroContribuente();
-  // la stampa segue la lista che stai guardando (archivio, stato, CISL, contribuente)
+  // la stampa segue esattamente la lista che stai guardando (tutti i filtri e la ricerca)
   const modo = modoArchivio();
-  apriStampa('registro', { stato: sel, cliente: cli, cisl: FILTRO_CISL, fattDa: FATT_DA, fattA: FATT_A, consegna: modo === 'consegnate' ? 'solo' : (modo === 'tutte' || ricercaAttiva() ? '' : 'escludi') });
+  const anno = annoAttivo();
+  const ids = filtra(state.pratiche.filter(function(p){ return annoPratica(p) === anno; })).filter(vediNelRegistro).map(function(p){ return p.id; });
+  apriStampa('registro', { stato: sel, cliente: cli, cisl: FILTRO_CISL, fattDa: FATT_DA, fattA: FATT_A, consegna: modo === 'consegnate' ? 'solo' : (modo === 'tutte' || ricercaAttiva() ? '' : 'escludi'), ids: ids, filtriRegistro: descrizioneFiltriRegistro() });
+}
+// I filtri del registro in parole, per l'intestazione della stampa
+function descrizioneFiltriRegistro(){
+  const r = [];
+  const modo = modoArchivio();
+  r.push(modo === 'consegnate' ? 'solo consegnate / definite' : (modo === 'tutte' ? 'tutte' : 'da consegnare / definire'));
+  const sel = (document.getElementById('filtro-stato')||{}).value || '';
+  if(sel) r.push('stato ' + statoLabel(sel));
+  if(FILTRO_CISL) r.push({ iscritti: 'iscritti CISL', fps: '730 CISL FPS', filca: '730 CISL FILCA', tutti: 'iscritti + FPS + FILCA' }[FILTRO_CISL] || FILTRO_CISL);
+  if(SOLO_VIA_EMAIL) r.push('via e-mail');
+  if(filtroFatturaAttivo()) r.push('fattura ' + (!isNaN(FATT_DA) && FATT_DA === FATT_A ? fmtEuro(FATT_DA) : (!isNaN(FATT_DA) ? 'da ' + fmtEuro(FATT_DA) : '') + (!isNaN(FATT_A) ? ' fino a ' + fmtEuro(FATT_A) : ' in su')));
+  const cli = filtroContribuente(); if(cli) r.push('contribuente «' + cli + '»');
+  const q = ((document.getElementById('cerca')||{}).value||'').trim(); if(q) r.push('ricerca «' + q + '»');
+  return r.join(' · ');
 }
 function filtroContribuente(){ return ((document.getElementById('filtro-contribuente')||{}).value||'').trim().toUpperCase(); }
 // escludi: { stato, cisl, email } per contare quante pratiche darebbe ogni tasto
