@@ -2175,8 +2175,12 @@ async function addPraticaInterna(){
     document.getElementById('f-tel').focus();
     return;
   }
+  if(!email && !((document.getElementById('f-email-no')||{}).checked)){
+    popupErroreCampo('E-mail obbligatoria', 'Scrivi l\'<b>e-mail</b> del cliente (es. nome@esempio.it). Se il cliente non ce l\'ha, spunta <b>«Il cliente non ha l\'e-mail»</b>.', 'f-email');
+    return;
+  }
   if(email && !emailValida(email)){
-    popupErroreCampo('E-mail non valida', 'L\'indirizzo <b>' + esc(email) + '</b> non è corretto: controllalo (es. nome@esempio.it) oppure lascia il campo vuoto.', 'f-email');
+    popupErroreCampo('E-mail non valida', 'L\'indirizzo <b>' + esc(email) + '</b> non è corretto: controllalo (es. nome@esempio.it).', 'f-email');
     return;
   }
   const scadAss = document.getElementById('f-data-fine').value.trim();
@@ -2276,6 +2280,7 @@ async function addPraticaInterna(){
   document.getElementById('f-codfisc').value='';
   if(document.getElementById('f-comune')){ document.getElementById('f-comune').value=''; document.getElementById('f-comune').dataset.auto=''; }
   ['f-doc-num'].forEach(function(id){ const el = document.getElementById(id); if(el) el.value = ''; });
+  { const en = document.getElementById('f-email-no'); if(en) en.checked = false; }
   { const se = document.getElementById('f-sesso'); if(se){ se.value = ''; se.dataset.manuale = ''; } document.getElementById('f-codfisc').dataset.auto = ''; }
   controllaCampoCF();
   impostaTipoPredefinito();

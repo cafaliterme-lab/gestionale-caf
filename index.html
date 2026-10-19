@@ -674,8 +674,9 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
       </div>
       <div style="grid-column:1/-1; font-size:11.5px; color:var(--sub); margin-top:-4px">* Obbligatorio almeno uno dei due</div>
       <div style="grid-column:1/-1">
-        <label>📧 E-mail</label>
-        <input id="f-email" type="email" inputmode="email" autocomplete="off" placeholder="nome@esempio.it (facoltativa)" style="text-transform:lowercase" oninput="this.value=this.value.toLowerCase().replace(/\s/g,'')">
+        <label>📧 E-mail <span style="color:#c0392b">*</span></label>
+        <input id="f-email" type="email" inputmode="email" autocomplete="off" placeholder="nome@esempio.it (obbligatoria)" style="text-transform:lowercase" oninput="this.value=this.value.toLowerCase().replace(/\s/g,''); if(this.value) document.getElementById('f-email-no').checked=false">
+        <label class="chk" style="font-size:12px; margin-top:4px"><input type="checkbox" id="f-email-no" onchange="if(this.checked){ document.getElementById('f-email').value=''; }"> Il cliente non ha l'e-mail</label>
       </div>
     </div>
     <div class="full">
@@ -924,7 +925,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=17"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=163"></script>
+<script src="js/guida.js?v=164"></script>
 <script src="js/scadenze.js?v=202610090"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -933,7 +934,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610146"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610303"></script>
+<script src="js/app.js?v=202610304"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=5"></script>

@@ -68,7 +68,7 @@ const GUIDA = [
 <li>il <b>codice fiscale</b> del contribuente (16 caratteri, viene controllato che sia corretto);</li>
 <li>il <b>codice fiscale del coniuge</b>, se la dichiarazione è <b>congiunta</b>;</li>
 <li>almeno un <b>telefono</b>, cellulare o fisso;</li>
-<li>l'<b>e-mail</b>, solo se la scrivi ma non è valida (es. manca la @ o il dominio).</li>
+<li>l'<b>e-mail</b> (obbligatoria e controllata: es. manca la @ o il dominio). Se il cliente non ce l'ha, spunta <b>«Il cliente non ha l'e-mail»</b>.</li>
 </ul>
 <p>Premendo <b>OK</b> il campo da correggere diventa rosso e il cursore ci va sopra.</p>` },
 
