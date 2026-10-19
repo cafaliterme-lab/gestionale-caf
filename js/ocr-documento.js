@@ -720,8 +720,10 @@ async function leggiPdfDocumento(file) {
   const pagine = Math.min(pdf.numPages, 2);
   // Su un foglio scansionato ci sono spesso fronte e retro insieme: si cerca ogni tessera sul foglio
   // e la si legge da sola, ingrandita (prima si leggeva il foglio intero e il retro veniva perso)
-  const parti = [];
+  // fronte e retro su due pagine: si legge prima un pezzo per pagina, cosi' la seconda pagina non resta mai fuori
+  const perPagina = [];
   for (let n = 1; n <= pagine; n++) {
+    const parti = []; perPagina.push(parti);
     const pagina = await pdf.getPage(n);
     const base = pagina.getViewport({ scale: 1 });
     messaggioDoc('Ricerca dei documenti nella pagina ' + n + ' di ' + pagine + '...');
@@ -743,6 +745,8 @@ async function leggiPdfDocumento(file) {
       parti.push(c);
     }
   }
+  const parti = [];
+  for (let i = 0; perPagina.some(function (l) { return l.length > i; }); i++) perPagina.forEach(function (l) { if (l[i]) parti.push(l[i]); });
   await leggiPartiDocumento(parti);
 }
 // Legge una dopo l'altra le tessere trovate sul foglio (fronte e retro): i dati si uniscono
