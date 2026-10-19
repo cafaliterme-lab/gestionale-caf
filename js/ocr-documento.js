@@ -432,7 +432,8 @@ function estraiDatiDocumento(testo, cfCodiceBarre) {
   const tutto = righe.join('\n');
   const dati = { tipo: 'Documento', cognome: '', nome: '', dataNascita: '', sesso: '', luogoNascita: '', codiceFiscale: '', scadenzaDocumento: '' };
 
-  if (/PATENTE|DRIVING/.test(tutto)) dati.tipo = 'Patente';
+  if (/PASSAPORTO|PASSPORT|P<ITA/.test(tutto)) dati.tipo = 'Passaporto';
+  else if (/PATENTE|DRIVING/.test(tutto)) dati.tipo = 'Patente';
   else if (/TESSERA|SANITARIA|SERVIZIO SANITARIO/.test(tutto)) dati.tipo = 'Tessera sanitaria';
   else if (/IDENTIT|IDENTITY|<</.test(tutto)) dati.tipo = "Carta d'identita'";
 
@@ -1311,7 +1312,7 @@ function usaDatiDocumento() {
   const forza = !!docLettura.forza;
   if (cf && !cfValido(cf) && !forza) { verificaRevisioneDocumento(); document.getElementById('doc-verifica').scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
   if (docLettura.destinazione === 'archivio') {
-    const dati = { cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, documentoScadenza: v('doc-scad'), documentoNumero: v('doc-numero').toUpperCase(), sesso: v('doc-sesso'), comuneNascita: (cf && cfValido(cf) && typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '') || v('doc-luogo').toUpperCase() };
+    const dati = { cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, documentoScadenza: v('doc-scad'), documentoNumero: v('doc-numero').toUpperCase(), documentoTipo: typeof tipoDocDaLettura === 'function' ? tipoDocDaLettura((docLettura.dati || {}).tipo) : '', sesso: v('doc-sesso'), comuneNascita: (cf && cfValido(cf) && typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '') || v('doc-luogo').toUpperCase() };
     chiudiLetturaDocumento();
     apriSchedaClienteArchivio(dati);
     return;
@@ -1326,6 +1327,7 @@ function usaDatiDocumento() {
     metti('cognome', v('doc-cognome').toUpperCase()); metti('nome', v('doc-nome').toUpperCase());
     metti('nascita', v('doc-nascita')); metti('cf', cf); metti('scad', v('doc-scad')); metti('docnum', v('doc-numero'));
     const ms = document.getElementById('mc-sesso'); if (ms && v('doc-sesso')) { ms.value = v('doc-sesso'); ms.dataset.manuale = '1'; }
+    { const td = typeof tipoDocDaLettura === 'function' ? tipoDocDaLettura((docLettura.dati || {}).tipo) : ''; const el = document.getElementById('mc-doctipo'); if (td && el && el.value !== td) { el.innerHTML = opzioniTipoDoc(td); el.style.outline = '3px solid #1a7f37'; } }
     if (!cf && typeof proponiCFCampi === 'function') { proponiCFCampi({ cognome: 'mc-cognome', nome: 'mc-nome', data: 'mc-nascita', sesso: 'mc-sesso', comune: 'mc-comune', cf: 'mc-cf' }); }
     // comune di nascita: dal codice fiscale (sicuro), altrimenti quello letto sul documento
     const comune = (cf && cfValido(cf) && typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '') || v('doc-luogo').toUpperCase();
@@ -1337,7 +1339,7 @@ function usaDatiDocumento() {
     avviso('✓ Dati del documento inseriti nella scheda: premi 💾 Salva modifiche');
     return;
   }
-  if (docLettura.destinazione !== 'archivio') inviaDocumentoAgliAltriDispositivi({ destinazione: docLettura.destinazione, cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, scadenza: v('doc-scad'), numero: v('doc-numero') });
+  if (docLettura.destinazione !== 'archivio') inviaDocumentoAgliAltriDispositivi({ destinazione: docLettura.destinazione, cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, scadenza: v('doc-scad'), numero: v('doc-numero'), tipoDoc: typeof tipoDocDaLettura === 'function' ? tipoDocDaLettura((docLettura.dati || {}).tipo) : '' });
   if (docLettura.destinazione === 'coniuge') {
     document.getElementById('f-cong-cognome').value = v('doc-cognome').toUpperCase();
     document.getElementById('f-cong-nome').value = v('doc-nome').toUpperCase();
@@ -1347,6 +1349,7 @@ function usaDatiDocumento() {
     if (v('doc-scad') && document.getElementById('f-cong-doc-scad')) document.getElementById('f-cong-doc-scad').value = v('doc-scad');
     if (v('doc-numero') && document.getElementById('f-cong-doc-num')) document.getElementById('f-cong-doc-num').value = v('doc-numero').toUpperCase();
     if (v('doc-sesso') && document.getElementById('f-cong-sesso')) { document.getElementById('f-cong-sesso').value = v('doc-sesso'); document.getElementById('f-cong-sesso').dataset.manuale = '1'; }
+    { const td = typeof tipoDocDaLettura === 'function' ? tipoDocDaLettura((docLettura.dati || {}).tipo) : ''; const el = document.getElementById('f-cong-doc-tipo'); if (td && el) el.innerHTML = opzioniTipoDoc(td); }
     if (typeof controllaCFConiuge === 'function') controllaCFConiuge();
     if (typeof coloraScadenzaConiuge === 'function') coloraScadenzaConiuge();
     const ccom = document.getElementById('f-cong-comune'); if (ccom && !ccom.value.trim() && v('doc-luogo')) ccom.value = v('doc-luogo').toUpperCase();
@@ -1362,6 +1365,7 @@ function usaDatiDocumento() {
   if (v('doc-scad')) { document.getElementById('f-doc-scad').value = v('doc-scad'); coloraScadenzaDocumento(); }
   if (v('doc-numero') && document.getElementById('f-doc-num')) document.getElementById('f-doc-num').value = v('doc-numero').toUpperCase();
   if (v('doc-sesso') && document.getElementById('f-sesso')) { document.getElementById('f-sesso').value = v('doc-sesso'); document.getElementById('f-sesso').dataset.manuale = '1'; }
+  { const td = typeof tipoDocDaLettura === 'function' ? tipoDocDaLettura((docLettura.dati || {}).tipo) : ''; const el = document.getElementById('f-doc-tipo'); if (td && el) el.innerHTML = opzioniTipoDoc(td); }
   document.getElementById('f-codfisc').dataset.auto = '';
   document.getElementById('cli-cerca').value = (v('doc-cognome') + ' ' + v('doc-nome')).trim().toUpperCase();
   chiudiLetturaDocumento();
@@ -1404,6 +1408,7 @@ function compilaModuloDaDocumento(d) {
     if (typeof comuneNelCampo === 'function') comuneNelCampo('f-cong-cf', 'f-cong-comune');
     if (d.scadenza) metti('f-cong-doc-scad', d.scadenza);
     if (d.numero) metti('f-cong-doc-num', d.numero);
+    if (d.tipoDoc && document.getElementById('f-cong-doc-tipo')) document.getElementById('f-cong-doc-tipo').innerHTML = opzioniTipoDoc(d.tipoDoc);
     if (typeof controllaCFConiuge === 'function') controllaCFConiuge();
     if (typeof coloraScadenzaConiuge === 'function') coloraScadenzaConiuge();
     metti('cli-cerca-cong', ((d.cognome || '') + ' ' + (d.nome || '')).trim());
@@ -1413,6 +1418,7 @@ function compilaModuloDaDocumento(d) {
   metti('f-cognome', d.cognome); metti('f-nome', d.nome); metti('f-cf', d.dataNascita); metti('f-codfisc', cf);
   if (d.scadenza) { metti('f-doc-scad', d.scadenza); if (typeof coloraScadenzaDocumento === 'function') coloraScadenzaDocumento(); }
   if (d.numero) metti('f-doc-num', d.numero);
+  if (d.tipoDoc && document.getElementById('f-doc-tipo')) document.getElementById('f-doc-tipo').innerHTML = opzioniTipoDoc(d.tipoDoc);
   metti('cli-cerca', ((d.cognome || '') + ' ' + (d.nome || '')).trim());
   if (cf && cfValido(cf) && typeof onCFLetto === 'function') onCFLetto(cf);
   else {
@@ -1487,6 +1493,7 @@ function apriSchedaClienteArchivio(d) {
     + campo('ca-cf', 'Codice fiscale *', d.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"')
     + campo('ca-scad', 'Scadenza documento', d.documentoScadenza || (esiste && esiste.documentoScadenza), 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + campo('ca-docnum', 'N. documento', d.documentoNumero || (esiste && esiste.documentoNumero), 'style="text-transform:uppercase; font-family:monospace"')
+    + '<div><label style="font-size:12px">Tipo documento</label><select id="ca-doctipo">' + opzioniTipoDoc(d.documentoTipo || (esiste && esiste.documentoTipo) || '') + '</select></div>'
     + campo('ca-tel', 'Cellulare', esiste && esiste.telefono, 'type="tel" inputmode="tel"')
     + campo('ca-fisso', 'Telefono fisso', esiste && esiste.telefonoFisso, 'type="tel" inputmode="tel"')
     + campo('ca-email', 'E-mail', esiste && esiste.email, 'type="email" inputmode="email" style="text-transform:lowercase"')
@@ -1503,7 +1510,7 @@ function apriSchedaClienteArchivio(d) {
     if (!b || b.dataset.azione === 'no') { ov.remove(); return; }
     const g = function (id) { return document.getElementById(id).value.trim(); };
     const c = { cognome: g('ca-cognome').toUpperCase(), nome: g('ca-nome').toUpperCase(), dataNascita: g('ca-nascita'), cf: normalizzaCF(g('ca-cf')),
-      scad: g('ca-scad'), docnum: g('ca-docnum').toUpperCase().replace(/\s+/g, ''), tel: g('ca-tel'), fisso: g('ca-fisso'), email: g('ca-email').toLowerCase() };
+      scad: g('ca-scad'), docnum: g('ca-docnum').toUpperCase().replace(/\s+/g, ''), doctipo: g('ca-doctipo'), tel: g('ca-tel'), fisso: g('ca-fisso'), email: g('ca-email').toLowerCase() };
     const esito = document.getElementById('ca-esito');
     const errore = function (t) { esito.innerHTML = '<b style="color:#c0392b">❌ ' + t + '</b>'; };
     if (!c.cognome) return errore('Manca il cognome');
@@ -1517,13 +1524,13 @@ function apriSchedaClienteArchivio(d) {
       if (scelto) {
         // aggiorna il cliente già in archivio (omonimo senza CF scelto dall'operatore)
         const campi = { nomeCompleto: (c.cognome + ' ' + c.nome).trim(), cognome: c.cognome, nome: c.nome, dataNascita: c.dataNascita || scelto.dataNascita || '', codiceFiscale: c.cf,
-          telefono: c.tel || scelto.telefono || null, telefonoFisso: c.fisso || scelto.telefonoFisso || null, email: c.email || scelto.email || null, documentoScadenza: c.scad || scelto.documentoScadenza || null, documentoNumero: c.docnum || scelto.documentoNumero || null };
+          telefono: c.tel || scelto.telefono || null, telefonoFisso: c.fisso || scelto.telefonoFisso || null, email: c.email || scelto.email || null, documentoScadenza: c.scad || scelto.documentoScadenza || null, documentoNumero: c.docnum || scelto.documentoNumero || null, documentoTipo: c.doctipo || scelto.documentoTipo || null };
         const r = await data.clienti.aggiorna(scelto.id, campi);
         if (r && r.error) throw new Error(/duplicate|unique/i.test(r.error) ? 'c\'è già in archivio un cliente con questo codice fiscale o con lo stesso nome e data di nascita' : r.error);
         Object.assign(scelto, campi);
       } else
       await registraClienteSeNuovo(c.cognome, c.nome, c.dataNascita, c.cf, c.tel, c.fisso, c.scad, c.email);
-      if (!scelto && data.clienti.salvaDocumento) await data.clienti.salvaDocumento({ codiceFiscale: c.cf, nomeCompleto: (c.cognome + ' ' + c.nome).trim(), dataNascita: c.dataNascita, documentoNumero: c.docnum, comuneNascita: ((document.getElementById('ca-comune') || {}).value || d.comuneNascita || '').trim().toUpperCase() });
+      if (!scelto && data.clienti.salvaDocumento) await data.clienti.salvaDocumento({ codiceFiscale: c.cf, nomeCompleto: (c.cognome + ' ' + c.nome).trim(), dataNascita: c.dataNascita, documentoNumero: c.docnum, documentoTipo: c.doctipo, comuneNascita: ((document.getElementById('ca-comune') || {}).value || d.comuneNascita || '').trim().toUpperCase() });
       if (typeof data !== 'undefined' && data.caricaTutto) await data.caricaTutto({ silenzioso: true });
       if (typeof syncDataFromSupabase === 'function') syncDataFromSupabase();
     } catch (err) { b.disabled = false; return errore('Non salvato: ' + (err.message || err)); }

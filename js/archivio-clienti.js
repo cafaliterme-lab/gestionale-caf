@@ -108,6 +108,7 @@ function modificaClienteArchivio(c, dopo) {
     + campo('fisso', 'Telefono fisso', c.telefonoFisso, 'type="tel" inputmode="tel"')
     + campo('email', 'E-mail', c.email, 'type="email" inputmode="email" style="text-transform:lowercase"')
     + campo('scad', 'Scadenza documento', c.documentoScadenza, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
+    + '<div><label>Tipo documento</label><select id="mc-doctipo">' + (typeof opzioniTipoDoc === 'function' ? opzioniTipoDoc(c.documentoTipo || '') : '') + '</select></div>'
     + campo('docnum', 'N. documento', c.documentoNumero, 'style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\\s+/g, \'\')"')
     + '</div>'
     + '<label class="chk" style="margin-top:8px; font-size:13px"><input type="checkbox" id="mc-pratiche"' + (pratiche.length ? ' checked' : ' disabled') + '> Aggiorna telefoni, e-mail e scadenza documento anche nelle sue pratiche (' + pratiche.length + ')</label>'
@@ -125,7 +126,7 @@ function modificaClienteArchivio(c, dopo) {
     const msg = document.getElementById('mc-msg');
     const cognome = v('cognome').toUpperCase(), nome = v('nome').toUpperCase(), cf = normalizzaCF(v('cf'));
     let nascita = v('nascita');
-    const tel = v('tel'), fisso = v('fisso'), email = v('email').toLowerCase(), scad = v('scad'), comune = v('comune').toUpperCase(), docnum = v('docnum').toUpperCase().replace(/\s+/g, '');
+    const tel = v('tel'), fisso = v('fisso'), email = v('email').toLowerCase(), scad = v('scad'), comune = v('comune').toUpperCase(), docnum = v('docnum').toUpperCase().replace(/\s+/g, ''), doctipo = v('doctipo');
     if (!cognome || !nome) { msg.textContent = 'Cognome e nome sono obbligatori.'; return; }
     if (cf && !cfValido(cf)) { msg.textContent = 'Il codice fiscale non è valido: controllalo o lascialo vuoto.'; return; }
     if (cf && !nascita) nascita = datiDaCF(cf).dataNascita;
@@ -139,7 +140,7 @@ function modificaClienteArchivio(c, dopo) {
       const avvisi = controllaCoerenzaCF(cf, cognome, nome, nascita);
       if (avvisi.length && !confirm('Attenzione: ' + avvisi.join('; ') + '.\n\nSalvo lo stesso?')) return;
     }
-    const campi = { nomeCompleto: (cognome + ' ' + nome).trim(), cognome: cognome, nome: nome, dataNascita: nascita || '', codiceFiscale: cf || null, telefono: tel || null, telefonoFisso: fisso || null, email: email || null, documentoScadenza: scad || null, comuneNascita: comune || null, documentoNumero: docnum || null };
+    const campi = { nomeCompleto: (cognome + ' ' + nome).trim(), cognome: cognome, nome: nome, dataNascita: nascita || '', codiceFiscale: cf || null, telefono: tel || null, telefonoFisso: fisso || null, email: email || null, documentoScadenza: scad || null, comuneNascita: comune || null, documentoNumero: docnum || null, documentoTipo: doctipo || null };
     b.disabled = true; b.textContent = 'Salvataggio…';
     const r = await data.clienti.aggiorna(c.id, campi);
     if (r && r.error) {
@@ -157,6 +158,7 @@ function modificaClienteArchivio(c, dopo) {
         if (email && email !== p.email) cp.email = email;
         if (scad && scad !== p.documentoScadenza) cp.documentoScadenza = scad;
         if (docnum && docnum !== p.documentoNumero) cp.documentoNumero = docnum;
+        if (doctipo && doctipo !== p.documentoTipo) cp.documentoTipo = doctipo;
         if (cf && !p.codiceFiscale) cp.codiceFiscale = cf;
         if (Object.keys(cp).length) await data.pratiche.aggiorna(p.id, cp);
       }

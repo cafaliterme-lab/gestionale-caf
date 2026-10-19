@@ -161,3 +161,22 @@ document.addEventListener('DOMContentLoaded', function () {
   const lu = document.getElementById('doc-luogo'); if (lu) { lu.setAttribute('list', 'lista-comuni'); lu.addEventListener('input', function () { suggerisciComuni(lu); }); }
   document.getElementById('doc-cf').addEventListener('input', function () { this.dataset.auto = ''; });
 });
+
+// ---- Tipo del documento d'identità ----
+const TIPI_DOCUMENTO = ["Carta d'identità", 'Passaporto', 'Patente', 'Altro'];
+function opzioniTipoDoc(sel) {
+  sel = String(sel || '');
+  const extra = sel && TIPI_DOCUMENTO.indexOf(sel) < 0 ? [sel] : [];
+  return '<option value="">Tipo…</option>' + TIPI_DOCUMENTO.concat(extra).map(function (t) { return '<option value="' + esc(t) + '"' + (t === sel ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('');
+}
+// tipo riconosciuto dalla lettura ("Carta d'identita'", "Patente", "Passaporto"); la tessera sanitaria non è un documento d'identità
+function tipoDocDaLettura(t) {
+  t = String(t || '');
+  if (/passap/i.test(t)) return 'Passaporto';
+  if (/patente/i.test(t)) return 'Patente';
+  if (/identit/i.test(t)) return "Carta d'identità";
+  return '';
+}
+document.addEventListener('DOMContentLoaded', function () {
+  ['f-doc-tipo', 'f-cong-doc-tipo'].forEach(function (id) { const el = document.getElementById(id); if (el && !el.options.length) el.innerHTML = opzioniTipoDoc(''); });
+});

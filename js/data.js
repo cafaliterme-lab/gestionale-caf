@@ -120,10 +120,12 @@ const schemas = {
     congTelefono: 'cong_telefono',
     congDocumentoScadenza: 'cong_documento_scadenza',
     congDocumentoNumero: 'cong_documento_numero',
+    congDocumentoTipo: 'cong_documento_tipo',
     comuneNascita: 'comune_nascita',
     congComuneNascita: 'cong_comune_nascita',
     documentoScadenza: 'documento_scadenza',
     documentoNumero: 'documento_numero',
+    documentoTipo: 'documento_tipo',
     documenti: 'documenti',
     metodoPagamento: 'metodo_pagamento',
     annullata: 'annullata',
@@ -211,6 +213,7 @@ const schemas = {
     email: 'email',
     documentoScadenza: 'documento_scadenza',
     documentoNumero: 'documento_numero',
+    documentoTipo: 'documento_tipo',
     comuneNascita: 'comune_nascita',
   },
   scadenza: {
@@ -701,9 +704,9 @@ async function salvaClienteCF(cliente) {
  */
 // Numero del documento d'identità e comune di nascita nella scheda dell'archivio clienti
 async function salvaDocumentoCliente(c) {
-  if (!c || (!c.documentoNumero && !c.comuneNascita)) return {};
+  if (!c || (!c.documentoNumero && !c.comuneNascita && !c.documentoTipo)) return {};
   try {
-    const { error } = await supabase.rpc('salva_documento_cliente', { p_codice_fiscale: c.codiceFiscale || '', p_nome_completo: c.nomeCompleto || '', p_data_nascita: c.dataNascita || '', p_numero: c.documentoNumero || '', p_comune: c.comuneNascita || '' });
+    const { error } = await supabase.rpc('salva_documento_cliente', { p_codice_fiscale: c.codiceFiscale || '', p_nome_completo: c.nomeCompleto || '', p_data_nascita: c.dataNascita || '', p_numero: c.documentoNumero || '', p_comune: c.comuneNascita || '', p_tipo: c.documentoTipo || '' });
     if (error) throw new Error(error.message);
     return {};
   } catch (err) { console.error('Errore numero documento cliente:', err.message); return { error: err.message }; }
