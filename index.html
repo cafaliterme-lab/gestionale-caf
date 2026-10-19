@@ -602,11 +602,17 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
           <input id="cli-cerca-cong" placeholder="Scrivi per cercare tra i clienti gia' archiviati..." autocomplete="off" oninput="cercaClienti(this.value, 'cong')" onfocus="cercaClienti(this.value, 'cong')">
           <div class="cli-results" id="cli-results-cong"></div>
         </div>
-        <div><label>Cognome</label><input id="f-cong-cognome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
-        <div><label>Nome</label><input id="f-cong-nome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
-        <div><label>Data di nascita</label><input id="f-cong-data" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
-        <div><label>Codice fiscale coniuge *</label><input id="f-cong-cf" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); comuneNelCampo('f-cong-cf','f-cong-comune')"></div>
-        <div><label>Comune di nascita coniuge</label><input id="f-cong-comune" placeholder="Si compila dal codice fiscale" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); this.dataset.auto=''"></div>
+        <div><label>Cognome</label><input id="f-cong-cognome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); controllaCFConiuge()"></div>
+        <div><label>Nome</label><input id="f-cong-nome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); controllaCFConiuge()"></div>
+        <div><label>Data di nascita e sesso</label><div style="display:flex; gap:6px"><input id="f-cong-data" placeholder="GG/MM/AAAA" inputmode="numeric" style="flex:1; min-width:0" oninput="autoSlashData(this); controllaCFConiuge()">
+          <select id="f-cong-sesso" title="Sesso del coniuge: serve per calcolare il codice fiscale (proposto dal nome)" style="width:auto; flex:0 0 70px" onchange="this.dataset.manuale='1'; controllaCFConiuge()"><option value=""></option><option value="M">M</option><option value="F">F</option></select></div></div>
+        <div><label>Comune di nascita coniuge</label><input id="f-cong-comune" list="lista-comuni" autocomplete="off" placeholder="Es. MESSINA (ME)" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); this.dataset.auto=''; suggerisciComuni(this); controllaCFConiuge()" onchange="controllaCFConiuge()"></div>
+        <div><label>Codice fiscale coniuge *</label><input id="f-cong-cf" placeholder="16 caratteri (si calcola da solo)" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); this.dataset.auto=''; controllaCFConiuge()">
+          <div id="f-cong-cf-msg" style="font-size:12px; margin-top:4px; display:none"></div></div>
+        <div><label>Scadenza documento coniuge</label><div style="display:flex; gap:6px; align-items:stretch"><input id="f-cong-doc-scad" placeholder="GG/MM/AAAA" inputmode="numeric" autocomplete="off" style="flex:0 1 170px; min-width:0; font-weight:700" oninput="autoSlashData(this); coloraScadenzaConiuge()">
+          <button type="button" id="f-cong-doc-scad-leggi" class="btn-scan-cf" style="display:none; background:#c0392b; color:#fff" onclick="apriLetturaDocumentoPer('coniuge')" title="Il coniuge ha portato il documento nuovo: leggilo subito">📷 Leggi il nuovo</button></div>
+          <div id="f-cong-doc-scad-msg" style="font-size:12px; font-weight:700; margin-top:4px"></div></div>
+        <div><label>N. documento coniuge</label><input id="f-cong-doc-num" placeholder="Es. CA12345AB" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,'')"></div>
         <div><label>Cellulare coniuge</label><input id="f-cong-tel" type="tel" inputmode="tel" placeholder="Facoltativo"></div>
         <div style="display:flex; align-items:flex-end"><button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('coniuge')" title="Leggi i dati del coniuge da carta d'identita', tessera sanitaria o patente">📄 Leggi documento coniuge</button></div>
       </div>
@@ -910,8 +916,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
 <script src="js/comuni.js?v=2"></script>
-<script src="js/cf-auto.js?v=1"></script>
-<script src="js/ocr-documento.js?v=26"></script>
+<script src="js/cf-auto.js?v=2"></script>
+<script src="js/ocr-documento.js?v=27"></script>
 <script src="js/grafici.js?v=24"></script>
 <script src="js/stampe.js?v=29"></script>
 <script src="js/extra.js?v=45"></script>
@@ -919,16 +925,16 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=17"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=161"></script>
+<script src="js/guida.js?v=162"></script>
 <script src="js/scadenze.js?v=202610089"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610145"></script>
+<script src="js/data.js?v=202610146"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610302"></script>
+<script src="js/app.js?v=202610303"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=5"></script>

@@ -1336,8 +1336,13 @@ function usaDatiDocumento() {
     document.getElementById('f-cong-cognome').value = v('doc-cognome').toUpperCase();
     document.getElementById('f-cong-nome').value = v('doc-nome').toUpperCase();
     document.getElementById('f-cong-data').value = v('doc-nascita');
-    if (cf) document.getElementById('f-cong-cf').value = cf;
+    if (cf) { document.getElementById('f-cong-cf').value = cf; document.getElementById('f-cong-cf').dataset.auto = ''; }
     if (typeof comuneNelCampo === 'function') comuneNelCampo('f-cong-cf', 'f-cong-comune');
+    if (v('doc-scad') && document.getElementById('f-cong-doc-scad')) document.getElementById('f-cong-doc-scad').value = v('doc-scad');
+    if (v('doc-numero') && document.getElementById('f-cong-doc-num')) document.getElementById('f-cong-doc-num').value = v('doc-numero').toUpperCase();
+    if (v('doc-sesso') && document.getElementById('f-cong-sesso')) { document.getElementById('f-cong-sesso').value = v('doc-sesso'); document.getElementById('f-cong-sesso').dataset.manuale = '1'; }
+    if (typeof controllaCFConiuge === 'function') controllaCFConiuge();
+    if (typeof coloraScadenzaConiuge === 'function') coloraScadenzaConiuge();
     const ccom = document.getElementById('f-cong-comune'); if (ccom && !ccom.value.trim() && v('doc-luogo')) ccom.value = v('doc-luogo').toUpperCase();
     document.getElementById('cli-cerca-cong').value = (v('doc-cognome') + ' ' + v('doc-nome')).trim().toUpperCase();
     chiudiLetturaDocumento();
@@ -1350,6 +1355,7 @@ function usaDatiDocumento() {
   document.getElementById('f-codfisc').value = cf;
   if (v('doc-scad')) { document.getElementById('f-doc-scad').value = v('doc-scad'); coloraScadenzaDocumento(); }
   if (v('doc-numero') && document.getElementById('f-doc-num')) document.getElementById('f-doc-num').value = v('doc-numero').toUpperCase();
+  if (v('doc-sesso') && document.getElementById('f-sesso')) { document.getElementById('f-sesso').value = v('doc-sesso'); document.getElementById('f-sesso').dataset.manuale = '1'; }
   document.getElementById('f-codfisc').dataset.auto = '';
   document.getElementById('cli-cerca').value = (v('doc-cognome') + ' ' + v('doc-nome')).trim().toUpperCase();
   chiudiLetturaDocumento();
@@ -1390,6 +1396,10 @@ function compilaModuloDaDocumento(d) {
     metti('f-cong-cognome', d.cognome); metti('f-cong-nome', d.nome); metti('f-cong-data', d.dataNascita);
     if (cf) metti('f-cong-cf', cf);
     if (typeof comuneNelCampo === 'function') comuneNelCampo('f-cong-cf', 'f-cong-comune');
+    if (d.scadenza) metti('f-cong-doc-scad', d.scadenza);
+    if (d.numero) metti('f-cong-doc-num', d.numero);
+    if (typeof controllaCFConiuge === 'function') controllaCFConiuge();
+    if (typeof coloraScadenzaConiuge === 'function') coloraScadenzaConiuge();
     metti('cli-cerca-cong', ((d.cognome || '') + ' ' + (d.nome || '')).trim());
     avviso('✓ Dati del coniuge inseriti nel modulo');
     return;
