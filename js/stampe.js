@@ -15,6 +15,8 @@ function apriStampa(origine, opz) {
     operatore: '', cliente: '', pagamento: '',
     consegna: (opz && opz.consegna) || '',
     cisl: (opz && opz.cisl) || '',
+    fattDa: opz && opz.fattDa !== undefined ? opz.fattDa : NaN,
+    fattA: opz && opz.fattA !== undefined ? opz.fattA : NaN,
   };
   tipiPerStampa(anno).forEach(function (t) { STAMPA.tipi[t] = !(opz && opz.tipo) || t === opz.tipo; });
   if (opz && opz.tipo && !(opz.tipo in STAMPA.tipi)) STAMPA.tipi[opz.tipo] = true;
@@ -64,6 +66,7 @@ function praticheFiltrate() {
     if (!s.tipi[p.tipo || 'SENZA TIPO']) return false;
     if (!s.stati[p.stato]) return false;
     if (s.cisl && typeof passaFiltroCisl === 'function') { const prima = FILTRO_CISL; FILTRO_CISL = s.cisl; const ok = passaFiltroCisl(p); FILTRO_CISL = prima; if (!ok) return false; }
+    if ((!isNaN(s.fattDa) || !isNaN(s.fattA)) && typeof passaFiltroFattura === 'function' && !passaFiltroFattura(p, s.fattDa, s.fattA)) return false;
     if (s.consegna === 'solo' && !p.consegnataIl) return false;
     if (s.consegna === 'escludi' && p.consegnataIl) return false;
     if (s.operatore && String(p.inseritoDa || '').toUpperCase() !== s.operatore) return false;
@@ -80,7 +83,7 @@ function praticheFiltrate() {
 }
 
 // Versamenti CAF e netto hanno senso solo sul totale (nessun filtro su tipo, stato, operatore, cliente)
-function stampaSuTotale() { return !STAMPA.cisl && tuttiTipi() && tuttiStati() && !STAMPA.operatore && !STAMPA.cliente.trim() && !STAMPA.pagamento && !STAMPA.consegna; }
+function stampaSuTotale() { return !STAMPA.cisl && isNaN(STAMPA.fattDa) && isNaN(STAMPA.fattA) && tuttiTipi() && tuttiStati() && !STAMPA.operatore && !STAMPA.cliente.trim() && !STAMPA.pagamento && !STAMPA.consegna; }
 function versamentiFiltrati() {
   const da = isoNum(STAMPA.da), a = isoNum(STAMPA.a);
   return (state.versamenti || []).filter(function (v) {
@@ -103,6 +106,7 @@ function descrizioneFiltri() {
   righe.push('Stato: ' + (tuttiStati() ? 'tutti' : statiSi.map(statoLabel).join(', ')));
   if (s.cisl) righe.push('CISL: ' + ({ iscritti: 'solo iscritti (senza FPS e FILCA)', fps: 'solo 730 CISL FPS', filca: 'solo 730 CISL FILCA', tutti: 'iscritti + 730 FPS + 730 FILCA' }[s.cisl] || s.cisl));
   righe.push('Operatore: ' + (s.operatore || 'tutti'));
+  if (!isNaN(s.fattDa) || !isNaN(s.fattA)) righe.push('Importo fattura: ' + (!isNaN(s.fattDa) && s.fattDa === s.fattA ? fmtEuro(s.fattDa) : (!isNaN(s.fattDa) ? 'da ' + fmtEuro(s.fattDa) + ' ' : '') + (!isNaN(s.fattA) ? 'fino a ' + fmtEuro(s.fattA) : 'in su')));
   if (s.pagamento) righe.push('Pagamento: ' + (s.pagamento === 'NESSUNO' ? 'non indicato' : s.pagamento));
   if (s.cliente.trim()) righe.push('Cliente: ' + s.cliente.trim());
   return righe;
@@ -200,6 +204,7 @@ function disegnaStampa() {
     + '<div><label>Tipo di pagamento</label><select id="st-pag" onchange="STAMPA.pagamento=this.value; disegnaStampa()"><option value="">Tutti</option>'
     + METODI_PAGAMENTO.concat(['NESSUNO']).map(function (m) { return '<option value="' + m + '"' + (m === s.pagamento ? ' selected' : '') + '>' + (m === 'NESSUNO' ? 'Non indicato' : m) + '</option>'; }).join('') + '</select></div>'
     + '<div><label>Consegnate / definite</label><select onchange="STAMPA.consegna=this.value; disegnaStampa()"><option value=""' + (!s.consegna ? ' selected' : '') + '>Tutte</option><option value="escludi"' + (s.consegna === 'escludi' ? ' selected' : '') + '>Solo da consegnare / definire</option><option value="solo"' + (s.consegna === 'solo' ? ' selected' : '') + '>Solo consegnate / definite</option></select></div>'
+    + '<div><label>Importo fattura (€)</label><div style="display:flex; gap:6px; align-items:center">da <input type="text" inputmode="decimal" placeholder="min" value="' + (isNaN(s.fattDa) ? '' : importoInCampo(s.fattDa)) + '" oninput="filtraImporto(this)" onchange="STAMPA.fattDa=parseImporto(this.value); disegnaStampa()" style="width:80px"> a <input type="text" inputmode="decimal" placeholder="max" value="' + (isNaN(s.fattA) ? '' : importoInCampo(s.fattA)) + '" oninput="filtraImporto(this)" onchange="STAMPA.fattA=parseImporto(this.value); disegnaStampa()" style="width:80px"></div></div>'
     + '<div><label>Cliente (cognome e nome)</label><input id="st-cliente" type="text" placeholder="Tutti i clienti" value="' + esc(s.cliente) + '" oninput="STAMPA.cliente=this.value; aggiornaContoStampa()"></div>'
     + '</div>'
 

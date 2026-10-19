@@ -1701,6 +1701,24 @@ async function ripristinaPratica(id){
 //  3) CISL (iscritti, FPS, FILCA, tutti insieme) e pervenute via e-mail
 // Ogni numero sui tasti conta le pratiche che si vedrebbero toccandolo, con gli altri filtri già scelti.
 let SOLO_VIA_EMAIL = false, VEDI_TUTTE = false, FILTRO_CISL = '';
+// 4) importo della fattura: da € … a € … (vuoto = nessun limite; da 10 a 10 = solo le fatture da 10 €)
+let FATT_DA = NaN, FATT_A = NaN;
+function filtroFatturaAttivo(){ return !isNaN(FATT_DA) || !isNaN(FATT_A); }
+function passaFiltroFattura(p, da, a){
+  da = da === undefined ? FATT_DA : da; a = a === undefined ? FATT_A : a;
+  const v = Math.round(Number(p.compenso || 0) * 100);
+  if(!isNaN(da) && v < Math.round(da * 100)) return false;
+  if(!isNaN(a) && v > Math.round(a * 100)) return false;
+  return true;
+}
+function impostaFiltroFattura(){
+  const n = function(id){ const el = document.getElementById(id); return el ? parseImporto(el.value) : NaN; };
+  FATT_DA = n('reg-fatt-da'); FATT_A = n('reg-fatt-a');
+  if(!isNaN(FATT_DA) && !isNaN(FATT_A) && FATT_DA > FATT_A){ const t = FATT_DA; FATT_DA = FATT_A; FATT_A = t; }
+  if(filtroFatturaAttivo()) allargaArchivio();
+  render();
+}
+function scegliImportoFattura(v){ if(FATT_DA === v && FATT_A === v){ FATT_DA = NaN; FATT_A = NaN; } else { FATT_DA = v; FATT_A = v; allargaArchivio(); } render(); }
 function eConvenzioneCisl(p){ return typeof convenzioneDi === 'function' && !!convenzioneDi(p.tipo); }
 // 'iscritti' = iscritti CISL senza FPS e FILCA · 'fps' = 730 CISL FPS · 'filca' = 730 CISL FILCA · 'tutti' = iscritti + FPS + FILCA
 function passaFiltroCisl(p, f){
@@ -1722,7 +1740,7 @@ function allargaArchivio(){ if(!MOSTRA_CONSEGNATE) VEDI_TUTTE = true; }
 function scegliStatoRegistro(k){ const sel = document.getElementById('filtro-stato'); if(sel) sel.value = k; if(k) allargaArchivio(); render(); }
 function scegliFiltroCisl(k){ FILTRO_CISL = FILTRO_CISL === k ? '' : k; if(FILTRO_CISL) allargaArchivio(); render(); }
 function scegliViaEmail(){ SOLO_VIA_EMAIL = !SOLO_VIA_EMAIL; if(SOLO_VIA_EMAIL) allargaArchivio(); render(); }
-function azzeraFiltriRegistro(){ const sel = document.getElementById('filtro-stato'); if(sel) sel.value = ''; FILTRO_CISL = ''; SOLO_VIA_EMAIL = false; VEDI_TUTTE = false; MOSTRA_CONSEGNATE = false;
+function azzeraFiltriRegistro(){ const sel = document.getElementById('filtro-stato'); if(sel) sel.value = ''; FILTRO_CISL = ''; SOLO_VIA_EMAIL = false; VEDI_TUTTE = false; MOSTRA_CONSEGNATE = false; FATT_DA = NaN; FATT_A = NaN;
   ['cerca','filtro-contribuente'].forEach(function(id){ const el = document.getElementById(id); if(el) el.value = ''; }); render(); }
 function disegnaChipStati(pratiche){
   const box = document.getElementById('chip-stati');
@@ -1756,7 +1774,17 @@ function disegnaChipStati(pratiche){
     + tasto(FILTRO_CISL === 'filca', '#b35f0c', "scegliFiltroCisl('filca')", '🏗️ CISL FILCA', nC('filca'), 'Solo le pratiche 730 CISL FILCA', true)
     + tasto(FILTRO_CISL === 'tutti', '#c0392b', "scegliFiltroCisl('tutti')", '👤 Iscritti + FPS + FILCA', nC('tutti'), 'Iscritti CISL insieme alle pratiche 730 FPS e 730 FILCA', true)
     + ((nEmail || SOLO_VIA_EMAIL) ? tasto(SOLO_VIA_EMAIL, '#1d4f91', 'scegliViaEmail()', '📧 Via e-mail', nEmail, 'Solo le pratiche pervenute via e-mail', true) : ''));
-  const filtriAttivi = sel || FILTRO_CISL || SOLO_VIA_EMAIL || modo !== 'aperte' || ricercaAttiva();
+  // 4) importo della fattura
+  const perFatt = filtra(pratiche, { fattura: true }).filter(function(p){ return passaArchivio(p); });
+  const trovate = perFatt.filter(function(p){ return passaFiltroFattura(p); });
+  const importi = {};
+  perFatt.forEach(function(p){ const v = Math.round(Number(p.compenso || 0) * 100) / 100; importi[v] = (importi[v] || 0) + 1; });
+  const campo = function(id, v, ph){ return '<input id="' + id + '" type="text" inputmode="decimal" placeholder="' + ph + '" value="' + (isNaN(v) ? '' : importoInCampo(v)) + '" oninput="filtraImporto(this)" onkeydown="if(event.key===\'Enter\'){event.preventDefault(); impostaFiltroFattura();}" style="width:78px; padding:4px 8px; border-radius:8px; font-size:13px">'; };
+  html += riga('💶 Fattura', '<span style="font-size:12.5px; font-weight:700">da €</span>' + campo('reg-fatt-da', FATT_DA, 'min') + '<span style="font-size:12.5px; font-weight:700">a €</span>' + campo('reg-fatt-a', FATT_A, 'max')
+    + '<button type="button" onclick="impostaFiltroFattura()" style="padding:5px 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:700; border:2px solid #1d4f91; background:#1d4f91; color:#fff">🔎 Cerca</button>'
+    + (filtroFatturaAttivo() ? '<span style="font-size:12.5px; font-weight:800; color:#1d4f91">' + trovate.length + ' pratiche · totale fatture ' + fmtEuro(trovate.reduce(function(t, p){ return t + Number(p.compenso || 0); }, 0)) + '</span>' : '')
+    + Object.keys(importi).map(Number).sort(function(a, b){ return a - b; }).slice(0, 15).map(function(v){ return tasto(FATT_DA === v && FATT_A === v, '#0f766e', 'scegliImportoFattura(' + v + ')', v ? fmtEuro(v) : 'Senza fattura', importi[v], v ? 'Solo le fatture da ' + fmtEuro(v) : 'Solo le pratiche senza importo di fattura', true); }).join(''));
+  const filtriAttivi = sel || FILTRO_CISL || SOLO_VIA_EMAIL || filtroFatturaAttivo() || modo !== 'aperte' || ricercaAttiva();
   if(filtriAttivi) html += '<div style="width:100%"><button type="button" onclick="azzeraFiltriRegistro()" style="padding:4px 12px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:700; border:1px solid var(--sub); background:none; color:var(--sub)">✕ Togli tutti i filtri</button></div>';
   box.innerHTML = html;
 }
@@ -1783,7 +1811,7 @@ function stampaReportStato(){
   const cli = filtroContribuente();
   // la stampa segue la lista che stai guardando (archivio, stato, CISL, contribuente)
   const modo = modoArchivio();
-  apriStampa('registro', { stato: sel, cliente: cli, cisl: FILTRO_CISL, consegna: modo === 'consegnate' ? 'solo' : (modo === 'tutte' || ricercaAttiva() ? '' : 'escludi') });
+  apriStampa('registro', { stato: sel, cliente: cli, cisl: FILTRO_CISL, fattDa: FATT_DA, fattA: FATT_A, consegna: modo === 'consegnate' ? 'solo' : (modo === 'tutte' || ricercaAttiva() ? '' : 'escludi') });
 }
 function filtroContribuente(){ return ((document.getElementById('filtro-contribuente')||{}).value||'').trim().toUpperCase(); }
 // escludi: { stato, cisl, email } per contare quante pratiche darebbe ogni tasto
@@ -1794,6 +1822,7 @@ function filtra(lista, escludi){
   if(statoSel && !escludi.stato){ lista = lista.filter(function(p){ return p.stato === statoSel; }); }
   if(SOLO_VIA_EMAIL && !escludi.email){ lista = lista.filter(function(p){ return !!p.viaEmail; }); }
   if(FILTRO_CISL && !escludi.cisl){ lista = lista.filter(function(p){ return passaFiltroCisl(p); }); }
+  if(filtroFatturaAttivo() && !escludi.fattura){ lista = lista.filter(function(p){ return passaFiltroFattura(p); }); }
   // contribuente: titolare o coniuge, per nome o codice fiscale (apostrofi, spazi e accenti non contano)
   const cli = filtroContribuente();
   if(cli){ const kc = chiaveRicerca(cli); lista = lista.filter(function(p){ const t = [p.nome, p.congiunta, ((p.congCognome||'') + ' ' + (p.congNome||'')), p.codiceFiscale, p.congCodiceFiscale].join(' ').toUpperCase(); return t.indexOf(cli) >= 0 || (!!kc && chiaveRicerca(t).indexOf(kc) >= 0); }); }
@@ -1922,7 +1951,7 @@ function render(){
   // le annullate compaiono nel registro (barrate) solo senza filtro per stato
   const statoFiltro = (document.getElementById('filtro-stato')||{}).value || '';
   // (e senza filtri CISL / e-mail, né guardando solo le consegnate)
-  if(!statoFiltro && !FILTRO_CISL && !SOLO_VIA_EMAIL && modoArchivio() !== 'consegnate'){
+  if(!statoFiltro && !FILTRO_CISL && !SOLO_VIA_EMAIL && !filtroFatturaAttivo() && modoArchivio() !== 'consegnate'){
     const cliA = filtroContribuente(), kA = chiaveRicerca(cliA);
     filtraTesto(annAnno).filter(function(p){ return !cliA || chiaveRicerca([p.nome, p.congiunta, p.codiceFiscale].join(' ')).indexOf(kA) >= 0; }).forEach(function(p){ ordinate.push(p); });
     ordinate.sort((a,b)=> a.numero - b.numero);
@@ -1945,7 +1974,7 @@ function render(){
     const tasto = function(onclick, testo){ return ' <button type="button" onclick="' + onclick + '" style="margin-left:6px; padding:5px 12px; border:none; border-radius:999px; background:#1d4f91; color:#fff; font-weight:800; cursor:pointer">' + testo + '</button>'; };
     if(ciSono){
       const nCons = pratAnno.filter(function(p){ return diSerie(p) && eConsegnata(p); }).length;
-      return (modoArchivio() === 'aperte' && nCons && !ricercaAttiva() && !((document.getElementById('filtro-stato')||{}).value) && !FILTRO_CISL && !SOLO_VIA_EMAIL)
+      return (modoArchivio() === 'aperte' && nCons && !ricercaAttiva() && !((document.getElementById('filtro-stato')||{}).value) && !FILTRO_CISL && !SOLO_VIA_EMAIL && !filtroFatturaAttivo())
         ? '<div style="margin-top:6px">Ci sono <b>' + nCons + '</b> pratiche già consegnate / definite.' + tasto("impostaArchivio('consegnate')", '📦 Vedi le consegnate') + '</div>' : '';
     }
     const altri = {};
