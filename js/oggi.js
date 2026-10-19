@@ -27,9 +27,10 @@ function renderOggi() {
 
   // attività di oggi
   const oggiIT = todayIT();
-  const aperteOggi = pratAnno.filter(function (p) { return p.data === oggiIT; }).length;
+  // le congiunte contano 2, come nei contatori del registro e in contabilità
+  const aperteOggi = sommaPeso(pratAnno.filter(function (p) { return p.data === oggiIT; }));
   const consegnateOggi = (state.pratiche || []).filter(function (p) { return !p.annullata && p.consegnataIl === oggiIT; });
-  const consegnateAnno = pratAnno.filter(eConsegnata).length;
+  const consegnateAnno = sommaPeso(pratAnno.filter(eConsegnata));
   const admin = auth.profilo && auth.profilo.ruolo === 'admin';
   // incassato oggi: pagamenti alla consegna di oggi (senza gli arretrati) + arretrati incassati oggi
   let incassoOggi = 0;
@@ -69,15 +70,15 @@ function renderOggi() {
     + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">✅ OGGI IN SEDE</div>'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px">'
     + tile('🆕', aperteOggi, 'Pratiche aperte oggi', '#1d4f91', "oggiVaiRegistroCerca('tutte', todayIT())", '')
-    + tile('✅', consegnateOggi.length, 'Consegnate oggi', '#1a7f37', "oggiVaiRegistroCerca('consegnate', todayIT())", 'nell\'anno: ' + consegnateAnno + ' consegnate / definite')
+    + tile('✅', sommaPeso(consegnateOggi), 'Consegnate oggi', '#1a7f37', "oggiVaiRegistroCerca('consegnate', todayIT())", 'nell\'anno: ' + consegnateAnno + ' consegnate / definite (congiunte = 2)')
     + (admin ? tile('💶', incassoOggi > 0 ? fmtEuro(incassoOggi) : 0, 'Incassato oggi', '#2f9e5f', 'apriChiusuraGiorno()', 'tocca per la chiusura di cassa') : '')
     + (admin ? tile('📈', Math.abs(guadagnoNetto) > 0.004 ? fmtEuro(guadagnoNetto) : 0, 'Guadagno netto ' + anno, guadagnoNetto < -0.004 ? '#c0392b' : '#c2185b', "oggiTab('contabilita')", 'incasso ' + fmtEuro(incassoAnno) + ' − fatture ' + fmtEuro(fattAnno) + ' − spese sede ' + fmtEuro(speseAnno)) : '')
     + (admin ? tile('🏦', Math.abs(daVersare) > 0.004 ? fmtEuro(daVersare) : 0, 'Fatture da versare al CAF', daVersare > 0.004 ? '#c0392b' : '#1a7f37', "oggiTab('caf')", 'fatture ' + fmtEuro(fattAnno) + ' − già dato ' + fmtEuro(versAnno) + ' (con le spese detratte)') : '')
     + '</div>'
     + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">📋 DA FARE</div>'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px">'
-    + tile('📥', daLavorare.length, 'Da lavorare', '#c0392b', "oggiVaiRegistro('aperte')", 'in arrivo, scansionate, in lavorazione')
-    + tile('📦', daConsegnare.length, 'Pronte da consegnare', '#8d5a3b', "oggiVaiRegistro('aperte')", 'lavorate, non ancora consegnate')
+    + tile('📥', sommaPeso(daLavorare), 'Da lavorare', '#c0392b', "oggiVaiRegistro('aperte')", 'in arrivo, scansionate, in lavorazione')
+    + tile('📦', sommaPeso(daConsegnare), 'Pronte da consegnare', '#8d5a3b', "oggiVaiRegistro('aperte')", 'lavorate, non ancora consegnate')
     + tile('📎', docMancanti, 'Documenti mancanti', '#b35f0c', "oggiVaiStato('arrivo')", 'pratiche che aspettano documenti')
     + tile('💬', daAvvisare.length, 'Da avvisare su WhatsApp', '#25a35a', 'apriInvioMultiplo()', 'lavorate da più di ' + (typeof GIORNI_AVVISO_RITIRO !== 'undefined' ? GIORNI_AVVISO_RITIRO : 7) + ' giorni')
     + tile('💸', nonPagate, 'Non pagate', '#e67e22', 'oggiVaiMorosi()', 'quest\'anno e anni precedenti')
