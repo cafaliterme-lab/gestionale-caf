@@ -1446,6 +1446,8 @@ function showTab(btn){
   const sec = document.getElementById('tab-'+tab);
   if(sec) sec.classList.add('active');
   btn.classList.add('active');
+  // telefono: il menu scorre col dito, la scheda scelta resta al centro
+  const nav = btn.parentElement; if(nav && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = btn.offsetLeft - nav.offsetLeft - (nav.clientWidth - btn.offsetWidth) / 2;
   if(tab === 'collaboratori') renderCollaboratori();
   if(tab === 'scadenze') renderScadenze();
   if(tab === 'messaggi') mostraDatiCaf();
@@ -3247,6 +3249,8 @@ function apriPraticaDaTabella(id){
   const p = state.pratiche.find(function(x){ return x.id===id; });
   if(!p) return;
   const k = p.tipo || 'SENZA TIPO';
+  // la scheda della pratica è dentro «Riquadri per tipo di pratica»: la sezione si apre da sola
+  const sezTipi = document.getElementById('sez-tipi'); if(sezTipi) sezTipi.open = true;
   aperti[k] = true;
   aperti[k + '|schede'] = true;
   SCHEDA_SOLA[k] = id;

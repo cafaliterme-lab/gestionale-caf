@@ -363,6 +363,70 @@ body.sola-lettura .btn-add:not(.btn-salva-pratica),
 body.sola-lettura button[onclick*="rimuovi"],
 body.sola-lettura button[onclick*="modifica" i],
 body.sola-lettura button[onclick*="Fattura"]{display:none !important}
+
+/* ===== Grafica più immediata (ottobre 2026): intestazione compatta, menu con icone fisso in alto ===== */
+body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la prima schermata */
+.hero{padding:calc(10px + env(safe-area-inset-top,0px)) 18px 12px; margin-bottom:10px; border-bottom-width:4px; border-radius:0 0 16px 16px; gap:12px !important}
+.hero-logo{width:46px !important; height:46px !important}
+.hero-kicker{display:none}
+.hero h1{font-size:14px; margin:0}
+.hero h1 .hero-sede{display:inline; font-size:16px; margin:0 0 0 6px}
+.hero-caf{margin-top:4px}
+.hero-caf span{font-size:11px; padding:2px 8px}
+.hero-orologio{padding:4px 12px; border-bottom-width:3px; border-radius:10px}
+.hero-orologio .ora{font-size:20px}
+.hero-orologio .giorno{font-size:11px; margin-top:1px}
+.hero-orologio + .qr-app, .qr-app{width:56px; height:56px; margin-top:0; padding:3px; align-self:center}
+.userbar{flex-wrap:wrap; row-gap:6px; margin-bottom:6px}
+.userbar button{white-space:nowrap; padding:4px 10px}
+.barra-anno{display:flex !important; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px !important}
+.barra-anno > div:first-child{display:flex; align-items:center; gap:8px}
+.barra-anno label{margin:0; white-space:nowrap}
+.barra-anno #anno-attivo{width:auto; min-width:110px; padding:5px 10px}
+/* menu: in evidenza le schede di tutti i giorni, le altre più piccole; resta fisso in alto scorrendo */
+.navmenu{display:flex !important; flex-wrap:wrap; gap:6px; position:sticky; top:0; z-index:45; background:var(--bg); padding:6px 0 8px; margin-bottom:10px}
+.navmenu button{flex:0 1 auto; padding:6px 12px; font-size:11.5px; white-space:nowrap}
+.navmenu .nav-a-capo{flex-basis:100%; height:0}
+.navmenu button:is([data-tab="oggi"],[data-tab="anagrafica"],[data-tab="registro"],[data-tab="storico"],[data-tab="contabilita"]){flex:1 1 150px; padding:9px 10px; font-size:13.5px; font-weight:800; white-space:normal}
+.navmenu button[data-tab="anagrafica"]::before{content:"✍️ "}
+.navmenu button[data-tab="registro"]::before{content:"📋 "}
+.navmenu button[data-tab="storico"]::before{content:"🔎 "}
+.navmenu button[data-tab="contabilita"]::before{content:"💶 "}
+.navmenu button[data-tab="grafici"]::before{content:"📊 "}
+.navmenu button[data-tab="caf"]::before{content:"🏦 "}
+.navmenu button[data-tab="spese"]::before{content:"🧾 "}
+.navmenu button[data-tab="collaboratori"]::before{content:"🤝 "}
+.navmenu button[data-tab="scadenze"]::before{content:"⏰ "}
+.navmenu button[data-tab="messaggi"]::before{content:"💬 "}
+.navmenu button[data-tab="modulistica"]::before{content:"📄 "}
+.navmenu button[data-tab="permessi"]::before{content:"👥 "}
+.navmenu button.nav-separatore{display:none}
+/* Registro: i riquadri dei tipi di pratica in una sezione che si apre e si chiude */
+.sez-tipi{margin:4px 0 14px}
+.sez-tipi > summary{cursor:pointer; list-style:none; padding:10px 14px; border-radius:12px; background:var(--card); border:2px solid var(--line); font-weight:800; color:var(--ink)}
+.sez-tipi > summary::-webkit-details-marker{display:none}
+.sez-tipi > summary::before{content:"▶ "; color:var(--sub)}
+.sez-tipi[open] > summary::before{content:"▼ "}
+.sez-tipi[open] > summary{margin-bottom:10px}
+@media (max-width:600px){
+  /* telefono: menu su una riga che scorre col dito */
+  .navmenu{flex-wrap:nowrap !important; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin-left:-16px; margin-right:-16px; padding:6px 16px 8px}
+  .navmenu::-webkit-scrollbar{display:none}
+  .navmenu .nav-a-capo{display:none}
+  .userbar{font-size:11px; gap:5px}
+  .userbar button{font-size:11px; padding:4px 8px}
+  .navmenu button, .navmenu button:is([data-tab="oggi"],[data-tab="anagrafica"],[data-tab="registro"],[data-tab="storico"],[data-tab="contabilita"]){flex:none; white-space:nowrap; padding:9px 13px; font-size:12.5px}
+  .hero{padding:calc(8px + env(safe-area-inset-top,0px)) 12px 10px; flex-wrap:nowrap !important}
+  .hero-logo{width:38px !important; height:38px !important}
+  .hero h1{font-size:12px}
+  .hero h1 .hero-sede{display:block; font-size:14px; margin:0}
+  .hero-caf, .qr-app{display:none !important}
+  .hero-orologio{order:0; width:auto; margin-left:auto; display:block; padding:3px 8px}
+  .hero-orologio .ora{font-size:17px}
+  .hero-orologio .giorno{font-size:10px}
+  .userbar{justify-content:flex-start}
+  .userbar > span:first-child{flex-basis:100%}
+}
 </style>
 </head>
 <body>
@@ -447,13 +511,14 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 <div class="userbar" id="userbar"></div>
 <div id="avvisi-scadenze" class="avvisi-scadenze" style="display:none"></div>
 
-<div class="grid" style="margin-bottom:14px"><div><label>Anno di protocollo (bloccato al 31/12)</label><select id="anno-attivo" onchange="cambiaAnnoAttivo(this.value)"></select></div><div id="chat-slot" style="display:flex; align-items:flex-end"></div></div>
+<div class="grid barra-anno" style="margin-bottom:14px"><div><label>Anno di protocollo (bloccato al 31/12)</label><select id="anno-attivo" onchange="cambiaAnnoAttivo(this.value)"></select></div><div id="chat-slot" style="display:flex; align-items:flex-end"></div></div>
 <div class="navmenu" id="navmenu">
   <button type="button" data-tab="oggi" id="nav-oggi" onclick="showTab(this)" style="display:none">📅 OGGI</button>
   <button type="button" data-tab="anagrafica" onclick="showTab(this)">INSERIMENTO PRATICA</button>
   <button type="button" data-tab="registro" onclick="showTab(this)">REGISTRO DI PROTOCOLLO</button>
   <button type="button" data-tab="storico" id="nav-storico" onclick="showTab(this)" style="display:none">STORICO CONTRIBUENTE</button>
   <button type="button" data-tab="contabilita" onclick="showTab(this)">CONTABILITA'</button>
+  <span class="nav-a-capo" aria-hidden="true"></span>
   <button type="button" data-tab="grafici" onclick="showTab(this)">GRAFICI</button>
   <button type="button" data-tab="caf" onclick="showTab(this)">VERSAMENTI CAF</button>
   <button type="button" data-tab="spese" onclick="showTab(this)">SPESE SEDE</button>
@@ -465,9 +530,6 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 </div>
 
 <section class="tabsec" id="tab-registro">
-<div id="morosi-box" style="margin-bottom:12px"></div>
-<div id="morosi-corrente-box" style="margin-bottom:12px"></div>
-<div id="gruppi"></div>
 <div style="margin-bottom:14px">
   <button type="button" onclick="apriStampa('registro')" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border:none; border-radius:999px; background:var(--accent); color:var(--accent-ink); font-size:12.5px; font-weight:600; cursor:pointer">🖨️ Stampa registro (Excel / PDF)</button>
   <button type="button" onclick="apriInvioMultiplo()" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border:none; border-radius:999px; background:#25d366; color:#fff; font-size:12.5px; font-weight:600; cursor:pointer; margin-left:6px">💬 WhatsApp multiplo (pratiche lavorate)</button>
@@ -487,6 +549,13 @@ body.sola-lettura button[onclick*="Fattura"]{display:none !important}
 
 
 <div class="card" id="tabella"></div>
+
+<div id="morosi-box" style="margin-bottom:12px"></div>
+<div id="morosi-corrente-box" style="margin-bottom:12px"></div>
+<details class="sez-tipi" id="sez-tipi" ontoggle="try{localStorage.setItem('sez-tipi-aperta', this.open ? '1' : '0')}catch(e){}"><summary>🗂️ Riquadri per tipo di pratica <span style="font-weight:600; font-size:12.5px; color:var(--sub)">(730 SEDE, FPS, FILCA, colf, IMU… con contabilità e stato di ogni tipo)</span></summary>
+<div id="gruppi"></div>
+</details>
+<script>try{ if(localStorage.getItem('sez-tipi-aperta') === '1') document.getElementById('sez-tipi').open = true; }catch(e){}</script>
 
 </section>
 
@@ -932,7 +1001,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=17"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=173"></script>
+<script src="js/guida.js?v=174"></script>
 <script src="js/scadenze.js?v=202610090"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -941,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610147"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610311"></script>
+<script src="js/app.js?v=202610313"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=5"></script>
