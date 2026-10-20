@@ -52,7 +52,7 @@ function clientiDaRichiamare(anno) {
     };
     aggiungi(p.nome, p.cf, p.codiceFiscale, p.telefono, p.telefonoFisso, p.email, false);
     const coniuge = ((p.congCognome || '') + ' ' + (p.congNome || '')).trim() || p.congiunta;
-    if (coniuge) aggiungi(coniuge, p.congData, p.congCodiceFiscale, p.congTelefono, '', '', true);
+    if (coniuge) aggiungi(coniuge, p.congData, p.congCodiceFiscale, p.congTelefono, '', p.congEmail || '', true);
   });
   return Object.keys(persone).map(function (k) {
     const x = persone[k];

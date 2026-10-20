@@ -94,7 +94,7 @@ const GUIDA = [
 </ul>` },
 
   { id: 'congiunta', icona: '👫', titolo: 'Dichiarazione congiunta', parole: 'congiunta coniuge marito moglie codice fiscale coniuge vale 2 solo 730 spunta',
-    testo: `
+    testo: `<p>Del coniuge puoi scrivere anche <b>cellulare</b> ed <b>e-mail</b> (tutti e due facoltativi): finiscono anche nella sua scheda dell'archivio clienti e si correggono da ✏️ Modifica della pratica.</p>
 <ol>
 <li>Spunta <b>Congiunta</b>. La spunta compare <b>solo per i 730</b>: per contratti colf e badanti, affitti, IMU, successioni, ISEE, F24, canone RAI, rottamazione, altre pratiche ecc. non c'è, perché non esistono pratiche congiunte. Se cambi il tipo da un 730 a un altro tipo, la spunta si toglie da sola e i dati del coniuge si svuotano.</li>
 <li>Cerca il coniuge nell'archivio oppure scrivi cognome, nome, data di nascita, <b>codice fiscale del coniuge</b> (obbligatorio) e cellulare, o usa <b>📄 Leggi documento coniuge</b>.</li>

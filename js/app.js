@@ -100,7 +100,7 @@ function toggleCong(cbId, inId){
 function toggleCongBox(){
   const on = document.getElementById('f-congiunta-on').checked;
   document.getElementById('f-cong-box').style.display = on ? '' : 'none';
-  if(!on){ ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel','f-cong-comune','f-cong-sesso','f-cong-doc-scad','f-cong-doc-num','f-cong-doc-tipo'].forEach(function(id){ const el = document.getElementById(id); if(el){ el.value=''; el.dataset.auto=''; el.dataset.manuale=''; } }); document.getElementById('cli-cerca-cong').value='';
+  if(!on){ ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel','f-cong-email','f-cong-comune','f-cong-sesso','f-cong-doc-scad','f-cong-doc-num','f-cong-doc-tipo'].forEach(function(id){ const el = document.getElementById(id); if(el){ el.value=''; el.dataset.auto=''; el.dataset.manuale=''; } }); document.getElementById('cli-cerca-cong').value='';
     if(typeof controllaCFConiuge === 'function') controllaCFConiuge(); if(typeof coloraScadenzaConiuge === 'function') coloraScadenzaConiuge(); }
   // importo convenzione: singola e congiunta possono avere importi predefiniti diversi
   const tipo = document.getElementById('f-tipo').value;
@@ -206,6 +206,7 @@ function scegliCliente(i, ctx){
     if(c.comuneNascita){ document.getElementById('f-cong-comune').value = c.comuneNascita; document.getElementById('f-cong-comune').dataset.auto = ''; }
     comuneNelCampo('f-cong-cf', 'f-cong-comune');
     document.getElementById('f-cong-tel').value = c.telefono || '';
+    if(document.getElementById('f-cong-email')) document.getElementById('f-cong-email').value = c.email || '';
     if(document.getElementById('f-cong-doc-scad')) document.getElementById('f-cong-doc-scad').value = c.documentoScadenza || '';
     if(document.getElementById('f-cong-doc-num')) document.getElementById('f-cong-doc-num').value = c.documentoNumero || '';
     if(document.getElementById('f-cong-doc-tipo') && c.documentoTipo){ document.getElementById('f-cong-doc-tipo').innerHTML = opzioniTipoDoc(c.documentoTipo); }
@@ -2053,7 +2054,7 @@ function render(){
         <div>
           <div class="num">#${formattaProtocollo(p)} — ${(p.nome||'(senza nome)').toUpperCase()}${p.viaEmail ? ' <span style="display:inline-block; background:#1d4f91; color:#fff; border-radius:999px; padding:1px 8px; font-size:12px; font-weight:700; vertical-align:middle">📧 pervenuta via e-mail</span>' : ''}${p.iscrittoCisl ? ' <span style="display:inline-block; background:#c0392b; color:#fff; border-radius:999px; padding:1px 8px; font-size:12px; font-weight:700; vertical-align:middle">👤 Iscritto CISL</span>' : ''}</div>
           <div class="name">${esc(tipoConDescrizione(p))} ${p.cf ? '· nato il '+p.cf : ''}</div>
-          ${p.congiunta ? `<div class="name">Congiunta con <b>${esc(p.congiunta)}</b>${p.congData ? ' (nato il '+esc(p.congData)+')' : ''}${p.congCodiceFiscale ? ' · CF '+esc(p.congCodiceFiscale) : ''}${p.congTelefono ? ' · Cell. <a href="tel:'+esc(p.congTelefono)+'" style="color:inherit">'+esc(p.congTelefono)+'</a>' : ''}</div>` : ''}
+          ${p.congiunta ? `<div class="name">Congiunta con <b>${esc(p.congiunta)}</b>${p.congData ? ' (nato il '+esc(p.congData)+')' : ''}${p.congCodiceFiscale ? ' · CF '+esc(p.congCodiceFiscale) : ''}${p.congTelefono ? ' · Cell. <a href="tel:'+esc(p.congTelefono)+'" style="color:inherit">'+esc(p.congTelefono)+'</a>' : ''}${p.congEmail ? ' · ✉️ <a href="mailto:'+esc(p.congEmail)+'" style="color:inherit">'+esc(p.congEmail)+'</a>' : ''}</div>` : ''}
           ${p.telefono ? `<div class="name">Cell. <a href="tel:${esc(p.telefono)}" style="color:inherit">${esc(p.telefono)}</a></div>` : ''}
           ${p.email ? `<div class="name">📧 <a href="mailto:${esc(p.email)}" style="color:inherit">${esc(p.email)}</a></div>` : ''}
           ${p.telefonoFisso ? `<div class="name">Tel. fisso <a href="tel:${esc(p.telefonoFisso)}" style="color:inherit">${esc(p.telefonoFisso)}</a></div>` : ''}
@@ -2083,6 +2084,7 @@ function render(){
               <div><label>Data di nascita</label><input id="e-congdata-${p.id}" value="${esc(p.congData)}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
               <div><label>Codice fiscale coniuge</label><input id="e-congcf-${p.id}" value="${esc(p.congCodiceFiscale)}" maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"></div>
               <div><label>Cellulare coniuge</label><input id="e-congtel-${p.id}" type="tel" inputmode="tel" value="${esc(p.congTelefono)}"></div>
+              <div><label>E-mail coniuge</label><input id="e-congemail-${p.id}" type="email" inputmode="email" placeholder="Facoltativa" value="${esc(p.congEmail||'')}" style="text-transform:lowercase" oninput="this.value=this.value.toLowerCase()"></div>
               <div><label>Scadenza documento coniuge</label><input id="e-congdocscad-${p.id}" value="${esc(p.congDocumentoScadenza||'')}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
               <div><label>N. documento coniuge</label><input id="e-congdocnum-${p.id}" value="${esc(p.congDocumentoNumero||'')}" style="text-transform:uppercase; font-family:monospace"></div>
               <div><label>Tipo documento coniuge</label><select id="e-congdoctipo-${p.id}">${opzioniTipoDoc(p.congDocumentoTipo)}</select></div>
@@ -2226,6 +2228,7 @@ async function addPraticaInterna(){
   const congData = document.getElementById('f-cong-data').value.trim();
   const congCodiceFiscale = (congCognome || congNome) ? normalizzaCF(document.getElementById('f-cong-cf').value) : '';
   const congTelefono = (congCognome || congNome) ? document.getElementById('f-cong-tel').value.trim() : '';
+  const congEmail = (congCognome || congNome) ? ((document.getElementById('f-cong-email')||{}).value || '').trim().toLowerCase() : '';
   const congComuneNascita = (congCognome || congNome) ? (document.getElementById('f-cong-comune')||{value:''}).value.trim().toUpperCase() : '';
   const congDocumentoScadenza = (congCognome || congNome) ? ((document.getElementById('f-cong-doc-scad')||{}).value || '').trim() : '';
   const congDocumentoNumero = (congCognome || congNome) ? ((document.getElementById('f-cong-doc-num')||{}).value || '').trim().toUpperCase() : '';
@@ -2261,6 +2264,10 @@ async function addPraticaInterna(){
   }
   if(email && !emailValida(email)){
     popupErroreCampo('E-mail non valida', 'L\'indirizzo <b>' + esc(email) + '</b> non è corretto: controllalo (es. nome@esempio.it).', 'f-email');
+    return;
+  }
+  if(congEmail && !emailValida(congEmail)){
+    popupErroreCampo('E-mail del coniuge non valida', 'L\'indirizzo <b>' + esc(congEmail) + '</b> non è corretto: controllalo (es. nome@esempio.it) o lascia vuoto il campo, è facoltativo.', 'f-cong-email');
     return;
   }
   const scadAss = document.getElementById('f-data-fine').value.trim();
@@ -2324,7 +2331,7 @@ async function addPraticaInterna(){
   // prima si salva il cliente in archivio (cognome e nome separati bene), poi la pratica
   try{ await registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso, documentoScadenza, email); }catch(e){ console.error('archivio clienti', e); }
   if(documentoNumero || comuneNascita || documentoTipo){ try{ await data.clienti.salvaDocumento({ codiceFiscale: codiceFiscale, nomeCompleto: (cognome + ' ' + nomeProprio).trim(), dataNascita: cf, documentoNumero: documentoNumero, comuneNascita: comuneNascita, documentoTipo: documentoTipo }); }catch(e){ console.error('numero documento', e); } }
-  if(congCognome || congNome){ try{ await registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono, '', congDocumentoScadenza); }catch(e){ console.error('archivio clienti coniuge', e); }
+  if(congCognome || congNome){ try{ await registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono, '', congDocumentoScadenza, congEmail); }catch(e){ console.error('archivio clienti coniuge', e); }
     if(congDocumentoNumero || congComuneNascita || congDocumentoTipo){ try{ await data.clienti.salvaDocumento({ codiceFiscale: congCodiceFiscale, nomeCompleto: (congCognome + ' ' + congNome).trim(), dataNascita: congData, documentoNumero: congDocumentoNumero, comuneNascita: congComuneNascita, documentoTipo: congDocumentoTipo }); }catch(e){ console.error('numero documento coniuge', e); } } }
 
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
@@ -2333,7 +2340,7 @@ async function addPraticaInterna(){
   else if(!documenti.mancanti.length && documenti.presentati.length && statoNuovo === 'arrivo' && !eColf(tipo) && statoVisibile('da_lavorare_scansionata', tipo) && confirm('Ci sono tutti i documenti.\n\nSalvo la pratica come "' + statoLabel('da_lavorare_scansionata') + '" invece di "In arrivo"?')) statoNuovo = 'da_lavorare_scansionata';
   const nuovaPratica = {
     anno: annoPr,
-    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, comuneNascita, congComuneNascita, congDocumentoScadenza, congDocumentoNumero, congDocumentoTipo, documentoTipo, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documentoNumero, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note, viaEmail, iscrittoCisl,
+    nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, congEmail, comuneNascita, congComuneNascita, congDocumentoScadenza, congDocumentoNumero, congDocumentoTipo, documentoTipo, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documentoNumero, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note, viaEmail, iscrittoCisl,
     stato: statoNuovo,
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
     scadenzaAssistenza: eColf(tipo) ? document.getElementById('f-data-fine').value.trim() : '',
@@ -3318,6 +3325,7 @@ async function salvaModifica(id){
     congData: g('e-congdata').trim(),
     congCodiceFiscale: (cc || cn) ? normalizzaCF(g('e-congcf')) : '',
     congTelefono: (cc || cn) ? g('e-congtel').trim() : '',
+    congEmail: (cc || cn) ? g('e-congemail').trim().toLowerCase() : '',
     congDocumentoScadenza: (cc || cn) ? g('e-congdocscad').trim() : '',
     congDocumentoNumero: (cc || cn) ? g('e-congdocnum').trim().toUpperCase().replace(/\s+/g, '') : '',
     congDocumentoTipo: (cc || cn) ? g('e-congdoctipo') : '',
@@ -3344,6 +3352,7 @@ async function salvaModifica(id){
     fatt: (numFattura || dataFattura) ? 'fatturata' : 'dafatturare'
   };
   if(campi.email && !emailValida(campi.email)){ popupErroreCampo('E-mail non valida', 'L\'indirizzo <b>' + esc(campi.email) + '</b> non è corretto.', 'e-email-' + id); return; }
+  if(campi.congEmail && !emailValida(campi.congEmail)){ popupErroreCampo('E-mail del coniuge non valida', 'L\'indirizzo <b>' + esc(campi.congEmail) + '</b> non è corretto.', 'e-congemail-' + id); return; }
   if(!campi.telefono && !campi.telefonoFisso){
     avviso('❌ Inserisci almeno un numero di telefono: cellulare o telefono fisso.', true);
     return;
@@ -3387,7 +3396,7 @@ async function salvaModifica(id){
   if((campi.documentoNumero || campi.documentoTipo) && data.clienti.salvaDocumento) data.clienti.salvaDocumento({ codiceFiscale: p.codiceFiscale || '', nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), dataNascita: campi.cf || '', documentoNumero: campi.documentoNumero, documentoTipo: campi.documentoTipo });
   if(campi.telefono || campi.telefonoFisso || campi.documentoScadenza || campi.email) data.clienti.salvaTelefono({ nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf || '', codiceFiscale: p.codiceFiscale || '', telefono: campi.telefono, telefonoFisso: campi.telefonoFisso, documentoScadenza: campi.documentoScadenza, email: campi.email });
   if(cc || cn) await aggiornaArchivioCliente(vecchiCong, { cognome: cc, nome: cn, dataNascita: campi.congData });
-  if((cc || cn) && (campi.congCodiceFiscale || campi.congTelefono)) registraClienteSeNuovo(cc, cn, campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', campi.congTelefono);
+  if((cc || cn) && (campi.congCodiceFiscale || campi.congTelefono || campi.congEmail)) registraClienteSeNuovo(cc, cn, campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', campi.congTelefono, '', '', campi.congEmail);
   // pagato tutto ma lo stato e' ancora "lavorata", "da pagare"...: si propone di passare a "Pagato"
   if(propostaStatoPagato(campi.tipo, p.stato, campi.compenso, campi.pagato) && confirm('Il cliente ha pagato tutto (' + fmtEuro(campi.pagato) + ').\n\nPasso lo stato della pratica da "' + statoLabel(p.stato) + '" a "Pagato"?')){
     const r2 = await data.pratiche.aggiorna(id, { stato: 'pagato' });
@@ -3633,7 +3642,7 @@ function aggiornaCongiuntaEdit(id, tipo){
   if(!ok && chk && chk.checked){
     chk.checked = false;
     document.getElementById('e-congbox-' + id).style.display = 'none';
-    ['e-congcognome-','e-congnome-','e-congdata-','e-congcf-','e-congtel-'].forEach(function(k){ const el = document.getElementById(k + id); if(el) el.value = ''; });
+    ['e-congcognome-','e-congnome-','e-congdata-','e-congcf-','e-congtel-','e-congemail-'].forEach(function(k){ const el = document.getElementById(k + id); if(el) el.value = ''; });
   }
 }
 // Stati: "da lavorare" finche' la pratica non e' stata lavorata; dopo (anche pagata o da pagare) conta come lavorata

@@ -689,6 +689,7 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
           <button type="button" id="f-cong-doc-scad-leggi" class="btn-scan-cf" style="display:none; background:#c0392b; color:#fff" onclick="apriLetturaDocumentoPer('coniuge')" title="Il coniuge ha portato il documento nuovo: leggilo subito">📷 Leggi il nuovo</button></div>
           <div id="f-cong-doc-scad-msg" style="font-size:12px; font-weight:700; margin-top:4px"></div></div>
         <div><label>Cellulare coniuge</label><input id="f-cong-tel" type="tel" inputmode="tel" placeholder="Facoltativo"></div>
+        <div><label>E-mail coniuge</label><input id="f-cong-email" type="email" inputmode="email" autocomplete="off" placeholder="Facoltativa" style="text-transform:lowercase" oninput="this.value=this.value.toLowerCase()"></div>
         <div style="display:flex; align-items:flex-end"><button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('coniuge')" title="Leggi i dati del coniuge da carta d'identita', tessera sanitaria o patente">📄 Leggi documento coniuge</button></div>
       </div>
     </div>
@@ -996,25 +997,25 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ocr-documento.js?v=31"></script>
 <script src="js/grafici.js?v=24"></script>
 <script src="js/stampe.js?v=31"></script>
-<script src="js/extra.js?v=45"></script>
+<script src="js/extra.js?v=46"></script>
 <script src="js/privacy.js?v=2"></script>
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=17"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=176"></script>
+<script src="js/guida.js?v=177"></script>
 <script src="js/scadenze.js?v=202610090"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610148"></script>
+<script src="js/data.js?v=202610149"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610315"></script>
+<script src="js/app.js?v=202610316"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=5"></script>
-<script src="js/richiami.js?v=4"></script>
+<script src="js/richiami.js?v=5"></script>
 <script src="js/ricercafatture.js?v=2"></script>
 <script src="js/chiusura.js?v=2"></script>
 <script src="js/resoconto.js?v=6"></script>

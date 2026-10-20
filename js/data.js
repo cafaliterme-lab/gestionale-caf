@@ -118,6 +118,7 @@ const schemas = {
     codiceFiscale: 'codice_fiscale',
     congCodiceFiscale: 'cong_codice_fiscale',
     congTelefono: 'cong_telefono',
+    congEmail: 'cong_email',
     congDocumentoScadenza: 'cong_documento_scadenza',
     congDocumentoNumero: 'cong_documento_numero',
     congDocumentoTipo: 'cong_documento_tipo',
