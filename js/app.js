@@ -251,6 +251,9 @@ function annoDiData(s){
 // Una pratica congiunta vale 2, una singola 1
 function pesoPratica(p){ return (p.congCognome || p.congNome) ? 2 : 1; }
 function sommaPeso(lista){ return lista.reduce(function(t,p){ return t + pesoPratica(p); }, 0); }
+// Quante congiunte ci sono in un elenco (per spiegare il conteggio: 7 pratiche di cui 1 congiunta = 8)
+function numeroCongiunte(lista){ return (lista||[]).filter(function(p){ return pesoPratica(p) === 2; }).length; }
+function notaCongiunte(lista){ const c = numeroCongiunte(lista); return '<br><small style="font-weight:600; opacity:.95">' + (lista||[]).length + ' pratiche, di cui ' + c + ' congiunt' + (c === 1 ? 'a, che conta 2' : 'e, che contano 2') + '</small>'; }
 function annoPratica(p){ return p.anno || annoDiData(p.data); }
 // DEPRECATED: La numerazione è gestita dal trigger del database.
 // Questa funzione è usata solo per il fallback offline.
@@ -1918,9 +1921,9 @@ function render(){
   const raffBox = document.getElementById('raffronto');
   if(raffBox) raffBox.style.display = vGrafici ? '' : 'none';
   summary.innerHTML = ((vPrat || vEco) ? '<div class="cont-gruppo" style="--cg:#374151"><div class="cont-gruppo-tit">📒 CONTABILITÀ GENERALE</div>' : '') + (vPrat ? `
-    <div class="stat c4" data-dett="p730" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${tot}</b><span style="color:rgba(255,255,255,.92); font-weight:600">PRATICHE 730 TOTALI</span></div>
-    <div class="stat c4" data-dett="p730lav" style="background:#2f9e5f; border-color:#2f9e5f; color:#fff"><b>${lavorate}</b><span style="color:rgba(255,255,255,.92); font-weight:600">730 LAVORATE</span></div>
-    <div class="stat c4" data-dett="p730dalav" style="background:#e57373; border-color:#e57373; color:#fff"><b>${daLavorare}</b><span style="color:rgba(255,255,255,.95); font-weight:600">730 DA LAVORARE</span></div>
+    <div class="stat c4" data-dett="p730" style="background:#1d4f91; border-color:#1d4f91; color:#fff"><b>${tot}</b><span style="color:rgba(255,255,255,.92); font-weight:600">PRATICHE 730 TOTALI${notaCongiunte(conti.listaTot)}</span></div>
+    <div class="stat c4" data-dett="p730lav" style="background:#2f9e5f; border-color:#2f9e5f; color:#fff"><b>${lavorate}</b><span style="color:rgba(255,255,255,.92); font-weight:600">730 LAVORATE${notaCongiunte(conti.listaLav)}</span></div>
+    <div class="stat c4" data-dett="p730dalav" style="background:#e57373; border-color:#e57373; color:#fff"><b>${daLavorare}</b><span style="color:rgba(255,255,255,.95); font-weight:600">730 DA LAVORARE${notaCongiunte(conti.listaDaFare)}</span></div>
     <div class="stat c4" data-dett="paltre" style="background:#0e8a8a; border-color:#0e8a8a; color:#fff"><b>${sommaPeso(pratAnno.filter(eAltraConta))}</b><span style="color:rgba(255,255,255,.92); font-weight:600">ALTRE PRATICHE</span></div>` : '') + (vEco ? `
     <div class="stat c5 verde" data-dett="fatture"><b>${fmtEuro(fattureEmesse)}</b><span>FATTURE EMESSE${fattAttesa > 0.004 ? '<br><small style="font-weight:600">⏳ in attesa di consegna ' + fmtEuro(fattAttesa) + '</small>' : ''}</span></div>
     <div class="stat c5 viola" data-dett="incasso"><b>${fmtEuro(incassoLordo)}</b><span>INCASSO TOTALE</span></div>
@@ -3624,7 +3627,8 @@ function eAltraConta(p){ return !e730(p) && !eRinuncia(p); }
 function conteggi730(pratiche){
   const l = (pratiche||[]).filter(e730);
   const daFare = sommaPeso(l.filter(eDaLavorare)), lav = sommaPeso(l.filter(eLavorata));
-  return { tot: daFare + lav, daFare: daFare, lav: lav, rinunce: sommaPeso(l.filter(eRinuncia)) };
+  return { tot: daFare + lav, daFare: daFare, lav: lav, rinunce: sommaPeso(l.filter(eRinuncia)),
+    listaTot: l.filter(function(p){ return eDaLavorare(p) || eLavorata(p); }), listaDaFare: l.filter(eDaLavorare), listaLav: l.filter(eLavorata) };
 }
 // Spese pagate per conto del CAF e detratte nei versamenti (TARI, IMU, condominio…): contabilità a parte
 function speseCafAnno(anno){
@@ -3725,7 +3729,7 @@ function bloccoIntroito(titolo, colore, lista, conMedia, nomeGuadagno){
     return '<div class="stat '+(conMedia?'c3':'c4')+'" data-dett="'+dett+'" data-gruppo="'+gruppo+'" style="background:'+bg+'; border-color:'+bg+'; color:#fff"><b>'+valore+'</b><span style="color:rgba(255,255,255,.92); font-weight:600; letter-spacing:.03em">'+etichetta+'</span></div>';
   };
   return '<div class="cont-gruppo" style="--cg:'+colore+'"><div class="cont-gruppo-tit">'+(conMedia ? '📘 ' : '📗 ')+esc(titolo)+'</div>'
-    + tile(colore, n, 'PRATICHE', 'g-pratiche')
+    + tile(colore, n, 'PRATICHE' + (conMedia ? notaCongiunte(lista) : ''), 'g-pratiche')
     + tile('#2f9e5f', fmtEuro(fatt), 'FATTURE EMESSE', 'g-fatture')
     + tile('#8e5bd6', fmtEuro(inc), 'INCASSO', 'g-incasso')
     + (vedeGuadagni() ? tile('#c2185b', fmtEuro(inc-fatt), (nomeGuadagno || 'GUADAGNO NETTO') + ' (INCASSO − FATTURE)', 'g-guadagno') : '')
