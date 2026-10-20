@@ -743,6 +743,7 @@ function applicaPermessi(){
     bar.innerHTML = '<span>Non autenticato</span>';
     document.getElementById('nav-permessi').style.display = 'none';
     const ns0 = document.getElementById('nav-storico'); if(ns0) ns0.style.display = 'none';
+    const no0 = document.getElementById('nav-oggi'); if(no0) no0.style.display = 'none';
     Object.keys(TAB_LABELS).forEach(function(tab){
       const btn = document.querySelector('.navmenu button[data-tab="'+tab+'"]');
       if(btn) btn.style.display = 'none';
@@ -764,6 +765,9 @@ function applicaPermessi(){
   // Storico contribuente: per chi vede l'inserimento o il registro (solo consultazione)
   const ns = document.getElementById('nav-storico');
   if(ns) ns.style.display = (isAdmin || tabs.registro || tabs.anagrafica) ? '' : 'none';
+  // Oggi: per chi vede l'inserimento o il registro (riepilogo di cosa c'è da fare)
+  const no = document.getElementById('nav-oggi');
+  if(no) no.style.display = (isAdmin || tabs.registro || tabs.anagrafica) ? '' : 'none';
 
   document.body.classList.toggle('sola-lettura', !isAdmin && u.sola_lettura);
   if(typeof mostraStatoSync === 'function') setTimeout(mostraStatoSync, 0);
@@ -1446,6 +1450,7 @@ function showTab(btn){
   if(tab === 'scadenze') renderScadenze();
   if(tab === 'messaggi') mostraDatiCaf();
   if(tab === 'grafici') renderGrafici();
+  if(tab === 'oggi' && typeof renderOggi === 'function') renderOggi();
   if(tab === 'spese' && typeof renderSpese === 'function') renderSpese();
   if(tab === 'modulistica' && typeof renderModulistica === 'function') renderModulistica();
   if(tab === 'storico' && typeof renderStorico === 'function'){ renderStorico(); setTimeout(function(){ const i = document.getElementById('storico-cerca'); if(i && !STORICO.scelto) i.focus(); }, 50); }

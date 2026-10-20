@@ -1,8 +1,13 @@
-/* ---------------- 📅 Oggi: riepilogo di cosa c'è da fare, in cima alla schermata di inserimento ----------------
+/* ---------------- 📅 Oggi: riepilogo di cosa c'è da fare, nella scheda OGGI (con la data sul tasto) ----------------
    Ogni riquadro si tocca e porta dove serve (registro, invio WhatsApp, morosi, scadenze, archivio clienti). */
 
-function oggiAperto() { try { return localStorage.getItem('oggi-chiuso') !== '1'; } catch (e) { return true; } }
+// il tasto della scheda porta la data di oggi (es. «📅 OGGI 20/10»)
+function aggiornaTastoOggi() {
+  const b = document.getElementById('nav-oggi');
+  if (b) b.textContent = '📅 OGGI ' + todayIT().slice(0, 5);
+}
 function renderOggi() {
+  aggiornaTastoOggi();
   const box = document.getElementById('box-oggi');
   if (!box) return;
   if (!auth.profilo || (typeof puo === 'function' && !puo('registro') && !puo('anagrafica'))) { box.innerHTML = ''; return; }
@@ -65,8 +70,8 @@ function renderOggi() {
       + (nota ? '<div style="font-size:11px; color:var(--sub); margin-top:1px">' + nota + '</div>' : '') + '</button>';
   };
   const oggiTesto = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-  box.innerHTML = '<details class="card" style="padding:10px 14px; margin-bottom:12px; border:2px solid #1d4f91"' + (oggiAperto() ? ' open' : '') + ' ontoggle="try{localStorage.setItem(\'oggi-chiuso\', this.open ? \'0\' : \'1\')}catch(e){}">'
-    + '<summary style="cursor:pointer; font-weight:800; font-size:16px; color:#1d4f91">📅 Oggi, ' + esc(oggiTesto) + ' <span style="font-weight:600; font-size:12.5px; color:var(--sub)">· cosa c\'è da fare (anno ' + anno + ')</span></summary>'
+  box.innerHTML = '<div class="card" style="padding:12px 16px; margin-bottom:12px; border:2px solid #1d4f91">'
+    + '<div style="font-weight:800; font-size:18px; color:#1d4f91">📅 Oggi, ' + esc(oggiTesto) + ' <span style="font-weight:600; font-size:13px; color:var(--sub)">· cosa c\'è da fare (anno ' + anno + ')</span></div>'
     + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">✅ OGGI IN SEDE</div>'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px">'
     + tile('🆕', aperteOggi, 'Pratiche aperte oggi', '#1d4f91', "oggiVaiRegistroCerca('tutte', todayIT())", '')
@@ -88,7 +93,7 @@ function renderOggi() {
     + (daRichiamare !== null ? tile('☎️', daRichiamare, 'Clienti da richiamare', '#0e8a8a', 'apriRichiami()', '730 dell\'anno scorso non ancora tornati') : '')
     + '</div>'
     + (senzaCfTutti ? '<div style="font-size:12px; color:var(--sub); margin-top:8px">📋 Archivio da completare: <a href="#" onclick="apriArchivioClienti(\'\', { senzaCf: true }); return false" style="font-weight:700">' + senzaCfTutti + ' clienti senza codice fiscale</a> · completali quando vengono: <b>✏️ Modifica</b> → <b>📷 Leggi documento</b></div>' : '')
-    + '</details>';
+    + '</div>';
 }
 function oggiTab(nome) { const b = document.querySelector('.navmenu button[data-tab="' + nome + '"]'); if (b && b.style.display !== 'none' && typeof showTab === 'function') { showTab(b); return true; } return false; }
 function oggiVaiRegistro(modo) {
