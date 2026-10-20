@@ -18,18 +18,22 @@ function apriArchivioClienti(testo, filtri) {
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-senza-cf"' + (filtri.senzaCf ? ' checked' : '') + '> Senza codice fiscale</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-senza-tel"' + (filtri.senzaTel ? ' checked' : '') + '> Senza cellulare</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-doc"' + (filtri.doc ? ' checked' : '') + '> Documento scaduto o mancante</label>'
-    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-con-pratiche"' + (filtri.conPratiche ? ' checked' : '') + '> Solo clienti con pratiche (quest\'anno e l\'anno scorso)</label></div>'
+    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-con-pratiche"' + (filtri.conPratiche ? ' checked' : '') + '> Solo clienti con pratiche (quest\'anno e l\'anno scorso)</label>'
+    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-deceduti"' + (filtri.deceduti ? ' checked' : '') + '> ✝️ Solo deceduti</label></div>'
     + '<div id="arc-lista" style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px"></div>'
     + '<div id="arc-conta" style="font-size:12px; color:var(--sub); margin-top:6px"></div></div>';
   document.body.appendChild(ov);
   const disegna = function () {
     const q = (document.getElementById('arc-cerca').value || '').trim().toUpperCase();
     const senzaCf = document.getElementById('arc-senza-cf').checked, senzaTel = document.getElementById('arc-senza-tel').checked, doc = document.getElementById('arc-doc').checked;
-    const conPrat = document.getElementById('arc-con-pratiche').checked;
+    const conPrat = document.getElementById('arc-con-pratiche').checked, deceduti = document.getElementById('arc-deceduti').checked;
     const recenti = conPrat ? clientiConPraticheRecenti() : null;
     const oggi = typeof dataNum === 'function' ? dataNum(todayIT()) : 0;
     const tutti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []);
     const filtrati = tutti.filter(function (c) {
+      // i deceduti si vedono con «Solo deceduti» o cercandoli per nome; non contano nei dati da completare
+      if (deceduti) { if (!c.decedutoIl) return false; }
+      else if (c.decedutoIl && (!q || senzaCf || senzaTel || doc || conPrat)) return false;
       if (recenti && !(c.codiceFiscale && recenti.cf[c.codiceFiscale]) && !recenti.nome[String(c.nomeCompleto || '').toUpperCase()]) return false;
       if (senzaCf && c.codiceFiscale) return false;
       if (senzaTel && c.telefono) return false;
@@ -43,15 +47,16 @@ function apriArchivioClienti(testo, filtri) {
     document.getElementById('arc-lista').innerHTML = mostra.length ? mostra.map(function (c) {
       const manca = [!c.codiceFiscale ? 'CF' : '', !c.telefono && !c.telefonoFisso ? 'telefono' : '', !c.documentoScadenza ? 'scad. documento' : ''].filter(Boolean);
       const scaduto = c.documentoScadenza && (dataNum(c.documentoScadenza) || 0) < oggi;
-      return '<div data-id="' + esc(String(c.id || '')) + '" data-nome="' + esc(c.nomeCompleto) + '" style="display:flex; gap:10px; align-items:center; padding:8px 10px; border-bottom:1px solid var(--line); cursor:pointer">'
-        + '<span style="flex:1"><b>' + esc(c.nomeCompleto) + '</b><div style="font-size:12px; color:var(--sub)">'
+      return '<div data-id="' + esc(String(c.id || '')) + '" data-nome="' + esc(c.nomeCompleto) + '" style="display:flex; gap:10px; align-items:center; padding:8px 10px; border-bottom:1px solid var(--line); cursor:pointer' + (c.decedutoIl ? '; background:color-mix(in srgb, #6b7280 12%, var(--card))' : '') + '">'
+        + '<span style="flex:1"><b>' + esc(c.nomeCompleto) + '</b>' + (c.decedutoIl ? ' <span style="display:inline-block; background:#374151; color:#fff; border-radius:999px; padding:1px 8px; font-size:11.5px; font-weight:700">✝️ deceduto/a il ' + esc(c.decedutoIl) + '</span>' : '') + '<div style="font-size:12px; color:var(--sub)">'
         + (c.dataNascita ? 'nato/a il ' + esc(c.dataNascita) : 'data di nascita mancante') + ((c.comuneNascita || (c.codiceFiscale && typeof comuneDaCF === 'function' && comuneDaCF(c.codiceFiscale))) ? ' a ' + esc(c.comuneNascita || comuneDaCF(c.codiceFiscale)) : '') + (c.codiceFiscale ? ' · CF ' + esc(c.codiceFiscale) : '')
         + (c.telefono || c.telefonoFisso ? ' · 📞 ' + esc(c.telefono || c.telefonoFisso) : '') + (c.email ? ' · ✉️ ' + esc(c.email) : '')
         + (c.documentoScadenza ? ' · 🪪 ' + esc(c.documentoScadenza) + (scaduto ? ' <b style="color:#c0392b">scaduto</b>' : '') : '') + '</div>'
-        + (manca.length ? '<div style="font-size:11.5px; color:#b35f0c; font-weight:700">Manca: ' + manca.join(', ') + '</div>' : '') + '</span>'
+        + (manca.length && !c.decedutoIl ? '<div style="font-size:11.5px; color:#b35f0c; font-weight:700">Manca: ' + manca.join(', ') + '</div>' : '') + '</span>'
         + '<span style="background:#1d4f91; color:#fff; border-radius:999px; padding:5px 12px; font-size:12.5px; font-weight:700; white-space:nowrap">✏️ Modifica</span></div>';
     }).join('') : '<div class="empty" style="padding:14px">Nessun cliente trovato</div>';
-    document.getElementById('arc-conta').textContent = filtrati.length + ' clienti' + (filtrati.length > mostra.length ? ' (ne vedi ' + mostra.length + ': scrivi nella ricerca per trovare gli altri)' : '') + ' · archivio: ' + tutti.length + ' clienti';
+    const nDec = tutti.filter(function (c) { return c.decedutoIl; }).length;
+    document.getElementById('arc-conta').textContent = filtrati.length + ' clienti' + (filtrati.length > mostra.length ? ' (ne vedi ' + mostra.length + ': scrivi nella ricerca per trovare gli altri)' : '') + ' · archivio: ' + tutti.length + ' clienti' + (nDec ? ' (di cui ' + nDec + ' deceduti, nascosti: si vedono cercandoli per nome o con «Solo deceduti»)' : '');
   };
   disegna();
   setTimeout(function () { const el = document.getElementById('arc-cerca'); if (el) el.focus(); }, 50);
@@ -110,6 +115,7 @@ function modificaClienteArchivio(c, dopo) {
     + campo('scad', 'Scadenza documento', c.documentoScadenza, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + '<div><label>Tipo documento</label><select id="mc-doctipo">' + (typeof opzioniTipoDoc === 'function' ? opzioniTipoDoc(c.documentoTipo || '') : '') + '</select></div>'
     + campo('docnum', 'N. documento', c.documentoNumero, 'style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\\s+/g, \'\')"')
+    + '<div class="full" style="margin-top:4px; padding:8px 10px; border-radius:10px; border:1.5px dashed #6b7280"><label>✝️ Deceduto/a il <span style="font-weight:600; color:var(--sub)">(lascia vuoto se in vita)</span></label><input id="mc-deceduto" value="' + esc(c.decedutoIl || '') + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)" style="max-width:180px"><div style="font-size:11.5px; color:var(--sub); margin-top:3px">La scheda resta in archivio, ma non compare più nelle ricerche normali, tra i clienti da richiamare e tra i dati da completare.</div></div>'
     + '</div>'
     + '<label class="chk" style="margin-top:8px; font-size:13px"><input type="checkbox" id="mc-pratiche"' + (pratiche.length ? ' checked' : ' disabled') + '> Aggiorna telefoni, e-mail e scadenza documento anche nelle sue pratiche (' + pratiche.length + ')</label>'
     + '<div id="mc-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
@@ -132,6 +138,9 @@ function modificaClienteArchivio(c, dopo) {
     if (cf && !nascita) nascita = datiDaCF(cf).dataNascita;
     if (nascita && !parseDataIT(nascita)) { msg.textContent = 'La data di nascita deve essere GG/MM/AAAA.'; return; }
     if (scad && !parseDataIT(scad)) { msg.textContent = 'La scadenza del documento deve essere GG/MM/AAAA.'; return; }
+    const deceduto = v('deceduto');
+    if (deceduto && !parseDataIT(deceduto)) { msg.textContent = 'La data del decesso deve essere GG/MM/AAAA.'; return; }
+    if (deceduto && typeof dataNum === 'function' && dataNum(deceduto) > dataNum(todayIT())) { msg.textContent = 'La data del decesso non può essere nel futuro.'; return; }
     if (email && !emailValida(email)) { msg.textContent = 'L\'e-mail non è corretta.'; return; }
     if (tel && typeof cellulareSospetto === 'function' && cellulareSospetto(tel) && !confirm(cellulareSospetto(tel) + '\n\nSalvo lo stesso?')) return;
     const altro = cf && (ARCHIVIO_CLIENTI || []).find(function (x) { return x.codiceFiscale === cf && x !== c; });
@@ -140,7 +149,7 @@ function modificaClienteArchivio(c, dopo) {
       const avvisi = controllaCoerenzaCF(cf, cognome, nome, nascita);
       if (avvisi.length && !confirm('Attenzione: ' + avvisi.join('; ') + '.\n\nSalvo lo stesso?')) return;
     }
-    const campi = { nomeCompleto: (cognome + ' ' + nome).trim(), cognome: cognome, nome: nome, dataNascita: nascita || '', codiceFiscale: cf || null, telefono: tel || null, telefonoFisso: fisso || null, email: email || null, documentoScadenza: scad || null, comuneNascita: comune || null, documentoNumero: docnum || null, documentoTipo: doctipo || null };
+    const campi = { nomeCompleto: (cognome + ' ' + nome).trim(), cognome: cognome, nome: nome, dataNascita: nascita || '', codiceFiscale: cf || null, telefono: tel || null, telefonoFisso: fisso || null, email: email || null, documentoScadenza: scad || null, comuneNascita: comune || null, documentoNumero: docnum || null, documentoTipo: doctipo || null, decedutoIl: deceduto || null };
     b.disabled = true; b.textContent = 'Salvataggio…';
     const r = await data.clienti.aggiorna(c.id, campi);
     if (r && r.error) {

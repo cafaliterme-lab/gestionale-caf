@@ -173,14 +173,16 @@ function cercaClienti(q, ctx){
   q = (q||'').trim().toLowerCase();
   if(!q){ box.classList.remove('open'); box.innerHTML=''; return; }
   const kq = chiaveRicerca(q);
-  const match = ARCHIVIO_CLIENTI.filter(function(c){ const k = chiaveRicerca(c.nomeCompleto) + ' ' + chiaveRicerca(c.codiceFiscale); return (c.nomeCompleto||"").toLowerCase().indexOf(q) >= 0 || (kq && k.indexOf(kq) >= 0) || (kq && (chiaveRicerca(c.nome) + chiaveRicerca(c.cognome)).indexOf(kq) >= 0); }).slice(0,8);
+  const match = ARCHIVIO_CLIENTI.filter(function(c){ const k = chiaveRicerca(c.nomeCompleto) + ' ' + chiaveRicerca(c.codiceFiscale); return (c.nomeCompleto||"").toLowerCase().indexOf(q) >= 0 || (kq && k.indexOf(kq) >= 0) || (kq && (chiaveRicerca(c.nome) + chiaveRicerca(c.cognome)).indexOf(kq) >= 0); })
+    // i deceduti restano trovabili (es. 730 per il defunto) ma vanno in fondo, segnati
+    .sort(function(a, b){ return (a.decedutoIl ? 1 : 0) - (b.decedutoIl ? 1 : 0); }).slice(0,8);
   // nelle Scadenze si può inserire subito un cliente nuovo nell'archivio
   const rigaNuovo = ctx === 'sc' ? '<div class="cli-row" style="color:#1a7f37; font-weight:800" onclick="document.getElementById(\'cli-results-sc\').classList.remove(\'open\'); nuovoClienteArchivio(document.getElementById(\'sc-cliente\').value)">➕ Nuovo cliente: inseriscilo in archivio (codice fiscale, telefono…)</div>' : '';
   if(!match.length){ box.innerHTML = '<div class="cli-row" style="cursor:default">Nessun cliente trovato</div>' + rigaNuovo; box.classList.add('open'); return; }
   box.innerHTML = match.map(function(c,i){
     const cestino = (puoEliminareClienti() && c.id) ? '<button type="button" title="Elimina definitivamente dall\'archivio" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); eliminaClienteArchivio(&quot;'+esc(String(c.id))+'&quot;, &quot;'+ctx+'&quot;)">🗑</button>' : '';
     const matita = (c.id && typeof modificaClienteArchivio === 'function') ? '<button type="button" title="Modifica l\'anagrafica di questo cliente" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); boxRisultatiClienti(&quot;'+ctx+'&quot;).classList.remove(&quot;open&quot;); const c = ARCHIVIO_CLIENTI.find(function(x){ return String(x.id) === &quot;'+esc(String(c.id))+'&quot;; }); if(c) modificaClienteArchivio(c)">✏️</button>' : '';
-    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+matita+'<b>'+esc(c.nomeCompleto)+'</b><span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+(c.telefono || c.telefonoFisso ? ' · 📞 '+esc(c.telefono || c.telefonoFisso) : '')+(c.email ? ' · ✉️ '+esc(c.email) : '')+'</span></div>';
+    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+matita+'<b>'+esc(c.nomeCompleto)+'</b>'+(c.decedutoIl ? ' <span style="display:inline-block; background:#374151; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; font-weight:700">✝️ deceduto/a il '+esc(c.decedutoIl)+'</span>' : '')+'<span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+(c.telefono || c.telefonoFisso ? ' · 📞 '+esc(c.telefono || c.telefonoFisso) : '')+(c.email ? ' · ✉️ '+esc(c.email) : '')+'</span></div>';
   }).join('') + rigaNuovo;
   box.dataset.match = JSON.stringify(match);
   box.classList.add('open');
@@ -191,6 +193,7 @@ function scegliCliente(i, ctx){
   const match = JSON.parse(box.dataset.match || '[]');
   const c = match[i];
   if(!c) return;
+  if(c.decedutoIl && !confirm(c.nomeCompleto + ' risulta deceduto/a il ' + c.decedutoIl + '.\n\nVuoi usarlo lo stesso (per esempio per il 730 del defunto)?')) return;
   if(ctx==='sc'){
     document.getElementById('sc-cliente').value = c.nomeCompleto.toUpperCase();
   } else if(ctx==='cong'){

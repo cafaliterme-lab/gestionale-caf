@@ -60,8 +60,10 @@ function clientiDaRichiamare(anno) {
     const a = typeof trovaInArchivio === 'function' ? trovaInArchivio(x.nome, x.nascita, x.cf) : null;
     if (a) { if (!x.tel) x.tel = a.telefono || ''; if (!x.fisso) x.fisso = a.telefonoFisso || ''; if (!x.email) x.email = a.email || ''; }
     x.cisl = x.pratiche.some(function (r) { return r.p.iscrittoCisl; });
+    // deceduto (segnato nella scheda dell'archivio): non si richiama
+    x.deceduto = !!(a && a.decedutoIl);
     return x;
-  }).sort(function (a, b) { return a.nome.localeCompare(b.nome); });
+  }).filter(function (x) { return !x.deceduto; }).sort(function (a, b) { return a.nome.localeCompare(b.nome); });
 }
 
 async function caricaEsitiRichiami(anno) {

@@ -215,6 +215,7 @@ const schemas = {
     documentoNumero: 'documento_numero',
     documentoTipo: 'documento_tipo',
     comuneNascita: 'comune_nascita',
+    decedutoIl: 'deceduto_il',
   },
   scadenza: {
     id: 'id',
