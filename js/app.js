@@ -177,7 +177,8 @@ function cercaClienti(q, ctx){
     // i deceduti restano trovabili (es. 730 per il defunto) ma vanno in fondo, segnati
     .sort(function(a, b){ return (a.decedutoIl ? 1 : 0) - (b.decedutoIl ? 1 : 0); }).slice(0,8);
   // nelle Scadenze si può inserire subito un cliente nuovo nell'archivio
-  const rigaNuovo = ctx === 'sc' ? '<div class="cli-row" style="color:#1a7f37; font-weight:800" onclick="document.getElementById(\'cli-results-sc\').classList.remove(\'open\'); nuovoClienteArchivio(document.getElementById(\'sc-cliente\').value)">➕ Nuovo cliente: inseriscilo in archivio (codice fiscale, telefono…)</div>' : '';
+  const rigaNuovo = ctx === 'sc' ? '<div class="cli-row" style="color:#1a7f37; font-weight:800" onclick="document.getElementById(\'cli-results-sc\').classList.remove(\'open\'); nuovoClienteArchivio(document.getElementById(\'sc-cliente\').value)">➕ Nuovo cliente: inseriscilo in archivio (codice fiscale, telefono…)</div>'
+    : ctx === 'main' ? '<div class="cli-row" style="color:#1a7f37; font-weight:800" onclick="document.getElementById(\'cli-results\').classList.remove(\'open\'); nuovoClienteAMano()">✍️ Non c\'è? Inserisci un nuovo cliente a mano in archivio</div>' : '';
   if(!match.length){ box.innerHTML = '<div class="cli-row" style="cursor:default">Nessun cliente trovato</div>' + rigaNuovo; box.classList.add('open'); return; }
   box.innerHTML = match.map(function(c,i){
     const cestino = (puoEliminareClienti() && c.id) ? '<button type="button" title="Elimina definitivamente dall\'archivio" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); eliminaClienteArchivio(&quot;'+esc(String(c.id))+'&quot;, &quot;'+ctx+'&quot;)">🗑</button>' : '';
@@ -186,6 +187,11 @@ function cercaClienti(q, ctx){
   }).join('') + rigaNuovo;
   box.dataset.match = JSON.stringify(match);
   box.classList.add('open');
+}
+// Nuovo cliente scritto a mano: va in archivio e poi si ritrova subito nella ricerca, pronto da scegliere per la pratica
+function nuovoClienteAMano(){
+  const cerca = document.getElementById('cli-cerca');
+  nuovoClienteArchivio(cerca ? cerca.value : '', function(nome){ if(cerca){ cerca.value = nome; cercaClienti(nome); cerca.focus(); } });
 }
 function scegliCliente(i, ctx){
   ctx = ctx || 'main';

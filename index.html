@@ -614,7 +614,8 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
     <div class="full cli-wrap">
       <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; flex-wrap:wrap">
         <label style="margin:0">Cerca cliente nell'archivio (cognome o nome)</label>
-        <span style="display:flex; gap:6px; flex-wrap:wrap; max-width:100%"><button type="button" onclick="apriLetturaDocumentoPer('archivio')" style="background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-size:12.5px; font-weight:800; cursor:pointer; margin-bottom:4px" title="Scansiona il documento e salva il cliente nell'archivio, senza creare una pratica">📇 Nuovo cliente da documento</button>
+        <span style="display:flex; gap:6px; flex-wrap:wrap; max-width:100%"><button type="button" onclick="nuovoClienteAMano()" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-size:12.5px; font-weight:800; cursor:pointer; margin-bottom:4px" title="Scrivi a mano cognome, nome e gli altri dati: il cliente viene salvato nell'archivio, senza creare una pratica">✍️ Nuovo cliente a mano</button>
+        <button type="button" onclick="apriLetturaDocumentoPer('archivio')" style="background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-size:12.5px; font-weight:800; cursor:pointer; margin-bottom:4px" title="Scansiona il documento e salva il cliente nell'archivio, senza creare una pratica">📇 Nuovo cliente da documento</button>
         <button type="button" onclick="apriInserisciDocumento('archivio')" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-size:12.5px; font-weight:800; cursor:pointer; margin-bottom:4px" title="Trascina o incolla il PDF del documento: il cliente viene salvato nell'archivio">📥 Nuovo cliente da PDF</button>
         <button type="button" onclick="apriArchivioClienti(document.getElementById('cli-cerca').value)" style="background:#8e5bd6; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-size:12.5px; font-weight:800; cursor:pointer; margin-bottom:4px" title="Cerca un cliente e modifica la sua anagrafica (codice fiscale, telefoni, e-mail, scadenza documento) senza fare una pratica">🗂️ Archivio clienti – modifica</button></span>
       </div>
@@ -1004,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=18"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=178"></script>
+<script src="js/guida.js?v=179"></script>
 <script src="js/scadenze.js?v=202610090"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -1013,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610149"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610316"></script>
+<script src="js/app.js?v=202610317"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=5"></script>
