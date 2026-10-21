@@ -284,14 +284,16 @@ function nuovoClienteArchivio(testo, dopo) {
     + '<div class="grid">'
     + campo('cognome', 'Cognome *', 'value="' + esc(cognome0) + '" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('nome', 'Nome *', 'value="' + esc(nome0) + '" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
-    + campo('cf', 'Codice fiscale', 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); ncControllaCF()"')
+    + campo('cf', 'Codice fiscale <span style="font-weight:600; color:var(--sub)">(scrivilo e si compilano data, sesso e comune)</span>', 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); ncControllaCF()"')
     + campo('nascita', 'Data di nascita', 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + (typeof htmlSessoComune === 'function' ? htmlSessoComune('nc-', '', '') : '')
     + '<div class="full" id="nc-cf-msg" style="font-size:12px; margin-top:-4px"></div>'
     + campo('tel', 'Cellulare', 'type="tel" inputmode="tel"')
     + campo('fisso', 'Telefono fisso', 'type="tel" inputmode="tel"')
-    + campo('email', 'E-mail', 'type="email" inputmode="email" style="text-transform:lowercase"')
+    + campo('email', 'E-mail', 'type="email" inputmode="email" style="text-transform:lowercase" oninput="this.value=this.value.toLowerCase()"')
+    + '<div><label>Tipo documento</label><select id="nc-doctipo">' + (typeof opzioniTipoDoc === 'function' ? opzioniTipoDoc('') : '') + '</select></div>'
     + campo('scad', 'Scadenza documento', 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
+    + campo('docnum', 'N. documento', 'placeholder="Es. CA12345AB" style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\\s+/g, \'\')"')
     + '</div><div id="nc-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
     + '<button type="button" data-az="si" style="background:#1a7f37; color:#fff; font-weight:800">💾 Salva in archivio</button></div></div>';
@@ -321,7 +323,8 @@ function nuovoClienteArchivio(testo, dopo) {
     try {
       await registraClienteSeNuovo(cognome, nome, nascita, cf, v('tel'), v('fisso'), scad, email);
       const comuneNc = document.getElementById('nc-comune') ? v('comune').toUpperCase() : '';
-      if (comuneNc && data.clienti.salvaDocumento) await data.clienti.salvaDocumento({ codiceFiscale: cf, nomeCompleto: nc, dataNascita: nascita, comuneNascita: comuneNc });
+      const docnumNc = v('docnum').toUpperCase().replace(/\s+/g, ''), doctipoNc = v('doctipo');
+      if ((comuneNc || docnumNc || doctipoNc) && data.clienti.salvaDocumento) await data.clienti.salvaDocumento({ codiceFiscale: cf, nomeCompleto: nc, dataNascita: nascita, comuneNascita: comuneNc, documentoNumero: docnumNc, documentoTipo: doctipoNc });
       ov.remove();
       avviso('📇 ' + nc + (gia ? ': dati aggiornati in archivio' : ' aggiunto all\'archivio clienti'));
       const finale = gia ? gia.nomeCompleto : nc;
@@ -339,9 +342,11 @@ function ncControllaCF() {
   if (!cf) { out.textContent = ''; return; }
   if (cf.length < 16) { out.style.color = 'var(--sub)'; out.textContent = cf.length + '/16 caratteri'; return; }
   if (!cfValido(cf)) { out.style.color = '#c0392b'; out.textContent = '❌ Codice fiscale non valido'; return; }
-  const d = datiDaCF(cf), n = document.getElementById('nc-nascita');
-  if (n && !n.value.trim()) n.value = d.dataNascita;
+  const d = datiDaCF(cf);
+  if (typeof datiAnagraficiDaCF === 'function') datiAnagraficiDaCF({ cf: 'nc-cf', data: 'nc-nascita', sesso: 'nc-sesso', comune: 'nc-comune' });
+  else { const n = document.getElementById('nc-nascita'); if (n && !n.value.trim()) n.value = d.dataNascita; }
   const c = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).find(function (x) { return x.codiceFiscale === cf; });
   out.style.color = c ? '#b35f0c' : '#1a7f37';
-  out.textContent = c ? '⚠️ Questo codice fiscale è già in archivio: ' + c.nomeCompleto : '✓ Codice valido · nato/a il ' + d.dataNascita;
+  const com = typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '';
+  out.textContent = c ? '⚠️ Questo codice fiscale è già in archivio: ' + c.nomeCompleto : '✓ Codice valido · ' + (d.sesso === 'F' ? 'nata' : 'nato') + ' il ' + d.dataNascita + (com ? ' a ' + com : '');
 }

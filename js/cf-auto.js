@@ -141,6 +141,17 @@ function htmlSessoComune(prefisso, sesso, comune) {
   return '<div><label>Sesso</label><select id="' + prefisso + 'sesso" title="Serve per calcolare il codice fiscale (proposto dal nome)"><option value=""></option><option value="M"' + (sesso === 'M' ? ' selected' : '') + '>M</option><option value="F"' + (sesso === 'F' ? ' selected' : '') + '>F</option></select></div>'
     + (comune === null ? '' : '<div><label>Comune di nascita</label><input id="' + prefisso + 'comune" list="lista-comuni" autocomplete="off" placeholder="Es. MESSINA (ME)" value="' + esc(comune || '') + '" style="text-transform:uppercase"></div>');
 }
+// Codice fiscale scritto a mano (16 caratteri, valido): si compilano data di nascita, sesso e comune se sono vuoti
+function datiAnagraficiDaCF(ids) {
+  const el = function (k) { return ids[k] ? document.getElementById(ids[k]) : null; };
+  const cfEl = el('cf'); if (!cfEl) return;
+  const cf = normalizzaCF(cfEl.value);
+  if (cf.length !== 16 || !cfValido(cf) || cfEl.dataset.auto === '1') return;
+  const d = datiDaCF(cf);
+  const da = el('data'); if (da && !da.value.trim()) da.value = d.dataNascita;
+  const se = el('sesso'); if (se && !se.value) { se.value = d.sesso; se.dataset.manuale = '1'; }
+  const co = el('comune'); if (co && (!co.value.trim() || co.dataset.auto === '1') && typeof comuneDaCF === 'function') { const c = comuneDaCF(cf); if (c) { co.value = c; co.dataset.auto = '1'; } }
+}
 // Collega le caselle: cambiando cognome, nome, data, sesso o comune il codice fiscale (se vuoto o già calcolato) si ricalcola
 function collegaCFAuto(ids, dopo) {
   const el = function (k) { return document.getElementById(ids[k]); };

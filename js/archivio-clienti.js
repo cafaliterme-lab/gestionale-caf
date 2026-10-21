@@ -109,7 +109,7 @@ function modificaClienteArchivio(c, dopo) {
     + '<div class="grid">'
     + campo('cognome', 'Cognome *', c.cognome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('nome', 'Nome *', c.nome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
-    + campo('cf', 'Codice fiscale', c.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); comuneNelCampo(\'mc-cf\', \'mc-comune\')"')
+    + campo('cf', 'Codice fiscale', c.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); comuneNelCampo(\'mc-cf\', \'mc-comune\'); datiAnagraficiDaCF({ cf: \'mc-cf\', data: \'mc-nascita\', sesso: \'mc-sesso\', comune: \'mc-comune\' })"')
     + campo('nascita', 'Data di nascita', c.dataNascita, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + (typeof htmlSessoComune === 'function' ? htmlSessoComune('mc-', '', null) : '')
     + campo('comune', 'Comune di nascita', c.comuneNascita || (c.codiceFiscale && typeof comuneDaCF === 'function' ? comuneDaCF(c.codiceFiscale) : ''), 'list="lista-comuni" autocomplete="off" placeholder="Es. MESSINA (ME)" style="text-transform:uppercase"' + (c.comuneNascita ? '' : ' data-auto="1"') + ' oninput="this.value=this.value.toUpperCase(); this.dataset.auto=\'\'"')
