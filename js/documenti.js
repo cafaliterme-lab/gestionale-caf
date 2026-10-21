@@ -59,9 +59,44 @@ function emailCaf() {
   const imp = (typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI) || {};
   return (imp.caf_email || 'aliterme@cafcislsicilia.com').trim();
 }
-function messaggioNuovoDocumento(nome, scadenza) {
-  return 'Gentile ' + nomeProprio(nome) + ', le ricordiamo che il suo documento d\'identità risulta scaduto' + (scadenza ? ' il ' + scadenza : '')
-    + '. Per completare la sua pratica le chiediamo di portarci (o inviarci qui) una copia del nuovo documento.\nGrazie.\n\n' + righeContattiCaf();
+// perArchivio: richiesta dall'archivio clienti (senza una pratica aperta); senza scadenza = documento mancante
+function messaggioNuovoDocumento(nome, scadenza, perArchivio) {
+  const inizio = perArchivio && !scadenza
+    ? 'nel nostro archivio non risulta un suo documento d\'identità valido'
+    : 'le ricordiamo che il suo documento d\'identità risulta scaduto' + (scadenza ? ' il ' + scadenza : '');
+  return 'Gentile ' + nomeProprio(nome) + ', ' + inizio
+    + (perArchivio ? '. Per poter preparare le sue prossime pratiche' : '. Per completare la sua pratica')
+    + ' le chiediamo di portarci (o inviarci qui) una copia del nuovo documento.\nGrazie.\n\n' + righeContattiCaf();
+}
+// Richiesta del nuovo documento dall'archivio clienti (via: 'wa' o 'email')
+function richiediDocumentoCliente(id, via) {
+  const c = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).find(function (x) { return String(x.id) === String(id); });
+  if (!c) return;
+  const testo = messaggioNuovoDocumento(c.nomeCompleto, c.documentoScadenza, true);
+  if (via === 'email') {
+    if (typeof apriEmail !== 'function') return;
+    apriEmail({ titolo: 'Chiedi il nuovo documento d\'identità', nome: c.nomeCompleto, a: c.email || '', oggetto: 'Documento d\'identità – CAF CISL Alì Terme', testo: testo });
+  } else inviaWhatsAppLibero(c.telefono, testo, c.nomeCompleto);
+}
+// Coniuge della dichiarazione congiunta: richiesta del nuovo documento (dal modulo o dalla pratica)
+function datiConiugeModulo() {
+  const v = function (id) { return ((document.getElementById(id) || {}).value || '').trim(); };
+  return { nome: (v('f-cong-cognome') + ' ' + v('f-cong-nome')).trim() || 'cliente', tel: v('f-cong-tel'), email: v('f-cong-email'), scad: v('f-cong-doc-scad') };
+}
+function richiediNuovoDocumentoConiugeModulo(via) {
+  const d = datiConiugeModulo();
+  if (via === 'email') apriEmail({ titolo: 'Chiedi il nuovo documento al coniuge', nome: d.nome, a: d.email, oggetto: 'Documento d\'identità scaduto – CAF CISL Alì Terme', testo: messaggioNuovoDocumento(d.nome, d.scad),
+    dopo: function (a) { const el = document.getElementById('f-cong-email'); if (el && !el.value) el.value = a; } });
+  else inviaWhatsAppLibero(d.tel, messaggioNuovoDocumento(d.nome, d.scad), d.nome);
+}
+function richiediNuovoDocumentoConiuge(id, via) {
+  const p = (state.pratiche || []).find(function (x) { return x.id === id; });
+  if (!p) return;
+  const nome = ((p.congCognome || '') + ' ' + (p.congNome || '')).trim() || p.congiunta || 'cliente';
+  const testo = messaggioNuovoDocumento(nome, p.congDocumentoScadenza);
+  if (via === 'email') apriEmail({ titolo: 'Chiedi il nuovo documento al coniuge', nome: nome, a: p.congEmail || '', oggetto: 'Documento d\'identità scaduto – CAF CISL Alì Terme', testo: testo,
+    dopo: function (a) { if (typeof annotaEmailPratica === 'function') annotaEmailPratica(p, 'richiesta nuovo documento al coniuge', a); } });
+  else inviaWhatsAppLibero(p.congTelefono, testo, nome);
 }
 function messaggioDocumentiMancanti(p) {
   const mancanti = senzaCUD(documentiPratica(p).mancanti);
@@ -163,12 +198,22 @@ document.addEventListener('DOMContentLoaded', function () { disegnaDocumentiModu
 
 function documentoCardHTML(p) {
   const st = statoScadenzaDocumento(p.documentoScadenza);
-  if (!st) return '';
+  if (!st) return documentoConiugeCardHTML(p);
   return '<div class="meta" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">'
     + '<span style="display:inline-block; padding:3px 10px; border-radius:999px; font-weight:700; color:#fff; background:' + (st.valido ? '#1a7f37' : '#c0392b') + '">🪪 Documento '
     + (st.valido ? 'valido fino al ' : 'SCADUTO il ') + esc(p.documentoScadenza) + '</span>'
     + (st.valido ? '' : '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer" onclick="richiediNuovoDocumento(\'' + p.id + '\')">💬 Richiedi nuovo documento</button> ' + bottoneEmail('emailNuovoDocumento(\'' + p.id + '\')', 'E-mail'))
-    + '</div>';
+    + '</div>' + documentoConiugeCardHTML(p);
+}
+// Documento del coniuge scaduto: richiesta su WhatsApp o per e-mail
+function documentoConiugeCardHTML(p) {
+  if (!(p.congCognome || p.congNome)) return '';
+  const st = statoScadenzaDocumento(p.congDocumentoScadenza);
+  if (!st || st.valido) return '';
+  return '<div class="meta" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">'
+    + '<span style="display:inline-block; padding:3px 10px; border-radius:999px; font-weight:700; color:#fff; background:#c0392b">🪪 Documento del coniuge SCADUTO il ' + esc(p.congDocumentoScadenza) + '</span>'
+    + '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer" onclick="richiediNuovoDocumentoConiuge(\'' + p.id + '\', \'wa\')">💬 Richiedi al coniuge</button> '
+    + bottoneEmail('richiediNuovoDocumentoConiuge(\'' + p.id + '\', \'email\')', 'E-mail') + '</div>';
 }
 function documentiCardHTML(p) {
   const d = documentiPratica(p);

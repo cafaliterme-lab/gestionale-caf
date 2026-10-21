@@ -107,6 +107,7 @@ function coloraScadenzaConiuge() {
   el.style.color = st ? '#fff' : '';
   el.style.borderColor = st ? (st.valido ? '#1a7f37' : '#c0392b') : '';
   if (lg) lg.style.display = st && (!st.valido || st.giorni <= 30) ? '' : 'none';
+  ['f-cong-doc-scad-wa', 'f-cong-doc-scad-mail'].forEach(function (id) { const b = document.getElementById(id); if (b) b.style.display = st && !st.valido ? '' : 'none'; });
   if (msg) {
     msg.style.color = st ? (st.valido ? '#1a7f37' : '#c0392b') : 'var(--sub)';
     msg.textContent = !st ? '' : st.valido

@@ -52,6 +52,9 @@ function apriArchivioClienti(testo, filtri) {
         + (c.dataNascita ? 'nato/a il ' + esc(c.dataNascita) : 'data di nascita mancante') + ((c.comuneNascita || (c.codiceFiscale && typeof comuneDaCF === 'function' && comuneDaCF(c.codiceFiscale))) ? ' a ' + esc(c.comuneNascita || comuneDaCF(c.codiceFiscale)) : '') + (c.codiceFiscale ? ' · CF ' + esc(c.codiceFiscale) : '')
         + (c.telefono || c.telefonoFisso ? ' · 📞 ' + esc(c.telefono || c.telefonoFisso) : '') + (c.email ? ' · ✉️ ' + esc(c.email) : '')
         + (c.documentoScadenza ? ' · 🪪 ' + esc(c.documentoScadenza) + (scaduto ? ' <b style="color:#c0392b">scaduto</b>' : '') : '') + '</div>'
+        // documento scaduto o mancante: richiesta diretta del nuovo documento
+        + ((scaduto || !c.documentoScadenza) && !c.decedutoIl && c.id ? '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px"><button type="button" data-az="doc-wa" data-cid="' + esc(String(c.id)) + '" title="Chiedi il nuovo documento su WhatsApp" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; cursor:pointer">💬 Chiedi documento</button>'
+          + '<button type="button" data-az="doc-mail" data-cid="' + esc(String(c.id)) + '" title="Chiedi il nuovo documento per e-mail" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; cursor:pointer">📧 E-mail</button></div>' : '')
         + (manca.length && !c.decedutoIl ? '<div style="font-size:11.5px; color:#b35f0c; font-weight:700">Manca: ' + manca.join(', ') + '</div>' : '') + '</span>'
         + '<span style="background:#1d4f91; color:#fff; border-radius:999px; padding:5px 12px; font-size:12.5px; font-weight:700; white-space:nowrap">✏️ Modifica</span></div>';
     }).join('') : '<div class="empty" style="padding:14px">Nessun cliente trovato</div>';
@@ -65,6 +68,7 @@ function apriArchivioClienti(testo, filtri) {
   ov.addEventListener('click', function (e) {
     const b = e.target.closest('button[data-az]');
     if (e.target === ov || (b && b.dataset.az === 'chiudi')) { ov.remove(); return; }
+    if (b && (b.dataset.az === 'doc-wa' || b.dataset.az === 'doc-mail')) { if (typeof richiediDocumentoCliente === 'function') richiediDocumentoCliente(b.dataset.cid, b.dataset.az === 'doc-mail' ? 'email' : 'wa'); return; }
     if (b && b.dataset.az === 'nuovo') { if (typeof nuovoClienteArchivio === 'function') nuovoClienteArchivio(document.getElementById('arc-cerca').value, function () { disegna(); }); return; }
     const r = e.target.closest('div[data-nome]');
     if (!r) return;

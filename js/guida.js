@@ -89,7 +89,7 @@ const GUIDA = [
 <ul>
 <li>Scrivi la data in <b>Scadenza documento d'identità</b> (o la legge l'OCR).</li>
 <li>Il campo diventa <b style="color:#1a7f37">verde</b> se il documento è valido (con avviso se scade entro 60 giorni) e <b style="color:#c0392b">rosso</b> se è scaduto.</li>
-<li>Se è scaduto compare <b>💬 Richiedi nuovo</b>: apre WhatsApp con il messaggio già pronto per chiedere al cliente il nuovo documento.</li>
+<li>Se è scaduto compare <b>💬 Richiedi nuovo</b>: apre WhatsApp con il messaggio già pronto per chiedere al cliente il nuovo documento.</li><li>Lo stesso vale per il <b>coniuge</b> della congiunta: se il suo documento è scaduto compaiono <b>💬 Richiedi nuovo</b> e <b>📧</b> accanto alla sua scadenza (nel modulo) e <b>💬 Richiedi al coniuge</b> nella scheda della pratica; il messaggio va al cellulare o all'e-mail del coniuge.</li><li>Dall'<b>Archivio clienti</b>, sulla riga di chi ha il documento scaduto o mancante ci sono <b>💬 Chiedi documento</b> e <b>📧 E-mail</b>: si può chiedere il nuovo documento anche senza una pratica aperta (il testo dice «per poter preparare le sue prossime pratiche»). Spunta il filtro <b>Documento scaduto o mancante</b> per avere l'elenco di tutti.</li>
 <li>Nel Registro la pratica mostra il badge <b>🪪 scaduto</b> e il pulsante <b>💬 Richiedi nuovo documento</b>.</li>
 </ul>` },
 
