@@ -219,6 +219,7 @@ const schemas = {
     decedutoIl: 'deceduto_il',
     collaboratore: 'collaboratore',
     ruoloDichiarazione: 'ruolo_dichiarazione',
+    dichiaranteNome: 'dichiarante_nome',
   },
   scadenza: {
     id: 'id',
