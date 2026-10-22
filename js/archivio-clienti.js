@@ -5,6 +5,7 @@
 // filtri: { senzaCf, senzaTel, doc, conPratiche } per aprire l'archivio già filtrato (es. dal riquadro "Oggi")
 function apriArchivioClienti(testo, filtri) {
   filtri = filtri || {};
+  ARCHIVIO_VISTA.venuti = '';
   const vecchio = document.getElementById('popup-archivio'); if (vecchio) vecchio.remove();
   const ov = document.createElement('div');
   ov.id = 'popup-archivio';
@@ -21,6 +22,7 @@ function apriArchivioClienti(testo, filtri) {
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-con-pratiche"' + (filtri.conPratiche ? ' checked' : '') + '> Solo clienti con pratiche (quest\'anno e l\'anno scorso)</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-deceduti"' + (filtri.deceduti ? ' checked' : '') + '> ✝️ Solo deceduti</label>'
     + '<select id="arc-collab" style="width:auto; padding:4px 8px; font-size:12.5px" title="Solo i clienti di un collaboratore"><option value="">🤝 Tutti i collaboratori</option><option value="-">Senza collaboratore</option>' + getTipiList().map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('') + '</select></div>'
+    + '<div id="arc-collab-conta" style="display:none; margin-bottom:8px; font-size:13px"></div>'
     + '<div id="arc-lista" style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px"></div>'
     + '<div id="arc-conta" style="font-size:12px; color:var(--sub); margin-top:6px"></div></div>';
   document.body.appendChild(ov);
@@ -45,12 +47,27 @@ function apriArchivioClienti(testo, filtri) {
       const kq = typeof chiaveRicerca === 'function' ? chiaveRicerca(q) : '';
       return !!kq && (chiaveRicerca(c.nomeCompleto) + '|' + chiaveRicerca(c.nome) + chiaveRicerca(c.cognome) + '|' + chiaveRicerca(c.codiceFiscale) + '|' + chiaveRicerca(c.telefono) + '|' + chiaveRicerca(c.telefonoFisso)).indexOf(kq) >= 0;
     });
-    const mostra = filtrati.slice(0, 80);
+    // filtro per collaboratore: chi ha già fatto la pratica nell'anno e chi non ancora
+    const box = document.getElementById('arc-collab-conta');
+    let lista = filtrati;
+    if (collab && collab !== '-') {
+      const anno = annoAttivo(), qui = clientiConPraticheAnno(anno);
+      const venuto = function (c) { return (c.codiceFiscale && qui.cf[c.codiceFiscale]) || qui.nome[String(c.nomeCompleto || '').toUpperCase()]; };
+      const si = filtrati.filter(venuto).length, no = filtrati.length - si;
+      if (ARCHIVIO_VISTA.venuti === 'si') lista = filtrati.filter(venuto);
+      if (ARCHIVIO_VISTA.venuti === 'no') lista = filtrati.filter(function (c) { return !venuto(c); });
+      const chip = function (k, testo, n, col) { const on = ARCHIVIO_VISTA.venuti === k; return '<button type="button" data-venuti="' + k + '" style="padding:4px 12px; border-radius:999px; font-size:12.5px; font-weight:700; cursor:pointer; border:2px solid ' + col + '; background:' + (on ? col : 'transparent') + '; color:' + (on ? '#fff' : col) + '">' + testo + ' <b>' + n + '</b></button>'; };
+      box.style.display = 'flex'; box.style.cssText += '; gap:6px; flex-wrap:wrap; align-items:center';
+      box.innerHTML = '<b>🤝 ' + esc(collab) + ':</b> ' + filtrati.length + ' clienti, di cui'
+        + chip('si', '✅ già venuti nel ' + anno, si, '#1a7f37') + chip('no', '⏳ non ancora', no, '#c0392b') + chip('', 'Tutti', filtrati.length, '#374151');
+      lista.forEach(function (c) { c._venuto = !!venuto(c); });
+    } else { box.style.display = 'none'; box.innerHTML = ''; filtrati.forEach(function (c) { c._venuto = undefined; }); }
+    const mostra = lista.slice(0, 80);
     document.getElementById('arc-lista').innerHTML = mostra.length ? mostra.map(function (c) {
       const manca = [!c.codiceFiscale ? 'CF' : '', !c.telefono && !c.telefonoFisso ? 'telefono' : '', !c.documentoScadenza ? 'scad. documento' : ''].filter(Boolean);
       const scaduto = c.documentoScadenza && (dataNum(c.documentoScadenza) || 0) < oggi;
       return '<div data-id="' + esc(String(c.id || '')) + '" data-nome="' + esc(c.nomeCompleto) + '" style="display:flex; gap:10px; align-items:center; padding:8px 10px; border-bottom:1px solid var(--line); cursor:pointer' + (c.decedutoIl ? '; background:color-mix(in srgb, #6b7280 12%, var(--card))' : '') + '">'
-        + '<span style="flex:1"><b>' + esc(c.nomeCompleto) + '</b>' + badgeCollaboratore(c) + (c.decedutoIl ? ' <span style="display:inline-block; background:#374151; color:#fff; border-radius:999px; padding:1px 8px; font-size:11.5px; font-weight:700">✝️ deceduto/a il ' + esc(c.decedutoIl) + '</span>' : '') + '<div style="font-size:12px; color:var(--sub)">'
+        + '<span style="flex:1"><b>' + esc(c.nomeCompleto) + '</b>' + badgeCollaboratore(c) + (c._venuto === true ? ' <span style="font-size:11.5px; font-weight:800; color:#1a7f37">✅ pratica ' + annoAttivo() + '</span>' : (c._venuto === false ? ' <span style="font-size:11.5px; font-weight:800; color:#c0392b">⏳ non ancora venuto</span>' : '')) + (c.decedutoIl ? ' <span style="display:inline-block; background:#374151; color:#fff; border-radius:999px; padding:1px 8px; font-size:11.5px; font-weight:700">✝️ deceduto/a il ' + esc(c.decedutoIl) + '</span>' : '') + '<div style="font-size:12px; color:var(--sub)">'
         + (c.dataNascita ? 'nato/a il ' + esc(c.dataNascita) : 'data di nascita mancante') + ((c.comuneNascita || (c.codiceFiscale && typeof comuneDaCF === 'function' && comuneDaCF(c.codiceFiscale))) ? ' a ' + esc(c.comuneNascita || comuneDaCF(c.codiceFiscale)) : '') + (c.codiceFiscale ? ' · CF ' + esc(c.codiceFiscale) : '')
         + (c.telefono || c.telefonoFisso ? ' · 📞 ' + esc(c.telefono || c.telefonoFisso) : '') + (c.email ? ' · ✉️ ' + esc(c.email) : '')
         + (c.documentoScadenza ? ' · 🪪 ' + esc(c.documentoScadenza) + (scaduto ? ' <b style="color:#c0392b">scaduto</b>' : '') : '') + '</div>'
@@ -61,13 +78,15 @@ function apriArchivioClienti(testo, filtri) {
         + '<span style="background:#1d4f91; color:#fff; border-radius:999px; padding:5px 12px; font-size:12.5px; font-weight:700; white-space:nowrap">✏️ Modifica</span></div>';
     }).join('') : '<div class="empty" style="padding:14px">Nessun cliente trovato</div>';
     const nDec = tutti.filter(function (c) { return c.decedutoIl; }).length;
-    document.getElementById('arc-conta').textContent = filtrati.length + ' clienti' + (filtrati.length > mostra.length ? ' (ne vedi ' + mostra.length + ': scrivi nella ricerca per trovare gli altri)' : '') + ' · archivio: ' + tutti.length + ' clienti' + (nDec ? ' (di cui ' + nDec + ' deceduti, nascosti: si vedono cercandoli per nome o con «Solo deceduti»)' : '');
+    document.getElementById('arc-conta').textContent = lista.length + ' clienti' + (lista.length > mostra.length ? ' (ne vedi ' + mostra.length + ': scrivi nella ricerca per trovare gli altri)' : '') + ' · archivio: ' + tutti.length + ' clienti' + (nDec ? ' (di cui ' + nDec + ' deceduti, nascosti: si vedono cercandoli per nome o con «Solo deceduti»)' : '');
   };
   disegna();
   setTimeout(function () { const el = document.getElementById('arc-cerca'); if (el) el.focus(); }, 50);
   ov.addEventListener('input', function (e) { if (e.target.id === 'arc-cerca') disegna(); });
-  ov.addEventListener('change', function (e) { if (/^arc-/.test(e.target.id)) disegna(); });
+  ov.addEventListener('change', function (e) { if (e.target.id === 'arc-collab') ARCHIVIO_VISTA.venuti = ''; if (/^arc-/.test(e.target.id)) disegna(); });
   ov.addEventListener('click', function (e) {
+    const bv = e.target.closest('button[data-venuti]');
+    if (bv) { ARCHIVIO_VISTA.venuti = bv.dataset.venuti; disegna(); return; }
     const b = e.target.closest('button[data-az]');
     if (e.target === ov || (b && b.dataset.az === 'chiudi')) { ov.remove(); return; }
     if (b && (b.dataset.az === 'doc-wa' || b.dataset.az === 'doc-mail')) { if (typeof richiediDocumentoCliente === 'function') richiediDocumentoCliente(b.dataset.cid, b.dataset.az === 'doc-mail' ? 'email' : 'wa'); return; }
@@ -79,6 +98,20 @@ function apriArchivioClienti(testo, filtri) {
   });
 }
 
+const ARCHIVIO_VISTA = { venuti: '' };
+// Clienti con una pratica (titolare o coniuge, non annullata) nell'anno indicato
+function clientiConPraticheAnno(anno) {
+  const cf = {}, nome = {};
+  (state.pratiche || []).forEach(function (p) {
+    if (p.annullata || annoPratica(p) !== anno) return;
+    if (p.codiceFiscale) cf[String(p.codiceFiscale).toUpperCase()] = true;
+    if (p.nome) nome[String(p.nome).trim().toUpperCase()] = true;
+    if (p.congCodiceFiscale) cf[String(p.congCodiceFiscale).toUpperCase()] = true;
+    const con = ((p.congCognome || '') + ' ' + (p.congNome || '')).trim() || p.congiunta;
+    if (con) nome[String(con).trim().toUpperCase()] = true;
+  });
+  return { cf: cf, nome: nome };
+}
 // Clienti che hanno pratiche nell'anno in corso o in quello prima (per completare prima i dati di chi viene davvero)
 function clientiConPraticheRecenti() {
   const da = annoAttivo() - 1, cf = {}, nome = {};
