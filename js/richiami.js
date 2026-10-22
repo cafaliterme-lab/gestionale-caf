@@ -3,8 +3,10 @@
 // e quest'anno non si sono ancora presentati: elenco con telefoni, chiamata, WhatsApp, e-mail
 // ed esito del contatto (salvato nella tabella "richiami", visibile a tutti gli utenti).
 
-const RICHIAMI = { anno: null, esiti: {}, filtro: 'da_chiamare', cerca: '', caricato: false };
+// modo: 'richiamo' (fine campagna, luglio-ottobre) o 'campagna' (avvio della campagna 730, in primavera)
+const RICHIAMI = { anno: null, esiti: {}, filtro: 'da_chiamare', cerca: '', caricato: false, modo: 'richiamo' };
 const ESITI_RICHIAMO = {
+  avvisato: { l: '📢 Avvisato (inizio campagna)', c: '#b35f0c' },
   richiamera: { l: '🔁 Richiamerà', c: '#1d4f91' },
   appuntamento: { l: '📅 Appuntamento preso', c: '#1a7f37' },
   non_risponde: { l: '📵 Non risponde', c: '#b35f0c' },
@@ -79,15 +81,18 @@ async function caricaEsitiRichiami(anno) {
 
 function statoRichiamo(x) {
   const e = RICHIAMI.esiti[x.chiave];
-  return e && e.esito ? e : null;
+  return e && e.esito && ESITI_RICHIAMO[e.esito] ? e : null;
 }
+// appuntamento già preso in agenda (conta come esito chiuso)
+function appuntamentoRichiamo(x) { return typeof appuntamentiPersona === 'function' ? appuntamentiPersona(x.nome, x.cf)[0] || null : null; }
+function chiusoRichiamo(x) { const e = statoRichiamo(x); return !!appuntamentoRichiamo(x) || !!(e && ESITI_CHIUSI.indexOf(e.esito) >= 0); }
 function filtraRichiami(lista) {
   const q = RICHIAMI.cerca.trim().toUpperCase();
   return lista.filter(function (x) {
     if (q && (x.nome + ' ' + x.cf).indexOf(q) < 0 && chiaveRicerca(x.nome + x.cf).indexOf(chiaveRicerca(q)) < 0) return false;
     const e = statoRichiamo(x);
-    if (RICHIAMI.filtro === 'da_chiamare') return !e || ESITI_CHIUSI.indexOf(e.esito) < 0;
-    if (RICHIAMI.filtro === 'contattati') return !!e;
+    if (RICHIAMI.filtro === 'da_chiamare') return !chiusoRichiamo(x) && !(RICHIAMI.modo === 'campagna' && e && e.esito === 'avvisato');
+    if (RICHIAMI.filtro === 'contattati') return !!e || !!appuntamentoRichiamo(x);
     return true;
   });
 }
@@ -96,6 +101,8 @@ function nomeGentile(nome) {
   return String(nome || '').toLowerCase().replace(/(^|[\s'’-])([a-zàèéìòù])/g, function (m, s, c) { return s + c.toUpperCase(); });
 }
 function messaggioRichiamo(x) {
+  if (RICHIAMI.modo === 'campagna') return 'Gentile ' + nomeGentile(x.nome) + ', è iniziata la campagna 730 ' + RICHIAMI.anno + ' al CAF CISL di Alì Terme. Può prenotare il suo appuntamento chiamandoci o rispondendo a questo messaggio: le diremo anche quali documenti portare. Grazie!'
+    + (typeof righeContattiCaf === 'function' ? '\n\n' + righeContattiCaf() : '');
   return 'Gentile ' + nomeGentile(x.nome) + ', il CAF CISL di Alì Terme le ricorda che è ancora possibile presentare la dichiarazione 730 ' + RICHIAMI.anno + '. Ci contatti per fissare un appuntamento. Grazie!';
 }
 
@@ -116,16 +123,19 @@ function avvisoRichiamiHTML() {
     + '<button type="button" title="Nascondi fino alla prossima apertura del programma" onclick="try{sessionStorage.setItem(\'richiami-nascosto\',\'1\')}catch(e){} document.getElementById(\'avviso-richiami\').remove()" style="background:none; border:1px solid #1d4f91; color:#1d4f91; border-radius:999px; padding:6px 10px; cursor:pointer">✕</button></span></div>';
 }
 
-async function apriRichiami() {
+async function apriRichiami(modo) {
   RICHIAMI.anno = annoAttivo();
+  RICHIAMI.modo = modo === 'campagna' ? 'campagna' : 'richiamo';
+  const camp = RICHIAMI.modo === 'campagna';
+  if (typeof caricaAppuntamenti === 'function' && !AGENDA.caricato) caricaAppuntamenti();
   const vecchio = document.getElementById('popup-richiami'); if (vecchio) vecchio.remove();
   const ov = document.createElement('div');
   ov.id = 'popup-richiami';
   ov.style.cssText = 'position:fixed; inset:0; z-index:460; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:10px';
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border-top:6px solid #1d4f91; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:860px; width:100%; max-height:94vh; display:flex; flex-direction:column">'
     + '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start; flex-wrap:wrap">'
-    + '<div><div style="font-size:19px; font-weight:800; color:#1d4f91">📞 Clienti da richiamare – 730 ' + RICHIAMI.anno + '</div>'
-    + '<div style="font-size:12.5px; color:var(--sub)">Hanno fatto il 730 nel ' + (RICHIAMI.anno - 1) + ' (anche come coniuge) e nel ' + RICHIAMI.anno + ' non si sono ancora presentati. Quando fanno la pratica spariscono da soli.</div></div>'
+    + '<div><div style="font-size:19px; font-weight:800; color:' + (camp ? '#b35f0c' : '#1d4f91') + '">' + (camp ? '📢 Avvio campagna 730 ' : '📞 Clienti da richiamare – 730 ') + RICHIAMI.anno + '</div>'
+    + '<div style="font-size:12.5px; color:var(--sub)">' + (camp ? 'Avvisa i clienti del 730 ' + (RICHIAMI.anno - 1) + ' (anche come coniuge) che la campagna è iniziata: tocca 💬 WhatsApp (il cliente viene segnato «avvisato») e, quando chiama, 🗓️ Prenota. ' : 'Hanno fatto il 730 nel ' + (RICHIAMI.anno - 1) + ' (anche come coniuge) e nel ' + RICHIAMI.anno + ' non si sono ancora presentati. ') + 'Chi ha l\'appuntamento in agenda o fa la pratica sparisce da solo.</div></div>'
     + '<span style="display:flex; gap:6px; flex-wrap:wrap"><button type="button" onclick="stampaRichiami()" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">🖨️ Stampa</button>'
     + '<button type="button" onclick="excelRichiami()" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">📊 Excel</button>'
     + '<button type="button" onclick="document.getElementById(\'popup-richiami\').remove()" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">Chiudi</button></span></div>'
@@ -143,9 +153,9 @@ function disegnaRichiami() {
   const box = document.getElementById('ric-lista'); if (!box) return;
   const tutti = clientiDaRichiamare(RICHIAMI.anno);
   const conta = { da_chiamare: 0, contattati: 0, tutti: tutti.length };
-  tutti.forEach(function (x) { const e = statoRichiamo(x); if (e) conta.contattati++; if (!e || ESITI_CHIUSI.indexOf(e.esito) < 0) conta.da_chiamare++; });
+  tutti.forEach(function (x) { const e = statoRichiamo(x); if (e || appuntamentoRichiamo(x)) conta.contattati++; if (!chiusoRichiamo(x) && !(RICHIAMI.modo === 'campagna' && e && e.esito === 'avvisato')) conta.da_chiamare++; });
   const chip = function (k, t) { const on = RICHIAMI.filtro === k; return '<button type="button" onclick="RICHIAMI.filtro=\'' + k + '\'; disegnaRichiami()" style="padding:5px 12px; border-radius:999px; font-size:12.5px; font-weight:700; cursor:pointer; border:2px solid #1d4f91; background:' + (on ? '#1d4f91' : 'transparent') + '; color:' + (on ? '#fff' : '#1d4f91') + '">' + t + ' (' + conta[k] + ')</button>'; };
-  document.getElementById('ric-filtri').innerHTML = chip('da_chiamare', 'Da chiamare') + chip('contattati', 'Già contattati') + chip('tutti', 'Tutti');
+  document.getElementById('ric-filtri').innerHTML = chip('da_chiamare', RICHIAMI.modo === 'campagna' ? 'Da avvisare' : 'Da chiamare') + chip('contattati', 'Già contattati') + chip('tutti', 'Tutti');
   const lista = filtraRichiami(tutti);
   RICHIAMI._lista = lista;
   if (!tutti.length) { box.innerHTML = '<div class="empty">Nessun cliente da richiamare: tutti i clienti del 730 ' + (RICHIAMI.anno - 1) + ' si sono già presentati 👍</div>'; return; }
@@ -161,17 +171,19 @@ function disegnaRichiami() {
     const contatti = [
       x.tel ? bt('tel:' + tel(x.tel), '📞 ' + esc(x.tel), '#1d4f91') : '',
       x.fisso ? bt('tel:' + tel(x.fisso), '☎️ ' + esc(x.fisso), '#3b5578') : '',
-      wa ? bt('https://wa.me/' + wa + '?text=' + encodeURIComponent(messaggioRichiamo(x)), '💬 WhatsApp', '#25d366', 'target="_blank" rel="noopener"') : '',
+      wa ? bt('https://wa.me/' + wa + '?text=' + encodeURIComponent(messaggioRichiamo(x)), '💬 WhatsApp', '#25d366', 'target="_blank" rel="noopener"' + (RICHIAMI.modo === 'campagna' ? ' onclick="segnaAvvisato(' + i + ')"' : '')) : '',
       x.email ? bt('mailto:' + encodeURIComponent(x.email) + '?subject=' + encodeURIComponent('Dichiarazione 730 ' + RICHIAMI.anno) + '&body=' + encodeURIComponent(messaggioRichiamo(x)), '✉️ E-mail', '#8e5bd6') : '',
     ].filter(Boolean).join(' ');
     const opzioni = '<option value="">— esito del contatto —</option>' + Object.keys(ESITI_RICHIAMO).map(function (k) { return '<option value="' + k + '"' + (e && e.esito === k ? ' selected' : '') + '>' + ESITI_RICHIAMO[k].l + '</option>'; }).join('');
     const quando = e && e.quando ? new Date(e.quando) : null;
-    return '<div style="border:1px solid var(--line); border-left:5px solid ' + (e ? ESITI_RICHIAMO[e.esito].c : '#c0392b') + '; border-radius:12px; padding:10px 12px; margin-bottom:8px">'
+    return '<div style="border:1px solid var(--line); border-left:5px solid ' + (appuntamentoRichiamo(x) ? '#0f766e' : (e ? ESITI_RICHIAMO[e.esito].c : '#c0392b')) + '; border-radius:12px; padding:10px 12px; margin-bottom:8px">'
       + '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap"><div><b style="font-size:15px">' + esc(x.nome) + '</b>'
       + (x.cisl ? ' <span style="background:#c0392b; color:#fff; border-radius:999px; padding:0 7px; font-size:11px; font-weight:800">CISL</span>' : '')
       + '<div class="sub2">' + [x.nascita ? 'nato/a il ' + esc(x.nascita) : '', x.cf ? 'CF ' + esc(x.cf) : ''].filter(Boolean).join(' · ') + '</div>'
       + '<div class="sub2">' + (RICHIAMI.anno - 1) + ': ' + esc(tipi) + (pagato ? ' · pagato ' + fmtEuro(pagato) : '') + (ultima.inseritoDa ? ' · operatore ' + esc(ultima.inseritoDa) : '') + '</div></div>'
-      + '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:flex-start">' + (contatti || '<span style="color:#c0392b; font-size:12.5px; font-weight:700">Nessun recapito in archivio</span>') + '</div></div>'
+      + '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:flex-start">' + (contatti || '<span style="color:#c0392b; font-size:12.5px; font-weight:700">Nessun recapito in archivio</span>')
+      + (typeof prenotaPer === 'function' && !appuntamentoRichiamo(x) ? ' <button type="button" onclick="prenotaRichiamo(' + i + ')" style="background:#0f766e; color:#fff; border:none; border-radius:999px; padding:6px 12px; font-size:13px; font-weight:800; cursor:pointer">🗓️ Prenota</button>' : '') + '</div></div>'
+      + (appuntamentoRichiamo(x) ? '<div style="margin-top:6px; font-size:13px; font-weight:800; color:#0f766e">🗓️ Appuntamento ' + esc(giornoLungo(appuntamentoRichiamo(x).data)) + ' alle ' + esc(appuntamentoRichiamo(x).ora) + '</div>' : '')
       + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; align-items:center">'
       + '<select id="ric-esito-' + i + '" style="width:auto; flex:0 1 250px">' + opzioni + '</select>'
       + '<input id="ric-nota-' + i + '" placeholder="Nota (es. richiamare dopo il 10)" value="' + esc((e && e.nota) || '') + '" style="flex:1 1 180px; min-width:140px">'
@@ -181,6 +193,23 @@ function disegnaRichiami() {
   }).join('');
 }
 
+// campagna: chi riceve il WhatsApp viene segnato «avvisato» (se non ha già un altro esito)
+function segnaAvvisato(i) {
+  const x = (RICHIAMI._lista || [])[i]; if (!x || statoRichiamo(x)) return;
+  salvaEsitoRichiamo(x, 'avvisato', '');
+}
+function prenotaRichiamo(i) {
+  const x = (RICHIAMI._lista || [])[i]; if (!x) return;
+  prenotaPer({ nome: x.nome, codice_fiscale: x.cf || null, telefono: x.tel || x.fisso || '', email: x.email || '', tipo: (x.pratiche[0] && x.pratiche[0].p.tipo) || '',
+    dopo: function () { salvaEsitoRichiamo(x, 'appuntamento', ''); } });
+}
+async function salvaEsitoRichiamo(x, esito, nota) {
+  const riga = { anno: RICHIAMI.anno, chiave: x.chiave, nome: x.nome, esito: esito, nota: nota || '', chi: ((auth.profilo && auth.profilo.nome) || '').toUpperCase(), quando: new Date().toISOString() };
+  let r;
+  try { r = await fetchSupabase('/rest/v1/richiami?on_conflict=anno,chiave', 'POST', riga, { Prefer: 'resolution=merge-duplicates,return=representation' }); } catch (e) { r = { ok: false }; }
+  if (r && r.ok) RICHIAMI.esiti[x.chiave] = Array.isArray(r.data) && r.data[0] ? r.data[0] : riga;
+  disegnaRichiami();
+}
 async function salvaRichiamo(i, b) {
   const x = (RICHIAMI._lista || [])[i]; if (!x) return;
   const esito = document.getElementById('ric-esito-' + i).value;

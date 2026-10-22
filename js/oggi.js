@@ -62,6 +62,13 @@ function renderOggi() {
   const docMancanti = pratAnno.filter(function (p) { return !eConsegnata(p) && typeof documentiPratica === 'function' && documentiPratica(p).mancanti.length; }).length;
   const mese = new Date().getMonth() + 1;
   const daRichiamare = mese >= 7 && mese <= 10 && typeof clientiDaRichiamare === 'function' ? clientiDaRichiamare(anno).length : null;
+  // da febbraio a giugno: avvio della campagna 730 (clienti dell'anno scorso da avvisare)
+  const daAvvisareCampagna = mese >= 2 && mese <= 6 && typeof clientiDaRichiamare === 'function' ? clientiDaRichiamare(anno).length : null;
+  // agenda
+  const ag = typeof AGENDA !== 'undefined' && typeof appuntamentiAttivi === 'function';
+  const appOggi = ag ? appuntamentiAttivi(oggiIso()) : [];
+  const prossimo = appOggi.find(function (a) { return a.stato === 'prenotato' && minuti(a.ora) >= new Date().getHours() * 60 + new Date().getMinutes(); });
+  const promDaMandare = ag ? promemoriaDaMandare().length : 0;
   const tile = function (icona, n, testo, colore, onclick, nota) {
     const vuoto = !n;
     return '<button type="button" onclick="' + onclick + '" style="flex:1 1 150px; min-width:140px; text-align:left; border:2px solid ' + (vuoto ? 'var(--line)' : colore) + '; background:' + (vuoto ? 'var(--card)' : 'color-mix(in srgb, ' + colore + ' 10%, var(--card))') + '; color:var(--ink); border-radius:14px; padding:10px 12px; cursor:pointer">'
@@ -74,6 +81,7 @@ function renderOggi() {
     + '<div style="font-weight:800; font-size:18px; color:#1d4f91">📅 Oggi, ' + esc(oggiTesto) + ' <span style="font-weight:600; font-size:13px; color:var(--sub)">· cosa c\'è da fare (anno ' + anno + ')</span></div>'
     + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">✅ OGGI IN SEDE</div>'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px">'
+    + (ag ? tile('🗓️', appOggi.length, 'Appuntamenti oggi', '#0d9488', "AGENDA.giorno=oggiIso(); oggiTab('agenda')", prossimo ? 'prossimo alle ' + esc(prossimo.ora) + ': ' + esc(prossimo.nome) : (appOggi.length ? 'tutti arrivati o passati' : 'tocca per aprire l\'agenda')) : '')
     + tile('🆕', aperteOggi, 'Pratiche aperte oggi', '#1d4f91', "oggiVaiRegistroCerca('tutte', todayIT())", '')
     + tile('✅', sommaPeso(consegnateOggi), 'Consegnate oggi', '#1a7f37', "oggiVaiRegistroCerca('consegnate', todayIT())", 'nell\'anno: ' + consegnateAnno + ' consegnate / definite (congiunte = 2)')
     + (admin ? tile('💶', incassoOggi > 0 ? fmtEuro(incassoOggi) : 0, 'Incassato oggi', '#2f9e5f', 'apriChiusuraGiorno()', 'tocca per la chiusura di cassa') : '')
@@ -90,6 +98,8 @@ function renderOggi() {
     + tile('⏰', scad.length, 'Scadenze entro 7 giorni', '#7b3fa0', 'oggiVaiScadenze()', scadutePassate ? scadutePassate + ' già passate' : '')
     + tile('📞', senzaTel, 'Clienti senza telefono', '#1d4f91', "apriArchivioClienti('', { conPratiche: true, senzaTel: true })", 'venuti quest\'anno o l\'anno scorso')
     + tile('🪪', docScad, 'Documenti scaduti o mancanti', '#c0392b', "apriArchivioClienti('', { conPratiche: true, doc: true })", 'clienti venuti di recente')
+    + (promDaMandare ? tile('💬', promDaMandare, 'Promemoria appuntamenti da mandare', '#25a35a', 'apriPromemoriaAgenda()', 'a chi ha l\'appuntamento il prossimo giorno di apertura') : '')
+    + (daAvvisareCampagna !== null ? tile('📢', daAvvisareCampagna, 'Campagna 730: clienti da avvisare', '#b35f0c', "apriRichiami('campagna')", '730 dell\'anno scorso non ancora venuti quest\'anno') : '')
     + (daRichiamare !== null ? tile('☎️', daRichiamare, 'Clienti da richiamare', '#0e8a8a', 'apriRichiami()', '730 dell\'anno scorso non ancora tornati') : '')
     + '</div>'
     + (senzaCfTutti ? '<div style="font-size:12px; color:var(--sub); margin-top:8px">📋 Archivio da completare: <a href="#" onclick="apriArchivioClienti(\'\', { senzaCf: true }); return false" style="font-weight:700">' + senzaCfTutti + ' clienti senza codice fiscale</a> · completali quando vengono: <b>✏️ Modifica</b> → <b>📷 Leggi documento</b></div>' : '')

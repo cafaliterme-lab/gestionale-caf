@@ -288,6 +288,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .navmenu button{--tc:#1d4f91; text-align:center; min-width:0; line-height:1.2; background:color-mix(in srgb, var(--tc) 13%, var(--card)); color:color-mix(in srgb, var(--tc) 85%, var(--ink)); border:1.5px solid color-mix(in srgb, var(--tc) 35%, var(--line)); border-radius:999px; padding:8px 8px; font-size:12.5px; font-weight:700; cursor:pointer; white-space:normal; transition:background .15s, color .15s, box-shadow .15s}
 .navmenu button:hover{background:color-mix(in srgb, var(--tc) 24%, var(--card))}
 .navmenu button[data-tab="oggi"]{--tc:#0f766e}
+.navmenu button[data-tab="agenda"]{--tc:#0d9488}
 .navmenu button[data-tab="anagrafica"]{--tc:#1d4f91}
 .navmenu button[data-tab="registro"]{--tc:#2f9e5f}
 .navmenu button[data-tab="storico"]{--tc:#5e4fa2}
@@ -384,10 +385,19 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
 .barra-anno label{margin:0; white-space:nowrap}
 .barra-anno #anno-attivo{width:auto; min-width:110px; padding:5px 10px}
 /* menu: in evidenza le schede di tutti i giorni, le altre più piccole; resta fisso in alto scorrendo */
-.navmenu{display:flex !important; flex-wrap:wrap; gap:6px; position:sticky; top:0; z-index:45; background:var(--bg); padding:6px 0 8px; margin-bottom:10px}
+.barra-fissa{position:sticky; top:0; z-index:45; background:var(--bg); padding:6px 0 8px; margin-bottom:10px}
+.navmenu{display:flex !important; flex-wrap:wrap; gap:6px; margin:0}
+/* ricerca unica sotto il menu */
+.ricerca-unica{position:relative; display:flex; align-items:center; gap:8px; margin-top:8px; background:var(--card); border:2px solid #5e4fa2; border-radius:12px; padding:0 12px}
+.ricerca-unica input{border:none; background:transparent; box-shadow:none; padding:9px 0; font-size:15px; outline:none}
+.ru-risultati{position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:60; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.2); max-height:60vh; overflow:auto}
+.ru-riga{padding:8px 12px; border-bottom:1px solid var(--line); cursor:pointer}
+.ru-riga.sel, .ru-riga:hover{background:color-mix(in srgb, #5e4fa2 12%, var(--card))}
+.ru-badge{display:inline-block; background:#5e4fa2; color:#fff; border-radius:999px; padding:0 8px; font-size:11px; font-weight:700}
 .navmenu button{flex:0 1 auto; padding:6px 12px; font-size:11.5px; white-space:nowrap}
 .navmenu .nav-a-capo{flex-basis:100%; height:0}
-.navmenu button:is([data-tab="oggi"],[data-tab="anagrafica"],[data-tab="registro"],[data-tab="storico"],[data-tab="contabilita"]){flex:1 1 150px; padding:9px 10px; font-size:13.5px; font-weight:800; white-space:normal}
+.navmenu button:is([data-tab="oggi"],[data-tab="agenda"],[data-tab="anagrafica"],[data-tab="registro"],[data-tab="storico"],[data-tab="contabilita"]){flex:1 1 130px; padding:9px 10px; font-size:13.5px; font-weight:800; white-space:normal}
+.navmenu button[data-tab="agenda"]::before{content:"🗓️ "}
 .navmenu button[data-tab="anagrafica"]::before{content:"✍️ "}
 .navmenu button[data-tab="registro"]::before{content:"📋 "}
 .navmenu button[data-tab="storico"]::before{content:"🔎 "}
@@ -410,12 +420,12 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
 .sez-tipi[open] > summary{margin-bottom:10px}
 @media (max-width:600px){
   /* telefono: menu su una riga che scorre col dito */
-  .navmenu{flex-wrap:nowrap !important; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin-left:-16px; margin-right:-16px; padding:6px 16px 8px}
+  .navmenu{flex-wrap:nowrap !important; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin-left:-16px !important; margin-right:-16px !important; padding:0 16px 2px}
   .navmenu::-webkit-scrollbar{display:none}
   .navmenu .nav-a-capo{display:none}
   .userbar{font-size:11px; gap:5px}
   .userbar button{font-size:11px; padding:4px 8px}
-  .navmenu button, .navmenu button:is([data-tab="oggi"],[data-tab="anagrafica"],[data-tab="registro"],[data-tab="storico"],[data-tab="contabilita"]){flex:none; white-space:nowrap; padding:9px 13px; font-size:12.5px}
+  .navmenu button, .navmenu button:is([data-tab="oggi"],[data-tab="agenda"],[data-tab="anagrafica"],[data-tab="registro"],[data-tab="storico"],[data-tab="contabilita"]){flex:none; white-space:nowrap; padding:9px 13px; font-size:12.5px}
   .hero{padding:calc(8px + env(safe-area-inset-top,0px)) 12px 10px; flex-wrap:nowrap !important}
   .hero-logo{width:38px !important; height:38px !important}
   .hero h1{font-size:12px}
@@ -512,8 +522,10 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
 <div id="avvisi-scadenze" class="avvisi-scadenze" style="display:none"></div>
 
 <div class="grid barra-anno" style="margin-bottom:14px"><div><label>Anno di protocollo (bloccato al 31/12)</label><select id="anno-attivo" onchange="cambiaAnnoAttivo(this.value)"></select></div><div id="chat-slot" style="display:flex; align-items:flex-end"></div></div>
+<div class="barra-fissa" id="barra-fissa">
 <div class="navmenu" id="navmenu">
   <button type="button" data-tab="oggi" id="nav-oggi" onclick="showTab(this)" style="display:none">📅 OGGI</button>
+  <button type="button" data-tab="agenda" id="nav-agenda" onclick="showTab(this)" style="display:none">AGENDA</button>
   <button type="button" data-tab="anagrafica" onclick="showTab(this)">INSERIMENTO PRATICA</button>
   <button type="button" data-tab="registro" onclick="showTab(this)">REGISTRO DI PROTOCOLLO</button>
   <button type="button" data-tab="storico" id="nav-storico" onclick="showTab(this)" style="display:none">STORICO CONTRIBUENTE</button>
@@ -527,6 +539,11 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
   <button type="button" data-tab="messaggi" onclick="showTab(this)">MESSAGGI</button>
   <button type="button" data-tab="modulistica" onclick="showTab(this)">MODULISTICA</button>
   <button type="button" data-tab="permessi" id="nav-permessi" onclick="showTab(this)" style="display:none">UTENTI&nbsp;E&nbsp;PERMESSI</button>
+</div>
+<div id="ricerca-unica" class="ricerca-unica" style="display:none">
+  <span aria-hidden="true">🔎</span><input id="ru-cerca" type="search" autocomplete="off" placeholder="Cerca una persona: cognome, nome o codice fiscale…" oninput="cercaRicercaUnica(this.value)" onfocus="if(this.value.trim().length>1) cercaRicercaUnica(this.value)" onkeydown="tastoRicercaUnica(event)">
+  <div id="ru-risultati" class="ru-risultati" style="display:none"></div>
+</div>
 </div>
 
 <section class="tabsec" id="tab-registro">
@@ -602,6 +619,8 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
 <div class="card" id="elenco-filca" style="display:none"></div>
 <div class="card" id="raffronto"></div>
 </section>
+
+<section class="tabsec" id="tab-agenda"></section>
 
 <section class="tabsec" id="tab-oggi">
 <div id="box-oggi"></div>
@@ -1005,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=18"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=181"></script>
+<script src="js/guida.js?v=182"></script>
 <script src="js/scadenze.js?v=202610091"></script>
 <script src="js/config.js?v=202610078"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -1014,15 +1033,17 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610149"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610318"></script>
+<script src="js/app.js?v=202610319"></script>
 <script src="js/email.js?v=3"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=5"></script>
-<script src="js/richiami.js?v=5"></script>
+<script src="js/richiami.js?v=6"></script>
 <script src="js/ricercafatture.js?v=2"></script>
 <script src="js/chiusura.js?v=2"></script>
 <script src="js/resoconto.js?v=6"></script>
-<script src="js/oggi.js?v=8"></script>
+<script src="js/oggi.js?v=9"></script>
+<script src="js/agenda.js?v=1"></script>
+<script src="js/ricerca-unica.js?v=1"></script>
 <script src="js/situazione.js?v=7"></script>
 <script src="js/versamenti.js?v=34"></script>
 <script src="js/spese.js?v=11"></script>
