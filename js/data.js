@@ -218,6 +218,7 @@ const schemas = {
     comuneNascita: 'comune_nascita',
     decedutoIl: 'deceduto_il',
     collaboratore: 'collaboratore',
+    ruoloDichiarazione: 'ruolo_dichiarazione',
   },
   scadenza: {
     id: 'id',

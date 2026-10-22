@@ -244,6 +244,11 @@ const fromTable = (table) => {
       filtri.push(`${col}=eq.${encodeURIComponent(val)}`);
       return builder;
     },
+    // es. is('ruolo', null) = solo le righe con il campo vuoto
+    is(col, val) {
+      filtri.push(`${col}=is.${val === null ? 'null' : encodeURIComponent(val)}`);
+      return builder;
+    },
     // filtro negato, es. not('id', 'is', null) = tutte le righe
     not(col, op, val) {
       filtri.push(`${col}=not.${op}.${val === null ? 'null' : encodeURIComponent(val)}`);

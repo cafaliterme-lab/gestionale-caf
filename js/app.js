@@ -183,7 +183,7 @@ function cercaClienti(q, ctx){
   box.innerHTML = match.map(function(c,i){
     const cestino = (puoEliminareClienti() && c.id) ? '<button type="button" title="Elimina definitivamente dall\'archivio" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); eliminaClienteArchivio(&quot;'+esc(String(c.id))+'&quot;, &quot;'+ctx+'&quot;)">🗑</button>' : '';
     const matita = (c.id && typeof modificaClienteArchivio === 'function') ? '<button type="button" title="Modifica l\'anagrafica di questo cliente" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); boxRisultatiClienti(&quot;'+ctx+'&quot;).classList.remove(&quot;open&quot;); const c = ARCHIVIO_CLIENTI.find(function(x){ return String(x.id) === &quot;'+esc(String(c.id))+'&quot;; }); if(c) modificaClienteArchivio(c)">✏️</button>' : '';
-    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+matita+'<b>'+esc(c.nomeCompleto)+'</b>'+badgeCollaboratore(c)+(c.decedutoIl ? ' <span style="display:inline-block; background:#374151; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; font-weight:700">✝️ deceduto/a il '+esc(c.decedutoIl)+'</span>' : '')+'<span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+(c.telefono || c.telefonoFisso ? ' · 📞 '+esc(c.telefono || c.telefonoFisso) : '')+(c.email ? ' · ✉️ '+esc(c.email) : '')+'</span></div>';
+    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+matita+'<b>'+esc(c.nomeCompleto)+'</b>'+badgeCollaboratore(c)+badgeRuolo(c)+(c.decedutoIl ? ' <span style="display:inline-block; background:#374151; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; font-weight:700">✝️ deceduto/a il '+esc(c.decedutoIl)+'</span>' : '')+'<span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+(c.telefono || c.telefonoFisso ? ' · 📞 '+esc(c.telefono || c.telefonoFisso) : '')+(c.email ? ' · ✉️ '+esc(c.email) : '')+'</span></div>';
   }).join('') + rigaNuovo;
   box.dataset.match = JSON.stringify(match);
   box.classList.add('open');
@@ -195,6 +195,39 @@ function opzioniCollaboratore(sel){
 }
 function badgeCollaboratore(c){
   return c && c.collaboratore ? ' <span title="Collaboratore" style="display:inline-block; background:'+coloreCollaboratore(c.collaboratore)+'; color:#fff; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700">🤝 '+esc(c.collaboratore)+'</span>' : '';
+}
+// Ruolo nella dichiarazione: titolare (dichiarante) o coniuge dichiarante nella congiunta
+const RUOLI_DICHIARAZIONE = { dichiarante: '👤 Dichiarante', coniuge: '💑 Coniuge dichiarante' };
+function opzioniRuoloDichiarazione(sel){
+  return '<option value="">— non indicato —</option>' + Object.keys(RUOLI_DICHIARAZIONE).map(function(k){ return '<option value="'+k+'"'+(k === sel ? ' selected' : '')+'>'+RUOLI_DICHIARAZIONE[k]+'</option>'; }).join('');
+}
+// Di chi è coniuge (dall'ultima pratica congiunta in cui compare come coniuge)
+function coniugeDiCliente(c){
+  if(!c) return '';
+  const nome = String(c.nomeCompleto || '').trim().toUpperCase(), cf = String(c.codiceFiscale || '').toUpperCase();
+  const l = (state.pratiche || []).filter(function(p){
+    if(p.annullata) return false;
+    const con = (((p.congCognome || '') + ' ' + (p.congNome || '')).trim() || p.congiunta || '').toUpperCase();
+    return (cf && String(p.congCodiceFiscale || '').toUpperCase() === cf) || (con && con === nome);
+  }).sort(function(a, b){ return annoPratica(b) - annoPratica(a); });
+  return l.length ? l[0].nome || '' : '';
+}
+function badgeRuolo(c){
+  if(!c || !c.ruoloDichiarazione || !RUOLI_DICHIARAZIONE[c.ruoloDichiarazione]) return '';
+  const di = c.ruoloDichiarazione === 'coniuge' ? coniugeDiCliente(c) : '';
+  return ' <span title="Ruolo nella dichiarazione" style="display:inline-block; background:'+(c.ruoloDichiarazione === 'coniuge' ? '#b0306a' : '#1d4f91')+'; color:#fff; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700">'+RUOLI_DICHIARAZIONE[c.ruoloDichiarazione]+(di ? ' di '+esc(di) : '')+'</span>';
+}
+// Ruolo nella scheda del cliente; soloSeVuoto: non cambia un ruolo già scelto (es. salvando una pratica)
+async function salvaRuoloCliente(nomeCompleto, dataNascita, codiceFiscale, ruolo, soloSeVuoto){
+  if(!ruolo) return;
+  try{
+    let q = supabase.from('clienti').update({ ruolo_dichiarazione: ruolo });
+    q = codiceFiscale ? q.eq('codice_fiscale', codiceFiscale) : q.eq('nome_completo', nomeCompleto).eq('data_nascita', dataNascita || '');
+    if(soloSeVuoto) q = q.is('ruolo_dichiarazione', null);
+    const { error } = await q;
+    if(error) throw new Error(error.message);
+    const rec = trovaInArchivio(nomeCompleto, dataNascita, codiceFiscale); if(rec && (!soloSeVuoto || !rec.ruoloDichiarazione)) rec.ruoloDichiarazione = ruolo;
+  }catch(e){ console.error('ruolo cliente', e); }
 }
 // Salva il collaboratore nella scheda del cliente (cercata per codice fiscale, altrimenti per nome e data di nascita)
 async function salvaCollaboratoreCliente(nomeCompleto, dataNascita, codiceFiscale, collaboratore){
@@ -2361,6 +2394,9 @@ async function addPraticaInterna(){
   // prima si salva il cliente in archivio (cognome e nome separati bene), poi la pratica
   try{ await registraClienteSeNuovo(cognome, nomeProprio, cf, codiceFiscale, telefono, telefonoFisso, documentoScadenza, email); }catch(e){ console.error('archivio clienti', e); }
   if(documentoNumero || comuneNascita || documentoTipo){ try{ await data.clienti.salvaDocumento({ codiceFiscale: codiceFiscale, nomeCompleto: (cognome + ' ' + nomeProprio).trim(), dataNascita: cf, documentoNumero: documentoNumero, comuneNascita: comuneNascita, documentoTipo: documentoTipo }); }catch(e){ console.error('numero documento', e); } }
+  // ruolo nella dichiarazione nell'archivio (solo se non è già indicato)
+  salvaRuoloCliente((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale, 'dichiarante', true);
+  if(congCognome || congNome) salvaRuoloCliente((congCognome + ' ' + congNome).trim(), congData, congCodiceFiscale, 'coniuge', true);
   if(congCognome || congNome){ try{ await registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono, '', congDocumentoScadenza, congEmail); }catch(e){ console.error('archivio clienti coniuge', e); }
     if(congDocumentoNumero || congComuneNascita || congDocumentoTipo){ try{ await data.clienti.salvaDocumento({ codiceFiscale: congCodiceFiscale, nomeCompleto: (congCognome + ' ' + congNome).trim(), dataNascita: congData, documentoNumero: congDocumentoNumero, comuneNascita: congComuneNascita, documentoTipo: congDocumentoTipo }); }catch(e){ console.error('numero documento coniuge', e); } } }
 
@@ -3426,6 +3462,7 @@ async function salvaModifica(id){
   if((campi.documentoNumero || campi.documentoTipo) && data.clienti.salvaDocumento) data.clienti.salvaDocumento({ codiceFiscale: p.codiceFiscale || '', nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), dataNascita: campi.cf || '', documentoNumero: campi.documentoNumero, documentoTipo: campi.documentoTipo });
   if(campi.telefono || campi.telefonoFisso || campi.documentoScadenza || campi.email) data.clienti.salvaTelefono({ nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf || '', codiceFiscale: p.codiceFiscale || '', telefono: campi.telefono, telefonoFisso: campi.telefonoFisso, documentoScadenza: campi.documentoScadenza, email: campi.email });
   if(cc || cn) await aggiornaArchivioCliente(vecchiCong, { cognome: cc, nome: cn, dataNascita: campi.congData });
+  if(cc || cn) salvaRuoloCliente((cc + ' ' + cn).trim(), campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', 'coniuge', true);
   if((cc || cn) && (campi.congCodiceFiscale || campi.congTelefono || campi.congEmail)) registraClienteSeNuovo(cc, cn, campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', campi.congTelefono, '', '', campi.congEmail);
   // pagato tutto ma lo stato e' ancora "lavorata", "da pagare"...: si propone di passare a "Pagato"
   if(propostaStatoPagato(campi.tipo, p.stato, campi.compenso, campi.pagato) && confirm('Il cliente ha pagato tutto (' + fmtEuro(campi.pagato) + ').\n\nPasso lo stato della pratica da "' + statoLabel(p.stato) + '" a "Pagato"?')){

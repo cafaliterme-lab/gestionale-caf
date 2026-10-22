@@ -21,6 +21,7 @@ function apriArchivioClienti(testo, filtri) {
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-doc"' + (filtri.doc ? ' checked' : '') + '> Documento scaduto o mancante</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-con-pratiche"' + (filtri.conPratiche ? ' checked' : '') + '> Solo clienti con pratiche (quest\'anno e l\'anno scorso)</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-deceduti"' + (filtri.deceduti ? ' checked' : '') + '> ✝️ Solo deceduti</label>'
+    + '<select id="arc-ruolo" style="width:auto; padding:4px 8px; font-size:12.5px" title="Dichiaranti o coniugi"><option value="">Dichiaranti e coniugi</option><option value="dichiarante">👤 Solo dichiaranti</option><option value="coniuge">💑 Solo coniugi dichiaranti</option></select>'
     + '<select id="arc-collab" style="width:auto; padding:4px 8px; font-size:12.5px" title="Solo i clienti di un collaboratore"><option value="">🤝 Tutti i collaboratori</option><option value="-">Senza collaboratore</option>' + getTipiList().map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('') + '</select></div>'
     + '<div id="arc-collab-conta" style="display:none; margin-bottom:8px; font-size:13px"></div>'
     + '<div id="arc-lista" style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px"></div>'
@@ -29,7 +30,7 @@ function apriArchivioClienti(testo, filtri) {
   const disegna = function () {
     const q = (document.getElementById('arc-cerca').value || '').trim().toUpperCase();
     const senzaCf = document.getElementById('arc-senza-cf').checked, senzaTel = document.getElementById('arc-senza-tel').checked, doc = document.getElementById('arc-doc').checked;
-    const conPrat = document.getElementById('arc-con-pratiche').checked, deceduti = document.getElementById('arc-deceduti').checked, collab = document.getElementById('arc-collab').value;
+    const conPrat = document.getElementById('arc-con-pratiche').checked, deceduti = document.getElementById('arc-deceduti').checked, collab = document.getElementById('arc-collab').value, ruolo = document.getElementById('arc-ruolo').value;
     const recenti = conPrat ? clientiConPraticheRecenti() : null;
     const oggi = typeof dataNum === 'function' ? dataNum(todayIT()) : 0;
     const tutti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []);
@@ -37,6 +38,7 @@ function apriArchivioClienti(testo, filtri) {
       // i deceduti si vedono con «Solo deceduti» o cercandoli per nome; non contano nei dati da completare
       if (deceduti) { if (!c.decedutoIl) return false; }
       else if (c.decedutoIl && (!q || senzaCf || senzaTel || doc || conPrat)) return false;
+      if (ruolo && c.ruoloDichiarazione !== ruolo) return false;
       if (collab === '-' ? !!c.collaboratore : (collab && c.collaboratore !== collab)) return false;
       if (recenti && !(c.codiceFiscale && recenti.cf[c.codiceFiscale]) && !recenti.nome[String(c.nomeCompleto || '').toUpperCase()]) return false;
       if (senzaCf && c.codiceFiscale) return false;
@@ -67,7 +69,7 @@ function apriArchivioClienti(testo, filtri) {
       const manca = [!c.codiceFiscale ? 'CF' : '', !c.telefono && !c.telefonoFisso ? 'telefono' : '', !c.documentoScadenza ? 'scad. documento' : ''].filter(Boolean);
       const scaduto = c.documentoScadenza && (dataNum(c.documentoScadenza) || 0) < oggi;
       return '<div data-id="' + esc(String(c.id || '')) + '" data-nome="' + esc(c.nomeCompleto) + '" style="display:flex; gap:10px; align-items:center; padding:8px 10px; border-bottom:1px solid var(--line); cursor:pointer' + (c.decedutoIl ? '; background:color-mix(in srgb, #6b7280 12%, var(--card))' : '') + '">'
-        + '<span style="flex:1"><b>' + esc(c.nomeCompleto) + '</b>' + badgeCollaboratore(c) + (c._venuto === true ? ' <span style="font-size:11.5px; font-weight:800; color:#1a7f37">✅ pratica ' + annoAttivo() + '</span>' : (c._venuto === false ? ' <span style="font-size:11.5px; font-weight:800; color:#c0392b">⏳ non ancora venuto</span>' : '')) + (c.decedutoIl ? ' <span style="display:inline-block; background:#374151; color:#fff; border-radius:999px; padding:1px 8px; font-size:11.5px; font-weight:700">✝️ deceduto/a il ' + esc(c.decedutoIl) + '</span>' : '') + '<div style="font-size:12px; color:var(--sub)">'
+        + '<span style="flex:1"><b>' + esc(c.nomeCompleto) + '</b>' + badgeCollaboratore(c) + badgeRuolo(c) + (c._venuto === true ? ' <span style="font-size:11.5px; font-weight:800; color:#1a7f37">✅ pratica ' + annoAttivo() + '</span>' : (c._venuto === false ? ' <span style="font-size:11.5px; font-weight:800; color:#c0392b">⏳ non ancora venuto</span>' : '')) + (c.decedutoIl ? ' <span style="display:inline-block; background:#374151; color:#fff; border-radius:999px; padding:1px 8px; font-size:11.5px; font-weight:700">✝️ deceduto/a il ' + esc(c.decedutoIl) + '</span>' : '') + '<div style="font-size:12px; color:var(--sub)">'
         + (c.dataNascita ? 'nato/a il ' + esc(c.dataNascita) : 'data di nascita mancante') + ((c.comuneNascita || (c.codiceFiscale && typeof comuneDaCF === 'function' && comuneDaCF(c.codiceFiscale))) ? ' a ' + esc(c.comuneNascita || comuneDaCF(c.codiceFiscale)) : '') + (c.codiceFiscale ? ' · CF ' + esc(c.codiceFiscale) : '')
         + (c.telefono || c.telefonoFisso ? ' · 📞 ' + esc(c.telefono || c.telefonoFisso) : '') + (c.email ? ' · ✉️ ' + esc(c.email) : '')
         + (c.documentoScadenza ? ' · 🪪 ' + esc(c.documentoScadenza) + (scaduto ? ' <b style="color:#c0392b">scaduto</b>' : '') : '') + '</div>'
@@ -154,7 +156,8 @@ function modificaClienteArchivio(c, dopo) {
     + campo('scad', 'Scadenza documento', c.documentoScadenza, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + '<div><label>Tipo documento</label><select id="mc-doctipo">' + (typeof opzioniTipoDoc === 'function' ? opzioniTipoDoc(c.documentoTipo || '') : '') + '</select></div>'
     + campo('docnum', 'N. documento', c.documentoNumero, 'style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\\s+/g, \'\')"')
-    + '<div class="full"><label>🤝 Collaboratore <span style="font-weight:600; color:var(--sub)">(a chi appartiene il cliente: nelle nuove pratiche il tipo si propone da solo)</span></label><select id="mc-collab">' + opzioniCollaboratore(c.collaboratore || '') + '</select></div>'
+    + '<div><label>Ruolo nella dichiarazione</label><select id="mc-ruolo">' + opzioniRuoloDichiarazione(c.ruoloDichiarazione || '') + '</select>' + (c.ruoloDichiarazione === 'coniuge' && coniugeDiCliente(c) ? '<div class="sub2">coniuge di ' + esc(coniugeDiCliente(c)) + '</div>' : '') + '</div>'
+    + '<div><label title="A chi appartiene il cliente: nelle nuove pratiche il tipo si propone da solo">🤝 Collaboratore</label><select id="mc-collab">' + opzioniCollaboratore(c.collaboratore || '') + '</select></div>'
     + '<div class="full" style="margin-top:4px; padding:8px 10px; border-radius:10px; border:1.5px dashed #6b7280"><label>✝️ Deceduto/a il <span style="font-weight:600; color:var(--sub)">(lascia vuoto se in vita)</span></label><input id="mc-deceduto" value="' + esc(c.decedutoIl || '') + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)" style="max-width:180px"><div style="font-size:11.5px; color:var(--sub); margin-top:3px">La scheda resta in archivio, ma non compare più nelle ricerche normali, tra i clienti da richiamare e tra i dati da completare.</div></div>'
     + '</div>'
     + '<label class="chk" style="margin-top:8px; font-size:13px"><input type="checkbox" id="mc-pratiche"' + (pratiche.length ? ' checked' : ' disabled') + '> Aggiorna telefoni, e-mail e scadenza documento anche nelle sue pratiche (' + pratiche.length + ')</label>'
@@ -189,7 +192,7 @@ function modificaClienteArchivio(c, dopo) {
       const avvisi = controllaCoerenzaCF(cf, cognome, nome, nascita);
       if (avvisi.length && !confirm('Attenzione: ' + avvisi.join('; ') + '.\n\nSalvo lo stesso?')) return;
     }
-    const campi = { nomeCompleto: (cognome + ' ' + nome).trim(), cognome: cognome, nome: nome, dataNascita: nascita || '', codiceFiscale: cf || null, telefono: tel || null, telefonoFisso: fisso || null, email: email || null, documentoScadenza: scad || null, comuneNascita: comune || null, documentoNumero: docnum || null, documentoTipo: doctipo || null, decedutoIl: deceduto || null, collaboratore: v('collab') || null };
+    const campi = { nomeCompleto: (cognome + ' ' + nome).trim(), cognome: cognome, nome: nome, dataNascita: nascita || '', codiceFiscale: cf || null, telefono: tel || null, telefonoFisso: fisso || null, email: email || null, documentoScadenza: scad || null, comuneNascita: comune || null, documentoNumero: docnum || null, documentoTipo: doctipo || null, decedutoIl: deceduto || null, collaboratore: v('collab') || null, ruoloDichiarazione: v('ruolo') || null };
     b.disabled = true; b.textContent = 'Salvataggio…';
     const r = await data.clienti.aggiorna(c.id, campi);
     if (r && r.error) {
