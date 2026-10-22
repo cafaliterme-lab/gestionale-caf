@@ -294,6 +294,7 @@ function nuovoClienteArchivio(testo, dopo) {
     + '<div><label>Tipo documento</label><select id="nc-doctipo">' + (typeof opzioniTipoDoc === 'function' ? opzioniTipoDoc('') : '') + '</select></div>'
     + campo('scad', 'Scadenza documento', 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + campo('docnum', 'N. documento', 'placeholder="Es. CA12345AB" style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\\s+/g, \'\')"')
+    + '<div class="full"><label>🤝 Collaboratore <span style="font-weight:600; color:var(--sub)">(facoltativo: a chi appartiene il cliente)</span></label><select id="nc-collab">' + (typeof opzioniCollaboratore === 'function' ? opzioniCollaboratore('') : '') + '</select></div>'
     + '</div><div id="nc-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
     + '<button type="button" data-az="si" style="background:#1a7f37; color:#fff; font-weight:800">💾 Salva in archivio</button></div></div>';
@@ -324,6 +325,8 @@ function nuovoClienteArchivio(testo, dopo) {
       await registraClienteSeNuovo(cognome, nome, nascita, cf, v('tel'), v('fisso'), scad, email);
       const comuneNc = document.getElementById('nc-comune') ? v('comune').toUpperCase() : '';
       const docnumNc = v('docnum').toUpperCase().replace(/\s+/g, ''), doctipoNc = v('doctipo');
+      const collabNc = document.getElementById('nc-collab') ? v('collab') : '';
+      if (collabNc && typeof salvaCollaboratoreCliente === 'function') await salvaCollaboratoreCliente(nc, nascita, cf, collabNc);
       if ((comuneNc || docnumNc || doctipoNc) && data.clienti.salvaDocumento) await data.clienti.salvaDocumento({ codiceFiscale: cf, nomeCompleto: nc, dataNascita: nascita, comuneNascita: comuneNc, documentoNumero: docnumNc, documentoTipo: doctipoNc });
       ov.remove();
       avviso('📇 ' + nc + (gia ? ': dati aggiornati in archivio' : ' aggiunto all\'archivio clienti'));

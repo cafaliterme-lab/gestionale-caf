@@ -217,6 +217,7 @@ const schemas = {
     documentoTipo: 'documento_tipo',
     comuneNascita: 'comune_nascita',
     decedutoIl: 'deceduto_il',
+    collaboratore: 'collaboratore',
   },
   scadenza: {
     id: 'id',

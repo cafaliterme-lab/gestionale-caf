@@ -183,10 +183,28 @@ function cercaClienti(q, ctx){
   box.innerHTML = match.map(function(c,i){
     const cestino = (puoEliminareClienti() && c.id) ? '<button type="button" title="Elimina definitivamente dall\'archivio" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); eliminaClienteArchivio(&quot;'+esc(String(c.id))+'&quot;, &quot;'+ctx+'&quot;)">🗑</button>' : '';
     const matita = (c.id && typeof modificaClienteArchivio === 'function') ? '<button type="button" title="Modifica l\'anagrafica di questo cliente" style="float:right; background:none; border:none; padding:2px 6px; font-size:15px; cursor:pointer" onclick="event.stopPropagation(); boxRisultatiClienti(&quot;'+ctx+'&quot;).classList.remove(&quot;open&quot;); const c = ARCHIVIO_CLIENTI.find(function(x){ return String(x.id) === &quot;'+esc(String(c.id))+'&quot;; }); if(c) modificaClienteArchivio(c)">✏️</button>' : '';
-    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+matita+'<b>'+esc(c.nomeCompleto)+'</b>'+(c.decedutoIl ? ' <span style="display:inline-block; background:#374151; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; font-weight:700">✝️ deceduto/a il '+esc(c.decedutoIl)+'</span>' : '')+'<span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+(c.telefono || c.telefonoFisso ? ' · 📞 '+esc(c.telefono || c.telefonoFisso) : '')+(c.email ? ' · ✉️ '+esc(c.email) : '')+'</span></div>';
+    return '<div class="cli-row" onclick="scegliCliente('+i+', &quot;'+ctx+'&quot;)" data-idx="'+i+'">'+cestino+matita+'<b>'+esc(c.nomeCompleto)+'</b>'+badgeCollaboratore(c)+(c.decedutoIl ? ' <span style="display:inline-block; background:#374151; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; font-weight:700">✝️ deceduto/a il '+esc(c.decedutoIl)+'</span>' : '')+'<span class="sub2 sub">Nato/a il '+esc(c.dataNascita)+(c.codiceFiscale ? ' · CF '+esc(c.codiceFiscale) : '')+(c.telefono || c.telefonoFisso ? ' · 📞 '+esc(c.telefono || c.telefonoFisso) : '')+(c.email ? ' · ✉️ '+esc(c.email) : '')+'</span></div>';
   }).join('') + rigaNuovo;
   box.dataset.match = JSON.stringify(match);
   box.classList.add('open');
+}
+// Collaboratore a cui appartiene un cliente (scelto dalla lista dei tipi di pratica)
+function opzioniCollaboratore(sel){
+  const l = getTipiList().slice(); if(sel && l.indexOf(sel) < 0) l.push(sel);
+  return '<option value="">— nessuno —</option>' + l.map(function(t){ return '<option value="'+esc(t)+'"'+(t === sel ? ' selected' : '')+'>'+esc(t)+'</option>'; }).join('');
+}
+function badgeCollaboratore(c){
+  return c && c.collaboratore ? ' <span title="Collaboratore" style="display:inline-block; background:'+coloreCollaboratore(c.collaboratore)+'; color:#fff; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700">🤝 '+esc(c.collaboratore)+'</span>' : '';
+}
+// Salva il collaboratore nella scheda del cliente (cercata per codice fiscale, altrimenti per nome e data di nascita)
+async function salvaCollaboratoreCliente(nomeCompleto, dataNascita, codiceFiscale, collaboratore){
+  try{
+    let q = supabase.from('clienti').update({ collaboratore: collaboratore || null });
+    q = codiceFiscale ? q.eq('codice_fiscale', codiceFiscale) : q.eq('nome_completo', nomeCompleto).eq('data_nascita', dataNascita || '');
+    const { error } = await q;
+    if(error) throw new Error(error.message);
+    const rec = trovaInArchivio(nomeCompleto, dataNascita, codiceFiscale); if(rec) rec.collaboratore = collaboratore || null;
+  }catch(e){ console.error('collaboratore cliente', e); }
 }
 // Nuovo cliente scritto a mano: va in archivio e poi si ritrova subito nella ricerca, pronto da scegliere per la pratica
 function nuovoClienteAMano(){
@@ -200,6 +218,8 @@ function scegliCliente(i, ctx){
   const c = match[i];
   if(!c) return;
   if(c.decedutoIl && !confirm(c.nomeCompleto + ' risulta deceduto/a il ' + c.decedutoIl + '.\n\nVuoi usarlo lo stesso (per esempio per il 730 del defunto)?')) return;
+  // cliente di un collaboratore: il tipo di pratica si propone da solo
+  if(ctx === 'main' && c.collaboratore && getTipiList().indexOf(c.collaboratore) >= 0) pickChip('f-tipo-btns','f-tipo', c.collaboratore);
   if(ctx==='sc'){
     document.getElementById('sc-cliente').value = c.nomeCompleto.toUpperCase();
   } else if(ctx==='cong'){

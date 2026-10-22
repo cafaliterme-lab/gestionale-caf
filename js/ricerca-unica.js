@@ -37,7 +37,7 @@ function cercaRicercaUnica(q) {
     const c = x.cliente || {};
     return '<div class="ru-riga' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '"><b>' + esc(x.nome) + '</b>'
       + (c.decedutoIl ? ' <span class="ru-badge" style="background:#374151">✝️</span>' : '')
-      + (x.n ? ' <span class="ru-badge">' + x.n + (x.n === 1 ? ' pratica' : ' pratiche') + '</span>' : ' <span class="ru-badge" style="background:#8a8f98">solo archivio</span>')
+      + (c.collaboratore ? ' <span class="ru-badge" style="background:' + coloreCollaboratore(c.collaboratore) + '">🤝 ' + esc(c.collaboratore) + '</span>' : '') + (x.n ? ' <span class="ru-badge">' + x.n + (x.n === 1 ? ' pratica' : ' pratiche') + '</span>' : ' <span class="ru-badge" style="background:#8a8f98">solo archivio</span>')
       + '<div class="sub2">' + [x.nascita ? 'nato/a il ' + esc(x.nascita) : '', x.cf ? 'CF ' + esc(x.cf) : '', (c.telefono || x.telefono) ? '📞 ' + esc(c.telefono || x.telefono) : ''].filter(Boolean).join(' · ') + '</div></div>';
   }).join('') : '<div class="ru-riga" style="cursor:default">Nessuno trovato con «' + esc(q) + '»' + (typeof nuovoClienteArchivio === 'function' ? ' · <a href="#" onclick="event.preventDefault(); chiudiRicercaUnica(); nuovoClienteArchivio(\'' + esc(String(q).replace(/'/g, '')) + '\')">➕ Nuovo cliente</a>' : '') + '</div>';
 }
@@ -103,7 +103,7 @@ function disegnaSchedaPersona() {
   }).join('');
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border-top:6px solid #5e4fa2; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:980px; width:100%; max-height:94vh; overflow:auto">'
     + '<div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap">'
-    + '<div><div style="font-size:21px; font-weight:800">' + esc(x.nome) + (c.decedutoIl ? ' <span style="font-size:13px; background:#374151; color:#fff; border-radius:999px; padding:2px 10px">✝️ deceduto/a il ' + esc(c.decedutoIl) + '</span>' : '') + '</div>'
+    + '<div><div style="font-size:21px; font-weight:800">' + esc(x.nome) + (typeof badgeCollaboratore === 'function' ? badgeCollaboratore(c) : '') + (c.decedutoIl ? ' <span style="font-size:13px; background:#374151; color:#fff; border-radius:999px; padding:2px 10px">✝️ deceduto/a il ' + esc(c.decedutoIl) + '</span>' : '') + '</div>'
     + '<div class="sub2">' + [x.nascita || c.dataNascita ? 'nato/a il ' + esc(x.nascita || c.dataNascita) : '', c.comuneNascita ? 'a ' + esc(c.comuneNascita) : '', x.cf ? 'CF ' + esc(x.cf) : ''].filter(Boolean).join(' · ') + '</div>'
     + '<div style="font-size:13px; margin-top:4px">' + [tel ? '📞 ' + esc(tel) : '', fisso ? '☎️ ' + esc(fisso) : '', email ? '✉️ ' + esc(email) : ''].filter(Boolean).join(' · ') + (tel || fisso || email ? '' : '<span style="color:#c0392b">Nessun recapito in archivio</span>') + '</div>'
     + (c.documentoScadenza || c.documentoNumero ? '<div style="margin-top:4px"><span style="display:inline-block; padding:2px 10px; border-radius:999px; font-size:12.5px; font-weight:700; color:#fff; background:' + (st && !st.valido ? '#c0392b' : '#1a7f37') + '">🪪 ' + esc(c.documentoTipo || 'Documento') + (c.documentoNumero ? ' ' + esc(c.documentoNumero) : '') + (c.documentoScadenza ? (st && !st.valido ? ' SCADUTO il ' : ' valido fino al ') + esc(c.documentoScadenza) : '') + '</span></div>' : '')
