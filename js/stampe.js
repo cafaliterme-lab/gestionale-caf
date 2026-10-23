@@ -265,7 +265,7 @@ function datiCafStampa() {
   return {
     indirizzo: imp.caf_indirizzo || '',
     telefono: imp.caf_telefono || '',
-    email: imp.caf_email || '',
+    email: imp.caf_email || (typeof emailCaf === 'function' ? emailCaf() : ''),
     orari: orari || imp.caf_orari || '',
   };
 }

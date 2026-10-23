@@ -377,7 +377,7 @@ function stampaAppuntamento(id) {
     + '<div class="quando"><div class="g">' + esc(giorno) + '</div><div class="o">ore ' + esc(a.ora) + '</div>' + (a.tipo ? '<div class="t">per la pratica <b>' + esc(a.tipo) + '</b></div>' : '') + '</div>'
     + '<h2>📋 Cosa portare</h2><ul>' + doc.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>'
     + (a.note ? '<div class="nota">📝 ' + esc(a.note) + '</div>' : '')
-    + '<div class="piede">Se non può venire ci avvisi' + (caf.telefono ? ' al <b>' + esc(caf.telefono) + '</b>' : '') + ', così diamo il posto a un altro cliente.' + (caf.orari ? '<br>Orari dell\'ufficio: ' + esc(caf.orari) : '') + '</div>'
+    + '<div class="piede">Se non può venire ci avvisi, così diamo il posto a un altro cliente.<br>Per l\'appuntamento o per qualsiasi comunicazione: ' + [caf.telefono ? '📞 <b>' + esc(caf.telefono) + '</b>' : '', caf.email ? '✉️ <b>' + esc(caf.email) + '</b>' : ''].filter(Boolean).join(' · ') + (caf.orari ? '<br>Orari dell\'ufficio: ' + esc(caf.orari) : '') + '</div>'
     + '</body></html>';
   if (typeof mostraPaginaNelProgramma === 'function') { mostraPaginaNelProgramma(html, 'Promemoria appuntamento – ' + a.nome); return; }
   const w = window.open('', '_blank'); if (!w) { alert('Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito.'); return; }

@@ -2711,7 +2711,7 @@ function compilaMessaggio(modello, p){
     protocollo: formattaProtocollo(p),
     indirizzo: IMPOSTAZIONI.caf_indirizzo || '',
     telefono: IMPOSTAZIONI.caf_telefono || '',
-    email: IMPOSTAZIONI.caf_email || '',
+    email: IMPOSTAZIONI.caf_email || (typeof emailCaf === 'function' ? emailCaf() : ''),
     orari: IMPOSTAZIONI.caf_orari || ''
   };
   return String(modello).replace(/\{(nome|pratica|tipo|protocollo|indirizzo|telefono|email|orari)\}/gi, function(_, k){ return valori[k.toLowerCase()]; })
