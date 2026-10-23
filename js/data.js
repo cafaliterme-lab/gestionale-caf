@@ -221,6 +221,7 @@ const schemas = {
     ruoloDichiarazione: 'ruolo_dichiarazione',
     dichiaranteNome: 'dichiarante_nome',
     dichiaranteNascita: 'dichiarante_nascita',
+    creatoIl: 'creato_il',
   },
   scadenza: {
     id: 'id',

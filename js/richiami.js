@@ -4,7 +4,27 @@
 // ed esito del contatto (salvato nella tabella "richiami", visibile a tutti gli utenti).
 
 // modo: 'richiamo' (fine campagna, luglio-ottobre) o 'campagna' (avvio della campagna 730, in primavera)
-const RICHIAMI = { anno: null, esiti: {}, filtro: 'da_chiamare', cerca: '', caricato: false, modo: 'richiamo' };
+const RICHIAMI = { anno: null, esiti: {}, filtro: 'da_chiamare', cerca: '', caricato: false, modo: 'richiamo', esclusi: {} };
+const SENZA_COLLAB = '— senza collaboratore —';
+const CODA_RICHIAMI = { lista: [], pos: 0 };
+// WhatsApp a tutti quelli dell'elenco (con i collaboratori scelti) che hanno il cellulare e non sono ancora contattati: uno dopo l'altro
+function avviaInvioRichiami() {
+  CODA_RICHIAMI.lista = filtraRichiami(clientiDaRichiamare(RICHIAMI.anno)).filter(function (x) { return numeroWhatsApp(x.tel) && !statoRichiamo(x) && !appuntamentoRichiamo(x); }).map(function (x) { return x.chiave; });
+  CODA_RICHIAMI.pos = 0;
+  if (!CODA_RICHIAMI.lista.length) { avviso('Nessuno da avvisare con il cellulare'); return; }
+  prossimoRichiamo();
+}
+function prossimoRichiamo() {
+  const k = CODA_RICHIAMI.lista[CODA_RICHIAMI.pos];
+  const x = clientiDaRichiamare(RICHIAMI.anno).find(function (y) { return y.chiave === k; });
+  CODA_RICHIAMI.pos++;
+  if (x) {
+    contestoComunicazione({ nome: x.nome, cf: x.cf || '', motivo: RICHIAMI.modo === 'campagna' ? 'Avvio campagna 730' : 'Richiamo 730' });
+    if (inviaWhatsAppLibero(x.tel, messaggioRichiamo(x), x.nome) && RICHIAMI.modo === 'campagna') salvaEsitoRichiamo(x, 'avvisato', '');
+  }
+  if (CODA_RICHIAMI.pos >= CODA_RICHIAMI.lista.length) { CODA_RICHIAMI.lista = []; avviso('✓ Ultimo messaggio aperto: invio finito'); }
+  disegnaRichiami();
+}
 const ESITI_RICHIAMO = {
   avvisato: { l: '📢 Avvisato (inizio campagna)', c: '#b35f0c' },
   richiamera: { l: '🔁 Richiamerà', c: '#1d4f91' },
@@ -46,9 +66,12 @@ function clientiDaRichiamare(anno) {
   // i clienti del 730 dell'anno scorso sono quelli dell'archivio (caricato con i 730 fatti prima del programma)
   const daArchivio = typeof ANNO_INIZIO_PROTOCOLLO !== 'undefined' && prec < ANNO_INIZIO_PROTOCOLLO;
   if (daArchivio) {
+    // solo i clienti entrati in archivio prima dell'inizio del programma (chi arriva dopo, per altre pratiche, non ha fatto il 730 l'anno prima)
+    const limite = Date.parse(ANNO_INIZIO_PROTOCOLLO + '-01-01T00:00:00');
     (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).forEach(function (c) {
       const nome = String(c.nomeCompleto || '').trim().toUpperCase(), cf = String(c.codiceFiscale || '').trim().toUpperCase(), nascita = String(c.dataNascita || '').trim();
       if (!nome || c.decedutoIl || presente(nome, nascita, cf)) return;
+      if (c.creatoIl && Date.parse(c.creatoIl) >= limite) return;
       const k = chiaveRichiamo(nome, nascita, cf);
       if (persone[k]) return;
       persone[k] = { chiave: k, nome: nome, nascita: nascita, cf: cf, tel: c.telefono || '', fisso: c.telefonoFisso || '', email: c.email || '', daArchivio: true,
@@ -99,9 +122,23 @@ function statoRichiamo(x) {
 // appuntamento già preso in agenda (conta come esito chiuso)
 function appuntamentoRichiamo(x) { return typeof appuntamentiPersona === 'function' ? appuntamentiPersona(x.nome, x.cf)[0] || null : null; }
 function chiusoRichiamo(x) { const e = statoRichiamo(x); return !!appuntamentoRichiamo(x) || !!(e && ESITI_CHIUSI.indexOf(e.esito) >= 0); }
+// Collaboratore della persona: quello della scheda in archivio, altrimenti il tipo della pratica dell'anno prima
+function collaboratoreRichiamo(x) {
+  const a = typeof trovaInArchivio === 'function' ? trovaInArchivio(x.nome, x.nascita, x.cf) : null;
+  if (a && a.collaboratore) return a.collaboratore;
+  const t = x.pratiche[0] && x.pratiche[0].p.tipo;
+  return t && t !== '730' ? t : SENZA_COLLAB;
+}
+function scegliCollabRichiami(k) {
+  if (k === '*tutti') RICHIAMI.esclusi = {};
+  else if (k === '*nessuno') { RICHIAMI.esclusi = {}; clientiDaRichiamare(RICHIAMI.anno).forEach(function (x) { RICHIAMI.esclusi[collaboratoreRichiamo(x)] = true; }); }
+  else if (RICHIAMI.esclusi[k]) delete RICHIAMI.esclusi[k]; else RICHIAMI.esclusi[k] = true;
+  disegnaRichiami();
+}
 function filtraRichiami(lista) {
   const q = RICHIAMI.cerca.trim().toUpperCase();
   return lista.filter(function (x) {
+    if (RICHIAMI.esclusi[collaboratoreRichiamo(x)]) return false;
     if (q && (x.nome + ' ' + x.cf).indexOf(q) < 0 && chiaveRicerca(x.nome + x.cf).indexOf(chiaveRicerca(q)) < 0) return false;
     const e = statoRichiamo(x);
     if (RICHIAMI.filtro === 'da_chiamare') return !chiusoRichiamo(x) && !(RICHIAMI.modo === 'campagna' && e && e.esito === 'avvisato');
@@ -153,10 +190,14 @@ async function apriRichiami(modo) {
     + '<button type="button" onclick="excelRichiami()" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">📊 Excel</button>'
     + '<button type="button" onclick="document.getElementById(\'popup-richiami\').remove()" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">Chiudi</button></span></div>'
     + '<div id="ric-filtri" style="display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 6px"></div>'
+    + '<div id="ric-collab" style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin:0 0 8px"></div>'
     + '<input id="ric-cerca" type="search" placeholder="Cerca un nome…" autocomplete="off" value="' + esc(RICHIAMI.cerca) + '" oninput="RICHIAMI.cerca=this.value; disegnaRichiami()" style="margin-bottom:8px">'
     + '<div id="ric-lista" style="overflow:auto; flex:1"><div class="empty">Caricamento…</div></div></div>';
   document.body.appendChild(ov);
-  ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
+  ov.addEventListener('click', function (e) {
+    if (e.target === ov) { ov.remove(); return; }
+    const bc = e.target.closest && e.target.closest('button[data-collab]'); if (bc) scegliCollabRichiami(bc.dataset.collab);
+  });
   disegnaRichiami();
   await caricaEsitiRichiami(RICHIAMI.anno);
   disegnaRichiami();
@@ -165,10 +206,26 @@ async function apriRichiami(modo) {
 function disegnaRichiami() {
   const box = document.getElementById('ric-lista'); if (!box) return;
   const tutti = clientiDaRichiamare(RICHIAMI.anno);
-  const conta = { da_chiamare: 0, contattati: 0, tutti: tutti.length };
-  tutti.forEach(function (x) { const e = statoRichiamo(x); if (e || appuntamentoRichiamo(x)) conta.contattati++; if (!chiusoRichiamo(x) && !(RICHIAMI.modo === 'campagna' && e && e.esito === 'avvisato')) conta.da_chiamare++; });
+  const inclusi = tutti.filter(function (x) { return !RICHIAMI.esclusi[collaboratoreRichiamo(x)]; });
+  const conta = { da_chiamare: 0, contattati: 0, tutti: inclusi.length };
+  inclusi.forEach(function (x) { const e = statoRichiamo(x); if (e || appuntamentoRichiamo(x)) conta.contattati++; if (!chiusoRichiamo(x) && !(RICHIAMI.modo === 'campagna' && e && e.esito === 'avvisato')) conta.da_chiamare++; });
   const chip = function (k, t) { const on = RICHIAMI.filtro === k; return '<button type="button" onclick="RICHIAMI.filtro=\'' + k + '\'; disegnaRichiami()" style="padding:5px 12px; border-radius:999px; font-size:12.5px; font-weight:700; cursor:pointer; border:2px solid #1d4f91; background:' + (on ? '#1d4f91' : 'transparent') + '; color:' + (on ? '#fff' : '#1d4f91') + '">' + t + ' (' + conta[k] + ')</button>'; };
-  document.getElementById('ric-filtri').innerHTML = chip('da_chiamare', RICHIAMI.modo === 'campagna' ? 'Da avvisare' : 'Da chiamare') + chip('contattati', 'Già contattati') + chip('tutti', 'Tutti');
+  // scelta dei collaboratori: tocca per includere / escludere (verde = incluso)
+  const perCollab = {};
+  tutti.forEach(function (x) { const k = collaboratoreRichiamo(x); perCollab[k] = (perCollab[k] || 0) + 1; });
+  const nomiCollab = Object.keys(perCollab).sort(function (a, b) { return a === SENZA_COLLAB ? 1 : b === SENZA_COLLAB ? -1 : a.localeCompare(b); });
+  const boxC = document.getElementById('ric-collab');
+  if (boxC) boxC.innerHTML = nomiCollab.length > 1 ? '<b style="font-size:12.5px; color:var(--sub)">🤝 Collaboratori:</b> '
+    + nomiCollab.map(function (k) { const on = !RICHIAMI.esclusi[k], col = k === SENZA_COLLAB ? '#6b7280' : (typeof coloreCollaboratore === 'function' ? coloreCollaboratore(k) : '#1d4f91');
+      return '<button type="button" data-collab="' + esc(k) + '" title="Tocca per ' + (on ? 'escludere' : 'includere') + '" style="padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; border:2px ' + (on ? 'solid ' : 'dashed ') + col + '; background:' + (on ? col : 'transparent') + '; color:' + (on ? '#fff' : col) + '; opacity:' + (on ? 1 : .7) + '">' + (on ? '✓ ' : '✕ ') + esc(k) + ' ' + perCollab[k] + '</button>'; }).join(' ')
+    + ' <button type="button" data-collab="*tutti" style="padding:4px 10px; border-radius:999px; font-size:12px; cursor:pointer; border:1px solid var(--sub); background:none; color:var(--sub)">Tutti</button>'
+    + ' <button type="button" data-collab="*nessuno" style="padding:4px 10px; border-radius:999px; font-size:12px; cursor:pointer; border:1px solid var(--sub); background:none; color:var(--sub)">Nessuno</button>' : '';
+  // invio a tutti, uno dopo l'altro
+  const daMandare = inclusi.filter(function (x) { return numeroWhatsApp(x.tel) && !statoRichiamo(x) && !appuntamentoRichiamo(x); }).length;
+  const bInvio = CODA_RICHIAMI.lista.length
+    ? '<button type="button" onclick="prossimoRichiamo()" style="margin-left:auto; background:#25a35a; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">💬 Prossimo (' + (CODA_RICHIAMI.pos + 1) + ' di ' + CODA_RICHIAMI.lista.length + ')</button>'
+    : (daMandare ? '<button type="button" onclick="avviaInvioRichiami()" title="Apre WhatsApp per ognuno, uno dopo l\'altro: premi Invia e poi Prossimo" style="margin-left:auto; background:#25a35a; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">💬 Manda a tutti, uno dopo l\'altro (' + daMandare + ')</button>' : '');
+  document.getElementById('ric-filtri').innerHTML = chip('da_chiamare', RICHIAMI.modo === 'campagna' ? 'Da avvisare' : 'Da chiamare') + chip('contattati', 'Già contattati') + chip('tutti', 'Tutti') + bInvio;
   const lista = filtraRichiami(tutti);
   RICHIAMI._lista = lista;
   if (!tutti.length) { box.innerHTML = '<div class="empty">Nessun cliente da richiamare: tutti i clienti del 730 ' + (RICHIAMI.anno - 1) + ' si sono già presentati 👍</div>'; return; }
