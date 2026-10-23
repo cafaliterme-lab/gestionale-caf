@@ -8,11 +8,42 @@ const RICHIAMI = { anno: null, esiti: {}, filtro: 'da_chiamare', cerca: '', cari
 const SENZA_COLLAB = '— senza collaboratore —';
 const CODA_RICHIAMI = { lista: [], pos: 0 };
 // WhatsApp a tutti quelli dell'elenco (con i collaboratori scelti) che hanno il cellulare e non sono ancora contattati: uno dopo l'altro
-function avviaInvioRichiami() {
-  CODA_RICHIAMI.lista = filtraRichiami(clientiDaRichiamare(RICHIAMI.anno)).filter(function (x) { return numeroWhatsApp(x.tel) && !statoRichiamo(x) && !appuntamentoRichiamo(x); }).map(function (x) { return x.chiave; });
+// Come mandare a tutti: 'wa' solo WhatsApp, 'email' solo e-mail, 'entrambi' WhatsApp e, a chi non ha il cellulare, e-mail
+function canaleRichiami() { try { return localStorage.getItem('richiami-canale') || 'entrambi'; } catch (e) { return 'entrambi'; } }
+function scegliCanaleRichiami(c) { try { localStorage.setItem('richiami-canale', c); } catch (e) {} disegnaRichiami(); }
+function daAvvisareRichiami(x) { return !statoRichiamo(x) && !appuntamentoRichiamo(x); }
+function destinatariRichiami() {
+  const c = canaleRichiami(), l = filtraRichiami(clientiDaRichiamare(RICHIAMI.anno)).filter(daAvvisareRichiami);
+  return {
+    wa: c === 'email' ? [] : l.filter(function (x) { return numeroWhatsApp(x.tel); }),
+    email: c === 'wa' ? [] : l.filter(function (x) { return x.email && (c === 'email' || !numeroWhatsApp(x.tel)); }),
+  };
+}
+async function avviaInvioRichiami(b) {
+  const d = destinatariRichiami();
+  if (!d.wa.length && !d.email.length) { avviso('Nessuno da avvisare con il modo scelto', true); return; }
+  // prima le e-mail (partono da sole dalla casella del CAF), poi i WhatsApp uno dopo l'altro
+  if (d.email.length) {
+    if (!confirm('Mando l\'e-mail a ' + d.email.length + ' client' + (d.email.length === 1 ? 'e' : 'i') + ' dalla casella del CAF' + (d.wa.length ? ', poi apro i WhatsApp per gli altri ' + d.wa.length : '') + '?')) return;
+    if (b) b.disabled = true;
+    let ok = 0; const ko = [];
+    const oggetto = (RICHIAMI.modo === 'campagna' ? 'Campagna 730 ' : 'Dichiarazione 730 ') + RICHIAMI.anno + ' – CAF CISL Alì Terme';
+    for (const x of d.email) {
+      if (b) b.textContent = '⏳ E-mail ' + (ok + ko.length + 1) + ' di ' + d.email.length + '…';
+      try {
+        await chiamaInviaEmail('POST', { a: x.email, oggetto: oggetto, testo: messaggioRichiamo(x) });
+        contestoComunicazione({ nome: x.nome, cf: x.cf || '', motivo: RICHIAMI.modo === 'campagna' ? 'Avvio campagna 730' : 'Richiamo 730' });
+        await registraComunicazione({ canale: 'email', email: x.email, testo: oggetto + ' – ' + messaggioRichiamo(x) });
+        if (RICHIAMI.modo === 'campagna') await salvaEsitoRichiamo(x, 'avvisato', '');
+        ok++;
+      } catch (e) { ko.push(x.nome); }
+    }
+    if (b) b.disabled = false;
+    avviso('📧 E-mail inviate: ' + ok + (ko.length ? ' · non partite: ' + ko.join(', ') : ''), !!ko.length);
+  }
+  CODA_RICHIAMI.lista = d.wa.map(function (x) { return x.chiave; });
   CODA_RICHIAMI.pos = 0;
-  if (!CODA_RICHIAMI.lista.length) { avviso('Nessuno da avvisare con il cellulare'); return; }
-  prossimoRichiamo();
+  if (CODA_RICHIAMI.lista.length) prossimoRichiamo(); else disegnaRichiami();
 }
 function prossimoRichiamo() {
   const k = CODA_RICHIAMI.lista[CODA_RICHIAMI.pos];
@@ -191,7 +222,8 @@ async function apriRichiami(modo) {
     + '<button type="button" onclick="document.getElementById(\'popup-richiami\').remove()" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">Chiudi</button></span></div>'
     + '<div id="ric-filtri" style="display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 6px"></div>'
     + '<div id="ric-collab" style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin:0 0 6px"></div>'
-    + '<div id="ric-recapiti" style="font-size:12.5px; margin:0 0 8px"></div>'
+    + '<div id="ric-recapiti" style="font-size:12.5px; margin:0 0 6px"></div>'
+    + '<div id="ric-invio" style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin:0 0 8px; padding:7px 10px; border-radius:10px; background:color-mix(in srgb, #25a35a 8%, var(--card))"></div>'
     + '<input id="ric-cerca" type="search" placeholder="Cerca un nome…" autocomplete="off" value="' + esc(RICHIAMI.cerca) + '" oninput="RICHIAMI.cerca=this.value; disegnaRichiami()" style="margin-bottom:8px">'
     + '<div id="ric-lista" style="overflow:auto; flex:1"><div class="empty">Caricamento…</div></div></div>';
   document.body.appendChild(ov);
@@ -226,10 +258,15 @@ function disegnaRichiami() {
   const nCell = inclusi.filter(function (x) { return numeroWhatsApp(x.tel); }).length, nMail = inclusi.filter(function (x) { return !numeroWhatsApp(x.tel) && x.email; }).length;
   const boxR = document.getElementById('ric-recapiti');
   if (boxR) boxR.innerHTML = inclusi.length ? '📱 <b>' + nCell + '</b> con cellulare · ✉️ <b>' + nMail + '</b> solo e-mail · <b style="color:#c0392b">' + (inclusi.length - nCell - nMail) + '</b> senza cellulare né e-mail (da chiamare al fisso o completare in archivio)' : '';
-  const daMandare = inclusi.filter(function (x) { return numeroWhatsApp(x.tel) && !statoRichiamo(x) && !appuntamentoRichiamo(x); }).length;
-  const bInvio = CODA_RICHIAMI.lista.length
-    ? '<button type="button" onclick="prossimoRichiamo()" style="margin-left:auto; background:#25a35a; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">💬 Prossimo (' + (CODA_RICHIAMI.pos + 1) + ' di ' + CODA_RICHIAMI.lista.length + ')</button>'
-    : (daMandare ? '<button type="button" onclick="avviaInvioRichiami()" title="Apre WhatsApp per ognuno, uno dopo l\'altro: premi Invia e poi Prossimo" style="margin-left:auto; background:#25a35a; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">💬 Manda a tutti, uno dopo l\'altro (' + daMandare + ')</button>' : '');
+  // invio a tutti: scelta del modo e tasto con quanti messaggi partono
+  const dest = destinatariRichiami(), canale = canaleRichiami();
+  const ch = function (k, t) { const on = canale === k; return '<button type="button" onclick="scegliCanaleRichiami(\'' + k + '\')" style="padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; border:2px solid #25a35a; background:' + (on ? '#25a35a' : 'transparent') + '; color:' + (on ? '#fff' : '#1a7f37') + '">' + t + '</button>'; };
+  const boxI = document.getElementById('ric-invio');
+  if (boxI) boxI.innerHTML = CODA_RICHIAMI.lista.length
+    ? '<button type="button" onclick="prossimoRichiamo()" style="background:#25a35a; color:#fff; border:none; border-radius:999px; padding:7px 16px; font-weight:800; cursor:pointer">💬 Prossimo WhatsApp (' + (CODA_RICHIAMI.pos + 1) + ' di ' + CODA_RICHIAMI.lista.length + ')</button> <span class="sub2">premi Invia su WhatsApp, poi torna qui e tocca Prossimo</span>'
+    : '<b style="font-size:12.5px; color:var(--sub)">📤 Manda a tutti con:</b> ' + ch('wa', '💬 Solo WhatsApp') + ch('email', '📧 Solo e-mail') + ch('entrambi', '💬 + 📧 Tutti e due')
+      + ' <button type="button" onclick="avviaInvioRichiami(this)"' + (dest.wa.length || dest.email.length ? '' : ' disabled') + ' style="background:#25a35a; color:#fff; border:none; border-radius:999px; padding:7px 16px; font-weight:800; cursor:pointer; opacity:' + (dest.wa.length || dest.email.length ? 1 : .5) + '">📤 Manda a tutti (' + [dest.wa.length ? dest.wa.length + ' WhatsApp' : '', dest.email.length ? dest.email.length + ' e-mail' : ''].filter(Boolean).join(' + ') + (dest.wa.length || dest.email.length ? '' : 'nessuno') + ')</button>';
+  const bInvio = '';
   document.getElementById('ric-filtri').innerHTML = chip('da_chiamare', RICHIAMI.modo === 'campagna' ? 'Da avvisare' : 'Da chiamare') + chip('contattati', 'Già contattati') + chip('tutti', 'Tutto l\'elenco') + bInvio;
   const lista = filtraRichiami(tutti);
   RICHIAMI._lista = lista;
