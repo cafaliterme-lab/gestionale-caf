@@ -79,6 +79,7 @@ function apriEmail(opz) {
       await chiamaInviaEmail('POST', { a: a, oggetto: oggetto, testo: testo, html: html });
       ov.remove();
       popupEmailInviata(a, opz.nome);
+      if (typeof registraComunicazione === 'function') registraComunicazione({ canale: 'email', email: a, nome: opz.nome, motivo: opz.motivo || motivoDaTesto(oggetto + ' ' + testo), testo: oggetto + ' – ' + testo });
       if (opz.dopo) opz.dopo(a);
     } catch (err) {
       b.disabled = false; b.textContent = '📤 Riprova a inviare';
@@ -102,6 +103,7 @@ function apriEmail(opz) {
       return;
     }
     location.href = 'mailto:' + encodeURIComponent(a) + '?subject=' + encodeURIComponent(oggetto) + '&body=' + encodeURIComponent(testo);
+    if (typeof registraComunicazione === 'function') registraComunicazione({ canale: 'email', email: a, nome: opz.nome, motivo: opz.motivo || motivoDaTesto(oggetto + ' ' + testo), testo: oggetto + ' – ' + testo });
     if (opz.dopo) opz.dopo(a);
   });
   setTimeout(function () { const el = document.getElementById(opz.a ? 'em-testo' : 'em-a'); if (el) el.focus(); }, 50);

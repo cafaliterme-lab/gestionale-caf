@@ -119,6 +119,7 @@ function disegnaSchedaPersona() {
     + '</div>'
     + (app.length ? '<div style="margin-bottom:10px; padding:8px 12px; border-radius:10px; background:color-mix(in srgb, #0f766e 10%, var(--card)); border:1.5px solid #0f766e"><b style="color:#0f766e">🗓️ Appuntament' + (app.length === 1 ? 'o' : 'i') + ':</b> ' + app.map(function (a) { return esc(giornoLungo(a.data)) + ' alle <b>' + esc(a.ora) + '</b>' + (a.tipo ? ' (' + esc(a.tipo) + ')' : ''); }).join(' · ') + '</div>' : '')
     + (scad.length ? '<div style="margin-bottom:10px; padding:8px 12px; border-radius:10px; background:color-mix(in srgb, #7b3fa0 10%, var(--card)); border:1.5px solid #7b3fa0"><b style="color:#7b3fa0">⏰ Scadenze:</b> ' + scad.map(function (s) { return esc(s.titolo || '') + ' – ' + esc(s.data ? itDaIso(String(s.data).slice(0, 10)) || s.data : ''); }).join(' · ') + '</div>' : '')
+    + (typeof elencoComunicazioniHTML === 'function' ? elencoComunicazioniHTML(x.nome, x.cf) : '')
     + (typeof avvisoMorosoHTML === 'function' ? avvisoMorosoHTML(pratiche) : '')
     + '<div class="meta" style="margin:0 0 6px">' + valide.length + ' pratiche' + (pratiche.length > valide.length ? ' (+ ' + (pratiche.length - valide.length) + ' annullate)' : '') + ' · pagato in tutto <b>' + fmtEuro(valide.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0)) + '</b>'
     + (manca > 0.004 ? ' · <b style="color:#c0392b">deve ancora ' + fmtEuro(manca) + '</b>' : '') + '</div>'

@@ -868,6 +868,7 @@ function applicaPermessi(){
   // Oggi: per chi vede l'inserimento o il registro (riepilogo di cosa c'è da fare)
   // Oggi, Agenda e ricerca unica: per chi vede l'inserimento o il registro
   const lavoro = isAdmin || tabs.registro || tabs.anagrafica;
+  if(lavoro && typeof caricaComunicazioni === 'function' && !COMUNICAZIONI.caricato) caricaComunicazioni();
   ['nav-oggi','nav-agenda'].forEach(function(id){ const el = document.getElementById(id); if(el) el.style.display = lavoro ? '' : 'none'; });
   const ru = document.getElementById('ricerca-unica'); if(ru) ru.style.display = lavoro ? 'flex' : 'none';
   if(lavoro && typeof caricaAppuntamenti === 'function' && !AGENDA.caricato) caricaAppuntamenti();
@@ -2547,13 +2548,17 @@ function modoWhatsAppPC(){ try{ return localStorage.getItem('whatsapp-pc-modo') 
 function impostaModoWhatsAppPC(m){ try{ localStorage.setItem('whatsapp-pc-modo', m); }catch(e){} }
 function apriChatWhatsApp(num, testo, dopo){
   const t = testo ? encodeURIComponent(testo) : '';
+  // traccia nel registro delle comunicazioni (una volta, quando il messaggio parte davvero)
+  const registra = function(){ if(testo && typeof registraComunicazione === 'function') registraComunicazione({ canale: 'whatsapp', telefono: num, testo: testo }); };
   if(eDispositivoMobile()){
+    registra();
     window.open('https://wa.me/' + (num || '') + (t ? '?text=' + t : ''), '_blank');
     if(dopo) dopo('telefono');
     return;
   }
   const modo = modoWhatsAppPC();
   if(!modo){ scegliModoWhatsAppPC(function(){ apriChatWhatsApp(num, testo, dopo); }); return; }
+  registra();
   if(modo === 'app'){
     // se l'app WhatsApp per PC non c'e' il clic non fa nulla: dopo 6 secondi senza che si apra niente si avvisa (c'e' il tempo di rispondere ad "Apri WhatsApp?" del browser)
     let partita = false;
@@ -2701,6 +2706,7 @@ function inviaWhatsApp(id){
   scegliMessaggioWhatsApp(p, num);
 }
 function apriWhatsApp(num, testo, p){
+  if(p && typeof contestoComunicazione === 'function') contestoComunicazione({ nome: p.nome, cf: p.codiceFiscale || '', praticaId: p.id, motivo: 'Pratica pronta' });
   apriChatWhatsApp(num, testo);
   if(p && p.id){ p.whatsappInviato = todayIT(); data.pratiche.aggiorna(p.id, { whatsappInviato: p.whatsappInviato }); }
 }

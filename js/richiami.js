@@ -171,8 +171,8 @@ function disegnaRichiami() {
     const contatti = [
       x.tel ? bt('tel:' + tel(x.tel), '📞 ' + esc(x.tel), '#1d4f91') : '',
       x.fisso ? bt('tel:' + tel(x.fisso), '☎️ ' + esc(x.fisso), '#3b5578') : '',
-      wa ? bt('https://wa.me/' + wa + '?text=' + encodeURIComponent(messaggioRichiamo(x)), '💬 WhatsApp', '#25d366', 'target="_blank" rel="noopener"' + (RICHIAMI.modo === 'campagna' ? ' onclick="segnaAvvisato(' + i + ')"' : '')) : '',
-      x.email ? bt('mailto:' + encodeURIComponent(x.email) + '?subject=' + encodeURIComponent('Dichiarazione 730 ' + RICHIAMI.anno) + '&body=' + encodeURIComponent(messaggioRichiamo(x)), '✉️ E-mail', '#8e5bd6') : '',
+      wa ? bt('https://wa.me/' + wa + '?text=' + encodeURIComponent(messaggioRichiamo(x)), '💬 WhatsApp', '#25d366', 'target="_blank" rel="noopener" onclick="' + (RICHIAMI.modo === 'campagna' ? 'segnaAvvisato(' + i + '); ' : '') + 'registraRichiamoInviato(' + i + ', \'whatsapp\')"') : '',
+      x.email ? bt('mailto:' + encodeURIComponent(x.email) + '?subject=' + encodeURIComponent('Dichiarazione 730 ' + RICHIAMI.anno) + '&body=' + encodeURIComponent(messaggioRichiamo(x)), '✉️ E-mail', '#8e5bd6', 'onclick="registraRichiamoInviato(' + i + ', \'email\')"') : '',
     ].filter(Boolean).join(' ');
     const opzioni = '<option value="">— esito del contatto —</option>' + Object.keys(ESITI_RICHIAMO).map(function (k) { return '<option value="' + k + '"' + (e && e.esito === k ? ' selected' : '') + '>' + ESITI_RICHIAMO[k].l + '</option>'; }).join('');
     const quando = e && e.quando ? new Date(e.quando) : null;
@@ -193,6 +193,12 @@ function disegnaRichiami() {
   }).join('');
 }
 
+// WhatsApp o e-mail dall'elenco: resta nel registro delle comunicazioni del cliente
+function registraRichiamoInviato(i, canale) {
+  const x = (RICHIAMI._lista || [])[i]; if (!x || typeof registraComunicazione !== 'function') return;
+  contestoComunicazione({ nome: x.nome, cf: x.cf || '', motivo: RICHIAMI.modo === 'campagna' ? 'Avvio campagna 730' : 'Richiamo 730' });
+  registraComunicazione({ canale: canale, telefono: canale === 'whatsapp' ? x.tel : null, email: canale === 'email' ? x.email : null, testo: messaggioRichiamo(x) });
+}
 // campagna: chi riceve il WhatsApp viene segnato «avvisato» (se non ha già un altro esito)
 function segnaAvvisato(i) {
   const x = (RICHIAMI._lista || [])[i]; if (!x || statoRichiamo(x)) return;

@@ -104,6 +104,7 @@ function messaggioDocumentiMancanti(p) {
     + mancanti.map(function (d) { return '• ' + d; }).join('\n') + '\n\nPuò portarli in ufficio quando le è comodo. Grazie.\n\n' + righeContattiCaf();
 }
 function inviaWhatsAppLibero(telefono, testo, nome) {
+  if (typeof contestoComunicazione === 'function' && !CONTESTO_COMUNICAZIONE && nome) contestoComunicazione({ nome: nome });
   let num = numeroWhatsApp(telefono);
   if (!num) {
     const t = prompt(typeof messaggioNumeroWhatsApp === 'function' ? messaggioNumeroWhatsApp(nome, telefono) : 'Numero di cellulare di ' + (nome || 'cliente') + ':', telefono || '');
@@ -120,12 +121,13 @@ function richiediNuovoDocumentoModulo() {
 }
 function richiediNuovoDocumento(id) {
   const p = (state.pratiche || []).find(function (x) { return x.id === id; });
-  if (p) inviaWhatsAppLibero(p.telefono, messaggioNuovoDocumento(p.nome, p.documentoScadenza), p.nome);
+  if (p) { contestoComunicazione({ nome: p.nome, cf: p.codiceFiscale || '', praticaId: p.id, motivo: 'Richiesta documento d\'identità' }); inviaWhatsAppLibero(p.telefono, messaggioNuovoDocumento(p.nome, p.documentoScadenza), p.nome); }
 }
 function richiediDocumentiMancanti(id) {
   const p = (state.pratiche || []).find(function (x) { return x.id === id; });
   if (!p) return;
   if (!senzaCUD(documentiPratica(p).mancanti).length) { avviso('ℹ️ Manca solo il CUD: lo richiede il CAF da "📋 Richieste CUD"'); return; }
+  contestoComunicazione({ nome: p.nome, cf: p.codiceFiscale || '', praticaId: p.id, motivo: 'Documenti mancanti' });
   inviaWhatsAppLibero(p.telefono, messaggioDocumentiMancanti(p), p.nome);
 }
 
