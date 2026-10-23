@@ -137,6 +137,7 @@ function cardAppuntamentoHTML(a) {
       + (a.stato === 'prenotato' ? b('inviaPromemoriaAppuntamento(\'' + id + '\')', '💬 Promemoria', '#25a35a', 'Promemoria su WhatsApp') : '')
       + (a.stato === 'prenotato' ? b('statoAppuntamento(\'' + id + '\', \'non_venuto\')', '❌ Non venuto', '#c0392b') : '')
       + (a.stato !== 'prenotato' ? b('statoAppuntamento(\'' + id + '\', \'prenotato\')', '↩️ Rimetti prenotato', '#5b6b82') : '')
+      + b('stampaAppuntamento(\'' + id + '\')', '🖨️ Stampa', '#374151', 'Stampa il promemoria da dare al cliente')
       + b('modificaAppuntamento(\'' + id + '\')', '✏️', '#1d4f91', 'Cambia giorno, ora o dati')
       + b('eliminaAppuntamento(\'' + id + '\')', '🗑', '#6b7280', 'Cancella l\'appuntamento (es. disdetto)') + '</div>' : '')
     + '</div>';
@@ -245,6 +246,8 @@ function finestraAppuntamento(a) {
     AGENDA.giorno = salvato.data;
     avviso('🗓️ ' + salvato.nome + ': ' + giornoLungo(salvato.data) + ' alle ' + salvato.ora);
     if (typeof a.dopo === 'function') a.dopo(salvato);
+    // promemoria su carta da dare al cliente (solo per un appuntamento nuovo o spostato)
+    if ((nuovo || riga.promemoria_il === null) && confirm('Appuntamento salvato: ' + giornoLungo(salvato.data) + ' alle ' + salvato.ora + '.\n\nStampo il promemoria da dare al cliente?')) stampaAppuntamento(salvato.id);
     aggiornaVisteAgenda();
   });
 }
@@ -352,4 +355,31 @@ function stampaAgenda() {
 function appuntamentiPersona(nome, cf) {
   nome = String(nome || '').trim().toUpperCase(); cf = String(cf || '').trim().toUpperCase();
   return AGENDA.lista.filter(function (a) { return a.data >= oggiIso() && a.stato !== 'non_venuto' && ((cf && a.codice_fiscale === cf) || a.nome === nome); });
+}
+
+// Promemoria dell'appuntamento su carta, da dare al cliente: giorno, ora, documenti da portare, recapiti e orari
+function stampaAppuntamento(id) {
+  const a = AGENDA.lista.find(function (x) { return x.id === id; }); if (!a) return;
+  const logo = document.querySelector('.hero-logo');
+  const caf = typeof datiCafStampa === 'function' ? datiCafStampa() : {};
+  const doc = documentiDaPortare(a.tipo).split(/,\s+(?![^(]*\))/).map(function (d) { d = d.replace(/^(e |il |le |i |la |lo )/i, '').replace(/ e le /i, ' e '); return d.charAt(0).toUpperCase() + d.slice(1); });
+  const giorno = dataDaIso(a.data).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const html = '<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Appuntamento ' + esc(a.nome) + '</title><style>'
+    + '@page{size:A5; margin:10mm} body{font-family:Arial,Helvetica,sans-serif; color:#0f1b2d; margin:0; padding:14px; font-size:13px}'
+    + '.testa{display:flex; align-items:center; gap:10px; border-bottom:3px solid #c0141d; padding-bottom:8px} .testa img{width:52px; height:52px; border-radius:50%} h1{font-size:17px; margin:0; color:#00612f} .caf{font-size:11px; color:#5b6b82; margin-top:2px}'
+    + '.titolo{text-align:center; font-size:18px; font-weight:800; letter-spacing:.06em; margin:14px 0 6px; color:#0f766e} .chi{text-align:center; font-size:15px; margin-bottom:10px}'
+    + '.quando{text-align:center; border:3px solid #0f766e; border-radius:14px; padding:12px; margin:8px 0 14px} .quando .g{font-size:20px; font-weight:800; text-transform:capitalize} .quando .o{font-size:30px; font-weight:900; color:#0f766e; margin-top:4px} .quando .t{font-size:13px; margin-top:4px}'
+    + 'h2{font-size:14px; margin:10px 0 4px} ul{margin:0; padding-left:20px} li{margin:3px 0} .nota{margin-top:10px; padding:8px 10px; background:#f2f5f9; border-radius:8px} .piede{margin-top:14px; font-size:12px; border-top:1px solid #cfd6e0; padding-top:8px}'
+    + '</style></head><body>'
+    + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1><div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div></div>'
+    + '<div class="titolo">PROMEMORIA APPUNTAMENTO</div>'
+    + '<div class="chi">Gentile <b>' + esc(a.nome) + '</b>, la aspettiamo</div>'
+    + '<div class="quando"><div class="g">' + esc(giorno) + '</div><div class="o">ore ' + esc(a.ora) + '</div>' + (a.tipo ? '<div class="t">per la pratica <b>' + esc(a.tipo) + '</b></div>' : '') + '</div>'
+    + '<h2>📋 Cosa portare</h2><ul>' + doc.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>'
+    + (a.note ? '<div class="nota">📝 ' + esc(a.note) + '</div>' : '')
+    + '<div class="piede">Se non può venire ci avvisi' + (caf.telefono ? ' al <b>' + esc(caf.telefono) + '</b>' : '') + ', così diamo il posto a un altro cliente.' + (caf.orari ? '<br>Orari dell\'ufficio: ' + esc(caf.orari) : '') + '</div>'
+    + '</body></html>';
+  if (typeof mostraPaginaNelProgramma === 'function') { mostraPaginaNelProgramma(html, 'Promemoria appuntamento – ' + a.nome); return; }
+  const w = window.open('', '_blank'); if (!w) { alert('Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito.'); return; }
+  w.document.open(); w.document.write(html); w.document.close(); setTimeout(function () { w.print(); }, 300);
 }
