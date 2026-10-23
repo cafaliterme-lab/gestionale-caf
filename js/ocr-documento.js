@@ -631,7 +631,9 @@ async function caricaFotoDocumento(input) {
 async function leggiFileDocumento(file) {
   fermaFotocameraDoc();
   docLettura.ferma = false; docLettura.letture = 0;
-  if (!(file.type === 'application/pdf' || /\.pdf$/i.test(file.name) || /^image\//.test(file.type))) { messaggioDoc('❌ Questo file non è un PDF né una foto.', true); return; }
+  // foto dell'iPhone (HEIC) e scansioni TIFF: si provano, ma il browser del computer spesso non le apre
+  const formatoDifficile = /\.(heic|heif|tif|tiff)$/i.test(file.name || '') || /image\/(heic|heif|tiff)/i.test(file.type || '');
+  if (!(file.type === 'application/pdf' || /\.pdf$/i.test(file.name) || /^image\//.test(file.type) || formatoDifficile)) { messaggioDoc('❌ Questo file non è un PDF né una foto (va bene PDF, JPG, PNG, WEBP).', true); return; }
   try {
     if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) { await leggiPdfDocumento(file); return; }
     const img = await createImageBitmap(file);
@@ -656,7 +658,10 @@ async function leggiFileDocumento(file) {
     }
     await leggiPartiDocumento(parti);
   } catch (e) {
-    messaggioDoc('❌ File non leggibile: ' + e.message, true);
+    const difficile = /\.(heic|heif|tif|tiff)$/i.test(file.name || '') || /image\/(heic|heif|tiff)/i.test(file.type || '');
+    messaggioDoc(difficile
+      ? '❌ Questo formato (' + esc((String(file.name || '').split('.').pop() || '').toUpperCase()) + ') il browser del computer non lo apre. Foto dell\'iPhone: mandala come JPG (su iPhone: Impostazioni › Fotocamera › Formati › «Più compatibile»), oppure scattala direttamente con 📷. Scansione TIFF: salvala come PDF o JPG.'
+      : '❌ File non leggibile: ' + e.message, true);
   }
 }
 
