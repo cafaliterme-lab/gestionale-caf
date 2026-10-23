@@ -3,8 +3,10 @@
  * e documentazione della pratica: presentata e mancante, da spuntare quando il cliente la porta.
  */
 
+// «Manca tutta la documentazione»: un solo segno quando il cliente non ha portato ancora niente
+const MANCA_TUTTO = 'Manca tutta la documentazione';
 const DOCUMENTI_STANDARD = [
-  "Documento d'identità", 'Tessera sanitaria', 'CU (Certificazione Unica)', 'Dichiarazione anno precedente',
+  MANCA_TUTTO, "Documento d'identità", 'Tessera sanitaria', 'CU (Certificazione Unica)', 'Dichiarazione anno precedente',
   'Spese mediche e farmacia', 'Interessi mutuo', 'Spese istruzione / università', 'Assicurazioni',
   'Bonus edilizi / ristrutturazioni', 'Contratto di affitto', 'Spese funebri', 'Contributi colf / previdenziali',
   'Spese veterinarie', 'Spese sportive figli', 'Delega firmata',
@@ -100,6 +102,8 @@ function richiediNuovoDocumentoConiuge(id, via) {
 }
 function messaggioDocumentiMancanti(p) {
   const mancanti = senzaCUD(documentiPratica(p).mancanti);
+  if (mancanti.indexOf(MANCA_TUTTO) >= 0) return 'Gentile ' + nomeProprio(p.nome) + ', per completare la sua pratica ' + (p.tipo || '') + ' (protocollo ' + formattaProtocollo(p) + ') ci manca ancora tutta la documentazione: '
+    + (typeof documentiDaPortare === 'function' ? documentiDaPortare(p.tipo) : 'documento d\'identità, tessera sanitaria e i documenti per la pratica') + '.\n\nPuò portarla in ufficio quando le è comodo. Grazie.\n\n' + righeContattiCaf();
   return 'Gentile ' + nomeProprio(p.nome) + ', per completare la sua pratica ' + (p.tipo || '') + ' (protocollo ' + formattaProtocollo(p) + ') ci mancano ancora:\n'
     + mancanti.map(function (d) { return '• ' + d; }).join('\n') + '\n\nPuò portarli in ufficio quando le è comodo. Grazie.\n\n' + righeContattiCaf();
 }
@@ -150,7 +154,10 @@ function chipsDocumentiHTML(stato, ordine, azione) {
     const etichetta = (n === CUD_PUNTO_FISCO ? '🏛️ ' : '👤 ') + n + (s === 'mancante' ? ' – DA RICHIEDERE' : s === 'presentato' ? ' – ARRIVATO ✓' : '');
     return '<span class="doc-chip ' + s + '" role="button" tabindex="0" data-doc="' + esc(n) + '" onclick="' + azione + '(this.dataset.doc)">' + esc(etichetta) + '</span>';
   }).join('');
-  return ordine.filter(function (n) { return !eRichiestaCUD(n); }).map(chip).join('')
+  // «Manca tutta la documentazione» in evidenza, da solo sulla prima riga
+  const tutto = stato[MANCA_TUTTO] === 'mancante';
+  const mancaTutto = '<div style="flex-basis:100%; margin-bottom:4px"><span class="doc-chip' + (tutto ? ' mancante' : '') + '" role="button" tabindex="0" data-doc="' + esc(MANCA_TUTTO) + '" onclick="' + azione + '(this.dataset.doc)" title="Il cliente non ha portato ancora nessun documento: tocca di nuovo per togliere" style="border:2px dashed #c0392b; font-weight:800' + (tutto ? '' : '; color:#c0392b') + '">⛔ ' + (tutto ? 'MANCA TUTTA LA DOCUMENTAZIONE ✗' : 'Manca tutto') + '</span></div>';
+  return mancaTutto + ordine.filter(function (n) { return !eRichiestaCUD(n) && n !== MANCA_TUTTO; }).map(chip).join('')
     + '<div style="flex-basis:100%; margin-top:6px; padding:8px 10px; border:2px dashed #1d4f91; border-radius:12px">'
     + '<div style="font-size:12.5px; font-weight:800; color:#1d4f91; margin-bottom:6px">📋 Richieste CUD <span style="font-weight:400; color:var(--sub)">— 1 tocco = da richiedere (rosso), 2 tocchi = arrivato (verde), 3 = tolto · non compaiono sulla ricevuta del cliente</span></div>'
     + '<div class="doc-chips">' + cud + '</div></div>';
@@ -158,6 +165,7 @@ function chipsDocumentiHTML(stato, ordine, azione) {
 function eRichiestaCUD(n) { return RICHIESTE_CUD.indexOf(n) >= 0; }
 function senzaCUD(lista) { return (lista || []).filter(function (n) { return !eRichiestaCUD(n); }); }
 function prossimoStato(s, nome) {
+  if (nome === MANCA_TUTTO) return s ? '' : 'mancante';
   if (RICHIESTE_CUD.indexOf(nome) >= 0) return !s ? 'mancante' : s === 'mancante' ? 'presentato' : '';
   return !s ? 'presentato' : s === 'presentato' ? 'mancante' : '';
 }
@@ -173,6 +181,8 @@ function disegnaDocumentiModulo() {
 function cambiaDocumentoModulo(nome) {
   const s = prossimoStato(DOC_MODULO[nome], nome);
   if (s) DOC_MODULO[nome] = s; else delete DOC_MODULO[nome];
+  // arrivato un documento: non manca più «tutto»
+  if (s === 'presentato') delete DOC_MODULO[MANCA_TUTTO];
   disegnaDocumentiModulo();
 }
 function aggiungiDocumentoAltro() {
@@ -304,6 +314,7 @@ function disegnaEditorDocumenti() {
 function cambiaDocumentoEditor(nome) {
   const s = prossimoStato(DOC_EDITOR.stato[nome], nome);
   if (s) DOC_EDITOR.stato[nome] = s; else delete DOC_EDITOR.stato[nome];
+  if (s === 'presentato') delete DOC_EDITOR.stato[MANCA_TUTTO];
   disegnaEditorDocumenti();
 }
 function aggiungiDocumentoEditor() {

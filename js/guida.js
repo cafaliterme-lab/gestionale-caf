@@ -124,7 +124,7 @@ const GUIDA = [
 <p class="g-nota">Nei conteggi una congiunta vale <b>2 pratiche</b>.</p>` },
 
   { id: 'documenti', icona: '📎', titolo: 'Documentazione presentata e mancante', parole: 'documenti documentazione presentati mancanti da portare spunta chip altro documento in arrivo',
-    testo: `
+    testo: `<p><b>⛔ Manca tutto</b>: il primo tasto della documentazione (nel modulo e in 📎 Documentazione della pratica). Se il cliente non ha portato ancora niente toccalo una volta: diventa rosso <b>«MANCA TUTTA LA DOCUMENTAZIONE»</b> e la pratica resta tra quelle con documenti mancanti. Toccalo di nuovo per toglierlo; si toglie anche da solo appena segni un documento come ✓ presentato. Il messaggio WhatsApp «documenti mancanti» dice che manca tutta la documentazione e quali documenti portare.</p>
 <p>Nel riquadro <b>📎 Documentazione</b> tocca ogni documento:</p>
 <ul>
 <li><b>1 volta</b> = <span style="color:#1a7f37">✓ presentato</span> (verde);</li>
