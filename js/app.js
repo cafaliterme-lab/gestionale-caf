@@ -266,13 +266,15 @@ async function salvaRuoloCliente(nomeCompleto, dataNascita, codiceFiscale, ruolo
   }catch(e){ console.error('ruolo cliente', e); }
 }
 // Salva il collaboratore nella scheda del cliente (cercata per codice fiscale, altrimenti per nome e data di nascita)
-async function salvaCollaboratoreCliente(nomeCompleto, dataNascita, codiceFiscale, collaboratore){
+// soloSeVuoto: non cambia un collaboratore già indicato (es. salvando una pratica)
+async function salvaCollaboratoreCliente(nomeCompleto, dataNascita, codiceFiscale, collaboratore, soloSeVuoto){
   try{
     let q = supabase.from('clienti').update({ collaboratore: collaboratore || null });
     q = codiceFiscale ? q.eq('codice_fiscale', codiceFiscale) : q.eq('nome_completo', nomeCompleto).eq('data_nascita', dataNascita || '');
+    if(soloSeVuoto) q = q.is('collaboratore', null);
     const { error } = await q;
     if(error) throw new Error(error.message);
-    const rec = trovaInArchivio(nomeCompleto, dataNascita, codiceFiscale); if(rec) rec.collaboratore = collaboratore || null;
+    const rec = trovaInArchivio(nomeCompleto, dataNascita, codiceFiscale); if(rec && (!soloSeVuoto || !rec.collaboratore)) rec.collaboratore = collaboratore || null;
   }catch(e){ console.error('collaboratore cliente', e); }
 }
 // Nuovo cliente scritto a mano: va in archivio e poi si ritrova subito nella ricerca, pronto da scegliere per la pratica
@@ -2462,6 +2464,11 @@ async function addPraticaInterna(){
   if(documentoNumero || comuneNascita || documentoTipo){ try{ await data.clienti.salvaDocumento({ codiceFiscale: codiceFiscale, nomeCompleto: (cognome + ' ' + nomeProprio).trim(), dataNascita: cf, documentoNumero: documentoNumero, comuneNascita: comuneNascita, documentoTipo: documentoTipo }); }catch(e){ console.error('numero documento', e); } }
   // ruolo nella dichiarazione nell'archivio (solo se non è già indicato)
   salvaRuoloCliente((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale, 'dichiarante', true);
+  // pratica 730: il collaboratore (tipo di pratica) va nella scheda del cliente e del coniuge, se non è già indicato
+  if(e730({ tipo: tipo })){
+    salvaCollaboratoreCliente((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale, tipo, true);
+    if(congCognome || congNome) salvaCollaboratoreCliente((congCognome + ' ' + congNome).trim(), congData, congCodiceFiscale, tipo, true);
+  }
   if(congCognome || congNome) salvaRuoloCliente((congCognome + ' ' + congNome).trim(), congData, congCodiceFiscale, 'coniuge', true, (cognome + ' ' + nomeProprio).trim(), cf);
   if(congCognome || congNome){ try{ await registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono, '', congDocumentoScadenza, congEmail); }catch(e){ console.error('archivio clienti coniuge', e); }
     if(congDocumentoNumero || congComuneNascita || congDocumentoTipo){ try{ await data.clienti.salvaDocumento({ codiceFiscale: congCodiceFiscale, nomeCompleto: (congCognome + ' ' + congNome).trim(), dataNascita: congData, documentoNumero: congDocumentoNumero, comuneNascita: congComuneNascita, documentoTipo: congDocumentoTipo }); }catch(e){ console.error('numero documento coniuge', e); } } }
