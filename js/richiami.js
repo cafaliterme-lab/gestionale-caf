@@ -30,7 +30,7 @@ function riepilogoInvioRichiami() {
   ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('[data-chiudi]')) ov.remove(); });
   const riga = function (x, canale, recapito) {
     return '<label style="display:flex; gap:8px; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:13.5px; cursor:pointer"><input type="checkbox" checked data-canale="' + canale + '" value="' + esc(x.chiave) + '" onchange="contaInvioRichiami()" style="width:18px; height:18px">'
-      + '<span style="flex:1; color:var(--text)"><b>' + esc(x.nome) + '</b>' + (collaboratoreRichiamo(x) && collaboratoreRichiamo(x) !== SENZA_COLLAB ? ' <span class="sub2">· ' + esc(collaboratoreRichiamo(x)) + '</span>' : '') + '</span><span class="sub2">' + esc(recapito) + '</span></label>';
+      + '<span style="flex:1; color:var(--ink)"><b>' + esc(x.nome) + '</b>' + (collaboratoreRichiamo(x) && collaboratoreRichiamo(x) !== SENZA_COLLAB ? ' <span class="sub2">· ' + esc(collaboratoreRichiamo(x)) + '</span>' : '') + '</span><span class="sub2">' + esc(recapito) + '</span></label>';
   };
   const gruppo = function (titolo, colore, canale, lista, recapito) {
     if (!lista.length) return '';
@@ -38,16 +38,25 @@ function riepilogoInvioRichiami() {
       + '<span style="font-size:12px"><a href="#" onclick="spuntaInvioRichiami(\'' + canale + '\', true); return false">tutti</a> · <a href="#" onclick="spuntaInvioRichiami(\'' + canale + '\', false); return false">nessuno</a></span></div>'
       + lista.map(function (x) { return riga(x, canale, recapito(x)); }).join('');
   };
-  const esempio = d.wa[0] || d.email[0];
-  ov.innerHTML = '<div style="background:var(--card); color:var(--text); border-radius:14px; max-width:640px; width:100%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,.3)">'
-    + '<div style="padding:14px 16px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center"><b style="font-size:17px">📤 A chi mando il messaggio</b><button type="button" data-chiudi style="border:none; background:none; font-size:22px; cursor:pointer; color:var(--text)">✕</button></div>'
+  // i testi che partono, con il nome del primo cliente di ogni gruppo (per gli altri cambia solo il nome)
+  const box = function (titolo, colore, x, oggetto) {
+    if (!x) return '';
+    return '<div style="margin-top:12px; border:1.5px solid ' + colore + '; border-radius:10px; overflow:hidden"><div style="padding:6px 10px; background:' + colore + '; color:#fff; font-weight:800; font-size:13.5px">' + titolo + '</div>'
+      + (oggetto ? '<div style="padding:6px 10px; font-size:13px; border-bottom:1px solid var(--line)"><b>Oggetto:</b> ' + esc(oggetto) + '</div>' : '')
+      + '<div style="white-space:pre-wrap; font-size:13px; padding:8px 10px">' + esc(messaggioRichiamo(x)) + '</div>'
+      + '<div class="sub2" style="padding:0 10px 6px">Esempio per ' + esc(x.nome) + ': per gli altri cambia solo il nome.</div></div>';
+  };
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:14px; max-width:640px; width:100%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,.3)">'
+    + '<div style="padding:14px 16px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center"><b style="font-size:17px">📤 A chi mando il messaggio</b><button type="button" data-chiudi style="border:none; background:none; font-size:22px; cursor:pointer; color:var(--ink)">✕</button></div>'
     + '<div style="padding:4px 16px 12px; overflow:auto">'
     + '<div class="sub2" style="margin-top:8px">Controlla l\'elenco: togli la spunta a chi non vuoi mandarlo.</div>'
     + gruppo('📧 E-mail (partono tutte insieme dalla casella del CAF)', '#1d4f91', 'email', d.email, function (x) { return x.email; })
     + gruppo('💬 WhatsApp (uno dopo l\'altro)', '#1a7f37', 'wa', d.wa, function (x) { return x.tel; })
-    + (esempio ? '<details style="margin-top:12px"><summary style="cursor:pointer; font-weight:700">👁️ Vedi il messaggio (esempio per ' + esc(esempio.nome) + ')</summary><div style="white-space:pre-wrap; font-size:13px; padding:8px; margin-top:6px; border-radius:8px; background:color-mix(in srgb, #25a35a 8%, var(--card))">' + esc(messaggioRichiamo(esempio)) + '</div></details>' : '')
+    + '<div style="margin-top:14px; font-weight:800; font-size:15px">👁️ Ecco cosa riceveranno</div>'
+    + box('📧 L\'e-mail', '#1d4f91', d.email[0], oggettoRichiamo())
+    + box('💬 Il messaggio WhatsApp', '#1a7f37', d.wa[0])
     + '</div><div style="padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap">'
-    + '<button type="button" data-chiudi style="border:1.5px solid var(--line); background:transparent; color:var(--text); border-radius:999px; padding:8px 16px; font-weight:700; cursor:pointer">Annulla</button>'
+    + '<button type="button" data-chiudi style="border:1.5px solid var(--line); background:transparent; color:var(--ink); border-radius:999px; padding:8px 16px; font-weight:700; cursor:pointer">Annulla</button>'
     + '<button type="button" id="ric-conferma-invio" onclick="confermaInvioRichiami(this)" style="background:#25a35a; color:#fff; border:none; border-radius:999px; padding:8px 18px; font-weight:800; cursor:pointer"></button></div></div>';
   document.body.appendChild(ov);
   contaInvioRichiami();
@@ -79,7 +88,7 @@ async function avviaInvioRichiami(b, sel) {
   if (d.email.length) {
     if (b) b.disabled = true;
     let ok = 0; const ko = [];
-    const oggetto = (RICHIAMI.modo === 'campagna' ? 'Campagna 730 ' : 'Dichiarazione 730 ') + RICHIAMI.anno + ' – CAF CISL Alì Terme';
+    const oggetto = oggettoRichiamo();
     for (const x of d.email) {
       if (b) b.textContent = '⏳ E-mail ' + (ok + ko.length + 1) + ' di ' + d.email.length + '…';
       try {
@@ -233,6 +242,7 @@ function filtraRichiami(lista) {
 function nomeGentile(nome) {
   return String(nome || '').toLowerCase().replace(/(^|[\s'’-])([a-zàèéìòù])/g, function (m, s, c) { return s + c.toUpperCase(); });
 }
+function oggettoRichiamo() { return (RICHIAMI.modo === 'campagna' ? 'Campagna 730 ' : 'Dichiarazione 730 ') + RICHIAMI.anno + ' – CAF CISL Alì Terme'; }
 function messaggioRichiamo(x) {
   if (RICHIAMI.modo === 'campagna') return 'Gentile ' + nomeGentile(x.nome) + ', è iniziata la campagna 730 ' + RICHIAMI.anno + ' al CAF CISL di Alì Terme. Può prenotare il suo appuntamento chiamandoci o rispondendo a questo messaggio: le diremo anche quali documenti portare. Grazie!'
     + (typeof righeContattiCaf === 'function' ? '\n\n' + righeContattiCaf() : '');
