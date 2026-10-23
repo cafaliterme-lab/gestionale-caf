@@ -27,7 +27,10 @@ function renderOggi() {
   const recenti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return !c.decedutoIl && ((c.codiceFiscale && rec.cf[c.codiceFiscale]) || rec.nome[String(c.nomeCompleto || '').toUpperCase()]); });
   const oggiN = typeof dataNum === 'function' ? dataNum(todayIT()) : 0;
   const senzaTel = recenti.filter(function (c) { return !c.telefono && !c.telefonoFisso; }).length;
-  const docScad = recenti.filter(function (c) { return !c.documentoScadenza || (dataNum(c.documentoScadenza) || 0) < oggiN; }).length;
+  const docScad = recenti.filter(function (c) { return !c.documentoScadenza; }).length;
+  // documenti scaduti o che scadono entro 30 giorni (avviso ai clienti)
+  const docRinnovo = typeof clientiDocumentoDaRinnovare === 'function' ? clientiDocumentoDaRinnovare() : [];
+  const docDaAvvisare = docRinnovo.filter(function (r) { return !avvisoDocumentoInviato(r.c); }).length;
   const senzaCfTutti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return !c.codiceFiscale && !c.decedutoIl; }).length;
 
   // attività di oggi
@@ -98,7 +101,8 @@ function renderOggi() {
     + tile('💸', nonPagate, 'Non pagate', '#e67e22', 'oggiVaiMorosi()', 'quest\'anno e anni precedenti')
     + tile('⏰', scad.length, 'Scadenze entro 7 giorni', '#7b3fa0', 'oggiVaiScadenze()', scadutePassate ? scadutePassate + ' già passate' : '')
     + tile('📞', senzaTel, 'Clienti senza telefono', '#1d4f91', "apriArchivioClienti('', { conPratiche: true, senzaTel: true })", 'venuti quest\'anno o l\'anno scorso')
-    + tile('🪪', docScad, 'Documenti scaduti o mancanti', '#c0392b', "apriArchivioClienti('', { conPratiche: true, doc: true })", 'clienti venuti di recente')
+    + tile('🪪', docRinnovo.length, 'Documenti scaduti o in scadenza', '#c0392b', 'apriDocumentiInScadenza()', docRinnovo.length ? (docDaAvvisare ? docDaAvvisare + ' da avvisare' : 'tutti già avvisati') + ' · entro 30 giorni' : 'nessuno entro 30 giorni')
+    + tile('📇', docScad, 'Senza scadenza del documento', '#b35f0c', "apriArchivioClienti('', { conPratiche: true, doc: true })", 'clienti venuti di recente: completa la scheda')
     + (promDaMandare ? tile('💬', promDaMandare, 'Promemoria appuntamenti da mandare', '#25a35a', 'apriPromemoriaAgenda()', 'a chi ha l\'appuntamento il prossimo giorno di apertura') : '')
     + (daAvvisareCampagna !== null ? tile('📢', daAvvisareCampagna, 'Campagna 730: clienti da avvisare', '#b35f0c', "apriRichiami('campagna')", '730 dell\'anno scorso non ancora venuti quest\'anno') : '')
     + (daRichiamare !== null ? tile('☎️', daRichiamare, 'Clienti da richiamare', '#0e8a8a', 'apriRichiami()', '730 dell\'anno scorso non ancora tornati') : '')
