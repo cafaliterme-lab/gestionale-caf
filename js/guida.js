@@ -49,7 +49,7 @@ const GUIDA = [
     testo: `<p>All'inizio della campagna (in <b>Oggi</b> da febbraio a giugno c'è la casella <b>📢 Campagna 730: clienti da avvisare</b>, oppure il tasto <b>📢 Avvio campagna 730</b> nell'Agenda) si apre l'elenco di tutti i clienti che l'anno scorso hanno fatto il 730 (anche come coniuge) e quest'anno non sono ancora venuti.</p><ul>
 <li><b>💬 WhatsApp</b> manda: «è iniziata la campagna 730, può prenotare il suo appuntamento…» con i recapiti del CAF; il cliente viene segnato <b>📢 Avvisato</b> ed esce da «Da avvisare».</li>
 <li>Quando il cliente chiama: <b>🗓️ Prenota</b> apre l'agenda sul primo orario libero; dopo la prenotazione il cliente risulta con l'appuntamento.</li>
-<li>Chi ha già un appuntamento o ha già fatto la pratica sparisce da solo. Stampa ed Excel come per i clienti da richiamare.</li></ul>` },
+<li><b>Primo anno (campagna 2027)</b>: le pratiche del 2026 non sono nel programma (solo prove), quindi l'elenco si prende dai clienti dell'<b>archivio</b> (i 730 del 2026 caricati prima di iniziare), senza i deceduti. Dal 2028 si usano da sole le pratiche 730 dell'anno prima.</li><li>Chi ha già un appuntamento o ha già fatto la pratica sparisce da solo. Stampa ed Excel come per i clienti da richiamare.</li></ul>` },
   { id: 'contatori', icona: '🔢', titolo: 'I contatori in alto', parole: 'contatori totale pratiche lavorate da lavorare operatore congiunta vale 2 730 rinuncia',
     testo: `
 <p>I riquadri colorati in alto contano <b>solo le pratiche 730</b> (di tutti i tipi 730) dell'anno scelto:</p>

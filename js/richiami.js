@@ -42,8 +42,21 @@ function clientiDaRichiamare(anno) {
     return !!(nomeOk[nome + '|' + (nascita || '')] || (!nascita && nomeOk[nome + '|']));
   };
   const persone = {};
+  // primo anno del programma: l'anno prima non ci sono pratiche vere (solo prove), quindi
+  // i clienti del 730 dell'anno scorso sono quelli dell'archivio (caricato con i 730 fatti prima del programma)
+  const daArchivio = typeof ANNO_INIZIO_PROTOCOLLO !== 'undefined' && prec < ANNO_INIZIO_PROTOCOLLO;
+  if (daArchivio) {
+    (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).forEach(function (c) {
+      const nome = String(c.nomeCompleto || '').trim().toUpperCase(), cf = String(c.codiceFiscale || '').trim().toUpperCase(), nascita = String(c.dataNascita || '').trim();
+      if (!nome || c.decedutoIl || presente(nome, nascita, cf)) return;
+      const k = chiaveRichiamo(nome, nascita, cf);
+      if (persone[k]) return;
+      persone[k] = { chiave: k, nome: nome, nascita: nascita, cf: cf, tel: c.telefono || '', fisso: c.telefonoFisso || '', email: c.email || '', daArchivio: true,
+        pratiche: [{ p: { tipo: c.collaboratore || '730', nome: c.ruoloDichiarazione === 'coniuge' ? (c.dichiaranteNome || '') : nome, pagato: 0, iscrittoCisl: false, inseritoDa: '' }, coniuge: c.ruoloDichiarazione === 'coniuge' && !!c.dichiaranteNome }] };
+    });
+  }
   (state.pratiche || []).forEach(function (p) {
-    if (!valida(p) || annoPratica(p) !== prec) return;
+    if (daArchivio || !valida(p) || annoPratica(p) !== prec) return;
     const aggiungi = function (nome, nascita, cf, tel, fisso, email, comeConiuge) {
       nome = String(nome || '').trim().toUpperCase(); cf = String(cf || '').trim().toUpperCase(); nascita = String(nascita || '').trim();
       if (!nome || presente(nome, nascita, cf)) return;
@@ -135,7 +148,7 @@ async function apriRichiami(modo) {
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border-top:6px solid #1d4f91; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:860px; width:100%; max-height:94vh; display:flex; flex-direction:column">'
     + '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start; flex-wrap:wrap">'
     + '<div><div style="font-size:19px; font-weight:800; color:' + (camp ? '#b35f0c' : '#1d4f91') + '">' + (camp ? '📢 Avvio campagna 730 ' : '📞 Clienti da richiamare – 730 ') + RICHIAMI.anno + '</div>'
-    + '<div style="font-size:12.5px; color:var(--sub)">' + (camp ? 'Avvisa i clienti del 730 ' + (RICHIAMI.anno - 1) + ' (anche come coniuge) che la campagna è iniziata: tocca 💬 WhatsApp (il cliente viene segnato «avvisato») e, quando chiama, 🗓️ Prenota. ' : 'Hanno fatto il 730 nel ' + (RICHIAMI.anno - 1) + ' (anche come coniuge) e nel ' + RICHIAMI.anno + ' non si sono ancora presentati. ') + 'Chi ha l\'appuntamento in agenda o fa la pratica sparisce da solo.</div></div>'
+    + '<div style="font-size:12.5px; color:var(--sub)">' + (camp ? 'Avvisa i clienti del 730 ' + (RICHIAMI.anno - 1) + ' (anche come coniuge) che la campagna è iniziata: tocca 💬 WhatsApp (il cliente viene segnato «avvisato») e, quando chiama, 🗓️ Prenota. ' : 'Hanno fatto il 730 nel ' + (RICHIAMI.anno - 1) + ' (anche come coniuge) e nel ' + RICHIAMI.anno + ' non si sono ancora presentati. ') + 'Chi ha l\'appuntamento in agenda o fa la pratica sparisce da solo.' + (typeof ANNO_INIZIO_PROTOCOLLO !== 'undefined' && RICHIAMI.anno - 1 < ANNO_INIZIO_PROTOCOLLO ? '<br><b style="color:#b35f0c">Primo anno del programma: l\'elenco viene dall\'archivio clienti (i 730 del ' + (RICHIAMI.anno - 1) + ' caricati prima di iniziare). I deceduti segnati nell\'archivio non compaiono.</b>' : '') + '</div></div>'
     + '<span style="display:flex; gap:6px; flex-wrap:wrap"><button type="button" onclick="stampaRichiami()" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">🖨️ Stampa</button>'
     + '<button type="button" onclick="excelRichiami()" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">📊 Excel</button>'
     + '<button type="button" onclick="document.getElementById(\'popup-richiami\').remove()" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">Chiudi</button></span></div>'
