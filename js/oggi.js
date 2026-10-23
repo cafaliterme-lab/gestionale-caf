@@ -79,6 +79,7 @@ function renderOggi() {
   const oggiTesto = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
   box.innerHTML = '<div class="card" style="padding:12px 16px; margin-bottom:12px; border:2px solid #1d4f91">'
     + '<div style="font-weight:800; font-size:18px; color:#1d4f91">📅 Oggi, ' + esc(oggiTesto) + ' <span style="font-weight:600; font-size:13px; color:var(--sub)">· cosa c\'è da fare (anno ' + anno + ')</span></div>'
+    + (typeof avvisoBackupOggiHTML === 'function' ? avvisoBackupOggiHTML() : '')
     + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">✅ OGGI IN SEDE</div>'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px">'
     + (ag ? tile('🗓️', appOggi.length, 'Appuntamenti oggi', '#0d9488', "AGENDA.giorno=oggiIso(); oggiTab('agenda')", prossimo ? 'prossimo alle ' + esc(prossimo.ora) + ': ' + esc(prossimo.nome) : (appOggi.length ? 'tutti arrivati o passati' : 'tocca per aprire l\'agenda')) : '')

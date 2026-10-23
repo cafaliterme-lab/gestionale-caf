@@ -805,6 +805,35 @@ async function esciDalProgramma(){
   await logout();
   cambiaUtente();
 }
+// Uscita automatica dopo 30 minuti senza usare il programma (PC condivisi, telefono dimenticato aperto).
+// L'ultima attività è condivisa tra le schede aperte dello stesso browser.
+const MINUTI_USCITA_AUTOMATICA = 30;
+let ULTIMA_ATTIVITA = Date.now(), AVVISO_USCITA_DATO = false;
+function segnaAttivita(){
+  const ora = Date.now();
+  if(ora - ULTIMA_ATTIVITA < 15000) return; // al massimo una volta ogni 15 secondi
+  ULTIMA_ATTIVITA = ora; AVVISO_USCITA_DATO = false;
+  try{ localStorage.setItem('ultima-attivita', String(ora)); }catch(e){}
+}
+['click','keydown','touchstart','scroll','mousemove'].forEach(function(ev){ document.addEventListener(ev, segnaAttivita, { passive: true, capture: true }); });
+async function controllaUscitaAutomatica(){
+  if(!auth || !auth.profilo) return;
+  let ultima = ULTIMA_ATTIVITA;
+  try{ ultima = Math.max(ultima, Number(localStorage.getItem('ultima-attivita') || 0)); }catch(e){}
+  const ferma = Date.now() - ultima, limite = MINUTI_USCITA_AUTOMATICA * 60000;
+  if(ferma >= limite){
+    AVVISO_USCITA_DATO = false;
+    await esciDalProgramma();
+    // il messaggio si vede nella schermata di accesso
+    setTimeout(function(){ const m = document.getElementById('login-msg'); if(m){ m.textContent = '🔒 Sei uscito dal programma perché non è stato usato per ' + MINUTI_USCITA_AUTOMATICA + ' minuti. Rientra con la tua password.'; m.style.display = 'block'; } }, 1200);
+  } else if(ferma >= limite - 60000 && !AVVISO_USCITA_DATO){
+    AVVISO_USCITA_DATO = true;
+    avviso('⏳ Tra 1 minuto esci dal programma perché non lo stai usando: tocca lo schermo per restare dentro.');
+  }
+}
+setInterval(controllaUscitaAutomatica, 20000);
+// telefono o PC che si riaccende: si controlla subito
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) controllaUscitaAutomatica(); });
 function applicaPermessi(){
   const bar = document.getElementById('userbar');
   const u = auth.profilo; // Usa profilo da Supabase

@@ -905,6 +905,48 @@ async function controllaAvvisoBackupCartella() {
 }
 setTimeout(controllaAvvisoBackupCartella, 8000);
 
+// Stato dei backup per la scheda Oggi (solo amministratore): ultimo backup del server e copia nella cartella del PC
+const STATO_COPIA = { pronto: false, giorniServer: null, ultimoServer: '', picker: false, cartella: false, attiva: false, nome: '', giorniCartella: null };
+function giorniDa(iso) { const t = Date.parse(iso || ''); return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000); }
+async function aggiornaStatoCopia() {
+  if (typeof isAdmin !== 'function' || !isAdmin()) return;
+  try {
+    const r = await fetchSupabase('/rest/v1/backup_automatici?select=creato_il&order=creato_il.desc&limit=1', 'GET');
+    if (r && r.ok && Array.isArray(r.data)) { STATO_COPIA.ultimoServer = r.data[0] ? r.data[0].creato_il : ''; STATO_COPIA.giorniServer = r.data[0] ? giorniDa(r.data[0].creato_il) : 999; }
+  } catch (e) {}
+  STATO_COPIA.picker = !!window.showDirectoryPicker && window.matchMedia && window.matchMedia('(pointer: fine)').matches;
+  if (STATO_COPIA.picker) {
+    const h = await leggiCartellaBackup();
+    STATO_COPIA.cartella = !!h; STATO_COPIA.nome = h ? h.name : '';
+    STATO_COPIA.attiva = h ? await permessoCartella(h, false) : false;
+    // data del backup che c'è adesso nel file della cartella
+    let u = ''; try { u = (localStorage.getItem('backup-completo-ultimo') || '').split('|')[1] || ''; } catch (e) {}
+    STATO_COPIA.giorniCartella = u ? giorniDa(u) : null;
+  }
+  STATO_COPIA.pronto = true;
+  if (typeof renderOggi === 'function') renderOggi();
+}
+setTimeout(aggiornaStatoCopia, 10000);
+setInterval(function () { if (!document.hidden) aggiornaStatoCopia(); }, 30 * 60 * 1000);
+// Riquadro in cima alla scheda Oggi: rosso se i backup sono fermi da più di 2 giorni
+function avvisoBackupOggiHTML() {
+  const s = STATO_COPIA;
+  if (!s.pronto || typeof isAdmin !== 'function' || !isAdmin()) return '';
+  const quando = function (g) { return g === 0 ? 'oggi' : (g === 1 ? 'ieri' : g + ' giorni fa'); };
+  const btn = function (onclick, testo) { return '<button type="button" onclick="' + onclick + '" style="background:#fff; color:#c0392b; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">' + testo + '</button>'; };
+  const rosso = function (testo, tasto) { return '<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin:8px 0; padding:10px 14px; border-radius:12px; background:#c0392b; color:#fff; font-size:14px"><span>' + testo + '</span>' + (tasto || '') + '</div>'; };
+  const out = [];
+  if (s.giorniServer !== null && s.giorniServer > 2) out.push(rosso('🛟 <b>Backup fermi:</b> il server non fa un backup automatico da ' + (s.giorniServer >= 999 ? 'mai' : s.giorniServer + ' giorni') + '. Avvisa chi ti segue il programma (Claude).', ''));
+  if (s.picker) {
+    if (!s.cartella) out.push(rosso('🛟 <b>Copia dei backup non attiva su questo computer:</b> scegli la cartella (es. Dropbox) dove salvarli.', btn('scegliCartellaBackup().then(aggiornaStatoCopia)', '📁 Scegli la cartella')));
+    else if (!s.attiva) out.push(rosso('🛟 <b>Copia dei backup ferma:</b> Chrome chiede di riconfermare l\'accesso alla cartella <b>' + esc(s.nome) + '</b>.', btn('sincronizzaCartellaBackup(true).then(aggiornaStatoCopia)', '🔓 Riattiva')));
+    else if (s.giorniCartella === null || s.giorniCartella > 2) out.push(rosso('🛟 <b>La copia dei backup nella cartella ' + esc(s.nome) + ' non si aggiorna</b>' + (s.giorniCartella !== null ? ' da ' + s.giorniCartella + ' giorni' : '') + '.', btn('sincronizzaCartellaBackup(true).then(aggiornaStatoCopia)', '🔄 Aggiorna ora')));
+  }
+  if (out.length) return out.join('');
+  // tutto a posto: una riga verde
+  return '<div style="margin:6px 0 2px; font-size:12.5px; color:#1a7f37; font-weight:700">🛟 Backup a posto: ultimo backup del server ' + quando(s.giorniServer || 0) + (s.picker && s.attiva && s.giorniCartella !== null ? ', copiato nella cartella ' + esc(s.nome) + ' ' + quando(s.giorniCartella) : '') + '.</div>';
+}
+
 // Promemoria (solo amministratore, dal computer) finché nel database manca il "ripristino completo":
 // si toglie da solo appena la modifica è applicata
 async function promemoriaRipristinoCompleto() {
