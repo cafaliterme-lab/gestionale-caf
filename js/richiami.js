@@ -19,12 +19,64 @@ function destinatariRichiami() {
     email: c === 'wa' ? [] : l.filter(function (x) { return x.email && (c === 'email' || !numeroWhatsApp(x.tel)); }),
   };
 }
-async function avviaInvioRichiami(b) {
+// Prima di mandare: elenco di chi riceverà il messaggio (WhatsApp ed e-mail), si può togliere qualcuno
+function riepilogoInvioRichiami() {
   const d = destinatariRichiami();
+  if (!d.wa.length && !d.email.length) { avviso('Nessuno da avvisare con il modo scelto', true); return; }
+  const vecchio = document.getElementById('popup-invio-richiami'); if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-invio-richiami';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:460; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:10px';
+  ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('[data-chiudi]')) ov.remove(); });
+  const riga = function (x, canale, recapito) {
+    return '<label style="display:flex; gap:8px; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:13.5px; cursor:pointer"><input type="checkbox" checked data-canale="' + canale + '" value="' + esc(x.chiave) + '" onchange="contaInvioRichiami()" style="width:18px; height:18px">'
+      + '<span style="flex:1; color:var(--text)"><b>' + esc(x.nome) + '</b>' + (collaboratoreRichiamo(x) && collaboratoreRichiamo(x) !== SENZA_COLLAB ? ' <span class="sub2">· ' + esc(collaboratoreRichiamo(x)) + '</span>' : '') + '</span><span class="sub2">' + esc(recapito) + '</span></label>';
+  };
+  const gruppo = function (titolo, colore, canale, lista, recapito) {
+    if (!lista.length) return '';
+    return '<div style="display:flex; justify-content:space-between; align-items:center; margin:12px 0 4px"><b style="font-size:15px; color:' + colore + '">' + titolo + ' (<span data-n="' + canale + '">' + lista.length + '</span>)</b>'
+      + '<span style="font-size:12px"><a href="#" onclick="spuntaInvioRichiami(\'' + canale + '\', true); return false">tutti</a> · <a href="#" onclick="spuntaInvioRichiami(\'' + canale + '\', false); return false">nessuno</a></span></div>'
+      + lista.map(function (x) { return riga(x, canale, recapito(x)); }).join('');
+  };
+  const esempio = d.wa[0] || d.email[0];
+  ov.innerHTML = '<div style="background:var(--card); color:var(--text); border-radius:14px; max-width:640px; width:100%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,.3)">'
+    + '<div style="padding:14px 16px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center"><b style="font-size:17px">📤 A chi mando il messaggio</b><button type="button" data-chiudi style="border:none; background:none; font-size:22px; cursor:pointer; color:var(--text)">✕</button></div>'
+    + '<div style="padding:4px 16px 12px; overflow:auto">'
+    + '<div class="sub2" style="margin-top:8px">Controlla l\'elenco: togli la spunta a chi non vuoi mandarlo.</div>'
+    + gruppo('📧 E-mail (partono tutte insieme dalla casella del CAF)', '#1d4f91', 'email', d.email, function (x) { return x.email; })
+    + gruppo('💬 WhatsApp (uno dopo l\'altro)', '#1a7f37', 'wa', d.wa, function (x) { return x.tel; })
+    + (esempio ? '<details style="margin-top:12px"><summary style="cursor:pointer; font-weight:700">👁️ Vedi il messaggio (esempio per ' + esc(esempio.nome) + ')</summary><div style="white-space:pre-wrap; font-size:13px; padding:8px; margin-top:6px; border-radius:8px; background:color-mix(in srgb, #25a35a 8%, var(--card))">' + esc(messaggioRichiamo(esempio)) + '</div></details>' : '')
+    + '</div><div style="padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap">'
+    + '<button type="button" data-chiudi style="border:1.5px solid var(--line); background:transparent; color:var(--text); border-radius:999px; padding:8px 16px; font-weight:700; cursor:pointer">Annulla</button>'
+    + '<button type="button" id="ric-conferma-invio" onclick="confermaInvioRichiami(this)" style="background:#25a35a; color:#fff; border:none; border-radius:999px; padding:8px 18px; font-weight:800; cursor:pointer"></button></div></div>';
+  document.body.appendChild(ov);
+  contaInvioRichiami();
+}
+function spuntaInvioRichiami(canale, si) {
+  document.querySelectorAll('#popup-invio-richiami input[data-canale="' + canale + '"]').forEach(function (c) { c.checked = si; });
+  contaInvioRichiami();
+}
+function sceltiInvioRichiami(canale) {
+  return Array.prototype.map.call(document.querySelectorAll('#popup-invio-richiami input[data-canale="' + canale + '"]:checked'), function (c) { return c.value; });
+}
+function contaInvioRichiami() {
+  const w = sceltiInvioRichiami('wa').length, m = sceltiInvioRichiami('email').length;
+  ['wa', 'email'].forEach(function (k) { const s = document.querySelector('#popup-invio-richiami [data-n="' + k + '"]'); if (s) s.textContent = k === 'wa' ? w : m; });
+  const b = document.getElementById('ric-conferma-invio'); if (!b) return;
+  b.disabled = !w && !m; b.style.opacity = w || m ? 1 : .5;
+  b.textContent = w || m ? '✅ Conferma e manda (' + [m ? m + ' e-mail' : '', w ? w + ' WhatsApp' : ''].filter(Boolean).join(' + ') + ')' : 'Nessuno scelto';
+}
+function confermaInvioRichiami(b) {
+  const sel = { wa: sceltiInvioRichiami('wa'), email: sceltiInvioRichiami('email') };
+  const ov = document.getElementById('popup-invio-richiami'); if (ov) ov.remove();
+  avviaInvioRichiami(document.querySelector('#ric-invio button[onclick^="riepilogoInvioRichiami"]'), sel);
+}
+async function avviaInvioRichiami(b, sel) {
+  const d = destinatariRichiami();
+  if (sel) { d.wa = d.wa.filter(function (x) { return sel.wa.indexOf(x.chiave) >= 0; }); d.email = d.email.filter(function (x) { return sel.email.indexOf(x.chiave) >= 0; }); }
   if (!d.wa.length && !d.email.length) { avviso('Nessuno da avvisare con il modo scelto', true); return; }
   // prima le e-mail (partono da sole dalla casella del CAF), poi i WhatsApp uno dopo l'altro
   if (d.email.length) {
-    if (!confirm('Mando l\'e-mail a ' + d.email.length + ' client' + (d.email.length === 1 ? 'e' : 'i') + ' dalla casella del CAF' + (d.wa.length ? ', poi apro i WhatsApp per gli altri ' + d.wa.length : '') + '?')) return;
     if (b) b.disabled = true;
     let ok = 0; const ko = [];
     const oggetto = (RICHIAMI.modo === 'campagna' ? 'Campagna 730 ' : 'Dichiarazione 730 ') + RICHIAMI.anno + ' – CAF CISL Alì Terme';
@@ -265,7 +317,7 @@ function disegnaRichiami() {
   if (boxI) boxI.innerHTML = CODA_RICHIAMI.lista.length
     ? '<button type="button" onclick="prossimoRichiamo()" style="background:#25a35a; color:#fff; border:none; border-radius:999px; padding:7px 16px; font-weight:800; cursor:pointer">💬 Prossimo WhatsApp (' + (CODA_RICHIAMI.pos + 1) + ' di ' + CODA_RICHIAMI.lista.length + ')</button> <span class="sub2">premi Invia su WhatsApp, poi torna qui e tocca Prossimo</span>'
     : '<b style="font-size:12.5px; color:var(--sub)">📤 Manda a tutti con:</b> ' + ch('wa', '💬 Solo WhatsApp') + ch('email', '📧 Solo e-mail') + ch('entrambi', '💬 + 📧 Tutti e due')
-      + ' <button type="button" onclick="avviaInvioRichiami(this)"' + (dest.wa.length || dest.email.length ? '' : ' disabled') + ' style="background:#25a35a; color:#fff; border:none; border-radius:999px; padding:7px 16px; font-weight:800; cursor:pointer; opacity:' + (dest.wa.length || dest.email.length ? 1 : .5) + '">📤 Manda a tutti (' + [dest.wa.length ? dest.wa.length + ' WhatsApp' : '', dest.email.length ? dest.email.length + ' e-mail' : ''].filter(Boolean).join(' + ') + (dest.wa.length || dest.email.length ? '' : 'nessuno') + ')</button>';
+      + ' <button type="button" onclick="riepilogoInvioRichiami()"' + (dest.wa.length || dest.email.length ? '' : ' disabled') + ' style="background:#25a35a; color:#fff; border:none; border-radius:999px; padding:7px 16px; font-weight:800; cursor:pointer; opacity:' + (dest.wa.length || dest.email.length ? 1 : .5) + '">📤 Manda a tutti (' + [dest.wa.length ? dest.wa.length + ' WhatsApp' : '', dest.email.length ? dest.email.length + ' e-mail' : ''].filter(Boolean).join(' + ') + (dest.wa.length || dest.email.length ? '' : 'nessuno') + ')</button>';
   const bInvio = '';
   document.getElementById('ric-filtri').innerHTML = chip('da_chiamare', RICHIAMI.modo === 'campagna' ? 'Da avvisare' : 'Da chiamare') + chip('contattati', 'Già contattati') + chip('tutti', 'Tutto l\'elenco') + bInvio;
   const lista = filtraRichiami(tutti);
