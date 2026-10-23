@@ -220,6 +220,7 @@ const schemas = {
     collaboratore: 'collaboratore',
     ruoloDichiarazione: 'ruolo_dichiarazione',
     dichiaranteNome: 'dichiarante_nome',
+    dichiaranteNascita: 'dichiarante_nascita',
   },
   scadenza: {
     id: 'id',

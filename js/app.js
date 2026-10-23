@@ -213,21 +213,49 @@ function coniugeDiCliente(c){
   }).sort(function(a, b){ return annoPratica(b) - annoPratica(a); });
   return l.length ? l[0].nome || '' : '';
 }
+// Data di nascita del dichiarante (scritta nella scheda, altrimenti dall'ultima pratica congiunta)
+function nascitaDichiaranteCliente(c){
+  if(!c) return '';
+  if(c.dichiaranteNascita) return c.dichiaranteNascita;
+  const nome = String(c.nomeCompleto || '').trim().toUpperCase(), cf = String(c.codiceFiscale || '').toUpperCase();
+  const p = (state.pratiche || []).filter(function(p){
+    if(p.annullata) return false;
+    const con = (((p.congCognome || '') + ' ' + (p.congNome || '')).trim() || p.congiunta || '').toUpperCase();
+    return (cf && String(p.congCodiceFiscale || '').toUpperCase() === cf) || (con && con === nome);
+  }).sort(function(a, b){ return annoPratica(b) - annoPratica(a); })[0];
+  return p && (!c.dichiaranteNome || String(p.nome || '').toUpperCase() === String(c.dichiaranteNome).toUpperCase()) ? (p.cf || '') : '';
+}
+// Caselle del dichiarante (per il coniuge): cognome e nome + data di nascita, con i nomi dell'archivio proposti
+function campiDichiaranteHTML(prefisso, nome, nascita){
+  return '<div style="display:flex; gap:8px; flex-wrap:wrap">'
+    + '<input id="'+prefisso+'dichiarante" list="lista-nomi-archivio" autocomplete="off" value="'+esc(nome || '')+'" placeholder="Cognome e nome, es. ROSSI MARIO" style="flex:2 1 220px; text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); nascitaDichiaranteDaArchivio(\''+prefisso+'\')">'
+    + '<input id="'+prefisso+'dichiarante-nascita" value="'+esc(nascita || '')+'" placeholder="Nato/a il GG/MM/AAAA" inputmode="numeric" title="Data di nascita del dichiarante" style="flex:1 1 140px" oninput="autoSlashData(this)">'
+    + '</div>' + (typeof datalistNomiArchivio === 'function' ? datalistNomiArchivio() : '');
+}
+// scelto un nome dell'archivio, la data di nascita si compila da sola (se c'è un solo cliente con quel nome)
+function nascitaDichiaranteDaArchivio(prefisso){
+  const n = document.getElementById(prefisso + 'dichiarante'), d = document.getElementById(prefisso + 'dichiarante-nascita');
+  if(!n || !d || d.value.trim()) return;
+  const v = n.value.trim().toUpperCase();
+  const l = ARCHIVIO_CLIENTI.filter(function(c){ return String(c.nomeCompleto || '').toUpperCase() === v && c.dataNascita; });
+  if(l.length === 1) d.value = l[0].dataNascita;
+}
 function badgeRuolo(c){
   if(!c || !c.ruoloDichiarazione || !RUOLI_DICHIARAZIONE[c.ruoloDichiarazione]) return '';
   const di = c.ruoloDichiarazione === 'coniuge' ? coniugeDiCliente(c) : '';
-  return ' <span title="Ruolo nella dichiarazione" style="display:inline-block; background:'+(c.ruoloDichiarazione === 'coniuge' ? '#b0306a' : '#1d4f91')+'; color:#fff; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700">'+RUOLI_DICHIARAZIONE[c.ruoloDichiarazione]+(di ? ' di '+esc(di) : '')+'</span>';
+  const nato = di ? nascitaDichiaranteCliente(c) : '';
+  return ' <span title="Ruolo nella dichiarazione" style="display:inline-block; background:'+(c.ruoloDichiarazione === 'coniuge' ? '#b0306a' : '#1d4f91')+'; color:#fff; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700">'+RUOLI_DICHIARAZIONE[c.ruoloDichiarazione]+(di ? ' di '+esc(di)+(nato ? ' (nato/a il '+esc(nato)+')' : '') : '')+'</span>';
 }
 // Ruolo nella scheda del cliente; soloSeVuoto: non cambia un ruolo già scelto (es. salvando una pratica)
-async function salvaRuoloCliente(nomeCompleto, dataNascita, codiceFiscale, ruolo, soloSeVuoto, dichiarante){
+async function salvaRuoloCliente(nomeCompleto, dataNascita, codiceFiscale, ruolo, soloSeVuoto, dichiarante, dichiaranteNascita){
   if(!ruolo) return;
   try{
     // coniuge: anche il nome del dichiarante (solo se non c'è già)
     if(ruolo === 'coniuge' && dichiarante){
-      let qd = supabase.from('clienti').update({ dichiarante_nome: dichiarante });
+      let qd = supabase.from('clienti').update(Object.assign({ dichiarante_nome: dichiarante }, dichiaranteNascita ? { dichiarante_nascita: dichiaranteNascita } : {}));
       qd = codiceFiscale ? qd.eq('codice_fiscale', codiceFiscale) : qd.eq('nome_completo', nomeCompleto).eq('data_nascita', dataNascita || '');
       await qd.is('dichiarante_nome', null);
-      const r0 = trovaInArchivio(nomeCompleto, dataNascita, codiceFiscale); if(r0 && !r0.dichiaranteNome) r0.dichiaranteNome = dichiarante;
+      const r0 = trovaInArchivio(nomeCompleto, dataNascita, codiceFiscale); if(r0 && !r0.dichiaranteNome){ r0.dichiaranteNome = dichiarante; if(dichiaranteNascita) r0.dichiaranteNascita = dichiaranteNascita; }
     }
     let q = supabase.from('clienti').update({ ruolo_dichiarazione: ruolo });
     q = codiceFiscale ? q.eq('codice_fiscale', codiceFiscale) : q.eq('nome_completo', nomeCompleto).eq('data_nascita', dataNascita || '');
@@ -2434,7 +2462,7 @@ async function addPraticaInterna(){
   if(documentoNumero || comuneNascita || documentoTipo){ try{ await data.clienti.salvaDocumento({ codiceFiscale: codiceFiscale, nomeCompleto: (cognome + ' ' + nomeProprio).trim(), dataNascita: cf, documentoNumero: documentoNumero, comuneNascita: comuneNascita, documentoTipo: documentoTipo }); }catch(e){ console.error('numero documento', e); } }
   // ruolo nella dichiarazione nell'archivio (solo se non è già indicato)
   salvaRuoloCliente((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale, 'dichiarante', true);
-  if(congCognome || congNome) salvaRuoloCliente((congCognome + ' ' + congNome).trim(), congData, congCodiceFiscale, 'coniuge', true, (cognome + ' ' + nomeProprio).trim());
+  if(congCognome || congNome) salvaRuoloCliente((congCognome + ' ' + congNome).trim(), congData, congCodiceFiscale, 'coniuge', true, (cognome + ' ' + nomeProprio).trim(), cf);
   if(congCognome || congNome){ try{ await registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono, '', congDocumentoScadenza, congEmail); }catch(e){ console.error('archivio clienti coniuge', e); }
     if(congDocumentoNumero || congComuneNascita || congDocumentoTipo){ try{ await data.clienti.salvaDocumento({ codiceFiscale: congCodiceFiscale, nomeCompleto: (congCognome + ' ' + congNome).trim(), dataNascita: congData, documentoNumero: congDocumentoNumero, comuneNascita: congComuneNascita, documentoTipo: congDocumentoTipo }); }catch(e){ console.error('numero documento coniuge', e); } } }
 
@@ -3505,7 +3533,7 @@ async function salvaModifica(id){
   if((campi.documentoNumero || campi.documentoTipo) && data.clienti.salvaDocumento) data.clienti.salvaDocumento({ codiceFiscale: p.codiceFiscale || '', nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), dataNascita: campi.cf || '', documentoNumero: campi.documentoNumero, documentoTipo: campi.documentoTipo });
   if(campi.telefono || campi.telefonoFisso || campi.documentoScadenza || campi.email) data.clienti.salvaTelefono({ nomeCompleto: (cognomeTit + ' ' + nomeTit).trim(), cognome: cognomeTit, nome: nomeTit, dataNascita: campi.cf || '', codiceFiscale: p.codiceFiscale || '', telefono: campi.telefono, telefonoFisso: campi.telefonoFisso, documentoScadenza: campi.documentoScadenza, email: campi.email });
   if(cc || cn) await aggiornaArchivioCliente(vecchiCong, { cognome: cc, nome: cn, dataNascita: campi.congData });
-  if(cc || cn) salvaRuoloCliente((cc + ' ' + cn).trim(), campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', 'coniuge', true, campi.nome);
+  if(cc || cn) salvaRuoloCliente((cc + ' ' + cn).trim(), campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', 'coniuge', true, campi.nome, campi.cf);
   if((cc || cn) && (campi.congCodiceFiscale || campi.congTelefono || campi.congEmail)) registraClienteSeNuovo(cc, cn, campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', campi.congTelefono, '', '', campi.congEmail);
   // pagato tutto ma lo stato e' ancora "lavorata", "da pagare"...: si propone di passare a "Pagato"
   if(propostaStatoPagato(campi.tipo, p.stato, campi.compenso, campi.pagato) && confirm('Il cliente ha pagato tutto (' + fmtEuro(campi.pagato) + ').\n\nPasso lo stato della pratica da "' + statoLabel(p.stato) + '" a "Pagato"?')){

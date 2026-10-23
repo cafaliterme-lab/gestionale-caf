@@ -164,7 +164,7 @@ function modificaClienteArchivio(c, dopo) {
     + campo('docnum', 'N. documento', c.documentoNumero, 'style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\\s+/g, \'\')"')
     + '<div><label>Ruolo nella dichiarazione</label><select id="mc-ruolo" onchange="document.getElementById(\'mc-dich-box\').style.display = this.value === \'coniuge\' ? \'\' : \'none\'">' + opzioniRuoloDichiarazione(c.ruoloDichiarazione || '') + '</select></div>'
     + '<div><label title="A chi appartiene il cliente: nelle nuove pratiche il tipo si propone da solo">🤝 Collaboratore</label><select id="mc-collab">' + opzioniCollaboratore(c.collaboratore || '') + '</select></div>'
-    + '<div class="full" id="mc-dich-box" style="' + (c.ruoloDichiarazione === 'coniuge' ? '' : 'display:none') + '"><label>💑 Dichiarante (cognome e nome del titolare della congiunta)</label><input id="mc-dichiarante" list="lista-nomi-archivio" autocomplete="off" value="' + esc(c.dichiaranteNome || coniugeDiCliente(c) || '') + '" placeholder="Es. ROSSI MARIO" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">' + datalistNomiArchivio() + '</div>'
+    + '<div class="full" id="mc-dich-box" style="' + (c.ruoloDichiarazione === 'coniuge' ? '' : 'display:none') + '"><label>💑 Dichiarante (titolare della congiunta): cognome e nome, data di nascita</label>' + campiDichiaranteHTML('mc-', c.dichiaranteNome || coniugeDiCliente(c) || '', nascitaDichiaranteCliente(c)) + '</div>'
     + '<div class="full" style="margin-top:4px; padding:8px 10px; border-radius:10px; border:1.5px dashed #6b7280"><label>✝️ Deceduto/a il <span style="font-weight:600; color:var(--sub)">(lascia vuoto se in vita)</span></label><input id="mc-deceduto" value="' + esc(c.decedutoIl || '') + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)" style="max-width:180px"><div style="font-size:11.5px; color:var(--sub); margin-top:3px">La scheda resta in archivio, ma non compare più nelle ricerche normali, tra i clienti da richiamare e tra i dati da completare.</div></div>'
     + '</div>'
     + (typeof elencoComunicazioniHTML === 'function' ? '<div style="margin-top:10px">' + elencoComunicazioniHTML(c.nomeCompleto, c.codiceFiscale, 8) + '</div>' : '')
@@ -190,6 +190,7 @@ function modificaClienteArchivio(c, dopo) {
     if (nascita && !parseDataIT(nascita)) { msg.textContent = 'La data di nascita deve essere GG/MM/AAAA.'; return; }
     if (scad && !parseDataIT(scad)) { msg.textContent = 'La scadenza del documento deve essere GG/MM/AAAA.'; return; }
     const deceduto = v('deceduto');
+    if (v('ruolo') === 'coniuge' && v('dichiarante-nascita') && !parseDataIT(v('dichiarante-nascita'))) { msg.textContent = 'La data di nascita del dichiarante deve essere GG/MM/AAAA.'; return; }
     if (deceduto && !parseDataIT(deceduto)) { msg.textContent = 'La data del decesso deve essere GG/MM/AAAA.'; return; }
     if (deceduto && typeof dataNum === 'function' && dataNum(deceduto) > dataNum(todayIT())) { msg.textContent = 'La data del decesso non può essere nel futuro.'; return; }
     if (email && !emailValida(email)) { msg.textContent = 'L\'e-mail non è corretta.'; return; }
@@ -200,7 +201,7 @@ function modificaClienteArchivio(c, dopo) {
       const avvisi = controllaCoerenzaCF(cf, cognome, nome, nascita);
       if (avvisi.length && !confirm('Attenzione: ' + avvisi.join('; ') + '.\n\nSalvo lo stesso?')) return;
     }
-    const campi = { nomeCompleto: (cognome + ' ' + nome).trim(), cognome: cognome, nome: nome, dataNascita: nascita || '', codiceFiscale: cf || null, telefono: tel || null, telefonoFisso: fisso || null, email: email || null, documentoScadenza: scad || null, comuneNascita: comune || null, documentoNumero: docnum || null, documentoTipo: doctipo || null, decedutoIl: deceduto || null, collaboratore: v('collab') || null, ruoloDichiarazione: v('ruolo') || null, dichiaranteNome: v('ruolo') === 'coniuge' ? (v('dichiarante').toUpperCase() || null) : null };
+    const campi = { nomeCompleto: (cognome + ' ' + nome).trim(), cognome: cognome, nome: nome, dataNascita: nascita || '', codiceFiscale: cf || null, telefono: tel || null, telefonoFisso: fisso || null, email: email || null, documentoScadenza: scad || null, comuneNascita: comune || null, documentoNumero: docnum || null, documentoTipo: doctipo || null, decedutoIl: deceduto || null, collaboratore: v('collab') || null, ruoloDichiarazione: v('ruolo') || null, dichiaranteNome: v('ruolo') === 'coniuge' ? (v('dichiarante').toUpperCase() || null) : null, dichiaranteNascita: v('ruolo') === 'coniuge' ? (v('dichiarante-nascita') || null) : null };
     b.disabled = true; b.textContent = 'Salvataggio…';
     const r = await data.clienti.aggiorna(c.id, campi);
     if (r && r.error) {
