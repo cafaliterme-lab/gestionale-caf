@@ -269,6 +269,11 @@ async function avvisaClienteScadenza(id) {
 }
 
 /* ---------- Nuovo cliente nell'archivio (dalla ricerca cliente delle Scadenze) ---------- */
+// Nuovo cliente: collaboratore proposto (la sede), si può cambiare
+function collaboratorePredefinito() {
+  const l = typeof getTipiList === 'function' ? getTipiList() : [];
+  return l.find(function (t) { return /^730\s*SEDE$/i.test(String(t).trim()); }) || '';
+}
 function nuovoClienteArchivio(testo, dopo) {
   const parole = String(testo || '').trim().toUpperCase().split(/\s+/).filter(Boolean);
   const cognome0 = parole.length > 1 ? parole.slice(0, -1).join(' ') : (parole[0] || '');
@@ -294,8 +299,8 @@ function nuovoClienteArchivio(testo, dopo) {
     + '<div><label>Tipo documento</label><select id="nc-doctipo">' + (typeof opzioniTipoDoc === 'function' ? opzioniTipoDoc('') : '') + '</select></div>'
     + campo('scad', 'Scadenza documento', 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + campo('docnum', 'N. documento', 'placeholder="Es. CA12345AB" style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\\s+/g, \'\')"')
-    + '<div><label>Ruolo nella dichiarazione</label><select id="nc-ruolo" onchange="document.getElementById(\'nc-dich-box\').style.display = this.value === \'coniuge\' ? \'\' : \'none\'">' + (typeof opzioniRuoloDichiarazione === 'function' ? opzioniRuoloDichiarazione('') : '') + '</select></div>'
-    + '<div><label title="Facoltativo: a chi appartiene il cliente">🤝 Collaboratore</label><select id="nc-collab">' + (typeof opzioniCollaboratore === 'function' ? opzioniCollaboratore('') : '') + '</select></div>'
+    + '<div><label>Ruolo nella dichiarazione</label><select id="nc-ruolo" onchange="document.getElementById(\'nc-dich-box\').style.display = this.value === \'coniuge\' ? \'\' : \'none\'">' + (typeof opzioniRuoloDichiarazione === 'function' ? opzioniRuoloDichiarazione('dichiarante') : '') + '</select></div>'
+    + '<div><label title="Facoltativo: a chi appartiene il cliente">🤝 Collaboratore</label><select id="nc-collab">' + (typeof opzioniCollaboratore === 'function' ? opzioniCollaboratore(collaboratorePredefinito()) : '') + '</select></div>'
     + '<div class="full" id="nc-dich-box" style="display:none"><label>💑 Dichiarante (titolare della congiunta): cognome e nome, data di nascita</label>' + (typeof campiDichiaranteHTML === 'function' ? campiDichiaranteHTML('nc-', '', '') : '') + '</div>'
     + '</div><div id="nc-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
