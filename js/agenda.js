@@ -84,7 +84,8 @@ function disegnaAgenda() {
     return '<button type="button" onclick="AGENDA.giorno=\'' + d + '\'; disegnaAgenda()" style="flex:1 1 0; min-width:62px; padding:6px 4px; border-radius:10px; cursor:pointer; border:2px solid ' + (sel ? '#0f766e' : 'var(--line)') + '; background:' + (sel ? '#0f766e' : (aperto ? 'var(--card)' : 'var(--bg)')) + '; color:' + (sel ? '#fff' : 'var(--ink)') + '; opacity:' + (aperto || n ? 1 : .55) + '">'
       + '<div style="font-size:11px; font-weight:700; text-transform:capitalize">' + dataDaIso(d).toLocaleDateString('it-IT', { weekday: 'short' }) + (oggi ? ' •' : '') + '</div>'
       + '<div style="font-size:16px; font-weight:800">' + dataDaIso(d).getDate() + '</div>'
-      + '<div style="font-size:11px">' + (n ? n + ' app.' : (aperto ? 'libero' : 'chiuso')) + '</div></button>';
+      + '<div style="font-size:11px">' + (n ? n + ' app.' : (aperto ? 'libero' : 'chiuso')) + '</div>'
+      + (scadenzeDelGiorno(d).length ? '<div style="font-size:10.5px; font-weight:800; color:' + (sel ? '#fff' : '#7b3fa0') + '">⏰ ' + scadenzeDelGiorno(d).length + '</div>' : '') + '</button>';
   }).join('');
   const fasce = fasceGiorno(g), lista = appuntamentiDel(g);
   // gli orari di appuntamenti fuori dagli spazi (es. orario cambiato) si mostrano lo stesso
@@ -119,6 +120,7 @@ function disegnaAgenda() {
     + '<div style="display:flex; gap:5px; margin-bottom:10px; overflow-x:auto">' + settimana + '</div>'
     + '<div style="font-size:16px; font-weight:800; text-transform:capitalize; margin-bottom:2px">' + esc(giornoLungo(g)) + '</div>'
     + '<div class="sub2" style="margin-bottom:6px">' + (nGiorno ? nGiorno + ' appuntament' + (nGiorno === 1 ? 'o' : 'i') : 'Nessun appuntamento') + (fasce.length ? ' · ' + fasce.length + ' spazi da ' + durataAgenda() + ' minuti' : ' · ufficio chiuso secondo gli orari') + (AGENDA.caricato ? '' : ' · caricamento…') + '</div>'
+    + scadenzeGiornoAgendaHTML(g)
     + (ore.length ? righe : '<div class="empty">Ufficio chiuso in questo giorno (orari in MESSAGGI).' + (scrive && !passato ? ' <button type="button" onclick="nuovoAppuntamento(\'' + g + '\', \'\')" style="margin-left:6px; background:#0f766e; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">+ Prenota lo stesso</button>' : '') + '</div>')
     + '</div>';
 }
@@ -382,4 +384,15 @@ function stampaAppuntamento(id) {
   if (typeof mostraPaginaNelProgramma === 'function') { mostraPaginaNelProgramma(html, 'Promemoria appuntamento – ' + a.nome); return; }
   const w = window.open('', '_blank'); if (!w) { alert('Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito.'); return; }
   w.document.open(); w.document.write(html); w.document.close(); setTimeout(function () { w.print(); }, 300);
+}
+
+// Scadenze dello stesso giorno: solo da vedere, non sono collegate agli appuntamenti
+function scadenzeDelGiorno(iso) {
+  return (state.scadenze || []).filter(function (x) { return !x.completata && String(x.data || '').slice(0, 10) === iso; });
+}
+function scadenzeGiornoAgendaHTML(iso) {
+  const l = scadenzeDelGiorno(iso); if (!l.length) return '';
+  return '<div style="margin:2px 0 8px; padding:7px 12px; border-radius:10px; border:1.5px solid #7b3fa0; background:color-mix(in srgb, #7b3fa0 8%, var(--card)); font-size:13px">'
+    + '<b style="color:#7b3fa0">⏰ Scadenze di questo giorno:</b> ' + l.map(function (x) { return '<b>' + esc(x.titolo || '') + '</b>' + (x.cliente ? ' – ' + esc(x.cliente) : ''); }).join(' · ')
+    + ' <button type="button" onclick="showTab(document.querySelector(\'.navmenu button[data-tab=&quot;scadenze&quot;]\'))" style="margin-left:6px; background:none; border:1px solid #7b3fa0; color:#7b3fa0; border-radius:999px; padding:2px 10px; font-size:12px; font-weight:700; cursor:pointer">apri Scadenze</button></div>';
 }
