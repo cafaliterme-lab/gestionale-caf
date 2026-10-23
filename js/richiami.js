@@ -190,7 +190,8 @@ async function apriRichiami(modo) {
     + '<button type="button" onclick="excelRichiami()" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">📊 Excel</button>'
     + '<button type="button" onclick="document.getElementById(\'popup-richiami\').remove()" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">Chiudi</button></span></div>'
     + '<div id="ric-filtri" style="display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 6px"></div>'
-    + '<div id="ric-collab" style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin:0 0 8px"></div>'
+    + '<div id="ric-collab" style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin:0 0 6px"></div>'
+    + '<div id="ric-recapiti" style="font-size:12.5px; margin:0 0 8px"></div>'
     + '<input id="ric-cerca" type="search" placeholder="Cerca un nome…" autocomplete="off" value="' + esc(RICHIAMI.cerca) + '" oninput="RICHIAMI.cerca=this.value; disegnaRichiami()" style="margin-bottom:8px">'
     + '<div id="ric-lista" style="overflow:auto; flex:1"><div class="empty">Caricamento…</div></div></div>';
   document.body.appendChild(ov);
@@ -215,17 +216,21 @@ function disegnaRichiami() {
   tutti.forEach(function (x) { const k = collaboratoreRichiamo(x); perCollab[k] = (perCollab[k] || 0) + 1; });
   const nomiCollab = Object.keys(perCollab).sort(function (a, b) { return a === SENZA_COLLAB ? 1 : b === SENZA_COLLAB ? -1 : a.localeCompare(b); });
   const boxC = document.getElementById('ric-collab');
-  if (boxC) boxC.innerHTML = nomiCollab.length > 1 ? '<b style="font-size:12.5px; color:var(--sub)">🤝 Collaboratori:</b> '
+  if (boxC) boxC.innerHTML = nomiCollab.length ? '<b style="font-size:12.5px; color:var(--sub)">🤝 Collaboratori (tocca per includere o escludere):</b> '
     + nomiCollab.map(function (k) { const on = !RICHIAMI.esclusi[k], col = k === SENZA_COLLAB ? '#6b7280' : (typeof coloreCollaboratore === 'function' ? coloreCollaboratore(k) : '#1d4f91');
       return '<button type="button" data-collab="' + esc(k) + '" title="Tocca per ' + (on ? 'escludere' : 'includere') + '" style="padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; border:2px ' + (on ? 'solid ' : 'dashed ') + col + '; background:' + (on ? col : 'transparent') + '; color:' + (on ? '#fff' : col) + '; opacity:' + (on ? 1 : .7) + '">' + (on ? '✓ ' : '✕ ') + esc(k) + ' ' + perCollab[k] + '</button>'; }).join(' ')
-    + ' <button type="button" data-collab="*tutti" style="padding:4px 10px; border-radius:999px; font-size:12px; cursor:pointer; border:1px solid var(--sub); background:none; color:var(--sub)">Tutti</button>'
-    + ' <button type="button" data-collab="*nessuno" style="padding:4px 10px; border-radius:999px; font-size:12px; cursor:pointer; border:1px solid var(--sub); background:none; color:var(--sub)">Nessuno</button>' : '';
+    + ' <button type="button" data-collab="*tutti" style="padding:4px 10px; border-radius:999px; font-size:12px; cursor:pointer; border:1px solid var(--sub); background:none; color:var(--sub)">✓ Includi tutti</button>'
+    + ' <button type="button" data-collab="*nessuno" style="padding:4px 10px; border-radius:999px; font-size:12px; cursor:pointer; border:1px solid var(--sub); background:none; color:var(--sub)">✕ Escludi tutti</button>' : '';
   // invio a tutti, uno dopo l'altro
+  // quanti si possono raggiungere: senza cellulare né e-mail il messaggio non arriva
+  const nCell = inclusi.filter(function (x) { return numeroWhatsApp(x.tel); }).length, nMail = inclusi.filter(function (x) { return !numeroWhatsApp(x.tel) && x.email; }).length;
+  const boxR = document.getElementById('ric-recapiti');
+  if (boxR) boxR.innerHTML = inclusi.length ? '📱 <b>' + nCell + '</b> con cellulare · ✉️ <b>' + nMail + '</b> solo e-mail · <b style="color:#c0392b">' + (inclusi.length - nCell - nMail) + '</b> senza cellulare né e-mail (da chiamare al fisso o completare in archivio)' : '';
   const daMandare = inclusi.filter(function (x) { return numeroWhatsApp(x.tel) && !statoRichiamo(x) && !appuntamentoRichiamo(x); }).length;
   const bInvio = CODA_RICHIAMI.lista.length
     ? '<button type="button" onclick="prossimoRichiamo()" style="margin-left:auto; background:#25a35a; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">💬 Prossimo (' + (CODA_RICHIAMI.pos + 1) + ' di ' + CODA_RICHIAMI.lista.length + ')</button>'
     : (daMandare ? '<button type="button" onclick="avviaInvioRichiami()" title="Apre WhatsApp per ognuno, uno dopo l\'altro: premi Invia e poi Prossimo" style="margin-left:auto; background:#25a35a; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">💬 Manda a tutti, uno dopo l\'altro (' + daMandare + ')</button>' : '');
-  document.getElementById('ric-filtri').innerHTML = chip('da_chiamare', RICHIAMI.modo === 'campagna' ? 'Da avvisare' : 'Da chiamare') + chip('contattati', 'Già contattati') + chip('tutti', 'Tutti') + bInvio;
+  document.getElementById('ric-filtri').innerHTML = chip('da_chiamare', RICHIAMI.modo === 'campagna' ? 'Da avvisare' : 'Da chiamare') + chip('contattati', 'Già contattati') + chip('tutti', 'Tutto l\'elenco') + bInvio;
   const lista = filtraRichiami(tutti);
   RICHIAMI._lista = lista;
   if (!tutti.length) { box.innerHTML = '<div class="empty">Nessun cliente da richiamare: tutti i clienti del 730 ' + (RICHIAMI.anno - 1) + ' si sono già presentati 👍</div>'; return; }
