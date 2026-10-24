@@ -79,7 +79,7 @@ button, a, label, summary, [onclick], [role=button], [data-az], [data-azione], t
 .vc-form input[id^="vc-ci"]:not(:placeholder-shown), .vc-form input[id^="vc-bi"]:not(:placeholder-shown){text-align:right}
 @media (max-width:600px){.vc-form{grid-template-columns:1fr 1fr} .vc-form > div:nth-child(3){grid-column:1/-1} .vc-form input{padding:5px 6px} .vc-form input[id^="vc-bd"]{width:86px!important; flex:none} .vc-form input[id^="vc-bi"], .vc-form input[id^="vc-ci"]{width:66px!important; flex:none}}
 .form-anagrafica input, .form-anagrafica select{background:color-mix(in srgb, var(--accent) 10%, var(--card)); border-color:color-mix(in srgb, var(--accent) 30%, var(--line))}
-.form-anagrafica input.compilato{background:color-mix(in srgb, #2f9e5f 18%, var(--card)); border-color:#2f9e5f; transition:background .2s, border-color .2s}
+.form-anagrafica select.compilato, #popup-nuovo-cliente .compilato, #popup-mod-cliente .compilato, .form-anagrafica input.compilato{background:color-mix(in srgb, #2f9e5f 18%, var(--card)); border-color:#2f9e5f; transition:background .2s, border-color .2s}
 .form-anagrafica input#cli-cerca, .form-anagrafica input#cli-cerca-cong{background:color-mix(in srgb, #f08a24 22%, var(--card)); border:2px solid #f08a24; font-weight:600}
 .form-anagrafica input#cli-cerca::placeholder, .form-anagrafica input#cli-cerca-cong::placeholder{color:#b8661a}
 button{
@@ -1042,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610243"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610330"></script>
+<script src="js/app.js?v=202610331"></script>
 <script src="js/email.js?v=4"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=5"></script>

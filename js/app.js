@@ -4158,19 +4158,28 @@ function vedeGuadagni(){
 function campoCompilatoBene(el){
   const v = (el.value||'').trim();
   if(!v) return false;
+  // schede dell'archivio (nuovo cliente nc-, modifica mc-) e dichiarante: controllo secondo il tipo di dato
+  const k = String(el.id || '').replace(/^(nc|mc|f-cong|f)-/, '');
+  if(k === 'cf' && /^(nc|mc)-/.test(el.id)) return typeof cfValido !== 'function' || cfValido(v);
+  if(['nascita','scad','deceduto','dichiarante-nascita','doc-scad'].indexOf(k) >= 0) return !!parseDataIT(v);
+  if(k === 'email') return typeof emailValida !== 'function' || emailValida(v);
+  if(k === 'tel') return !!numeroWhatsApp(v) || v.replace(/\D/g, '').length >= 9;
+  if(k === 'fisso' || k === 'tel-fisso') return v.replace(/\D/g, '').length >= 6;
   if(el.id === 'f-codfisc') return typeof cfValido !== 'function' || cfValido(v);
   if(el.id === 'f-cf' || el.id === 'f-cong-data' || el.id === 'f-data' || el.id === 'f-data-fine') return !!parseDataIT(v);
   if(el.id === 'f-compenso' || el.id === 'f-pagato' || el.id === 'f-richiesto') return !isNaN(parseImporto(v));
   return true;
 }
+// anche le schede del cliente in archivio: nuovo cliente e modifica
+const MODULI_VERDI = '.form-anagrafica, #popup-nuovo-cliente, #popup-mod-cliente';
 function aggiornaColoriModulo(){
-  document.querySelectorAll('.form-anagrafica input[id^="f-"]').forEach(function(el){
-    if(el.type === 'checkbox' || el.type === 'hidden') return;
+  document.querySelectorAll('.form-anagrafica input[id^="f-"], .form-anagrafica select[id^="f-"], #popup-nuovo-cliente [id^="nc-"], #popup-mod-cliente [id^="mc-"]').forEach(function(el){
+    if(!/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) || el.type === 'checkbox' || el.type === 'hidden' || el.type === 'radio') return;
     el.classList.toggle('compilato', campoCompilatoBene(el));
   });
 }
-document.addEventListener('input', function(e){ if(e.target.closest && e.target.closest('.form-anagrafica')) aggiornaColoriModulo(); });
-document.addEventListener('change', function(e){ if(e.target.closest && e.target.closest('.form-anagrafica')) aggiornaColoriModulo(); });
+document.addEventListener('input', function(e){ if(e.target.closest && e.target.closest(MODULI_VERDI)) aggiornaColoriModulo(); });
+document.addEventListener('change', function(e){ if(e.target.closest && e.target.closest(MODULI_VERDI)) aggiornaColoriModulo(); });
 // i campi riempiti dal programma (archivio, lettura documento, azzeramento dopo il salvataggio) non generano eventi
 setInterval(aggiornaColoriModulo, 700);
 
