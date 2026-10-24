@@ -107,7 +107,7 @@ function disegnaPraticheFerme() {
   ov.querySelector('[data-corpo]').innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><b style="font-size:18px; color:#c0392b">⏰ Pratiche del ' + annoPraticheFerme() + ' ferme da più di un mese (' + l.length + ')</b><button type="button" data-chiudi style="border:none; background:none; font-size:22px; cursor:pointer; color:var(--ink)">✕</button></div>'
     + '<div class="sub2" style="margin:4px 0 8px">Pratiche aperte da più di ' + GIORNI_PRATICA_FERMA + ' giorni e non ancora portate a lavorazione ultimata (in arrivo, da lavorare scansionata, in lavorazione). Puoi aprirle, rimandare l\'avviso o toglierlo: la scelta vale per tutti.</div>'
     + (l.length ? l.map(function (p) { return rigaPraticaFermaHTML(p, false); }).join('') : '<div class="empty" style="padding:14px">✓ Nessuna pratica ferma da più di un mese.</div>')
-    + '<div style="display:flex; justify-content:space-between; gap:8px; margin-top:10px; flex-wrap:wrap"><button type="button" onclick="apriReportPraticheVecchie()" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">📜 Tutte le pratiche da fare del ' + annoPraticheFerme() + ', dalla più vecchia</button><button type="button" data-chiudi style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 16px; font-weight:700; cursor:pointer">Chiudi</button></div>';
+    + '<div style="display:flex; justify-content:space-between; gap:8px; margin-top:10px; flex-wrap:wrap"><button type="button" onclick="apriReportPraticheVecchie()" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">📜 Tutte le pratiche da fare del ' + annoPraticheFerme() + ', dalla più vecchia</button><button type="button" onclick="vediDaFareNelRegistro()" style="background:#6d3fa0; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">📋 Vedi nel registro</button><button type="button" data-chiudi style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 16px; font-weight:700; cursor:pointer">Chiudi</button></div>';
 }
 
 // 📜 Report: tutte le pratiche da fare, dalla più vecchia alla più nuova
@@ -118,7 +118,7 @@ function disegnaReportVecchie() {
   const bt = function (onclick, testo, col) { return '<button type="button" onclick="' + onclick + '" style="background:' + col + '; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:700; cursor:pointer">' + testo + '</button>'; };
   ov.querySelector('[data-corpo]').innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><b style="font-size:18px; color:#1d4f91">📜 Pratiche da fare del ' + annoPraticheFerme() + ', dalla più vecchia</b><button type="button" data-chiudi style="border:none; background:none; font-size:22px; cursor:pointer; color:var(--ink)">✕</button></div>'
     + '<div style="margin:6px 0 8px; font-size:13.5px">' + (l.length ? '<b>' + l.length + '</b> pratiche non ancora portate a lavorazione ultimata · la più vecchia è del <b>' + esc(l[0].data || '') + '</b> (da ' + giorniDaApertura(l[0]) + ' giorni)' + (ferme ? ' · <b style="color:#c0392b">' + ferme + ' ferme da più di un mese</b>' : '') : 'Nessuna pratica da fare.') + '</div>'
-    + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">' + bt('stampaReportVecchie()', '🖨️ Stampa', '#1d4f91') + bt('excelReportVecchie()', '📊 Excel', '#1a7f37') + '</div>'
+    + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">' + bt('vediDaFareNelRegistro()', '📋 Vedi nel registro', '#6d3fa0') + bt('stampaReportVecchie()', '🖨️ Stampa', '#1d4f91') + bt('excelReportVecchie()', '📊 Excel', '#1a7f37') + '</div>'
     + l.map(function (p) { return rigaPraticaFermaHTML(p, true); }).join('');
 }
 function righeReportVecchie() {
@@ -154,3 +154,11 @@ setInterval(async function () {
   try { if (sessionStorage.getItem('ferme-mostrate') === oggiIsoFerme()) return; sessionStorage.setItem('ferme-mostrate', oggiIsoFerme()); } catch (e) {}
   if (praticheFerme().length && !document.querySelector('[id^="popup-"]')) apriAvvisoPraticheFerme();
 }, 3000);
+
+// Il registro con solo le pratiche da fare, dalla più vecchia (a video)
+function vediDaFareNelRegistro() {
+  ['popup-ferme', 'popup-report-vecchie'].forEach(function (k) { const o = document.getElementById(k); if (o) o.remove(); });
+  const tb = document.querySelector('.navmenu button[data-tab="registro"]');
+  if (tb && typeof showTab === 'function') showTab(tb);
+  if (typeof SOLO_DA_FARE !== 'undefined' && !SOLO_DA_FARE) scegliSoloDaFare(); else if (typeof render === 'function') render();
+}
