@@ -100,7 +100,7 @@ function toggleCong(cbId, inId){
 function toggleCongBox(){
   const on = document.getElementById('f-congiunta-on').checked;
   document.getElementById('f-cong-box').style.display = on ? '' : 'none';
-  if(!on){ ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel','f-cong-email','f-cong-comune','f-cong-sesso','f-cong-doc-scad','f-cong-doc-num','f-cong-doc-tipo'].forEach(function(id){ const el = document.getElementById(id); if(el){ el.value=''; el.dataset.auto=''; el.dataset.manuale=''; } }); document.getElementById('cli-cerca-cong').value='';
+  if(!on){ CONG_AUTO = null; if(typeof avvisoCongiuntaAutomatica === 'function') avvisoCongiuntaAutomatica(); ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel','f-cong-email','f-cong-comune','f-cong-sesso','f-cong-doc-scad','f-cong-doc-num','f-cong-doc-tipo'].forEach(function(id){ const el = document.getElementById(id); if(el){ el.value=''; el.dataset.auto=''; el.dataset.manuale=''; } }); document.getElementById('cli-cerca-cong').value='';
     if(typeof controllaCFConiuge === 'function') controllaCFConiuge(); if(typeof coloraScadenzaConiuge === 'function') coloraScadenzaConiuge(); }
   // importo convenzione: singola e congiunta possono avere importi predefiniti diversi
   const tipo = document.getElementById('f-tipo').value;
@@ -316,14 +316,14 @@ function scegliCliente(i, ctx){
     const dich = c.ruoloDichiarazione === 'coniuge' && c.dichiaranteNome ? trovaInArchivio(c.dichiaranteNome, c.dichiaranteNascita || '', '') : null;
     if(dich && !dich.decedutoIl && confirm(c.nomeCompleto + ' è coniuge dichiarante di ' + dich.nomeCompleto + '.\n\nPreparo la congiunta con ' + dich.nomeCompleto + ' come dichiarante e ' + c.nomeCompleto + ' come coniuge?')){
       usaCliente(dich, 'main');
-      compilaConiugeCongiunta(c);
+      compilaConiugeCongiunta(c, dich);
       box.classList.remove('open');
       return;
     }
   }
   usaCliente(c, ctx);
   // dichiarante con il coniuge collegato in archivio: la congiunta si compila da sola
-  if(ctx === 'main'){ const con = coniugeCollegato(c); if(con) compilaConiugeCongiunta(con); }
+  if(ctx === 'main'){ const con = coniugeCollegato(c); if(con) compilaConiugeCongiunta(con, c); }
   box.classList.remove('open');
 }
 // Coniuge collegato al dichiarante: la scheda del coniuge in archivio (ruolo «coniuge dichiarante» con questo dichiarante),
@@ -344,13 +344,38 @@ function coniugeCollegato(c){
   return con && !con.decedutoIl ? con : null;
 }
 // Mette il coniuge nella parte «congiunta» del modulo (se non è già compilata a mano)
-function compilaConiugeCongiunta(con){
+// dich: il dichiarante (titolare); resta un riquadro fisso nella congiunta, con il tasto per scambiarli
+let CONG_AUTO = null;
+function compilaConiugeCongiunta(con, dich){
   const chk = document.getElementById('f-congiunta-on'); if(!chk) return;
   const gia = ((document.getElementById('f-cong-cognome') || {}).value || '').trim();
   if(gia && gia.toUpperCase() !== String(con.cognome || '').toUpperCase()) return;
   if(!chk.checked){ chk.checked = true; toggleCongBox(); }
   usaCliente(con, 'cong');
-  avviso('💑 Congiunta: ho compilato anche il coniuge ' + con.nomeCompleto + ' (collegato in archivio). Se quest\'anno è singola, togli la spunta «Congiunta».');
+  CONG_AUTO = { dich: dich || null, con: con };
+  avvisoCongiuntaAutomatica();
+}
+function avvisoCongiuntaAutomatica(){
+  const boxC = document.getElementById('f-cong-box'); if(!boxC) return;
+  let el = document.getElementById('cong-auto-avviso');
+  if(!CONG_AUTO){ if(el) el.remove(); return; }
+  if(!el){ el = document.createElement('div'); el.id = 'cong-auto-avviso'; boxC.insertBefore(el, boxC.firstChild); }
+  el.style.cssText = 'grid-column:1/-1; margin-bottom:8px; padding:9px 12px; border-radius:10px; border:2px solid #6d3fa0; background:color-mix(in srgb, #6d3fa0 8%, var(--card)); font-size:13px; display:flex; gap:8px; flex-wrap:wrap; align-items:center';
+  el.innerHTML = '<span style="flex:1 1 260px">💑 <b>Congiunta compilata dall\'archivio</b>: dichiarante <b>' + esc(CONG_AUTO.dich ? CONG_AUTO.dich.nomeCompleto : ((document.getElementById('f-cognome').value + ' ' + document.getElementById('f-nome').value).trim())) + '</b>, coniuge <b>' + esc(CONG_AUTO.con.nomeCompleto) + '</b>. Se quest\'anno è singola, togli la spunta «Congiunta».</span>'
+    + (CONG_AUTO.dich ? '<button type="button" onclick="invertiDichiaranteConiuge()" style="background:#6d3fa0; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">🔄 Inverti dichiarante e coniuge</button>' : '')
+    + '<button type="button" onclick="CONG_AUTO = null; avvisoCongiuntaAutomatica()" title="Chiudi l\'avviso" style="background:none; border:1px solid var(--line); color:var(--ink); border-radius:999px; padding:5px 10px; cursor:pointer">✕</button>';
+}
+// Scambia: il coniuge diventa titolare (dichiarante) e il dichiarante va nella congiunta
+function invertiDichiaranteConiuge(){
+  if(!CONG_AUTO || !CONG_AUTO.dich) return;
+  const nuovoDich = CONG_AUTO.con, nuovoCon = CONG_AUTO.dich;
+  ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel','f-cong-email','f-cong-comune','f-cong-sesso','f-cong-doc-scad','f-cong-doc-num'].forEach(function(id){ const e = document.getElementById(id); if(e){ e.value = ''; e.dataset.auto = ''; e.dataset.manuale = ''; } });
+  ['f-tel','f-tel-fisso','f-email','f-doc-scad','f-doc-num','f-comune','f-riferimento'].forEach(function(id){ const e = document.getElementById(id); if(e) e.value = ''; });
+  usaCliente(nuovoDich, 'main');
+  usaCliente(nuovoCon, 'cong');
+  CONG_AUTO = { dich: nuovoDich, con: nuovoCon };
+  avvisoCongiuntaAutomatica();
+  avviso('🔄 Ora il dichiarante è ' + nuovoDich.nomeCompleto + ' e il coniuge ' + nuovoCon.nomeCompleto);
 }
 function usaCliente(c, ctx){
   const box = boxRisultatiClienti(ctx);
