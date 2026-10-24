@@ -96,6 +96,7 @@ function renderOggi() {
     + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">📋 DA FARE</div>'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px">'
     + tile('📥', sommaPeso(daLavorare), 'Da lavorare', '#c0392b', "oggiVaiRegistro('aperte')", 'in arrivo, scansionate, in lavorazione')
+    + (typeof praticheFerme === 'function' ? tile('⏰', praticheFerme().length, 'Pratiche ferme da più di un mese', '#c0392b', 'apriAvvisoPraticheFerme()', 'ancora da lavorare, aperte da oltre ' + GIORNI_PRATICA_FERMA + ' giorni') : '')
     + tile('📦', sommaPeso(daConsegnare), 'Pronte da consegnare', '#8d5a3b', "oggiVaiRegistro('aperte')", 'lavorate, non ancora consegnate')
     + tile('📎', docMancanti, 'Documenti mancanti', '#b35f0c', "oggiVaiStato('arrivo')", 'pratiche che aspettano documenti')
     + tile('💬', daAvvisare.length, 'Da avvisare su WhatsApp', '#25a35a', 'apriInvioMultiplo()', 'lavorate da più di ' + (typeof GIORNI_AVVISO_RITIRO !== 'undefined' ? GIORNI_AVVISO_RITIRO : 7) + ' giorni')

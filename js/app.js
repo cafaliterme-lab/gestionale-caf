@@ -2058,6 +2058,7 @@ function disegnaChipStati(pratiche){
   // stampa di quello che si vede con i filtri scelti
   const visibili = filtra(pratiche).filter(function(p){ return passaArchivio(p); }).length;
   html += '<div style="width:100%; display:flex; gap:8px; flex-wrap:wrap; align-items:center">'
+    + '<button type="button" onclick="apriReportPraticheVecchie()" title="Tutte le pratiche non ancora lavorate, di tutti gli anni, dalla più vecchia alla più nuova" style="padding:6px 14px; border-radius:999px; cursor:pointer; font-size:13px; font-weight:800; border:none; background:#6d3fa0; color:#fff">📜 Pratiche da fare, dalla più vecchia</button>'
     + '<button type="button" onclick="stampaReportStato()" title="Stampa (PDF o Excel) solo le pratiche che vedi con i filtri scelti" style="padding:6px 14px; border-radius:999px; cursor:pointer; font-size:13px; font-weight:800; border:none; background:#1d4f91; color:#fff">🖨️ Stampa queste ' + visibili + ' pratiche</button>'
     + (filtriAttivi ? '<button type="button" onclick="azzeraFiltriRegistro()" style="padding:4px 12px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:700; border:1px solid var(--sub); background:none; color:var(--sub)">✕ Togli tutti i filtri</button>' : '') + '</div>';
   box.innerHTML = html;
