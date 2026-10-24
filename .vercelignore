@@ -2,7 +2,8 @@
 
 # Database e configurazione locale
 .supabase/
-supabase/migrations/
+supabase/
+PROMEMORIA.md
 scripts/
 tests/
 

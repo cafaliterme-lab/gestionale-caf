@@ -339,7 +339,7 @@ function stampaPDF() {
     corpo += '<tr class="gruppo"><td colspan="8"><span class="pall" style="background:' + coloreCollaboratore(g.tipo) + '"></span>' + esc(g.tipo) + ' · ' + sommaPeso(g.lista) + ' pratiche</td></tr>';
     g.lista.forEach(function (p) {
       corpo += '<tr><td>' + esc(formattaProtocollo(p)) + '</td><td>' + esc(p.data || '') + '</td><td>' + esc(eColf(p.tipo) ? (p.scadenzaAssistenza || '') : (p.dataFine || '')) + '</td>'
-        + '<td>' + esc(p.nome || '') + (p.congiunta ? '<div class="sub">+ ' + esc(p.congiunta) + '</div>' : '') + '</td>'
+        + '<td>' + esc(p.nome || '') + (p.congiunta ? '<div class="sub">+ ' + esc(p.congiunta) + '</div>' : '') + (typeof riferimentoPratica === 'function' && riferimentoPratica(p) ? '<div class="sub">rif. ' + esc(riferimentoPratica(p)) + '</div>' : '') + '</td>'
         + '<td>' + esc(statoLabel(p.stato)) + '</td><td class="num">' + fmtEuro(p.compenso) + '</td><td class="num">' + fmtEuro(p.pagato) + (p.metodoPagamento && Number(p.pagato) ? '<div class="sub">' + esc(p.metodoPagamento) + '</div>' : '') + '</td><td>' + esc(p.inseritoDa || '') + '</td></tr>';
     });
     corpo += '<tr class="subtot"><td colspan="5">Totale ' + esc(g.tipo) + '</td><td class="num">' + fmtEuro(fe) + '</td><td class="num">' + fmtEuro(inc) + '</td><td></td></tr>';

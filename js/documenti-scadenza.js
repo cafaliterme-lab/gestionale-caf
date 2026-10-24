@@ -20,7 +20,7 @@ function clientiDocumentoDaRinnovare() {
 function avvisoDocumentoInviato(c) {
   if (typeof comunicazioniPersona !== 'function') return null;
   const da = Date.now() - 60 * 86400000;
-  return comunicazioniPersona(c.nomeCompleto, c.codiceFiscale).find(function (x) { return /documento/i.test(x.motivo || '') && Date.parse(x.quando) >= da; }) || null;
+  return comunicazioniPersona(c.nomeCompleto, c.codiceFiscale, c.dataNascita).find(function (x) { return /documento/i.test(x.motivo || '') && Date.parse(x.quando) >= da; }) || null;
 }
 function messaggioDocumentoDaRinnovare(c, giorni) {
   if (giorni < 0) return messaggioNuovoDocumento(c.nomeCompleto, c.documentoScadenza, true);
@@ -31,7 +31,7 @@ function motivoDocumento(giorni) { return giorni < 0 ? 'Richiesta documento d\'i
 
 function avvisaDocumentoWhatsApp(id) {
   const r = clientiDocumentoDaRinnovare().find(function (x) { return String(x.c.id) === String(id); }); if (!r) return false;
-  contestoComunicazione({ nome: r.c.nomeCompleto, cf: r.c.codiceFiscale || '', motivo: motivoDocumento(r.giorni) });
+  contestoComunicazione({ nome: r.c.nomeCompleto, cf: r.c.codiceFiscale || '', nascita: r.c.dataNascita || '', motivo: motivoDocumento(r.giorni) });
   const ok = inviaWhatsAppLibero(r.c.telefono, messaggioDocumentoDaRinnovare(r.c, r.giorni), r.c.nomeCompleto);
   setTimeout(disegnaDocumentiInScadenza, 800);
   return ok;
@@ -68,7 +68,7 @@ async function inviaDocumentiEmailATutti(b) {
     const oggetto = 'Documento d\'identità ' + (r.giorni < 0 ? 'scaduto' : 'in scadenza') + ' – CAF CISL Alì Terme', testo = messaggioDocumentoDaRinnovare(r.c, r.giorni);
     try {
       await chiamaInviaEmail('POST', { a: r.c.email, oggetto: oggetto, testo: testo });
-      contestoComunicazione({ nome: r.c.nomeCompleto, cf: r.c.codiceFiscale || '', motivo: motivoDocumento(r.giorni) });
+      contestoComunicazione({ nome: r.c.nomeCompleto, cf: r.c.codiceFiscale || '', nascita: r.c.dataNascita || '', motivo: motivoDocumento(r.giorni) });
       await registraComunicazione({ canale: 'email', email: r.c.email, testo: oggetto + ' – ' + testo });
       ok++;
     } catch (e) { ko.push(r.c.nomeCompleto); }

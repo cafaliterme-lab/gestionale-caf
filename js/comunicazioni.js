@@ -27,19 +27,19 @@ function soloCifre(s) { return String(s || '').replace(/\D/g, '').replace(/^(00)
 function personaDaTelefono(num) {
   const n = soloCifre(num); if (!n) return null;
   const c = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).find(function (x) { return soloCifre(x.telefono) === n || soloCifre(x.telefonoFisso) === n; });
-  if (c) return { nome: c.nomeCompleto, cf: c.codiceFiscale || '' };
+  if (c) return { nome: c.nomeCompleto, cf: c.codiceFiscale || '', nascita: c.dataNascita || '' };
   const p = (state.pratiche || []).slice().reverse().find(function (x) { return soloCifre(x.telefono) === n; });
-  if (p) return { nome: p.nome, cf: p.codiceFiscale || '', praticaId: p.id };
+  if (p) return { nome: p.nome, cf: p.codiceFiscale || '', nascita: p.cf || '', praticaId: p.id };
   const q = (state.pratiche || []).slice().reverse().find(function (x) { return soloCifre(x.congTelefono) === n; });
-  if (q) return { nome: (((q.congCognome || '') + ' ' + (q.congNome || '')).trim() || q.congiunta || ''), cf: q.congCodiceFiscale || '' };
+  if (q) return { nome: (((q.congCognome || '') + ' ' + (q.congNome || '')).trim() || q.congiunta || ''), cf: q.congCodiceFiscale || '', nascita: q.congData || '' };
   return null;
 }
 function personaDaEmail(a) {
   a = String(a || '').trim().toLowerCase(); if (!a) return null;
   const c = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).find(function (x) { return String(x.email || '').toLowerCase() === a; });
-  if (c) return { nome: c.nomeCompleto, cf: c.codiceFiscale || '' };
+  if (c) return { nome: c.nomeCompleto, cf: c.codiceFiscale || '', nascita: c.dataNascita || '' };
   const p = (state.pratiche || []).slice().reverse().find(function (x) { return String(x.email || '').toLowerCase() === a; });
-  return p ? { nome: p.nome, cf: p.codiceFiscale || '', praticaId: p.id } : null;
+  return p ? { nome: p.nome, cf: p.codiceFiscale || '', nascita: p.cf || '', praticaId: p.id } : null;
 }
 
 async function registraComunicazione(r) {
@@ -54,10 +54,13 @@ async function registraComunicazione(r) {
     codice_fiscale: (ctx && ctx.cf) || r.cf || chi.cf || null,
     telefono: r.telefono || null, email: r.email || null,
     pratica_id: (ctx && ctx.praticaId) || r.praticaId || chi.praticaId || null,
+    data_nascita: (ctx && ctx.nascita) || r.nascita || chi.nascita || null,
     testo: String(r.testo || '').slice(0, 400) || null,
     operatore: ((auth.profilo && auth.profilo.nome) || '').toUpperCase() || null,
   };
   if (!riga.nome && !riga.telefono && !riga.email) return;
+  // senza data di nascita: si prende dall'archivio, se c'è un solo cliente con quel nome (gli omonimi restano distinti)
+  if (riga.nome && !riga.data_nascita && !riga.codice_fiscale) { const o = omonimiArchivio(riga.nome); if (o.length === 1) riga.data_nascita = o[0].dataNascita || null; if (o.length === 1 && o[0].codiceFiscale) riga.codice_fiscale = o[0].codiceFiscale; }
   riga.quando = new Date().toISOString();
   COMUNICAZIONI.lista.unshift(riga);
   // WhatsApp appena aperto: si tiene la riga per poterla togliere se il numero non ha WhatsApp
@@ -78,9 +81,23 @@ async function caricaComunicazioni() {
   } catch (e) {}
 }
 
-function comunicazioniPersona(nome, cf) {
-  nome = String(nome || '').trim().toUpperCase(); cf = String(cf || '').trim().toUpperCase();
-  return COMUNICAZIONI.lista.filter(function (c) { return (cf && String(c.codice_fiscale || '').toUpperCase() === cf) || (nome && c.nome === nome); });
+// Clienti dell'archivio con questo nome (più di uno = omonimi)
+function omonimiArchivio(nome) {
+  nome = String(nome || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  return nome && typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI.filter(function (c) { return String(c.nomeCompleto || '').trim().toUpperCase().replace(/\s+/g, ' ') === nome; }) : [];
+}
+// Comunicazioni di una persona: per codice fiscale, altrimenti per nome e data di nascita.
+// Con gli omonimi (stesso nome, nascita diversa) una riga senza data di nascita non si attribuisce a nessuno dei due.
+function comunicazioniPersona(nome, cf, nascita) {
+  nome = String(nome || '').trim().toUpperCase().replace(/\s+/g, ' '); cf = String(cf || '').trim().toUpperCase(); nascita = String(nascita || '').trim();
+  const omonimi = omonimiArchivio(nome).length > 1;
+  return COMUNICAZIONI.lista.filter(function (c) {
+    const ccf = String(c.codice_fiscale || '').toUpperCase();
+    if (cf && ccf) return ccf === cf;
+    if (!nome || String(c.nome || '').replace(/\s+/g, ' ') !== nome) return false;
+    if (nascita && c.data_nascita) return c.data_nascita === nascita;
+    return !omonimi;
+  });
 }
 function quandoComunicazione(c) {
   const d = new Date(c.quando);
@@ -88,14 +105,14 @@ function quandoComunicazione(c) {
 }
 function iconaCanale(c) { return c.canale === 'email' ? '📧' : c.canale === 'sms' ? '📱' : '💬'; }
 // Riga breve con l'ultimo contatto (archivio clienti)
-function ultimoContattoHTML(nome, cf) {
-  const l = comunicazioniPersona(nome, cf); if (!l.length) return '';
+function ultimoContattoHTML(nome, cf, nascita) {
+  const l = comunicazioniPersona(nome, cf, nascita); if (!l.length) return '';
   const c = l[0];
   return '<div style="font-size:11.5px; color:#1d4f91; font-weight:700">📨 Ultimo contatto: ' + iconaCanale(c) + ' ' + esc(quandoComunicazione(c).split(' ')[0]) + ' · ' + esc(c.motivo || '') + (l.length > 1 ? ' <span style="color:var(--sub); font-weight:600">(' + l.length + ' in tutto)</span>' : '') + '</div>';
 }
 // Elenco completo (scheda della persona, modifica cliente)
-function elencoComunicazioniHTML(nome, cf, max) {
-  const l = comunicazioniPersona(nome, cf);
+function elencoComunicazioniHTML(nome, cf, max, nascita) {
+  const l = comunicazioniPersona(nome, cf, nascita);
   if (!l.length) return '<div style="margin-bottom:10px; font-size:12.5px; color:var(--sub)">📨 Nessuna comunicazione registrata (WhatsApp ed e-mail mandati dal programma).</div>';
   const mostra = l.slice(0, max || 15);
   return '<details open style="margin-bottom:10px; padding:8px 12px; border-radius:10px; border:1.5px solid #1d4f91; background:color-mix(in srgb, #1d4f91 6%, var(--card))"><summary style="cursor:pointer; font-weight:800; color:#1d4f91">📨 Comunicazioni (' + l.length + ')</summary>'
@@ -185,7 +202,7 @@ async function nonHaWhatsApp() {
       const p = (state.pratiche || []).find(function (x) { return x.id === r.pratica_id; });
       if (p && p.whatsappInviato === todayIT()) { p.whatsappInviato = null; data.pratiche.aggiorna(p.id, { whatsappInviato: null }); }
     }
-    persone.push({ nome: r.nome, cf: r.codice_fiscale, motivo: r.motivo, praticaId: r.pratica_id });
+    persone.push({ nome: r.nome, cf: r.codice_fiscale, nascita: r.data_nascita, motivo: r.motivo, praticaId: r.pratica_id });
   }
   // nella scheda dei clienti con questo cellulare: «senza WhatsApp»
   const clienti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return numeroWhatsApp(c.telefono) === u.num; });
@@ -217,7 +234,7 @@ function altriModiMessaggio(m, provaWhatsApp) {
     + '<div style="text-align:right"><button type="button" data-az="chiudi" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 16px; font-weight:700; cursor:pointer">' + (m.tolto ? 'Lascia così (resta da avvisare)' : 'Chiudi') + '</button></div></div>';
   // dopo l'invio con un altro modo: riga nelle comunicazioni per ogni cliente e di nuovo «avvisato» nella campagna
   const registra = async function (canale) {
-    m.persone.forEach(function (p) { if (p.nome) registraComunicazione({ canale: canale, telefono: canale === 'sms' ? m.num : null, email: canale === 'email' ? m.email : null, testo: m.testo, nome: p.nome, cf: p.cf || '', motivo: p.motivo || motivoDaTesto(m.testo), praticaId: p.praticaId, senzaContesto: true }); });
+    m.persone.forEach(function (p) { if (p.nome) registraComunicazione({ canale: canale, telefono: canale === 'sms' ? m.num : null, email: canale === 'email' ? m.email : null, testo: m.testo, nome: p.nome, cf: p.cf || '', nascita: p.nascita || '', motivo: p.motivo || motivoDaTesto(m.testo), praticaId: p.praticaId, senzaContesto: true }); });
     for (const x of m.richiamiTolti || []) {
       const riga = Object.assign({}, x); delete riga.id; riga.quando = new Date().toISOString();
       try { const r = await fetchSupabase('/rest/v1/richiami?on_conflict=anno,chiave', 'POST', riga, { Prefer: 'resolution=merge-duplicates,return=representation' }); if (r && r.ok && typeof RICHIAMI !== 'undefined') RICHIAMI.esiti[x.chiave] = (Array.isArray(r.data) && r.data[0]) || riga; } catch (e) { /* niente */ }

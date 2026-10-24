@@ -46,7 +46,7 @@ function collabAuguri(c) { return c.collaboratore || SENZA_COLLAB_AUGURI; }
 function auguriGiaMandati(c) {
   if (typeof comunicazioniPersona !== 'function') return false;
   const m = motivoAuguri();
-  return comunicazioniPersona(c.nomeCompleto, c.codiceFiscale).some(function (x) { return x.motivo === m; });
+  return comunicazioniPersona(c.nomeCompleto, c.codiceFiscale, c.dataNascita).some(function (x) { return x.motivo === m; });
 }
 // Tutti i clienti a cui si possono mandare gli auguri
 function clientiAuguri() {
@@ -89,7 +89,7 @@ function messaggioAuguri(g) {
 function registraAuguri(g, canale, testo, primoGiaRegistrato) {
   g.persone.forEach(function (c, i) {
     if (primoGiaRegistrato && i === 0) return;
-    registraComunicazione({ canale: canale, telefono: canale === 'whatsapp' ? c.telefono : null, email: canale === 'email' ? c.email : null, testo: testo, nome: c.nomeCompleto, cf: c.codiceFiscale || '', motivo: motivoAuguri(), senzaContesto: true });
+    registraComunicazione({ canale: canale, telefono: canale === 'whatsapp' ? c.telefono : null, email: canale === 'email' ? c.email : null, testo: testo, nome: c.nomeCompleto, cf: c.codiceFiscale || '', nascita: c.dataNascita || '', motivo: motivoAuguri(), senzaContesto: true });
   });
 }
 
@@ -223,7 +223,7 @@ function prossimoAuguri() {
   if (g) {
     const c = g.persone[0], testo = messaggioAuguri(g);
     // la riga del primo cliente la scrive WhatsApp quando il messaggio parte; gli altri dello stesso messaggio qui
-    contestoComunicazione({ nome: c.nomeCompleto, cf: c.codiceFiscale || '', motivo: motivoAuguri() });
+    contestoComunicazione({ nome: c.nomeCompleto, cf: c.codiceFiscale || '', nascita: c.dataNascita || '', motivo: motivoAuguri() });
     if (inviaWhatsAppLibero(g.tel, testo, c.nomeCompleto)) registraAuguri(g, 'whatsapp', testo, true);
   }
   if (AUGURI.pos >= AUGURI.coda.length) { AUGURI.coda = []; AUGURI.pos = 0; avviso('✓ Ultimo messaggio di auguri aperto: invio finito'); }

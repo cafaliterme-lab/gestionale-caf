@@ -105,7 +105,7 @@ function apriArchivioClienti(testo, filtri) {
         // documento scaduto o mancante: richiesta diretta del nuovo documento
         + ((scaduto || !c.documentoScadenza) && !c.decedutoIl && c.id ? '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px"><button type="button" data-az="doc-wa" data-cid="' + esc(String(c.id)) + '" title="Chiedi il nuovo documento su WhatsApp" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; cursor:pointer">💬 Chiedi documento</button>'
           + '<button type="button" data-az="doc-mail" data-cid="' + esc(String(c.id)) + '" title="Chiedi il nuovo documento per e-mail" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; cursor:pointer">📧 E-mail</button></div>' : '')
-        + (typeof ultimoContattoHTML === 'function' ? ultimoContattoHTML(c.nomeCompleto, c.codiceFiscale) : '')
+        + (typeof ultimoContattoHTML === 'function' ? ultimoContattoHTML(c.nomeCompleto, c.codiceFiscale, c.dataNascita) : '')
         + (manca.length && !c.decedutoIl ? '<div style="font-size:11.5px; color:#b35f0c; font-weight:700">Manca: ' + manca.join(', ') + '</div>' : '') + '</span>'
         + '<span style="background:#1d4f91; color:#fff; border-radius:999px; padding:5px 12px; font-size:12.5px; font-weight:700; white-space:nowrap">✏️ Modifica</span></div>';
     }).join('') : '<div class="empty" style="padding:14px">Nessun cliente trovato</div>';
@@ -186,7 +186,8 @@ function modificaClienteArchivio(c, dopo) {
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px">'
     + '<button type="button" onclick="apriLetturaDocumentoPer(\'modifica\')" style="background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:800; cursor:pointer">📷 Leggi documento</button>'
     + '<button type="button" onclick="apriInserisciDocumento(\'modifica\')" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:800; cursor:pointer">📥 Inserisci PDF / foto</button>'
-    + '<span style="font-size:12px; color:var(--sub); align-self:center">i dati della carta d\'identità o della tessera sanitaria aggiornano questa scheda</span></div>'
+    + '<span style="font-size:12px; color:var(--sub); align-self:center">i dati della carta d\'identità o della tessera sanitaria aggiornano questa scheda</span>'
+    + '<button type="button" onclick="scegliSchedaDaUnire(' + esc(JSON.stringify(String(c.id))) + ')" title="La stessa persona è in archivio due volte: unisci le due schede in questa" style="margin-left:auto; background:#6d3fa0; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:800; cursor:pointer">🔗 Unisci con un\'altra scheda</button></div>'
     + '<div class="grid grid-largo">'
     + campo('cognome', 'Cognome *', c.cognome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('nome', 'Nome *', c.nome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
@@ -209,7 +210,7 @@ function modificaClienteArchivio(c, dopo) {
     + '<div class="full" style="margin-top:4px"><label class="chk" style="margin:0; font-size:13px; color:var(--ink)"><input type="checkbox" id="mc-no-messaggi"' + (c.noMessaggi ? ' checked' : '') + '> 🚫 <b>Non vuole ricevere messaggi</b> <span style="color:var(--sub)">(niente auguri, avvio campagna e richiami a tutti)</span></label></div>'
     + '<div class="full" style="margin-top:4px; padding:8px 10px; border-radius:10px; border:1.5px dashed #6b7280"><label>✝️ Deceduto/a il <span style="font-weight:600; color:var(--sub)">(lascia vuoto se in vita)</span></label><input id="mc-deceduto" value="' + esc(c.decedutoIl || '') + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)" style="max-width:180px"><div style="font-size:11.5px; color:var(--sub); margin-top:3px">La scheda resta in archivio, ma non compare più nelle ricerche normali, tra i clienti da richiamare e tra i dati da completare.</div></div>'
     + '</div>'
-    + (typeof elencoComunicazioniHTML === 'function' ? '<div style="margin-top:10px">' + elencoComunicazioniHTML(c.nomeCompleto, c.codiceFiscale, 8) + '</div>' : '')
+    + (typeof elencoComunicazioniHTML === 'function' ? '<div style="margin-top:10px">' + elencoComunicazioniHTML(c.nomeCompleto, c.codiceFiscale, 8, c.dataNascita) + '</div>' : '')
     + '<label class="chk" style="margin-top:8px; font-size:13px"><input type="checkbox" id="mc-pratiche"' + (pratiche.length ? ' checked' : ' disabled') + '> Aggiorna telefoni, e-mail e scadenza documento anche nelle sue pratiche (' + pratiche.length + ')</label>'
     + '<div id="mc-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
@@ -223,7 +224,7 @@ function modificaClienteArchivio(c, dopo) {
     if (!b) return;
     const v = function (id) { return (document.getElementById('mc-' + id).value || '').trim(); };
     const msg = document.getElementById('mc-msg');
-    const cognome = v('cognome').toUpperCase(), nome = v('nome').toUpperCase(), cf = normalizzaCF(v('cf'));
+    const cognome = v('cognome').toUpperCase().replace(/\s+/g, ' '), nome = v('nome').toUpperCase().replace(/\s+/g, ' '), cf = normalizzaCF(v('cf'));
     let nascita = v('nascita');
     const tel = v('tel'), fisso = v('fisso'), email = v('email').toLowerCase(), scad = v('scad'), comune = v('comune').toUpperCase(), docnum = v('docnum').toUpperCase().replace(/\s+/g, ''), doctipo = v('doctipo');
     if (!cognome || !nome) { msg.textContent = 'Cognome e nome sono obbligatori.'; return; }
@@ -269,10 +270,120 @@ function modificaClienteArchivio(c, dopo) {
         if (Object.keys(cp).length) await data.pratiche.aggiorna(p.id, cp);
       }
     }
+    // nome cambiato (es. errore di battitura): il nuovo nome va anche in pratiche, agenda, comunicazioni, coniuge e riferimenti
+    const prima = { nomeCompleto: c.nomeCompleto, cognome: c.cognome, nome: c.nome, dataNascita: c.dataNascita, codiceFiscale: c.codiceFiscale };
+    let spostati = 0;
+    if (String(prima.nomeCompleto || '').replace(/\s+/g, ' ').trim() !== campi.nomeCompleto) { b.textContent = 'Aggiorno il nome ovunque…'; spostati = await propagaNomeCliente(prima, campi); }
     Object.assign(c, campi);
     ov.remove();
-    avviso('✓ Anagrafica di ' + campi.nomeCompleto + ' aggiornata');
+    avviso('✓ Anagrafica di ' + campi.nomeCompleto + ' aggiornata' + (spostati ? ' · nome aggiornato anche in ' + spostati + ' tra pratiche, appuntamenti e comunicazioni' : ''));
     if (typeof syncDataFromSupabase === 'function') syncDataFromSupabase();
     if (typeof dopo === 'function') dopo();
   });
+}
+
+/* ---------- Nome cambiato o schede unite: il nome si aggiorna ovunque ----------
+   Tutto è collegato per codice fiscale o, se manca, per nome e data di nascita: quando il nome cambia
+   si aggiornano pratiche (titolare e coniuge), appuntamenti, comunicazioni, richiami, il coniuge che lo ha
+   come dichiarante e i clienti che lo hanno come riferimento. Con gli omonimi conta anche la data di nascita. */
+async function propagaNomeCliente(prima, dopo) {
+  const vecchio = String(prima.nomeCompleto || '').trim();
+  if (!vecchio || !dopo.nomeCompleto) return 0;
+  const nascita = prima.dataNascita || '', cf = prima.codiceFiscale || '';
+  const omonimi = (ARCHIVIO_CLIENTI || []).filter(function (x) { return String(x.nomeCompleto || '').replace(/\s+/g, ' ').trim() === vecchio.replace(/\s+/g, ' '); }).length > 1;
+  // è proprio questa persona? (codice fiscale, poi data di nascita; con gli omonimi serve la data giusta)
+  const suo = function (cfR, nascitaR) {
+    if (cf && cfR) return String(cfR).toUpperCase() === String(cf).toUpperCase();
+    if (nascita && nascitaR) return nascitaR === nascita;
+    return !omonimi;
+  };
+  const q = function (t) { return encodeURIComponent(t); };
+  let n = 0;
+  const leggi = async function (url) { try { const r = await fetchSupabase(url, 'GET'); return r && r.ok && Array.isArray(r.data) ? r.data : []; } catch (e) { return []; } };
+  const cambia = async function (tab, id, campi) { try { const r = await fetchSupabase('/rest/v1/' + tab + '?id=eq.' + q(id), 'PATCH', campi, { Prefer: 'return=minimal' }); if (r && r.ok) n++; } catch (e) { /* niente */ } };
+  // varianti del vecchio nome (con spazi doppi) da cercare
+  const nomi = [vecchio]; if (vecchio.replace(/\s+/g, ' ') !== vecchio) nomi.push(vecchio.replace(/\s+/g, ' '));
+  for (const nm of nomi) {
+    for (const p of await leggi('/rest/v1/pratiche?select=id,cf,codice_fiscale&nome=eq.' + q(nm))) if (suo(p.codice_fiscale, p.cf)) await cambia('pratiche', p.id, { nome: dopo.nomeCompleto });
+    for (const a of await leggi('/rest/v1/appuntamenti?select=id,codice_fiscale&nome=eq.' + q(nm))) if (suo(a.codice_fiscale, '')) await cambia('appuntamenti', a.id, { nome: dopo.nomeCompleto, codice_fiscale: dopo.codiceFiscale || a.codice_fiscale || null });
+    for (const m of await leggi('/rest/v1/comunicazioni?select=id,codice_fiscale,data_nascita&nome=eq.' + q(nm))) if (suo(m.codice_fiscale, m.data_nascita)) await cambia('comunicazioni', m.id, { nome: dopo.nomeCompleto, data_nascita: m.data_nascita || dopo.dataNascita || null });
+    for (const x of await leggi('/rest/v1/richiami?select=id,chiave&nome=eq.' + q(nm))) {
+      const k = String(x.chiave || ''), conNome = k.indexOf('|') >= 0;
+      if (conNome ? suo('', k.split('|')[1]) : suo(k, '')) await cambia('richiami', x.id, conNome ? { nome: dopo.nomeCompleto, chiave: dopo.nomeCompleto + '|' + (k.split('|')[1] || '') } : { nome: dopo.nomeCompleto });
+    }
+    for (const x of await leggi('/rest/v1/clienti?select=id,dichiarante_nascita&dichiarante_nome=eq.' + q(nm))) if (suo('', x.dichiarante_nascita)) await cambia('clienti', x.id, { dichiarante_nome: dopo.nomeCompleto });
+    if (!omonimi) for (const x of await leggi('/rest/v1/clienti?select=id&riferimento=eq.' + q(nm))) await cambia('clienti', x.id, { riferimento: dopo.nomeCompleto });
+  }
+  // coniuge nelle pratiche congiunte (cognome e nome separati)
+  if (prima.cognome && prima.nome) {
+    for (const p of await leggi('/rest/v1/pratiche?select=id,cong_data,cong_codice_fiscale,congiunta&cong_cognome=eq.' + q(prima.cognome) + '&cong_nome=eq.' + q(prima.nome))) {
+      if (suo(p.cong_codice_fiscale, p.cong_data)) await cambia('pratiche', p.id, Object.assign({ cong_cognome: dopo.cognome, cong_nome: dopo.nome }, p.congiunta && p.congiunta.replace(/\s+/g, ' ').trim() === vecchio.replace(/\s+/g, ' ') ? { congiunta: dopo.nomeCompleto } : {}));
+    }
+  }
+  // anche quello già caricato nel programma
+  (typeof COMUNICAZIONI !== 'undefined' ? COMUNICAZIONI.lista : []).forEach(function (m) { if (nomi.indexOf(m.nome) >= 0 && suo(m.codice_fiscale, m.data_nascita)) m.nome = dopo.nomeCompleto; });
+  if (typeof caricaAppuntamenti === 'function') { try { caricaAppuntamenti(); } catch (e) {} }
+  return n;
+}
+
+// 🔗 Unisci due schede della stessa persona: si tiene quella aperta e si completano i dati che le mancano
+function scegliSchedaDaUnire(id) {
+  const c = (ARCHIVIO_CLIENTI || []).find(function (x) { return String(x.id) === String(id); }); if (!c) return;
+  const norm = function (t) { return String(t || '').toUpperCase().replace(/[^A-Z]/g, ''); };
+  const simili = function (x) { return x !== c && x.id && ((c.codiceFiscale && x.codiceFiscale === c.codiceFiscale) || norm(x.nomeCompleto) === norm(c.nomeCompleto) || (x.cognome && norm(x.cognome) === norm(c.cognome) && x.dataNascita && x.dataNascita === c.dataNascita)); };
+  const vecchio = document.getElementById('popup-unisci'); if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-unisci';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:480; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:14px';
+  const disegna = function (testo) {
+    const q = norm(testo);
+    const lista = (ARCHIVIO_CLIENTI || []).filter(function (x) { return q.length >= 3 ? (x !== c && x.id && norm(x.nomeCompleto).indexOf(q) >= 0) : simili(x); }).slice(0, 30);
+    document.getElementById('un-lista').innerHTML = lista.length ? lista.map(function (x) {
+      return '<button type="button" data-id="' + esc(String(x.id)) + '" style="display:block; width:100%; text-align:left; margin-bottom:6px; padding:8px 10px; border-radius:10px; border:1.5px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer"><b>' + esc(x.nomeCompleto) + '</b> <span class="sub2">' + [x.dataNascita ? 'nato/a il ' + esc(x.dataNascita) : '', x.codiceFiscale ? 'CF ' + esc(x.codiceFiscale) : '', x.telefono ? '📞 ' + esc(x.telefono) : '', x.email ? '✉️ ' + esc(x.email) : ''].filter(Boolean).join(' · ') + '</span></button>';
+    }).join('') : '<div class="sub2" style="padding:8px">' + (q.length >= 3 ? 'Nessun cliente trovato.' : 'Nessuna scheda simile trovata: scrivi il nome dell\'altra scheda.') + '</div>';
+  };
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #6d3fa0; padding:16px 18px; max-width:560px; width:100%; max-height:90vh; overflow:auto">'
+    + '<div style="font-size:18px; font-weight:800; color:#6d3fa0">🔗 Unisci con ' + esc(c.nomeCompleto) + '</div>'
+    + '<div style="font-size:13px; margin:6px 0 10px">Scegli l\'<b>altra scheda della stessa persona</b>. Resta questa scheda: le si aggiungono i dati che le mancano (codice fiscale, telefoni, e-mail, documento…), pratiche, appuntamenti e comunicazioni dell\'altra passano a questa, poi l\'altra scheda si cancella.</div>'
+    + '<input id="un-cerca" placeholder="Scrivi per cercare un\'altra scheda (cognome e nome)…" autocomplete="off" style="margin-bottom:8px">'
+    + '<div class="sub2" style="margin-bottom:4px">Schede simili:</div><div id="un-lista"></div>'
+    + '<div style="text-align:right; margin-top:8px"><button type="button" data-chiudi style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 16px; font-weight:700; cursor:pointer">Annulla</button></div></div>';
+  document.body.appendChild(ov);
+  disegna('');
+  ov.addEventListener('input', function (e) { if (e.target.id === 'un-cerca') disegna(e.target.value); });
+  ov.addEventListener('click', async function (e) {
+    if (e.target === ov || e.target.closest('[data-chiudi]')) { ov.remove(); return; }
+    const bt = e.target.closest('button[data-id]'); if (!bt) return;
+    const altro = (ARCHIVIO_CLIENTI || []).find(function (x) { return String(x.id) === bt.dataset.id; }); if (!altro) return;
+    if (c.codiceFiscale && altro.codiceFiscale && c.codiceFiscale !== altro.codiceFiscale) { avviso('❌ Le due schede hanno codici fiscali diversi: non sono la stessa persona', true); return; }
+    if (c.dataNascita && altro.dataNascita && c.dataNascita !== altro.dataNascita && !confirm('Le date di nascita sono diverse (' + c.dataNascita + ' e ' + altro.dataNascita + '): potrebbero essere due persone diverse (omonimi).\n\nUnisco lo stesso?')) return;
+    if (!confirm('Unisco ' + altro.nomeCompleto + (altro.dataNascita ? ' (' + altro.dataNascita + ')' : '') + ' dentro ' + c.nomeCompleto + '?\n\nL\'altra scheda viene cancellata; i suoi dati, pratiche e comunicazioni passano a questa.')) return;
+    bt.disabled = true; bt.textContent = '⏳ Unisco…';
+    const r = await unisciSchedeClienti(c, altro);
+    ov.remove();
+    if (r.errore) { avviso('❌ ' + r.errore, true); return; }
+    avviso('✓ Schede unite in ' + c.nomeCompleto + (r.spostati ? ' · ' + r.spostati + ' tra pratiche, appuntamenti e comunicazioni collegati' : ''));
+    const m = document.getElementById('popup-mod-cliente'); if (m) m.remove();
+    modificaClienteArchivio((ARCHIVIO_CLIENTI || []).find(function (x) { return String(x.id) === String(c.id); }) || c);
+  });
+}
+async function unisciSchedeClienti(c, altro) {
+  // i dati che mancano alla scheda che resta si prendono dall'altra
+  const campi = {};
+  ['codiceFiscale', 'dataNascita', 'telefono', 'telefonoFisso', 'email', 'documentoScadenza', 'documentoNumero', 'documentoTipo', 'comuneNascita', 'collaboratore', 'ruoloDichiarazione', 'dichiaranteNome', 'dichiaranteNascita', 'riferimento', 'note', 'decedutoIl'].forEach(function (k) {
+    if (!c[k] && altro[k]) campi[k] = altro[k];
+  });
+  if (altro.noMessaggi && !c.noMessaggi) campi.noMessaggi = true;
+  if (c.note && altro.note && c.note !== altro.note) campi.note = (c.note + ' · ' + altro.note).slice(0, 2000);
+  // prima si cancella l'altra scheda (codice fiscale e nome+nascita devono restare unici), poi si completa questa
+  const del = await data.clienti.elimina(altro.id);
+  if (del && del.error) return { errore: 'Non riesco a cancellare l\'altra scheda: ' + del.error + ' (serve il permesso di cancellare i clienti)' };
+  if (Object.keys(campi).length) {
+    const r = await data.clienti.aggiorna(c.id, campi);
+    if (r && r.error) return { errore: 'Altra scheda cancellata, ma i suoi dati non sono stati copiati: ' + r.error };
+    Object.assign(c, campi);
+  }
+  const spostati = altro.nomeCompleto === c.nomeCompleto ? 0 : await propagaNomeCliente({ nomeCompleto: altro.nomeCompleto, cognome: altro.cognome, nome: altro.nome, dataNascita: altro.dataNascita, codiceFiscale: altro.codiceFiscale }, c);
+  if (typeof syncDataFromSupabase === 'function') syncDataFromSupabase();
+  return { spostati: spostati };
 }

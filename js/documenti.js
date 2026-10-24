@@ -125,13 +125,13 @@ function richiediNuovoDocumentoModulo() {
 }
 function richiediNuovoDocumento(id) {
   const p = (state.pratiche || []).find(function (x) { return x.id === id; });
-  if (p) { contestoComunicazione({ nome: p.nome, cf: p.codiceFiscale || '', praticaId: p.id, motivo: 'Richiesta documento d\'identità' }); inviaWhatsAppLibero(p.telefono, messaggioNuovoDocumento(p.nome, p.documentoScadenza), p.nome); }
+  if (p) { contestoComunicazione({ nome: p.nome, cf: p.codiceFiscale || '', nascita: p.cf || '', praticaId: p.id, motivo: 'Richiesta documento d\'identità' }); inviaWhatsAppLibero(p.telefono, messaggioNuovoDocumento(p.nome, p.documentoScadenza), p.nome); }
 }
 function richiediDocumentiMancanti(id) {
   const p = (state.pratiche || []).find(function (x) { return x.id === id; });
   if (!p) return;
   if (!senzaCUD(documentiPratica(p).mancanti).length) { avviso('ℹ️ Manca solo il CUD: lo richiede il CAF da "📋 Richieste CUD"'); return; }
-  contestoComunicazione({ nome: p.nome, cf: p.codiceFiscale || '', praticaId: p.id, motivo: 'Documenti mancanti' });
+  contestoComunicazione({ nome: p.nome, cf: p.codiceFiscale || '', nascita: p.cf || '', praticaId: p.id, motivo: 'Documenti mancanti' });
   inviaWhatsAppLibero(p.telefono, messaggioDocumentiMancanti(p), p.nome);
 }
 

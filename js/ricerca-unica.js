@@ -132,7 +132,7 @@ function disegnaSchedaPersona() {
       return portati.length ? '<div style="margin-bottom:10px; padding:8px 12px; border-radius:10px; border:1.5px solid #6d3fa0; background:color-mix(in srgb, #6d3fa0 6%, var(--card)); font-size:13px"><b style="color:#6d3fa0">👤 È il riferimento di ' + portati.length + ' client' + (portati.length === 1 ? 'e' : 'i') + ':</b> '
         + portati.map(function (y) { return '<a href="#" onclick="apriSchedaPersonaNome(' + esc(JSON.stringify(y.nomeCompleto)) + ', ' + esc(JSON.stringify(y.codiceFiscale || '')) + '); return false">' + esc(y.nomeCompleto) + '</a>'; }).join(' · ') + '</div>' : '';
     })()
-    + (typeof elencoComunicazioniHTML === 'function' ? elencoComunicazioniHTML(x.nome, x.cf) : '')
+    + (typeof elencoComunicazioniHTML === 'function' ? elencoComunicazioniHTML(x.nome, x.cf, 15, x.nascita || c.dataNascita) : '')
     + (typeof avvisoMorosoHTML === 'function' ? avvisoMorosoHTML(pratiche) : '')
     + '<div class="meta" style="margin:0 0 6px">' + valide.length + ' pratiche' + (pratiche.length > valide.length ? ' (+ ' + (pratiche.length - valide.length) + ' annullate)' : '') + ' · pagato in tutto <b>' + fmtEuro(valide.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0)) + '</b>'
     + (manca > 0.004 ? ' · <b style="color:#c0392b">deve ancora ' + fmtEuro(manca) + '</b>' : '') + '</div>'

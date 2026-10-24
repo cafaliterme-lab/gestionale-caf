@@ -128,8 +128,8 @@ function clienteEsiste(cognome, nome, dataNascita){
   return ARCHIVIO_CLIENTI.some(function(c){ return c.nomeCompleto.toUpperCase() === nc && (c.dataNascita||'') === (dataNascita||''); });
 }
 function registraClienteSeNuovo(cognome, nome, dataNascita, codiceFiscale, telefono, telefonoFisso, documentoScadenza, email){
-  cognome = (cognome||'').trim().toUpperCase();
-  nome = (nome||'').trim().toUpperCase();
+  cognome = (cognome||'').trim().toUpperCase().replace(/\s+/g, ' ');
+  nome = (nome||'').trim().toUpperCase().replace(/\s+/g, ' ');
   if(!cognome && !nome) return Promise.resolve();
   const nc = (cognome+' '+nome).trim();
   dataNascita = (dataNascita||'').trim();
@@ -375,7 +375,12 @@ function invertiDichiaranteConiuge(){
   usaCliente(nuovoCon, 'cong');
   CONG_AUTO = { dich: nuovoDich, con: nuovoCon };
   avvisoCongiuntaAutomatica();
-  avviso('🔄 Ora il dichiarante è ' + nuovoDich.nomeCompleto + ' e il coniuge ' + nuovoCon.nomeCompleto);
+  // anche nell'archivio: chi dichiara e chi è il coniuge dichiarante
+  const ruoloD = { ruoloDichiarazione: 'dichiarante', dichiaranteNome: null, dichiaranteNascita: null };
+  const ruoloC = { ruoloDichiarazione: 'coniuge', dichiaranteNome: nuovoDich.nomeCompleto, dichiaranteNascita: nuovoDich.dataNascita || null };
+  if(nuovoDich.id){ Object.assign(nuovoDich, ruoloD); data.clienti.aggiorna(nuovoDich.id, ruoloD); }
+  if(nuovoCon.id){ Object.assign(nuovoCon, ruoloC); data.clienti.aggiorna(nuovoCon.id, ruoloC); }
+  avviso('🔄 Ora il dichiarante è ' + nuovoDich.nomeCompleto + ' e il coniuge ' + nuovoCon.nomeCompleto + ' (aggiornato anche nell\'archivio)');
 }
 function usaCliente(c, ctx){
   const box = boxRisultatiClienti(ctx);
@@ -1223,6 +1228,7 @@ function rigaPratica(p){
     'N. Fattura': p.numFattura||'',
     'Data fattura': p.dataFattura||'',
     'Inserito da': p.inseritoDa||'',
+    'Riferimento': riferimentoPratica(p),
     'Note': p.note||''
   };
 }
@@ -2868,7 +2874,7 @@ function inviaWhatsApp(id){
   scegliMessaggioWhatsApp(p, num);
 }
 function apriWhatsApp(num, testo, p){
-  if(p && typeof contestoComunicazione === 'function') contestoComunicazione({ nome: p.nome, cf: p.codiceFiscale || '', praticaId: p.id, motivo: 'Pratica pronta' });
+  if(p && typeof contestoComunicazione === 'function') contestoComunicazione({ nome: p.nome, cf: p.codiceFiscale || '', nascita: p.cf || '', praticaId: p.id, motivo: 'Pratica pronta' });
   apriChatWhatsApp(num, testo);
   if(p && p.id){ p.whatsappInviato = todayIT(); data.pratiche.aggiorna(p.id, { whatsappInviato: p.whatsappInviato }); }
 }

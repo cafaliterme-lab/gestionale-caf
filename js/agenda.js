@@ -251,6 +251,16 @@ function finestraAppuntamento(a) {
     // promemoria su carta da dare al cliente (solo per un appuntamento nuovo o spostato)
     if ((nuovo || riga.promemoria_il === null) && confirm('Appuntamento salvato: ' + giornoLungo(salvato.data) + ' alle ' + salvato.ora + '.\n\nStampo il promemoria da dare al cliente?')) stampaAppuntamento(salvato.id);
     aggiornaVisteAgenda();
+    // persona nuova (non in archivio): si propone di aggiungerla, con nome, telefono ed e-mail già scritti
+    if (nuovo && typeof trovaInArchivio === 'function' && typeof nuovoClienteArchivio === 'function' && !trovaInArchivio(salvato.nome, '', salvato.codice_fiscale || '')
+      && confirm(salvato.nome + ' non è nell\'archivio clienti.\n\nLo aggiungo adesso? (nome, telefono ed e-mail sono già scritti: completi il resto quando vuoi)')) {
+      nuovoClienteArchivio(salvato.nome, function () { aggiornaVisteAgenda(); });
+      setTimeout(function () {
+        const t = document.getElementById('nc-tel'); if (t && !t.value && salvato.telefono) t.value = salvato.telefono;
+        const m = document.getElementById('nc-email'); if (m && !m.value && salvato.email) m.value = salvato.email;
+        if (typeof aggiornaColoriModulo === 'function') aggiornaColoriModulo();
+      }, 80);
+    }
   });
 }
 

@@ -52,7 +52,7 @@ function messaggioGruppoRichiamo(g) {
 function registraGruppoRichiamo(g, canale, testo, primoGiaRegistrato) {
   const motivo = RICHIAMI.modo === 'campagna' ? 'Avvio campagna 730' : 'Richiamo 730';
   g.persone.forEach(function (x, i) {
-    if (!(primoGiaRegistrato && i === 0)) registraComunicazione({ canale: canale, telefono: canale === 'whatsapp' ? x.tel : null, email: canale === 'email' ? x.email : null, testo: testo, nome: x.nome, cf: x.cf || '', motivo: motivo, senzaContesto: true });
+    if (!(primoGiaRegistrato && i === 0)) registraComunicazione({ canale: canale, telefono: canale === 'whatsapp' ? x.tel : null, email: canale === 'email' ? x.email : null, testo: testo, nome: x.nome, cf: x.cf || '', nascita: x.nascita || '', motivo: motivo, senzaContesto: true });
     if (RICHIAMI.modo === 'campagna') salvaEsitoRichiamo(x, 'avvisato', '');
   });
 }
@@ -155,7 +155,7 @@ function prossimoRichiamo() {
   if (g) {
     const x = g.persone[0], testo = messaggioGruppoRichiamo(g);
     // la riga del primo cliente la scrive WhatsApp quando il messaggio parte; gli altri del messaggio unico qui
-    contestoComunicazione({ nome: x.nome, cf: x.cf || '', motivo: RICHIAMI.modo === 'campagna' ? 'Avvio campagna 730' : 'Richiamo 730' });
+    contestoComunicazione({ nome: x.nome, cf: x.cf || '', nascita: x.nascita || '', motivo: RICHIAMI.modo === 'campagna' ? 'Avvio campagna 730' : 'Richiamo 730' });
     if (inviaWhatsAppLibero(g.tel, testo, x.nome)) registraGruppoRichiamo(g, 'whatsapp', testo, true);
   }
   if (CODA_RICHIAMI.pos >= CODA_RICHIAMI.lista.length) { CODA_RICHIAMI.lista = []; avviso('✓ Ultimo messaggio aperto: invio finito'); }
@@ -414,7 +414,7 @@ function disegnaRichiami() {
 // WhatsApp o e-mail dall'elenco: resta nel registro delle comunicazioni del cliente
 function registraRichiamoInviato(i, canale) {
   const x = (RICHIAMI._lista || [])[i]; if (!x || typeof registraComunicazione !== 'function') return;
-  contestoComunicazione({ nome: x.nome, cf: x.cf || '', motivo: RICHIAMI.modo === 'campagna' ? 'Avvio campagna 730' : 'Richiamo 730' });
+  contestoComunicazione({ nome: x.nome, cf: x.cf || '', nascita: x.nascita || '', motivo: RICHIAMI.modo === 'campagna' ? 'Avvio campagna 730' : 'Richiamo 730' });
   registraComunicazione({ canale: canale, telefono: canale === 'whatsapp' ? x.tel : null, email: canale === 'email' ? x.email : null, testo: messaggioRichiamo(x) });
 }
 // campagna: chi riceve il WhatsApp viene segnato «avvisato» (se non ha già un altro esito)
