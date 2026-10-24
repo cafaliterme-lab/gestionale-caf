@@ -2389,11 +2389,18 @@ function render(){
       `}
     </div>
   `;
-  const visibili = filtra(sorted);
+  // i riquadri non seguono «Solo da fare» (è una vista del registro): contano tutte le pratiche del tipo
+  const visibili = filtra(sorted, { dafare: true });
   const inRicerca = ((document.getElementById('cerca')||{}).value||'').trim() !== '' || !!filtroContribuente();
+  // con un filtro del registro acceso i riquadri contano solo le pratiche filtrate: si dice chiaramente
+  const filtriRiq = [];
+  { const st = (document.getElementById('filtro-stato')||{}).value || ''; if(st) filtriRiq.push('stato ' + statoLabel(st)); }
+  if(FILTRO_CISL) filtriRiq.push('CISL'); if(FILTRO_TIPO) filtriRiq.push('tipo ' + FILTRO_TIPO); if(FILTRO_RIF) filtriRiq.push('riferimento ' + FILTRO_RIF);
+  if(SOLO_VIA_EMAIL) filtriRiq.push('via e-mail'); if(filtroFatturaAttivo()) filtriRiq.push('importo fattura'); if(inRicerca) filtriRiq.push('ricerca');
+  const avvisoFiltri = filtriRiq.length ? '<div style="margin:0 0 10px; padding:8px 12px; border-radius:10px; border:2px solid #b35f0c; background:color-mix(in srgb, #b35f0c 8%, var(--card)); font-size:13px; display:flex; gap:8px; flex-wrap:wrap; align-items:center"><span style="flex:1 1 260px">⚠️ <b>Filtri del registro accesi</b> (' + esc(filtriRiq.join(', ')) + '): i riquadri contano solo le pratiche filtrate.</span><button type="button" onclick="azzeraFiltriRegistro()" style="background:#b35f0c; color:#fff; border:none; border-radius:999px; padding:5px 12px; font-weight:700; cursor:pointer">✕ Togli i filtri</button></div>' : '';
   const nomiGruppi = getTipiList().slice();
   visibili.forEach(function(p){ const k = p.tipo || 'SENZA TIPO'; if(nomiGruppi.indexOf(k) < 0) nomiGruppi.push(k); });
-  list.innerHTML = nomiGruppi.map(function(k){
+  list.innerHTML = avvisoFiltri + nomiGruppi.map(function(k){
     const tuttiTipo = visibili.filter(function(p){ return (p.tipo || 'SENZA TIPO') === k; });
     if(inRicerca && !tuttiTipo.length) return '';
     // stato scelto dentro questo riquadro (oltre al filtro generale del registro)
