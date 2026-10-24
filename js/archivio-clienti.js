@@ -5,7 +5,7 @@
 // filtri: { senzaCf, senzaTel, doc, conPratiche } per aprire l'archivio già filtrato (es. dal riquadro "Oggi")
 function apriArchivioClienti(testo, filtri) {
   filtri = filtri || {};
-  ARCHIVIO_VISTA.venuti = '';
+  ARCHIVIO_VISTA.venuti = ''; ARCHIVIO_VISTA.foglio = 0;
   const vecchio = document.getElementById('popup-archivio'); if (vecchio) vecchio.remove();
   const ov = document.createElement('div');
   ov.id = 'popup-archivio';
@@ -24,7 +24,10 @@ function apriArchivioClienti(testo, filtri) {
     + '<select id="arc-ruolo" style="width:auto; padding:4px 8px; font-size:12.5px" title="Dichiaranti o coniugi"><option value="">Dichiaranti e coniugi</option><option value="dichiarante">👤 Solo dichiaranti</option><option value="coniuge">💑 Solo coniugi dichiaranti</option></select>'
     + '<select id="arc-collab" style="width:auto; padding:4px 8px; font-size:12.5px" title="Solo i clienti di un collaboratore"><option value="">🤝 Tutti i collaboratori</option><option value="-">Senza collaboratore</option>' + getTipiList().map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('') + '</select></div>'
     + '<div id="arc-collab-conta" style="display:none; margin-bottom:8px; font-size:13px"></div>'
+    + '<div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin-bottom:6px; font-size:12.5px"><b style="color:var(--sub)">📄 Quanti per foglio:</b>'
+    + [80, 300, 500, 0].map(function (n) { return '<button type="button" data-perfoglio="' + n + '" style="padding:3px 11px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; border:2px solid #1d4f91"></button>'; }).join('') + '</div>'
     + '<div id="arc-lista" style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px"></div>'
+    + '<div id="arc-fogli" style="display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap; margin-top:6px"></div>'
     + '<div id="arc-conta" style="font-size:12px; color:var(--sub); margin-top:6px"></div></div>';
   document.body.appendChild(ov);
   const disegna = function () {
@@ -64,7 +67,24 @@ function apriArchivioClienti(testo, filtri) {
         + chip('si', '✅ già venuti nel ' + anno, si, '#1a7f37') + chip('no', '⏳ non ancora', no, '#c0392b') + chip('', 'Tutti', filtrati.length, '#374151');
       lista.forEach(function (c) { c._venuto = !!venuto(c); });
     } else { box.style.display = 'none'; box.innerHTML = ''; filtrati.forEach(function (c) { c._venuto = undefined; }); }
-    const mostra = lista.slice(0, 80);
+    // sempre in ordine alfabetico, a fogli (80, 300, 500 per foglio o tutti)
+    lista = lista.slice().sort(function (a, b) { return String(a.nomeCompleto || '').localeCompare(String(b.nomeCompleto || ''), 'it'); });
+    const perFoglio = clientiPerFoglio(), fogli = perFoglio ? Math.max(1, Math.ceil(lista.length / perFoglio)) : 1;
+    if (ARCHIVIO_VISTA.foglio >= fogli) ARCHIVIO_VISTA.foglio = fogli - 1;
+    const inizio = perFoglio ? ARCHIVIO_VISTA.foglio * perFoglio : 0;
+    const mostra = perFoglio ? lista.slice(inizio, inizio + perFoglio) : lista;
+    document.querySelectorAll('#popup-archivio button[data-perfoglio]').forEach(function (b) {
+      const on = Number(b.dataset.perfoglio) === perFoglio;
+      b.textContent = b.dataset.perfoglio === '0' ? 'Tutti' : b.dataset.perfoglio;
+      b.style.background = on ? '#1d4f91' : 'transparent'; b.style.color = on ? '#fff' : '#1d4f91';
+    });
+    const nomeBreve = function (c) { return c ? esc(String(c.nomeCompleto || '').split(' ')[0]) : ''; };
+    const bFoglio = function (dir, testo, attivo) { return '<button type="button" data-foglio="' + dir + '"' + (attivo ? '' : ' disabled') + ' style="padding:6px 14px; border-radius:999px; font-weight:800; cursor:pointer; border:none; background:#1d4f91; color:#fff; opacity:' + (attivo ? 1 : .35) + '">' + testo + '</button>'; };
+    document.getElementById('arc-fogli').innerHTML = fogli > 1
+      ? bFoglio(-1, '◀ Foglio precedente', ARCHIVIO_VISTA.foglio > 0)
+        + '<b style="font-size:13.5px">Foglio ' + (ARCHIVIO_VISTA.foglio + 1) + ' di ' + fogli + '</b> <span class="sub2">(da ' + nomeBreve(mostra[0]) + ' a ' + nomeBreve(mostra[mostra.length - 1]) + ')</span>'
+        + bFoglio(1, 'Foglio successivo ▶', ARCHIVIO_VISTA.foglio < fogli - 1)
+      : '';
     document.getElementById('arc-lista').innerHTML = mostra.length ? mostra.map(function (c) {
       const manca = [!c.codiceFiscale ? 'CF' : '', !c.telefono && !c.telefonoFisso ? 'telefono' : '', !c.documentoScadenza ? 'scad. documento' : ''].filter(Boolean);
       const scaduto = c.documentoScadenza && (dataNum(c.documentoScadenza) || 0) < oggi;
@@ -81,15 +101,19 @@ function apriArchivioClienti(testo, filtri) {
         + '<span style="background:#1d4f91; color:#fff; border-radius:999px; padding:5px 12px; font-size:12.5px; font-weight:700; white-space:nowrap">✏️ Modifica</span></div>';
     }).join('') : '<div class="empty" style="padding:14px">Nessun cliente trovato</div>';
     const nDec = tutti.filter(function (c) { return c.decedutoIl; }).length;
-    document.getElementById('arc-conta').textContent = lista.length + ' clienti' + (lista.length > mostra.length ? ' (ne vedi ' + mostra.length + ': scrivi nella ricerca per trovare gli altri)' : '') + ' · archivio: ' + tutti.length + ' clienti' + (nDec ? ' (di cui ' + nDec + ' deceduti, nascosti: si vedono cercandoli per nome o con «Solo deceduti»)' : '');
+    document.getElementById('arc-conta').textContent = lista.length + ' clienti' + (lista.length > mostra.length ? ' (ne vedi ' + mostra.length + ': dal ' + (inizio + 1) + '° al ' + (inizio + mostra.length) + '°)' : '') + ' · archivio: ' + tutti.length + ' clienti' + (nDec ? ' (di cui ' + nDec + ' deceduti, nascosti: si vedono cercandoli per nome o con «Solo deceduti»)' : '');
   };
   disegna();
   setTimeout(function () { const el = document.getElementById('arc-cerca'); if (el) el.focus(); }, 50);
-  ov.addEventListener('input', function (e) { if (e.target.id === 'arc-cerca') disegna(); });
-  ov.addEventListener('change', function (e) { if (e.target.id === 'arc-collab') ARCHIVIO_VISTA.venuti = ''; if (/^arc-/.test(e.target.id)) disegna(); });
+  ov.addEventListener('input', function (e) { if (e.target.id === 'arc-cerca') { ARCHIVIO_VISTA.foglio = 0; disegna(); } });
+  ov.addEventListener('change', function (e) { if (e.target.id === 'arc-collab') ARCHIVIO_VISTA.venuti = ''; if (/^arc-/.test(e.target.id) && e.target.id !== 'arc-cerca') { ARCHIVIO_VISTA.foglio = 0; disegna(); } });
   ov.addEventListener('click', function (e) {
     const bv = e.target.closest('button[data-venuti]');
-    if (bv) { ARCHIVIO_VISTA.venuti = bv.dataset.venuti; disegna(); return; }
+    if (bv) { ARCHIVIO_VISTA.venuti = bv.dataset.venuti; ARCHIVIO_VISTA.foglio = 0; disegna(); return; }
+    const bp = e.target.closest('button[data-perfoglio]');
+    if (bp) { try { localStorage.setItem('archivio-per-foglio', bp.dataset.perfoglio); } catch (x) {} ARCHIVIO_VISTA.foglio = 0; disegna(); document.getElementById('arc-lista').scrollTop = 0; return; }
+    const bf = e.target.closest('button[data-foglio]');
+    if (bf) { ARCHIVIO_VISTA.foglio += Number(bf.dataset.foglio); disegna(); document.getElementById('arc-lista').scrollTop = 0; return; }
     const b = e.target.closest('button[data-az]');
     if (e.target === ov || (b && b.dataset.az === 'chiudi')) { ov.remove(); return; }
     if (b && (b.dataset.az === 'doc-wa' || b.dataset.az === 'doc-mail')) { if (typeof richiediDocumentoCliente === 'function') richiediDocumentoCliente(b.dataset.cid, b.dataset.az === 'doc-mail' ? 'email' : 'wa'); return; }
@@ -101,7 +125,12 @@ function apriArchivioClienti(testo, filtri) {
   });
 }
 
-const ARCHIVIO_VISTA = { venuti: '' };
+const ARCHIVIO_VISTA = { venuti: '', foglio: 0 };
+// Quanti clienti per foglio nell'archivio (0 = tutti); il programma lo ricorda
+function clientiPerFoglio() {
+  let n = 80; try { const v = localStorage.getItem('archivio-per-foglio'); if (v !== null && [80, 300, 500, 0].indexOf(Number(v)) >= 0) n = Number(v); } catch (e) {}
+  return n;
+}
 // Elenco dei nomi dell'archivio da proporre scrivendo (es. il dichiarante del coniuge)
 function datalistNomiArchivio() {
   const vecchio = document.getElementById('lista-nomi-archivio'); if (vecchio) vecchio.remove();

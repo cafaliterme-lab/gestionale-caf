@@ -44,8 +44,9 @@ function personaDaEmail(a) {
 
 async function registraComunicazione(r) {
   if (!r || !auth || !auth.profilo) return;
-  const ctx = CONTESTO_COMUNICAZIONE && Date.now() - CONTESTO_COMUNICAZIONE.quando < 120000 ? CONTESTO_COMUNICAZIONE : null;
-  CONTESTO_COMUNICAZIONE = null;
+  // senzaContesto: riga per una persona indicata qui (es. gli altri clienti di un messaggio unico), lascia il contesto a chi lo aspetta
+  const ctx = !r.senzaContesto && CONTESTO_COMUNICAZIONE && Date.now() - CONTESTO_COMUNICAZIONE.quando < 120000 ? CONTESTO_COMUNICAZIONE : null;
+  if (!r.senzaContesto) CONTESTO_COMUNICAZIONE = null;
   const chi = (r.canale === 'email' ? personaDaEmail(r.email) : personaDaTelefono(r.telefono)) || {};
   const riga = {
     canale: r.canale, motivo: r.motivo || (ctx && ctx.motivo) || motivoDaTesto(r.testo),

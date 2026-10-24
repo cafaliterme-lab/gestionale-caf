@@ -12,12 +12,47 @@ const CODA_RICHIAMI = { lista: [], pos: 0 };
 function canaleRichiami() { try { return localStorage.getItem('richiami-canale') || 'entrambi'; } catch (e) { return 'entrambi'; } }
 function scegliCanaleRichiami(c) { try { localStorage.setItem('richiami-canale', c); } catch (e) {} disegnaRichiami(); }
 function daAvvisareRichiami(x) { return !statoRichiamo(x) && !appuntamentoRichiamo(x); }
+// Chi riceve il messaggio: i clienti con lo stesso cellulare (o la stessa e-mail) sono un solo destinatario,
+// es. il collaboratore che ha messo il suo numero su tutti i suoi clienti, o marito e moglie: un messaggio unico con i nomi
 function destinatariRichiami() {
   const c = canaleRichiami(), l = filtraRichiami(clientiDaRichiamare(RICHIAMI.anno)).filter(daAvvisareRichiami);
   return {
-    wa: c === 'email' ? [] : l.filter(function (x) { return numeroWhatsApp(x.tel); }),
-    email: c === 'wa' ? [] : l.filter(function (x) { return x.email && (c === 'email' || !numeroWhatsApp(x.tel)); }),
+    wa: raggruppaRichiami(c === 'email' ? [] : l.filter(function (x) { return numeroWhatsApp(x.tel); }), function (x) { return numeroWhatsApp(x.tel); }),
+    email: raggruppaRichiami(c === 'wa' ? [] : l.filter(function (x) { return x.email && (c === 'email' || !numeroWhatsApp(x.tel)); }), function (x) { return String(x.email).trim().toLowerCase(); }),
   };
+}
+function raggruppaRichiami(lista, recapito) {
+  const gruppi = {}, ordine = [];
+  lista.forEach(function (x) {
+    const k = recapito(x);
+    if (!gruppi[k]) { gruppi[k] = { chiave: k, tel: x.tel, email: x.email, persone: [] }; ordine.push(gruppi[k]); }
+    gruppi[k].persone.push(x);
+  });
+  ordine.forEach(function (g) {
+    // tutti dello stesso collaboratore (non la sede): il messaggio va a nome del collaboratore
+    const cl = collaboratoreRichiamo(g.persone[0]);
+    g.collab = g.persone.length > 1 && cl !== SENZA_COLLAB && cl !== collaboratorePredefinito() && g.persone.every(function (x) { return collaboratoreRichiamo(x) === cl; }) ? cl : '';
+    g.saluto = g.collab ? String(g.collab).replace(/^730\s+/i, '') : g.persone[0].nome;
+  });
+  return ordine;
+}
+// Testo per un destinatario: per una persona sola è il messaggio di sempre, per più persone c'è l'elenco dei nomi
+function messaggioGruppoRichiamo(g) {
+  if (g.persone.length === 1) return messaggioRichiamo(g.persone[0]);
+  const nomi = g.persone.map(function (x) { return '– ' + nomeGentile(x.nome); }).join('\n');
+  if (RICHIAMI.modo === 'campagna') return 'Gentile ' + nomeGentile(g.saluto) + ', è iniziata la campagna 730 ' + RICHIAMI.anno + ' al CAF CISL di Alì Terme. '
+    + (g.collab ? 'Questi sono i suoi clienti dell\'anno scorso:' : 'Il messaggio riguarda:') + '\n' + nomi
+    + '\nPuò prenotare gli appuntamenti chiamandoci o rispondendo a questo messaggio: le diremo anche quali documenti portare. Grazie!'
+    + (typeof righeContattiCaf === 'function' ? '\n\n' + righeContattiCaf() : '');
+  return 'Gentile ' + nomeGentile(g.saluto) + ', il CAF CISL di Alì Terme le ricorda che è ancora possibile presentare la dichiarazione 730 ' + RICHIAMI.anno + ' per:\n' + nomi + '\nCi contatti per fissare gli appuntamenti. Grazie!';
+}
+// Dopo l'invio: ogni cliente del messaggio ha la sua riga nelle comunicazioni ed è segnato «avvisato»
+function registraGruppoRichiamo(g, canale, testo, primoGiaRegistrato) {
+  const motivo = RICHIAMI.modo === 'campagna' ? 'Avvio campagna 730' : 'Richiamo 730';
+  g.persone.forEach(function (x, i) {
+    if (!(primoGiaRegistrato && i === 0)) registraComunicazione({ canale: canale, telefono: canale === 'whatsapp' ? x.tel : null, email: canale === 'email' ? x.email : null, testo: testo, nome: x.nome, cf: x.cf || '', motivo: motivo, senzaContesto: true });
+    if (RICHIAMI.modo === 'campagna') salvaEsitoRichiamo(x, 'avvisato', '');
+  });
 }
 // Prima di mandare: elenco di chi riceverà il messaggio (WhatsApp ed e-mail), si può togliere qualcuno
 function riepilogoInvioRichiami() {
@@ -28,33 +63,40 @@ function riepilogoInvioRichiami() {
   ov.id = 'popup-invio-richiami';
   ov.style.cssText = 'position:fixed; inset:0; z-index:460; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:10px';
   ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('[data-chiudi]')) ov.remove(); });
-  const riga = function (x, canale, recapito) {
-    return '<label style="display:flex; gap:8px; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:13.5px; cursor:pointer"><input type="checkbox" checked data-canale="' + canale + '" value="' + esc(x.chiave) + '" onchange="contaInvioRichiami()" style="width:18px; height:18px">'
-      + '<span style="flex:1; color:var(--ink)"><b>' + esc(x.nome) + '</b>' + (collaboratoreRichiamo(x) && collaboratoreRichiamo(x) !== SENZA_COLLAB ? ' <span class="sub2">· ' + esc(collaboratoreRichiamo(x)) + '</span>' : '') + '</span><span class="sub2">' + esc(recapito) + '</span></label>';
+  const riga = function (g, canale, recapito) {
+    const x = g.persone[0], cl = collaboratoreRichiamo(x);
+    const testa = g.persone.length > 1
+      ? '<b>👥 ' + esc(g.collab || nomeGentile(g.saluto).toUpperCase()) + ' – ' + g.persone.length + ' clienti</b> <span class="sub2">(un solo messaggio)</span><div style="font-size:12px; color:var(--sub)">' + g.persone.map(function (y) { return esc(y.nome); }).join(' · ') + '</div>'
+      : '<b>' + esc(x.nome) + '</b>' + (cl !== SENZA_COLLAB ? ' <span class="sub2">· ' + esc(cl) + '</span>' : '');
+    return '<label style="display:flex; gap:8px; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:13.5px; cursor:pointer"><input type="checkbox" checked data-canale="' + canale + '" value="' + esc(g.chiave) + '" onchange="contaInvioRichiami()" style="width:18px; height:18px">'
+      + '<span style="flex:1; color:var(--ink)">' + testa + '</span><span class="sub2">' + esc(recapito) + '</span></label>';
   };
   const gruppo = function (titolo, colore, canale, lista, recapito) {
     if (!lista.length) return '';
     return '<div style="display:flex; justify-content:space-between; align-items:center; margin:12px 0 4px"><b style="font-size:15px; color:' + colore + '">' + titolo + ' (<span data-n="' + canale + '">' + lista.length + '</span>)</b>'
       + '<span style="font-size:12px"><a href="#" onclick="spuntaInvioRichiami(\'' + canale + '\', true); return false">tutti</a> · <a href="#" onclick="spuntaInvioRichiami(\'' + canale + '\', false); return false">nessuno</a></span></div>'
-      + lista.map(function (x) { return riga(x, canale, recapito(x)); }).join('');
+      + lista.map(function (g) { return riga(g, canale, recapito(g)); }).join('');
   };
   // i testi che partono, con il nome del primo cliente di ogni gruppo (per gli altri cambia solo il nome)
-  const box = function (titolo, colore, x, oggetto) {
-    if (!x) return '';
+  const box = function (titolo, colore, lista, oggetto) {
+    if (!lista.length) return '';
+    const uno = lista.find(function (y) { return y.persone.length === 1; }), x = uno && uno.persone[0];
+    const g = lista.find(function (y) { return y.persone.length > 1; });
     return '<div style="margin-top:12px; border:1.5px solid ' + colore + '; border-radius:10px; overflow:hidden"><div style="padding:6px 10px; background:' + colore + '; color:#fff; font-weight:800; font-size:13.5px">' + titolo + '</div>'
       + (oggetto ? '<div style="padding:6px 10px; font-size:13px; border-bottom:1px solid var(--line)"><b>Oggetto:</b> ' + esc(oggetto) + '</div>' : '')
-      + '<div style="white-space:pre-wrap; font-size:13px; padding:8px 10px">' + esc(messaggioRichiamo(x)) + '</div>'
-      + '<div class="sub2" style="padding:0 10px 6px">Esempio per ' + esc(x.nome) + ': per gli altri cambia solo il nome.</div></div>';
+      + (x ? '<div style="white-space:pre-wrap; font-size:13px; padding:8px 10px">' + esc(messaggioRichiamo(x)) + '</div>'
+      + '<div class="sub2" style="padding:0 10px 6px">Esempio per ' + esc(x.nome) + ': per gli altri cambia solo il nome.</div>' : '')
+      + (g ? '<div style="border-top:1px dashed var(--line); padding:6px 10px 0; font-size:12.5px; font-weight:800">👥 A chi ha più clienti sullo stesso ' + (oggetto ? 'indirizzo' : 'numero') + ' arriva un solo messaggio, così:</div><div style="white-space:pre-wrap; font-size:13px; padding:6px 10px 8px">' + esc(messaggioGruppoRichiamo(g)) + '</div>' : '') + '</div>';
   };
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:14px; max-width:640px; width:100%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,.3)">'
     + '<div style="padding:14px 16px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center"><b style="font-size:17px">📤 A chi mando il messaggio</b><button type="button" data-chiudi style="border:none; background:none; font-size:22px; cursor:pointer; color:var(--ink)">✕</button></div>'
     + '<div style="padding:4px 16px 12px; overflow:auto">'
     + '<div class="sub2" style="margin-top:8px">Controlla l\'elenco: togli la spunta a chi non vuoi mandarlo.</div>'
-    + gruppo('📧 E-mail (partono tutte insieme dalla casella del CAF)', '#1d4f91', 'email', d.email, function (x) { return x.email; })
-    + gruppo('💬 WhatsApp (uno dopo l\'altro)', '#1a7f37', 'wa', d.wa, function (x) { return x.tel; })
+    + gruppo('📧 E-mail (partono tutte insieme dalla casella del CAF)', '#1d4f91', 'email', d.email, function (g) { return g.email; })
+    + gruppo('💬 WhatsApp (uno dopo l\'altro)', '#1a7f37', 'wa', d.wa, function (g) { return g.tel; })
     + '<div style="margin-top:14px; font-weight:800; font-size:15px">👁️ Ecco cosa riceveranno</div>'
-    + box('📧 L\'e-mail', '#1d4f91', d.email[0], oggettoRichiamo())
-    + box('💬 Il messaggio WhatsApp', '#1a7f37', d.wa[0])
+    + box('📧 L\'e-mail', '#1d4f91', d.email, oggettoRichiamo())
+    + box('💬 Il messaggio WhatsApp', '#1a7f37', d.wa)
     + '</div><div style="padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap">'
     + '<button type="button" data-chiudi style="border:1.5px solid var(--line); background:transparent; color:var(--ink); border-radius:999px; padding:8px 16px; font-weight:700; cursor:pointer">Annulla</button>'
     + '<button type="button" id="ric-conferma-invio" onclick="confermaInvioRichiami(this)" style="background:#25a35a; color:#fff; border:none; border-radius:999px; padding:8px 18px; font-weight:800; cursor:pointer"></button></div></div>';
@@ -89,30 +131,30 @@ async function avviaInvioRichiami(b, sel) {
     if (b) b.disabled = true;
     let ok = 0; const ko = [];
     const oggetto = oggettoRichiamo();
-    for (const x of d.email) {
+    for (const g of d.email) {
       if (b) b.textContent = '⏳ E-mail ' + (ok + ko.length + 1) + ' di ' + d.email.length + '…';
       try {
-        await chiamaInviaEmail('POST', { a: x.email, oggetto: oggetto, testo: messaggioRichiamo(x) });
-        contestoComunicazione({ nome: x.nome, cf: x.cf || '', motivo: RICHIAMI.modo === 'campagna' ? 'Avvio campagna 730' : 'Richiamo 730' });
-        await registraComunicazione({ canale: 'email', email: x.email, testo: oggetto + ' – ' + messaggioRichiamo(x) });
-        if (RICHIAMI.modo === 'campagna') await salvaEsitoRichiamo(x, 'avvisato', '');
+        const testo = messaggioGruppoRichiamo(g);
+        await chiamaInviaEmail('POST', { a: g.email, oggetto: oggetto, testo: testo });
+        registraGruppoRichiamo(g, 'email', oggetto + ' – ' + testo, false);
         ok++;
-      } catch (e) { ko.push(x.nome); }
+      } catch (e) { ko.push(nomeGentile(g.saluto)); }
     }
     if (b) b.disabled = false;
     avviso('📧 E-mail inviate: ' + ok + (ko.length ? ' · non partite: ' + ko.join(', ') : ''), !!ko.length);
   }
-  CODA_RICHIAMI.lista = d.wa.map(function (x) { return x.chiave; });
+  CODA_RICHIAMI.lista = d.wa;
   CODA_RICHIAMI.pos = 0;
   if (CODA_RICHIAMI.lista.length) prossimoRichiamo(); else disegnaRichiami();
 }
 function prossimoRichiamo() {
-  const k = CODA_RICHIAMI.lista[CODA_RICHIAMI.pos];
-  const x = clientiDaRichiamare(RICHIAMI.anno).find(function (y) { return y.chiave === k; });
+  const g = CODA_RICHIAMI.lista[CODA_RICHIAMI.pos];
   CODA_RICHIAMI.pos++;
-  if (x) {
+  if (g) {
+    const x = g.persone[0], testo = messaggioGruppoRichiamo(g);
+    // la riga del primo cliente la scrive WhatsApp quando il messaggio parte; gli altri del messaggio unico qui
     contestoComunicazione({ nome: x.nome, cf: x.cf || '', motivo: RICHIAMI.modo === 'campagna' ? 'Avvio campagna 730' : 'Richiamo 730' });
-    if (inviaWhatsAppLibero(x.tel, messaggioRichiamo(x), x.nome) && RICHIAMI.modo === 'campagna') salvaEsitoRichiamo(x, 'avvisato', '');
+    if (inviaWhatsAppLibero(g.tel, testo, x.nome)) registraGruppoRichiamo(g, 'whatsapp', testo, true);
   }
   if (CODA_RICHIAMI.pos >= CODA_RICHIAMI.lista.length) { CODA_RICHIAMI.lista = []; avviso('✓ Ultimo messaggio aperto: invio finito'); }
   disegnaRichiami();
