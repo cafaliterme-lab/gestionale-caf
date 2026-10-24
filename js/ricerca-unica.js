@@ -60,6 +60,12 @@ document.addEventListener('click', function (e) {
   if (!(e.target.closest && e.target.closest('#ricerca-unica'))) chiudiRicercaUnica();
 });
 
+// Apre la scheda di una persona dal nome (es. i clienti portati da un riferimento)
+function apriSchedaPersonaNome(nome, cf) {
+  RICERCA_UNICA.lista = personeRicercaUnica(cf || nome);
+  const i = RICERCA_UNICA.lista.findIndex(function (x) { return (cf && x.cf === cf) || x.nome === String(nome || '').toUpperCase(); });
+  if (i >= 0) apriSchedaPersona(i);
+}
 function apriSchedaPersona(i) {
   const x = RICERCA_UNICA.lista[i]; if (!x) return;
   chiudiRicercaUnica();
@@ -103,7 +109,7 @@ function disegnaSchedaPersona() {
   }).join('');
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border-top:6px solid #5e4fa2; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:980px; width:100%; max-height:94vh; overflow:auto">'
     + '<div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap">'
-    + '<div><div style="font-size:21px; font-weight:800">' + esc(x.nome) + (typeof badgeCollaboratore === 'function' ? badgeCollaboratore(c) + badgeRuolo(c) : '') + (c.decedutoIl ? ' <span style="font-size:13px; background:#374151; color:#fff; border-radius:999px; padding:2px 10px">✝️ deceduto/a il ' + esc(c.decedutoIl) + '</span>' : '') + '</div>'
+    + '<div><div style="font-size:21px; font-weight:800">' + esc(x.nome) + (typeof badgeCollaboratore === 'function' ? badgeCollaboratore(c) + badgeRuolo(c) : '') + (typeof badgeRiferimento === 'function' ? badgeRiferimento(c) : '') + (c.decedutoIl ? ' <span style="font-size:13px; background:#374151; color:#fff; border-radius:999px; padding:2px 10px">✝️ deceduto/a il ' + esc(c.decedutoIl) + '</span>' : '') + '</div>'
     + '<div class="sub2">' + [x.nascita || c.dataNascita ? 'nato/a il ' + esc(x.nascita || c.dataNascita) : '', c.comuneNascita ? 'a ' + esc(c.comuneNascita) : '', x.cf ? 'CF ' + esc(x.cf) : ''].filter(Boolean).join(' · ') + '</div>'
     + '<div style="font-size:13px; margin-top:4px">' + [tel ? '📞 ' + esc(tel) : '', fisso ? '☎️ ' + esc(fisso) : '', email ? '✉️ ' + esc(email) : ''].filter(Boolean).join(' · ') + (tel || fisso || email ? '' : '<span style="color:#c0392b">Nessun recapito in archivio</span>') + '</div>'
     + (c.documentoScadenza || c.documentoNumero ? '<div style="margin-top:4px"><span style="display:inline-block; padding:2px 10px; border-radius:999px; font-size:12.5px; font-weight:700; color:#fff; background:' + (st && !st.valido ? '#c0392b' : '#1a7f37') + '">🪪 ' + esc(c.documentoTipo || 'Documento') + (c.documentoNumero ? ' ' + esc(c.documentoNumero) : '') + (c.documentoScadenza ? (st && !st.valido ? ' SCADUTO il ' : ' valido fino al ') + esc(c.documentoScadenza) : '') + '</span></div>' : '')
@@ -119,6 +125,13 @@ function disegnaSchedaPersona() {
     + '</div>'
     + (app.length ? '<div style="margin-bottom:10px; padding:8px 12px; border-radius:10px; background:color-mix(in srgb, #0f766e 10%, var(--card)); border:1.5px solid #0f766e"><b style="color:#0f766e">🗓️ Appuntament' + (app.length === 1 ? 'o' : 'i') + ':</b> ' + app.map(function (a) { return esc(giornoLungo(a.data)) + ' alle <b>' + esc(a.ora) + '</b>' + (a.tipo ? ' (' + esc(a.tipo) + ')' : ''); }).join(' · ') + '</div>' : '')
     + (scad.length ? '<div style="margin-bottom:10px; padding:8px 12px; border-radius:10px; background:color-mix(in srgb, #7b3fa0 10%, var(--card)); border:1.5px solid #7b3fa0"><b style="color:#7b3fa0">⏰ Scadenze:</b> ' + scad.map(function (s) { return esc(s.titolo || '') + ' – ' + esc(s.data ? itDaIso(String(s.data).slice(0, 10)) || s.data : ''); }).join(' · ') + '</div>' : '')
+    + (c.note ? '<div style="margin-bottom:10px; padding:8px 12px; border-radius:10px; border:1.5px dashed #5b6b82; white-space:pre-wrap; font-size:13px"><b>📝 Note:</b> ' + esc(c.note) + '</div>' : '')
+    + (function () {
+      // clienti che questa persona ha portato al CAF (riferimento)
+      const portati = typeof clientiPortatiDa === 'function' ? clientiPortatiDa(x.nome) : [];
+      return portati.length ? '<div style="margin-bottom:10px; padding:8px 12px; border-radius:10px; border:1.5px solid #6d3fa0; background:color-mix(in srgb, #6d3fa0 6%, var(--card)); font-size:13px"><b style="color:#6d3fa0">👤 È il riferimento di ' + portati.length + ' client' + (portati.length === 1 ? 'e' : 'i') + ':</b> '
+        + portati.map(function (y) { return '<a href="#" onclick="apriSchedaPersonaNome(' + esc(JSON.stringify(y.nomeCompleto)) + ', ' + esc(JSON.stringify(y.codiceFiscale || '')) + '); return false">' + esc(y.nomeCompleto) + '</a>'; }).join(' · ') + '</div>' : '';
+    })()
     + (typeof elencoComunicazioniHTML === 'function' ? elencoComunicazioniHTML(x.nome, x.cf) : '')
     + (typeof avvisoMorosoHTML === 'function' ? avvisoMorosoHTML(pratiche) : '')
     + '<div class="meta" style="margin:0 0 6px">' + valide.length + ' pratiche' + (pratiche.length > valide.length ? ' (+ ' + (pratiche.length - valide.length) + ' annullate)' : '') + ' · pagato in tutto <b>' + fmtEuro(valide.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0)) + '</b>'

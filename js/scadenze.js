@@ -301,6 +301,8 @@ function nuovoClienteArchivio(testo, dopo) {
     + campo('docnum', 'N. documento', 'placeholder="Es. CA12345AB" style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\\s+/g, \'\')"')
     + '<div><label>Ruolo nella dichiarazione</label><select id="nc-ruolo" onchange="document.getElementById(\'nc-dich-box\').style.display = this.value === \'coniuge\' ? \'\' : \'none\'">' + (typeof opzioniRuoloDichiarazione === 'function' ? opzioniRuoloDichiarazione('dichiarante') : '') + '</select></div>'
     + '<div><label title="Facoltativo: a chi appartiene il cliente">🤝 Collaboratore</label><select id="nc-collab">' + (typeof opzioniCollaboratore === 'function' ? opzioniCollaboratore(collaboratorePredefinito()) : '') + '</select></div>'
+    + '<div class="full"><label>👤 Riferimento <span style="font-weight:600; color:var(--sub)">(chi ha portato il cliente)</span></label><input id="nc-riferimento" list="lista-nomi-archivio" onfocus="if (typeof preparaNomiRiferimento === \'function\') preparaNomiRiferimento()" placeholder="Facoltativo: cognome e nome" autocomplete="off" style="text-transform:uppercase"></div>'
+    + '<div class="full"><label>📝 Note</label><input id="nc-note" placeholder="Facoltative"></div>'
     + '<div class="full" id="nc-dich-box" style="display:none"><label>💑 Dichiarante (titolare della congiunta): cognome e nome, data di nascita</label>' + (typeof campiDichiaranteHTML === 'function' ? campiDichiaranteHTML('nc-', '', '') : '') + '</div>'
     + '</div><div id="nc-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
@@ -336,6 +338,8 @@ function nuovoClienteArchivio(testo, dopo) {
       if (collabNc && typeof salvaCollaboratoreCliente === 'function') await salvaCollaboratoreCliente(nc, nascita, cf, collabNc);
       const ruoloNc = document.getElementById('nc-ruolo') ? v('ruolo') : '';
       if (ruoloNc && typeof salvaRuoloCliente === 'function') await salvaRuoloCliente(nc, nascita, cf, ruoloNc, false, ruoloNc === 'coniuge' ? v('dichiarante').toUpperCase() : '', ruoloNc === 'coniuge' ? v('dichiarante-nascita') : '');
+      const rifNc = document.getElementById('nc-riferimento') ? v('riferimento').toUpperCase() : '', noteNc = document.getElementById('nc-note') ? v('note') : '';
+      if ((rifNc || noteNc) && typeof salvaRiferimentoCliente === 'function') await salvaRiferimentoCliente(nc, nascita, cf, { riferimento: rifNc || null, note: noteNc || null });
       if ((comuneNc || docnumNc || doctipoNc) && data.clienti.salvaDocumento) await data.clienti.salvaDocumento({ codiceFiscale: cf, nomeCompleto: nc, dataNascita: nascita, comuneNascita: comuneNc, documentoNumero: docnumNc, documentoTipo: doctipoNc });
       ov.remove();
       avviso('📇 ' + nc + (gia ? ': dati aggiornati in archivio' : ' aggiunto all\'archivio clienti'));

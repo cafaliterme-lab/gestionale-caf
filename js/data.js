@@ -119,6 +119,7 @@ const schemas = {
     congCodiceFiscale: 'cong_codice_fiscale',
     congTelefono: 'cong_telefono',
     congEmail: 'cong_email',
+    riferimento: 'riferimento',
     congDocumentoScadenza: 'cong_documento_scadenza',
     congDocumentoNumero: 'cong_documento_numero',
     congDocumentoTipo: 'cong_documento_tipo',
@@ -223,6 +224,8 @@ const schemas = {
     dichiaranteNascita: 'dichiarante_nascita',
     noMessaggi: 'no_messaggi',
     noWhatsapp: 'no_whatsapp',
+    riferimento: 'riferimento',
+    note: 'note',
     creatoIl: 'creato_il',
   },
   scadenza: {

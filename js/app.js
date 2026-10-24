@@ -277,6 +277,28 @@ async function salvaCollaboratoreCliente(nomeCompleto, dataNascita, codiceFiscal
     const rec = trovaInArchivio(nomeCompleto, dataNascita, codiceFiscale); if(rec && (!soloSeVuoto || !rec.collaboratore)) rec.collaboratore = collaboratore || null;
   }catch(e){ console.error('collaboratore cliente', e); }
 }
+// Riferimento (la persona che ha portato il cliente) e note nella scheda del cliente
+async function salvaRiferimentoCliente(nomeCompleto, dataNascita, codiceFiscale, campi){
+  try{
+    let q = supabase.from('clienti').update({ riferimento: campi.riferimento != null ? (campi.riferimento || null) : undefined, note: campi.note != null ? (campi.note || null) : undefined });
+    q = codiceFiscale ? q.eq('codice_fiscale', codiceFiscale) : q.eq('nome_completo', nomeCompleto).eq('data_nascita', dataNascita || '');
+    const { error } = await q;
+    if(error) throw new Error(error.message);
+    const rec = trovaInArchivio(nomeCompleto, dataNascita, codiceFiscale);
+    if(rec){ if(campi.riferimento != null) rec.riferimento = campi.riferimento || null; if(campi.note != null) rec.note = campi.note || null; }
+  }catch(e){ console.error('riferimento cliente', e); }
+}
+// Elenco dei nomi dell'archivio per la casella del riferimento (si crea una volta)
+function preparaNomiRiferimento(){
+  if(typeof datalistNomiArchivio !== 'function') return;
+  const d = document.createElement('div'); d.innerHTML = datalistNomiArchivio(); document.body.appendChild(d.firstChild);
+}
+function badgeRiferimento(c){ return c && c.riferimento ? ' <span style="font-size:11.5px; font-weight:800; color:#6d3fa0" title="Persona che ha portato il cliente">👤 rif. ' + esc(c.riferimento) + '</span>' : ''; }
+// Clienti portati da una persona (per la scheda della persona)
+function clientiPortatiDa(nome){
+  nome = String(nome || '').trim().toUpperCase(); if(!nome) return [];
+  return (ARCHIVIO_CLIENTI || []).filter(function(c){ return String(c.riferimento || '').trim().toUpperCase() === nome; });
+}
 // Nuovo cliente scritto a mano: va in archivio e poi si ritrova subito nella ricerca, pronto da scegliere per la pratica
 function nuovoClienteAMano(){
   const cerca = document.getElementById('cli-cerca');
@@ -322,6 +344,7 @@ function scegliCliente(i, ctx){
     if(document.getElementById('f-doc-num')) document.getElementById('f-doc-num').value = c.documentoNumero || '';
     if(document.getElementById('f-doc-tipo') && c.documentoTipo){ document.getElementById('f-doc-tipo').innerHTML = opzioniTipoDoc(c.documentoTipo); }
     if(c.comuneNascita && document.getElementById('f-comune')){ document.getElementById('f-comune').value = c.comuneNascita; document.getElementById('f-comune').dataset.auto = ''; }
+    if(document.getElementById('f-riferimento')) document.getElementById('f-riferimento').value = c.riferimento || '';
     document.getElementById('f-codfisc').dataset.auto = '';
     controllaCampoCF();
     aggiornaStoricoForm();
@@ -2194,7 +2217,7 @@ function render(){
           <span class="badge stato">${pallino(p.stato)}${statoLabel(p.stato)}</span>
         </div>
       </div>
-      <div class="meta">Aperta il ${p.data||'-'}${eColf(p.tipo) ? (p.scadenzaAssistenza ? ' · <b style="color:#c0392b">⏰ Scadenza assistenza il '+esc(p.scadenzaAssistenza)+'</b>' : '') : (p.dataFine ? ' · <b>Fine lavorazione il '+esc(p.dataFine)+'</b>' : '')} ${p.note ? '· '+esc(p.note) : ''}</div>
+      <div class="meta">Aperta il ${p.data||'-'}${eColf(p.tipo) ? (p.scadenzaAssistenza ? ' · <b style="color:#c0392b">⏰ Scadenza assistenza il '+esc(p.scadenzaAssistenza)+'</b>' : '') : (p.dataFine ? ' · <b>Fine lavorazione il '+esc(p.dataFine)+'</b>' : '')} ${p.riferimento ? '· <b style="color:#6d3fa0">👤 rif. '+esc(p.riferimento)+'</b> ' : ''}${p.note ? '· '+esc(p.note) : ''}</div>
       <div class="meta compenso">Fattura: ${fmtEuro(p.compenso)} · Pagato effettivo: ${fmtEuro(p.pagato)}${p.metodoPagamento ? ' (' + esc(p.metodoPagamento) + ')' : ''}</div>
       ${typeof documentoCardHTML === 'function' ? documentoCardHTML(p) : ''}
       ${typeof documentiCardHTML === 'function' ? documentiCardHTML(p) : ''}
@@ -2236,6 +2259,7 @@ function render(){
           <div><label>Pagato effettivo (€)</label><div style="display:flex; gap:6px"><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0"><select id="e-met-${p.id}" title="Tipo di pagamento" style="width:auto; flex:0 0 auto">${metodoOptions(p.metodoPagamento)}</select></div></div>
           <div><label>Numero fattura</label><input id="e-nf-${p.id}" value="${esc(p.numFattura)}" oninput="var d=document.getElementById('e-df-${p.id}'); if(this.value.trim() && d && !d.value.trim()) d.value=todayIT();"></div>
           <div><label>Data fattura</label><input id="e-df-${p.id}" value="${esc(p.dataFattura)}" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
+          <div class="full"><label>👤 Riferimento (chi ha portato il cliente)</label><input id="e-rif-${p.id}" list="lista-nomi-archivio" onfocus="preparaNomiRiferimento()" value="${esc(p.riferimento || '')}" placeholder="Facoltativo: cognome e nome" style="text-transform:uppercase"></div>
           <div class="full"><label>Note</label><input id="e-note-${p.id}" value="${esc(p.note)}">
             <label class="chk" style="margin-top:6px; display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#1d4f91"><input type="checkbox" id="e-viaemail-${p.id}" ${p.viaEmail ? 'checked' : ''} style="width:auto; margin:0"> 📧 Pratica pervenuta via e-mail</label>
             <label class="chk" style="margin-top:6px; margin-left:12px; display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#c0392b"><input type="checkbox" id="e-cisl-${p.id}" ${p.iscrittoCisl ? 'checked' : ''} onchange="var b=document.getElementById('e-ric-cisl-${p.id}'); if(b) b.style.display=this.checked?'':'none'" style="width:auto; margin:0"> 👤 Iscritto CISL</label></div>
@@ -2371,6 +2395,7 @@ async function addPraticaInterna(){
   const email = document.getElementById('f-email').value.trim().toLowerCase();
   const dataPratica = todayIT();
   const note = document.getElementById('f-note').value.trim();
+  const riferimento = ((document.getElementById('f-riferimento') || {}).value || '').trim().toUpperCase();
   const viaEmail = !!(document.getElementById('f-via-email')||{}).checked;
   const iscrittoCisl = !!(document.getElementById('f-iscritto-cisl')||{}).checked;
 
@@ -2464,6 +2489,8 @@ async function addPraticaInterna(){
   if(documentoNumero || comuneNascita || documentoTipo){ try{ await data.clienti.salvaDocumento({ codiceFiscale: codiceFiscale, nomeCompleto: (cognome + ' ' + nomeProprio).trim(), dataNascita: cf, documentoNumero: documentoNumero, comuneNascita: comuneNascita, documentoTipo: documentoTipo }); }catch(e){ console.error('numero documento', e); } }
   // ruolo nella dichiarazione nell'archivio (solo se non è già indicato)
   salvaRuoloCliente((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale, 'dichiarante', true);
+  // riferimento scritto nel modulo: va anche nella scheda del cliente
+  if(riferimento){ const rc = trovaInArchivio((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale); if(!rc || String(rc.riferimento || '').toUpperCase() !== riferimento) salvaRiferimentoCliente((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale, { riferimento: riferimento }); }
   // pratica 730: il collaboratore (tipo di pratica) va nella scheda del cliente e del coniuge, se non è già indicato
   if(e730({ tipo: tipo })){
     salvaCollaboratoreCliente((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale, tipo, true);
@@ -2488,7 +2515,8 @@ async function addPraticaInterna(){
     numFattura: '',
     dataFattura: '',
     inseritoDa: ((auth.profilo && auth.profilo.nome) || currentUser || '').toUpperCase(),
-    inseritoIl: new Date().toISOString()
+    inseritoIl: new Date().toISOString(),
+    riferimento: riferimento || null
   };
 
   // Usa la nuova API data.js
@@ -2527,6 +2555,7 @@ async function addPraticaInterna(){
   document.getElementById('f-data-fine').value='';
   document.getElementById('f-stato').value='arrivo';
   document.getElementById('f-note').value='';
+  if(document.getElementById('f-riferimento')) document.getElementById('f-riferimento').value='';
   { const ve = document.getElementById('f-via-email'); if(ve) ve.checked = false; const ic = document.getElementById('f-iscritto-cisl'); if(ic){ ic.checked = false; delete ic.dataset.manuale; aspettoIscrittoCisl(); } }
   if(document.getElementById('f-desctipo')) document.getElementById('f-desctipo').value='';
   aggiornaDescTipoForm();
@@ -3502,6 +3531,7 @@ async function salvaModifica(id){
     documentoNumero: g('e-docnum').trim().toUpperCase().replace(/\s+/g, ''),
     documentoTipo: g('e-doctipo'),
     note: g('e-note').trim(),
+    riferimento: g('e-rif').trim().toUpperCase() || null,
     viaEmail: !!(document.getElementById('e-viaemail-'+id)||{}).checked,
     iscrittoCisl: !!(document.getElementById('e-cisl-'+id)||{}).checked,
     fatt: (numFattura || dataFattura) ? 'fatturata' : 'dafatturare'
