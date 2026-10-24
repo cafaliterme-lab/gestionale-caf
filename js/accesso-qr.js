@@ -128,7 +128,7 @@ function aggiungiQrAlLogin() {
   // telefono aperto dal QR ma non ancora entrato: si spiega cosa fare (solo la prima volta)
   let haAccesso = false;
   try { haAccesso = !!localStorage.getItem('auth_token'); } catch (e) { /* niente */ }
-  if (QR_DA_APPROVARE && !haAccesso && !chiaveTelefono() && !document.getElementById('qr-primo-accesso')) {
+  if (QR_DA_APPROVARE && RECUPERO_CHIAVE_FATTO && !haAccesso && !chiaveTelefono() && !document.getElementById('qr-primo-accesso')) {
     const av = document.createElement('div');
     av.id = 'qr-primo-accesso';
     av.style.cssText = 'margin:0 0 12px; padding:10px 12px; border-radius:12px; background:#fff4e5; border:2px solid #d98b1e; color:#7a4a05; font-size:13px; text-align:left';
@@ -217,8 +217,23 @@ async function apriLettoreQR() {
 
 // Chiave del telefono: dopo il primo accesso col QR il telefono resta abilitato (anche se nel programma si preme Esci)
 function chiaveTelefono() { try { return JSON.parse(localStorage.getItem('qr_telefono') || 'null'); } catch (e) { return null; } }
-function salvaChiaveTelefono(k) { try { localStorage.setItem('qr_telefono', JSON.stringify({ id: k.id, segreto: k.segreto })); } catch (e) { /* niente */ } }
-function togliChiaveTelefono() { try { localStorage.removeItem('qr_telefono'); } catch (e) { /* niente */ } }
+// La chiave si salva anche in un cookie del server del sito (api/telefono-qr): su iPhone Safari cancella
+// i dati della pagina dopo circa 7 giorni, il cookie invece resta (fino a un anno)
+function cookieChiaveTelefono(metodo, corpo) {
+  return fetch('api/telefono-qr', { method: metodo, credentials: 'same-origin', cache: 'no-store', headers: corpo ? { 'Content-Type': 'application/json' } : {}, body: corpo ? JSON.stringify(corpo) : undefined })
+    .then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; });
+}
+function salvaChiaveTelefono(k, soloQui) {
+  try { localStorage.setItem('qr_telefono', JSON.stringify({ id: k.id, segreto: k.segreto })); } catch (e) { /* niente */ }
+  if (!soloQui) cookieChiaveTelefono('POST', { id: k.id, segreto: k.segreto });
+}
+function togliChiaveTelefono() { try { localStorage.removeItem('qr_telefono'); } catch (e) { /* niente */ } cookieChiaveTelefono('DELETE'); }
+// Chiave dimenticata dalla pagina ma ancora nel cookie: si recupera (una volta all'apertura)
+let RECUPERO_CHIAVE = null;
+function recuperaChiaveTelefono() {
+  if (!RECUPERO_CHIAVE) RECUPERO_CHIAVE = chiaveTelefono() ? Promise.resolve() : cookieChiaveTelefono('GET').then(function (k) { if (k && k.id && k.segreto && !chiaveTelefono()) salvaChiaveTelefono(k, true); });
+  return RECUPERO_CHIAVE;
+}
 function utenteEntrato() { return typeof auth !== 'undefined' && auth && !!auth.profilo; }
 
 // Messaggio sopra a tutto (anche sopra la schermata di accesso), si chiude da solo
@@ -274,6 +289,7 @@ async function confermaAccessoPC(codice) {
   try {
     await chiamaAccessoQr(corpo('approva'), entrato);
     esitoQR('✓ Fatto: il PC sta entrando come ' + nome, true);
+    if (chiave) cookieChiaveTelefono('POST', chiave); // il cookie dura un altro anno
   } catch (e) { esitoQR('❌ ' + e.message, false); return; }
   // primo accesso da questo telefono: si abilita, così le prossime volte basta inquadrare
   if (!chiave && entrato) {
@@ -287,9 +303,13 @@ async function confermaAccessoPC(codice) {
   if (!cod) return;
   QR_DA_APPROVARE = cod;
   try { history.replaceState(null, '', location.pathname); } catch (e) { /* niente */ }
+  recuperaChiaveTelefono().then(function () { RECUPERO_CHIAVE_FATTO = true; const ov = document.getElementById('login-overlay'); if (ov && ov.style.display !== 'none') aggiungiQrAlLogin(); });
 })();
+// telefono già abilitato prima del cookie: si copia la chiave nel cookie, così non si perde più
+(function () { const k = chiaveTelefono(); if (k && !QR_DA_APPROVARE) cookieChiaveTelefono('POST', k); })();
+let RECUPERO_CHIAVE_FATTO = false;
 setInterval(function () {
-  if (!QR_DA_APPROVARE) return;
+  if (!QR_DA_APPROVARE || !RECUPERO_CHIAVE_FATTO) return;
   // telefono già abilitato: si chiede subito la conferma, senza aspettare di entrare nel programma
   if (!chiaveTelefono()) {
     if (!utenteEntrato()) return;
