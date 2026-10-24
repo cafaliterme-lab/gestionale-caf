@@ -2400,6 +2400,7 @@ function render(){
   const avvisoFiltri = filtriRiq.length ? '<div style="margin:0 0 10px; padding:8px 12px; border-radius:10px; border:2px solid #b35f0c; background:color-mix(in srgb, #b35f0c 8%, var(--card)); font-size:13px; display:flex; gap:8px; flex-wrap:wrap; align-items:center"><span style="flex:1 1 260px">⚠️ <b>Filtri del registro accesi</b> (' + esc(filtriRiq.join(', ')) + '): i riquadri contano solo le pratiche filtrate.</span><button type="button" onclick="azzeraFiltriRegistro()" style="background:#b35f0c; color:#fff; border:none; border-radius:999px; padding:5px 12px; font-weight:700; cursor:pointer">✕ Togli i filtri</button></div>' : '';
   const nomiGruppi = getTipiList().slice();
   visibili.forEach(function(p){ const k = p.tipo || 'SENZA TIPO'; if(nomiGruppi.indexOf(k) < 0) nomiGruppi.push(k); });
+  const TOT_RIQ = { n: 0, fe: 0, inc: 0, acc: 0 };
   list.innerHTML = avvisoFiltri + nomiGruppi.map(function(k){
     const tuttiTipo = visibili.filter(function(p){ return (p.tipo || 'SENZA TIPO') === k; });
     if(inRicerca && !tuttiTipo.length) return '';
@@ -2413,6 +2414,7 @@ function render(){
     const feAtt = totaleFattureInAttesa(items);
     const inc = items.reduce(function(a,p){ return a + Number(p.pagato||0); }, 0);
     const accK = inRicerca ? 0 : totaleAcconti(annoAttivo(), function(t){ return t === k; });
+    TOT_RIQ.n += sommaPeso(items.filter(function(p){ return !eRinuncia(p); })); TOT_RIQ.fe += fe; TOT_RIQ.inc += inc; TOT_RIQ.acc += accK;
     const open = aperti[k] === true;
     const col = coloreCollaboratore(k);
     const schedeAperte = aperti[k + '|schede'] === true || items.some(function(p){ return p._editing || p._confirmDelete || p._editingFattura; });
@@ -2426,7 +2428,27 @@ function render(){
       + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open; if(!this.open) delete SCHEDA_SOLA[this.dataset.k.replace(/\|schede$/, \'\')]" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 ' + (sola ? 'Scheda della pratica ' + esc(formattaProtocollo(sola)) + ' – ' + esc(sola.nome || '') : 'Schede complete delle pratiche (' + items.length + ')') + ' – per modificare, ricevuta, WhatsApp…</summary>'
         + (sola && items.length > 1 ? '<button type="button" onclick="mostraTutteSchede(this.dataset.k)" data-k="' + esc(k) + '" style="margin:0 0 8px; padding:5px 14px; border-radius:999px; border:1px dashed var(--sub); background:none; color:var(--sub); font-weight:700; cursor:pointer">📋 Mostra tutte le schede del gruppo (' + items.length + ')</button>' : '')
         + schede.map(cardHTML).join('') + '</details>' : '') + '</div></details>';
-  }).join('');
+  }).join('') + riepilogoRiquadriHTML(TOT_RIQ, filtriRiq.length > 0, {
+    n: conti.tot + sommaPeso(pratAnno.filter(eAltraConta)), fe: fattureEmesse, inc: incassoLordo, acc: totaleAcconti(annoSel, function(){ return true; })
+  });
+}
+// 🧮 Totale di tutti i riquadri, confrontato con la Contabilità generale (devono combaciare)
+function riepilogoRiquadriHTML(t, conFiltri, cont){
+  const uguale = function(a, b){ return Math.abs(Number(a||0) - Number(b||0)) < 0.005; };
+  const voce = function(etichetta, valore, confronto, soldi, colore){
+    const ok = conFiltri || uguale(valore, confronto);
+    return '<div style="flex:1 1 150px; padding:8px 10px; border-radius:10px; background:' + colore + '; color:#fff; text-align:center"><div style="font-size:17px; font-weight:800">' + (soldi ? fmtEuro(valore) : valore) + '</div><div style="font-size:10.5px; font-weight:700; text-transform:uppercase; opacity:.92">' + etichetta + '</div>'
+      + (conFiltri ? '' : '<div style="font-size:11px; margin-top:3px; font-weight:800">' + (ok ? '✓ come in Contabilità' : '⚠️ Contabilità: ' + (soldi ? fmtEuro(confronto) : confronto)) + '</div>') + '</div>';
+  };
+  return '<div style="margin-top:12px; padding:10px 12px; border-radius:12px; border:2px dashed #374151; background:var(--card)">'
+    + '<b style="font-size:15px">🧮 Totale di tutti i riquadri – ' + annoAttivo() + '</b> <span class="sub2">' + (conFiltri ? '(solo le pratiche filtrate: togli i filtri per il confronto con la Contabilità)' : '(la somma dei singoli tipi: deve combaciare con la Contabilità generale)') + '</span>'
+    + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px">'
+    + voce('Pratiche (senza rinunce)', t.n, cont.n, false, '#1d4f91')
+    + voce('Fatture emesse', t.fe, cont.fe, true, '#2f9e5f')
+    + voce('Incasso', t.inc, cont.inc, true, '#8e5bd6')
+    + voce('Pagamenti dei collaboratori', t.acc, cont.acc, true, '#0e7c86')
+    + '<div style="flex:1 1 150px; padding:8px 10px; border-radius:10px; background:#374151; color:#fff; text-align:center"><div style="font-size:17px; font-weight:800">' + fmtEuro(t.inc - t.acc) + '</div><div style="font-size:10.5px; font-weight:700; text-transform:uppercase; opacity:.92">Da incassare (incasso − pagamenti)</div></div>'
+    + '</div></div>';
 }
 
 function autoSlashData(el){
