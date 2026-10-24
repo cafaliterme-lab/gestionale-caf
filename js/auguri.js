@@ -71,8 +71,8 @@ function destinatariAuguri() {
     return ordine;
   };
   return {
-    wa: gruppi(can === 'email' ? [] : l.filter(function (c) { return numeroWhatsApp(c.telefono); }), function (c) { return numeroWhatsApp(c.telefono); }),
-    email: gruppi(can === 'wa' ? [] : l.filter(function (c) { return c.email && (can === 'email' || !numeroWhatsApp(c.telefono)); }), function (c) { return String(c.email).trim().toLowerCase(); }),
+    wa: gruppi(can === 'email' ? [] : l.filter(function (c) { return haWhatsApp(c.telefono); }), function (c) { return numeroWhatsApp(c.telefono); }),
+    email: gruppi(can === 'wa' ? [] : l.filter(function (c) { return c.email && (can === 'email' || !haWhatsApp(c.telefono)); }), function (c) { return String(c.email).trim().toLowerCase(); }),
   };
 }
 // Saluto: il cliente, i familiari con lo stesso numero, o il collaboratore (anche per i suoi clienti)
@@ -129,7 +129,7 @@ function disegnaAuguri() {
   const ov = document.getElementById('popup-auguri'); if (!ov) return;
   const tutti = clientiAuguri(), d = destinatariAuguri(), can = canaleAuguri();
   const gia = tutti.filter(auguriGiaMandati).length;
-  const senzaRecapito = tutti.filter(function (c) { return !numeroWhatsApp(c.telefono) && !c.email; }).length;
+  const senzaRecapito = tutti.filter(function (c) { return !haWhatsApp(c.telefono) && !c.email; }).length;
   const noMsg = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return c.noMessaggi && !c.decedutoIl; }).length;
   const chip = function (onclick, testo, on, col) { return '<button type="button" onclick="' + onclick + '" style="padding:4px 11px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; border:2px ' + (on ? 'solid' : 'dashed') + ' ' + col + '; background:' + (on ? col : 'transparent') + '; color:' + (on ? '#fff' : col) + '">' + testo + '</button>'; };
   // collaboratori, con quanti clienti hanno
@@ -235,7 +235,7 @@ function auguriDaMandareOggi() {
   const f = festaAuguriDiOggi(); if (!f) return null;
   const prima = { festa: AUGURI.festa, anno: AUGURI.anno };
   AUGURI.festa = f.festa; AUGURI.anno = f.anno;
-  const n = clientiAuguri().filter(function (c) { return (numeroWhatsApp(c.telefono) || c.email) && !auguriGiaMandati(c); }).length;
+  const n = clientiAuguri().filter(function (c) { return (haWhatsApp(c.telefono) || c.email) && !auguriGiaMandati(c); }).length;
   AUGURI.festa = prima.festa; AUGURI.anno = prima.anno;
   return { festa: f.festa, anno: f.anno, n: n };
 }

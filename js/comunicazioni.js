@@ -60,6 +60,8 @@ async function registraComunicazione(r) {
   if (!riga.nome && !riga.telefono && !riga.email) return;
   riga.quando = new Date().toISOString();
   COMUNICAZIONI.lista.unshift(riga);
+  // WhatsApp appena aperto: si tiene la riga per poterla togliere se il numero non ha WhatsApp
+  if (r.canale === 'whatsapp' && ULTIMO_WA && numeroWA(r.telefono) === ULTIMO_WA.num && Date.now() - ULTIMO_WA.quando < 120000) ULTIMO_WA.righe.push(riga);
   try {
     const x = await fetchSupabase('/rest/v1/comunicazioni', 'POST', riga, { Prefer: 'return=representation' });
     if (x && x.ok && Array.isArray(x.data) && x.data[0]) Object.assign(riga, x.data[0]);
@@ -84,7 +86,7 @@ function quandoComunicazione(c) {
   const d = new Date(c.quando);
   return isNaN(d) ? '' : d.toLocaleDateString('it-IT') + ' ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
-function iconaCanale(c) { return c.canale === 'email' ? '📧' : '💬'; }
+function iconaCanale(c) { return c.canale === 'email' ? '📧' : c.canale === 'sms' ? '📱' : '💬'; }
 // Riga breve con l'ultimo contatto (archivio clienti)
 function ultimoContattoHTML(nome, cf) {
   const l = comunicazioniPersona(nome, cf); if (!l.length) return '';
@@ -98,7 +100,149 @@ function elencoComunicazioniHTML(nome, cf, max) {
   const mostra = l.slice(0, max || 15);
   return '<details open style="margin-bottom:10px; padding:8px 12px; border-radius:10px; border:1.5px solid #1d4f91; background:color-mix(in srgb, #1d4f91 6%, var(--card))"><summary style="cursor:pointer; font-weight:800; color:#1d4f91">📨 Comunicazioni (' + l.length + ')</summary>'
     + mostra.map(function (c) {
-      return '<div style="display:flex; gap:8px; padding:5px 0; border-bottom:1px solid var(--line); font-size:13px" title="' + esc(c.testo || '') + '"><span style="flex:none">' + iconaCanale(c) + '</span>'
-        + '<span style="flex:1"><b>' + esc(c.motivo || 'Messaggio') + '</b> <span class="sub2">' + esc(quandoComunicazione(c)) + (c.operatore ? ' · da ' + esc(c.operatore) : '') + (c.canale === 'email' && c.email ? ' · ' + esc(c.email) : (c.telefono ? ' · ' + esc(c.telefono) : '')) + '</span></span></div>';
+      const elimina = c.id && auth && auth.profilo && auth.profilo.ruolo === 'admin' ? '<button type="button" title="Togli questa comunicazione (se è uno sbaglio)" onclick="eliminaComunicazione(\'' + esc(String(c.id)) + '\', this)" style="flex:none; background:none; border:none; cursor:pointer; font-size:14px; padding:0 2px">🗑️</button>' : '';
+      return '<div data-com-id="' + esc(String(c.id || '')) + '" style="display:flex; gap:8px; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:13px" title="' + esc(c.testo || '') + '"><span style="flex:none">' + iconaCanale(c) + '</span>'
+        + '<span style="flex:1"><b>' + esc(c.motivo || 'Messaggio') + '</b> <span class="sub2">' + esc(quandoComunicazione(c)) + (c.operatore ? ' · da ' + esc(c.operatore) : '') + (c.canale === 'email' && c.email ? ' · ' + esc(c.email) : (c.telefono ? ' · ' + esc(c.telefono) : '')) + '</span></span>' + elimina + '</div>';
     }).join('') + (l.length > mostra.length ? '<div class="sub2" style="margin-top:4px">… e altre ' + (l.length - mostra.length) + '</div>' : '') + '</details>';
+}
+
+/* ---------- 🗑️ Togliere una comunicazione (solo l'amministratore, per gli sbagli) ---------- */
+// Se era l'avviso della campagna, il cliente torna «da avvisare»
+async function annullaEffettiComunicazione(c) {
+  const tolti = [];
+  if (c.motivo === 'Avvio campagna 730' && c.nome) {
+    try {
+      const r = await fetchSupabase('/rest/v1/richiami?nome=eq.' + encodeURIComponent(c.nome) + '&esito=eq.avvisato&anno=eq.' + new Date(c.quando || Date.now()).getFullYear(), 'DELETE', null, { Prefer: 'return=representation' });
+      if (r && r.ok && Array.isArray(r.data)) r.data.forEach(function (x) { tolti.push(x); if (typeof RICHIAMI !== 'undefined' && RICHIAMI.esiti[x.chiave]) delete RICHIAMI.esiti[x.chiave]; });
+    } catch (e) { /* niente */ }
+  }
+  return tolti;
+}
+async function togliComunicazione(c) {
+  if (!c) return false;
+  if (c.id) {
+    let r;
+    try { r = await fetchSupabase('/rest/v1/comunicazioni?id=eq.' + encodeURIComponent(c.id), 'DELETE', null, { Prefer: 'return=representation' }); } catch (e) { r = { ok: false }; }
+    if (!r || !r.ok || !Array.isArray(r.data) || !r.data.length) return false;
+  }
+  const i = COMUNICAZIONI.lista.indexOf(c); if (i >= 0) COMUNICAZIONI.lista.splice(i, 1);
+  return true;
+}
+async function eliminaComunicazione(id, el) {
+  const c = COMUNICAZIONI.lista.find(function (x) { return String(x.id) === String(id); });
+  if (!c) return;
+  if (!confirm('Tolgo questa comunicazione dallo storico?\n\n' + (c.motivo || 'Messaggio') + ' – ' + (c.nome || '') + ' – ' + quandoComunicazione(c) + (c.motivo === 'Avvio campagna 730' ? '\n\nIl cliente torna «da avvisare» nella campagna.' : ''))) return;
+  if (!await togliComunicazione(c)) { avviso('❌ Non tolta: controlla la connessione', true); return; }
+  await annullaEffettiComunicazione(c);
+  avviso('✓ Comunicazione tolta');
+  const riga = el && el.closest('[data-com-id]'); if (riga) riga.remove();
+  if (typeof disegnaSchedaPersona === 'function' && document.getElementById('popup-persona')) disegnaSchedaPersona();
+  if (typeof disegnaRichiami === 'function' && document.getElementById('ric-invio')) disegnaRichiami();
+  if (typeof disegnaAuguri === 'function') disegnaAuguri();
+}
+
+/* ---------- 📵 Numero che non ha WhatsApp ----------
+   Dopo ogni WhatsApp aperto dal programma compare in basso «❌ Non ha WhatsApp»: se WhatsApp dice che il numero
+   non c'è, si tocca e il programma toglie il messaggio dalle comunicazioni (non è arrivato), toglie «avvisato»,
+   segna nella scheda del cliente che quel cellulare non ha WhatsApp e propone e-mail, SMS o chiamata. */
+let ULTIMO_WA = null;
+// numero per WhatsApp, anche se è già nel formato internazionale (393…)
+function numeroWA(tel) { const d = String(tel || '').replace(/\D/g, ''); return /^393\d{9}$/.test(d) ? d : numeroWhatsApp(tel); }
+function numeroSenzaWhatsApp(tel) {
+  const n = numeroWA(tel); if (!n) return null;
+  return (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).find(function (c) { return c.noWhatsapp && numeroWhatsApp(c.telefono) === n; }) || null;
+}
+// cellulare a cui si può mandare WhatsApp (per i messaggi a tutti)
+function haWhatsApp(tel) { return !!numeroWhatsApp(tel) && !numeroSenzaWhatsApp(tel); }
+function iniziaInvioWhatsApp(num, testo) {
+  ULTIMO_WA = { num: numeroWA(num) || String(num || ''), testo: testo, quando: Date.now(), righe: [], nome: CONTESTO_COMUNICAZIONE && CONTESTO_COMUNICAZIONE.nome };
+}
+function mostraBarraNoWhatsApp() {
+  const v = document.getElementById('barra-no-wa'); if (v) v.remove();
+  if (!ULTIMO_WA) return;
+  const d = document.createElement('div');
+  d.id = 'barra-no-wa';
+  d.style.cssText = 'position:fixed; left:50%; bottom:14px; transform:translateX(-50%); z-index:470; max-width:94vw; display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center; padding:8px 12px; border-radius:14px; background:var(--card); color:var(--ink); border:2px solid #c0392b; box-shadow:0 8px 24px rgba(0,0,0,.25); font-size:13px';
+  const nome = ULTIMO_WA.nome || (ULTIMO_WA.righe[0] && ULTIMO_WA.righe[0].nome) || '';
+  d.innerHTML = '<span>WhatsApp dice che il numero' + (nome ? ' di <b>' + esc(nomeGentile ? nomeGentile(nome) : nome) + '</b>' : '') + ' <b>non è su WhatsApp</b>?</span>'
+    + '<button type="button" onclick="nonHaWhatsApp()" style="background:#c0392b; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">❌ Non ha WhatsApp</button>'
+    + '<button type="button" onclick="this.parentNode.remove()" title="Il messaggio è partito" style="background:none; border:1px solid var(--line); color:var(--ink); border-radius:999px; padding:6px 10px; cursor:pointer">✕</button>';
+  document.body.appendChild(d);
+  const mio = ULTIMO_WA;
+  setTimeout(function () { if (ULTIMO_WA === mio) { const b = document.getElementById('barra-no-wa'); if (b) b.remove(); } }, 5 * 60000);
+}
+async function nonHaWhatsApp() {
+  const u = ULTIMO_WA; if (!u) return;
+  const barra = document.getElementById('barra-no-wa'); if (barra) barra.remove();
+  // le righe registrate prendono il numero dal server dopo un attimo
+  for (let i = 0; i < 15 && u.righe.some(function (r) { return !r.id; }); i++) await new Promise(function (ok) { setTimeout(ok, 200); });
+  const persone = [], richiamiTolti = [];
+  for (const r of u.righe) {
+    await togliComunicazione(r);
+    (await annullaEffettiComunicazione(r)).forEach(function (x) { richiamiTolti.push(x); });
+    // «avvisato su WhatsApp» della pratica pronta: si toglie
+    if (r.pratica_id) {
+      const p = (state.pratiche || []).find(function (x) { return x.id === r.pratica_id; });
+      if (p && p.whatsappInviato === todayIT()) { p.whatsappInviato = null; data.pratiche.aggiorna(p.id, { whatsappInviato: null }); }
+    }
+    persone.push({ nome: r.nome, cf: r.codice_fiscale, motivo: r.motivo, praticaId: r.pratica_id });
+  }
+  // nella scheda dei clienti con questo cellulare: «senza WhatsApp»
+  const clienti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return numeroWhatsApp(c.telefono) === u.num; });
+  for (const c of clienti) { if (!c.noWhatsapp) { c.noWhatsapp = true; if (c.id) data.clienti.aggiorna(c.id, { noWhatsapp: true }); } }
+  if (typeof disegnaRichiami === 'function' && document.getElementById('ric-invio')) disegnaRichiami();
+  if (typeof disegnaAuguri === 'function') disegnaAuguri();
+  if (typeof disegnaSchedaPersona === 'function' && document.getElementById('popup-persona')) disegnaSchedaPersona();
+  altriModiMessaggio({ num: u.num, testo: u.testo, persone: persone.length ? persone : [{ nome: u.nome || (clienti[0] && clienti[0].nomeCompleto) || '' }], richiamiTolti: richiamiTolti,
+    email: (clienti.find(function (c) { return c.email; }) || {}).email || '', tolto: true });
+}
+// Altri modi per far arrivare il messaggio: e-mail (parte da sola), SMS, chiamata
+function altriModiMessaggio(m, provaWhatsApp) {
+  const vecchio = document.getElementById('popup-altri-modi'); if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-altri-modi';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:491; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:14px';
+  const nomi = m.persone.map(function (p) { return p.nome; }).filter(Boolean);
+  const tel = '+' + m.num, corpo = encodeURIComponent(m.testo || '');
+  const b = function (attr, testo, col) { return '<' + (attr.indexOf('href=') === 0 ? 'a ' + attr : 'button type="button" ' + attr) + ' style="display:block; text-align:center; text-decoration:none; width:100%; margin-bottom:8px; background:' + col + '; color:#fff; border:none; border-radius:12px; padding:10px; font-weight:800; cursor:pointer; box-sizing:border-box">' + testo + (attr.indexOf('href=') === 0 ? '</a>' : '</button>'); };
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #c0392b; padding:16px 18px; max-width:440px; width:100%; max-height:90vh; overflow:auto">'
+    + '<div style="font-size:18px; font-weight:800; color:#c0392b">📵 ' + esc(tel.replace(/^\+39/, '')) + ' non ha WhatsApp</div>'
+    + '<div style="font-size:13px; margin:6px 0 10px">' + (m.tolto ? 'Il messaggio non è arrivato: l\'ho tolto dalle comunicazioni' + (m.richiamiTolti && m.richiamiTolti.length ? ' e il cliente è tornato «da avvisare»' : '') + '. ' : '')
+    + (nomi.length ? 'Nella scheda di <b>' + nomi.map(esc).join(', ') + '</b> ' + (m.tolto ? 'resta' : 'è') + ' segnato «📵 senza WhatsApp»' + (m.tolto ? ': le prossime volte i messaggi a tutti useranno l\'e-mail' : '') + '. ' : '') + 'Fallo arrivare in un altro modo:</div>'
+    + (m.email ? b('data-az="email"', '📧 Manda per e-mail a ' + esc(m.email), '#1d4f91') : '')
+    + b('href="sms:' + tel + '?&body=' + corpo + '" data-az="sms"', '📱 Manda un SMS (stesso testo)', '#5b6b82')
+    + b('href="tel:' + tel + '" data-az="tel"', '📞 Chiama', '#1a7f37')
+    + (provaWhatsApp ? b('data-az="wa"', '💬 Prova lo stesso con WhatsApp', '#25a35a') : '')
+    + '<div style="font-size:11.5px; color:var(--sub); margin:2px 0 10px">L\'SMS si apre già scritto sul telefono; sul PC solo se è collegato al telefono (es. «Collegamento al telefono» di Windows).</div>'
+    + '<div style="text-align:right"><button type="button" data-az="chiudi" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 16px; font-weight:700; cursor:pointer">' + (m.tolto ? 'Lascia così (resta da avvisare)' : 'Chiudi') + '</button></div></div>';
+  // dopo l'invio con un altro modo: riga nelle comunicazioni per ogni cliente e di nuovo «avvisato» nella campagna
+  const registra = async function (canale) {
+    m.persone.forEach(function (p) { if (p.nome) registraComunicazione({ canale: canale, telefono: canale === 'sms' ? m.num : null, email: canale === 'email' ? m.email : null, testo: m.testo, nome: p.nome, cf: p.cf || '', motivo: p.motivo || motivoDaTesto(m.testo), praticaId: p.praticaId, senzaContesto: true }); });
+    for (const x of m.richiamiTolti || []) {
+      const riga = Object.assign({}, x); delete riga.id; riga.quando = new Date().toISOString();
+      try { const r = await fetchSupabase('/rest/v1/richiami?on_conflict=anno,chiave', 'POST', riga, { Prefer: 'resolution=merge-duplicates,return=representation' }); if (r && r.ok && typeof RICHIAMI !== 'undefined') RICHIAMI.esiti[x.chiave] = (Array.isArray(r.data) && r.data[0]) || riga; } catch (e) { /* niente */ }
+    }
+    if (typeof disegnaRichiami === 'function' && document.getElementById('ric-invio')) disegnaRichiami();
+    if (typeof disegnaAuguri === 'function') disegnaAuguri();
+  };
+  ov.addEventListener('click', async function (e) {
+    const el = e.target.closest('[data-az]');
+    if (!el && e.target !== ov) return;
+    const az = el ? el.dataset.az : 'chiudi';
+    if (az === 'sms') { registra('sms'); setTimeout(function () { ov.remove(); }, 300); return; }
+    if (az === 'tel') { setTimeout(function () { ov.remove(); }, 300); return; }
+    if (az === 'wa') { ov.remove(); if (provaWhatsApp) provaWhatsApp(); return; }
+    if (az === 'email') {
+      el.disabled = true; el.textContent = '⏳ Invio…';
+      try {
+        await chiamaInviaEmail('POST', { a: m.email, oggetto: 'Messaggio dal CAF CISL di Alì Terme', testo: m.testo });
+        await registra('email');
+        avviso('📧 E-mail inviata a ' + m.email);
+        ov.remove();
+      } catch (x) { el.disabled = false; el.textContent = '📧 Riprova l\'e-mail'; avviso('❌ E-mail non partita: ' + x.message, true); }
+      return;
+    }
+    ov.remove();
+  });
+  document.body.appendChild(ov);
 }

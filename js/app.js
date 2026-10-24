@@ -2584,10 +2584,20 @@ function impostaModoWhatsAppPC(m){ try{ localStorage.setItem('whatsapp-pc-modo',
 function apriChatWhatsApp(num, testo, dopo){
   const t = testo ? encodeURIComponent(testo) : '';
   // traccia nel registro delle comunicazioni (una volta, quando il messaggio parte davvero)
-  const registra = function(){ if(testo && typeof registraComunicazione === 'function') registraComunicazione({ canale: 'whatsapp', telefono: num, testo: testo }); };
+  const registra = function(){ if(testo && typeof registraComunicazione === 'function'){ if(typeof iniziaInvioWhatsApp === 'function') iniziaInvioWhatsApp(num, testo); registraComunicazione({ canale: 'whatsapp', telefono: num, testo: testo }); } };
+  // numero segnato «senza WhatsApp»: si propongono e-mail, SMS o chiamata (o di provare lo stesso)
+  const senza = testo && !dopo && !apriChatWhatsApp._forza && typeof numeroSenzaWhatsApp === 'function' ? numeroSenzaWhatsApp(num) : null;
+  apriChatWhatsApp._forza = false;
+  if(senza){
+    const ctx = typeof CONTESTO_COMUNICAZIONE !== 'undefined' ? CONTESTO_COMUNICAZIONE : null;
+    altriModiMessaggio({ num: numeroWA(num), testo: testo, email: senza.email || '', persone: [{ nome: (ctx && ctx.nome) || senza.nomeCompleto, cf: (ctx && ctx.cf) || senza.codiceFiscale, motivo: ctx && ctx.motivo, praticaId: ctx && ctx.praticaId }] },
+      function(){ if(ctx) contestoComunicazione(ctx); apriChatWhatsApp._forza = true; apriChatWhatsApp(num, testo, dopo); });
+    return;
+  }
   if(eDispositivoMobile()){
     registra();
     window.open('https://wa.me/' + (num || '') + (t ? '?text=' + t : ''), '_blank');
+    if(testo && !dopo && typeof mostraBarraNoWhatsApp === 'function') mostraBarraNoWhatsApp();
     if(dopo) dopo('telefono');
     return;
   }
@@ -2613,6 +2623,7 @@ function apriChatWhatsApp(num, testo, dopo){
     // sempre la stessa scheda di WhatsApp Web aperta dal programma (non una nuova a ogni messaggio)
     window.open('https://web.whatsapp.com/send?' + (num ? 'phone=' + num + (t ? '&' : '') : '') + (t ? 'text=' + t : ''), 'whatsapp_caf');
   }
+  if(testo && !dopo && typeof mostraBarraNoWhatsApp === 'function') mostraBarraNoWhatsApp();
   if(dopo) dopo(modo);
 }
 function popupAppWhatsAppNonAperta(num, testo){

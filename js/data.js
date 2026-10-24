@@ -222,6 +222,7 @@ const schemas = {
     dichiaranteNome: 'dichiarante_nome',
     dichiaranteNascita: 'dichiarante_nascita',
     noMessaggi: 'no_messaggi',
+    noWhatsapp: 'no_whatsapp',
     creatoIl: 'creato_il',
   },
   scadenza: {

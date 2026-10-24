@@ -19,8 +19,8 @@ function daAvvisareRichiami(x) { return !statoRichiamo(x) && !appuntamentoRichia
 function destinatariRichiami() {
   const c = canaleRichiami(), l = filtraRichiami(clientiDaRichiamare(RICHIAMI.anno)).filter(daAvvisareRichiami);
   return {
-    wa: raggruppaRichiami(c === 'email' ? [] : l.filter(function (x) { return numeroWhatsApp(x.tel); }), function (x) { return numeroWhatsApp(x.tel); }),
-    email: raggruppaRichiami(c === 'wa' ? [] : l.filter(function (x) { return x.email && (c === 'email' || !numeroWhatsApp(x.tel)); }), function (x) { return String(x.email).trim().toLowerCase(); }),
+    wa: raggruppaRichiami(c === 'email' ? [] : l.filter(function (x) { return haWhatsApp(x.tel); }), function (x) { return numeroWhatsApp(x.tel); }),
+    email: raggruppaRichiami(c === 'wa' ? [] : l.filter(function (x) { return x.email && (c === 'email' || !haWhatsApp(x.tel)); }), function (x) { return String(x.email).trim().toLowerCase(); }),
   };
 }
 function raggruppaRichiami(lista, recapito) {
@@ -361,9 +361,9 @@ function disegnaRichiami() {
     + ' <button type="button" data-collab="*nessuno" style="padding:4px 10px; border-radius:999px; font-size:12px; cursor:pointer; border:1px solid var(--sub); background:none; color:var(--sub)">✕ Escludi tutti</button>' : '';
   // invio a tutti, uno dopo l'altro
   // quanti si possono raggiungere: senza cellulare né e-mail il messaggio non arriva
-  const nCell = inclusi.filter(function (x) { return numeroWhatsApp(x.tel); }).length, nMail = inclusi.filter(function (x) { return !numeroWhatsApp(x.tel) && x.email; }).length;
+  const nCell = inclusi.filter(function (x) { return haWhatsApp(x.tel); }).length, nMail = inclusi.filter(function (x) { return !haWhatsApp(x.tel) && x.email; }).length;
   const boxR = document.getElementById('ric-recapiti');
-  if (boxR) boxR.innerHTML = inclusi.length ? '📱 <b>' + nCell + '</b> con cellulare · ✉️ <b>' + nMail + '</b> solo e-mail · <b style="color:#c0392b">' + (inclusi.length - nCell - nMail) + '</b> senza cellulare né e-mail (da chiamare al fisso o completare in archivio)' : '';
+  if (boxR) boxR.innerHTML = inclusi.length ? '📱 <b>' + nCell + '</b> con WhatsApp · ✉️ <b>' + nMail + '</b> solo e-mail · <b style="color:#c0392b">' + (inclusi.length - nCell - nMail) + '</b> senza WhatsApp né e-mail (da chiamare o completare in archivio)' : '';
   // invio a tutti: scelta del modo e tasto con quanti messaggi partono
   const dest = destinatariRichiami(), canale = canaleRichiami();
   const ch = function (k, t) { const on = canale === k; return '<button type="button" onclick="scegliCanaleRichiami(\'' + k + '\')" style="padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; border:2px solid #25a35a; background:' + (on ? '#25a35a' : 'transparent') + '; color:' + (on ? '#fff' : '#1a7f37') + '">' + t + '</button>'; };

@@ -44,7 +44,7 @@ function avvisaDocumentoEmail(id) {
 }
 // WhatsApp a tutti quelli con cellulare non ancora avvisati: uno dopo l'altro (il browser apre una chat per volta)
 function avviaInvioDocumentiWhatsApp() {
-  DOC_SCADENZA.coda = clientiDocumentoDaRinnovare().filter(function (r) { return numeroWhatsApp(r.c.telefono) && !avvisoDocumentoInviato(r.c); }).map(function (r) { return r.c.id; });
+  DOC_SCADENZA.coda = clientiDocumentoDaRinnovare().filter(function (r) { return haWhatsApp(r.c.telefono) && !avvisoDocumentoInviato(r.c); }).map(function (r) { return r.c.id; });
   DOC_SCADENZA.pos = 0;
   if (!DOC_SCADENZA.coda.length) { avviso('Tutti i clienti con cellulare sono già stati avvisati'); return; }
   prossimoDocumentoWhatsApp();
@@ -58,7 +58,7 @@ function prossimoDocumentoWhatsApp() {
 }
 // E-mail a tutti quelli con solo e-mail non ancora avvisati: partono dalla casella del CAF
 async function inviaDocumentiEmailATutti(b) {
-  const lista = clientiDocumentoDaRinnovare().filter(function (r) { return !numeroWhatsApp(r.c.telefono) && r.c.email && !avvisoDocumentoInviato(r.c); });
+  const lista = clientiDocumentoDaRinnovare().filter(function (r) { return !haWhatsApp(r.c.telefono) && r.c.email && !avvisoDocumentoInviato(r.c); });
   if (!lista.length) { avviso('Nessuna e-mail da mandare'); return; }
   if (!confirm('Mando l\'e-mail a ' + lista.length + ' client' + (lista.length === 1 ? 'e' : 'i') + ' dalla casella del CAF?')) return;
   b.disabled = true;
@@ -90,9 +90,9 @@ function apriDocumentiInScadenza() {
 function disegnaDocumentiInScadenza() {
   const ov = document.getElementById('popup-doc-scadenza'); if (!ov) return;
   const tutti = clientiDocumentoDaRinnovare();
-  const conCell = tutti.filter(function (r) { return numeroWhatsApp(r.c.telefono); });
-  const soloMail = tutti.filter(function (r) { return !numeroWhatsApp(r.c.telefono) && r.c.email; });
-  const nessuno = tutti.filter(function (r) { return !numeroWhatsApp(r.c.telefono) && !r.c.email; });
+  const conCell = tutti.filter(function (r) { return haWhatsApp(r.c.telefono); });
+  const soloMail = tutti.filter(function (r) { return !haWhatsApp(r.c.telefono) && r.c.email; });
+  const nessuno = tutti.filter(function (r) { return !haWhatsApp(r.c.telefono) && !r.c.email; });
   const b = function (onclick, testo, colore) { return '<button type="button" onclick="' + onclick + '" style="background:' + colore + '; color:#fff; border:none; border-radius:999px; padding:5px 12px; font-size:12.5px; font-weight:800; cursor:pointer">' + testo + '</button>'; };
   const riga = function (r, tasti) {
     const av = avvisoDocumentoInviato(r.c);
