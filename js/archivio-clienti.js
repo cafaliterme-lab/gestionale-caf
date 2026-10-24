@@ -22,7 +22,14 @@ function apriArchivioClienti(testo, filtri) {
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-con-pratiche"' + (filtri.conPratiche ? ' checked' : '') + '> Solo clienti con pratiche (quest\'anno e l\'anno scorso)</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-deceduti"' + (filtri.deceduti ? ' checked' : '') + '> ✝️ Solo deceduti</label>'
     + '<select id="arc-ruolo" style="width:auto; padding:4px 8px; font-size:12.5px" title="Dichiaranti o coniugi"><option value="">Dichiaranti e coniugi</option><option value="dichiarante">👤 Solo dichiaranti</option><option value="coniuge">💑 Solo coniugi dichiaranti</option></select>'
-    + '<select id="arc-collab" style="width:auto; padding:4px 8px; font-size:12.5px" title="Solo i clienti di un collaboratore"><option value="">🤝 Tutti i collaboratori</option><option value="-">Senza collaboratore</option>' + getTipiList().map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('') + '</select></div>'
+    + '<select id="arc-collab" style="width:auto; padding:4px 8px; font-size:12.5px" title="Solo i clienti di un collaboratore"><option value="">🤝 Tutti i collaboratori</option><option value="-">Senza collaboratore</option>' + getTipiList().map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('') + '</select>'
+    + (function () {
+      // riferimento: chi ha portato il cliente, con quanti clienti ha portato
+      const n = {};
+      (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).forEach(function (c) { const r = String(c.riferimento || '').trim().toUpperCase(); if (r) n[r] = (n[r] || 0) + 1; });
+      const l = Object.keys(n).sort(function (a, b) { return (n[b] - n[a]) || a.localeCompare(b); });
+      return l.length ? '<select id="arc-rif" style="width:auto; padding:4px 8px; font-size:12.5px" title="Solo i clienti portati da una persona"><option value="">👤 Tutti i riferimenti</option>' + l.map(function (r) { return '<option value="' + esc(r) + '"' + (filtri.rif === r ? ' selected' : '') + '>' + esc(r) + ' (' + n[r] + ')</option>'; }).join('') + '</select>' : '';
+    })() + '</div>'
     + '<div id="arc-collab-conta" style="display:none; margin-bottom:8px; font-size:13px"></div>'
     + '<div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin-bottom:6px; font-size:12.5px"><b style="color:var(--sub)">📄 Quanti per foglio:</b>'
     + [80, 300, 500, 0].map(function (n) { return '<button type="button" data-perfoglio="' + n + '" style="padding:3px 11px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; border:2px solid #1d4f91"></button>'; }).join('') + '</div>'
@@ -34,6 +41,7 @@ function apriArchivioClienti(testo, filtri) {
     const q = (document.getElementById('arc-cerca').value || '').trim().toUpperCase();
     const senzaCf = document.getElementById('arc-senza-cf').checked, senzaTel = document.getElementById('arc-senza-tel').checked, doc = document.getElementById('arc-doc').checked;
     const conPrat = document.getElementById('arc-con-pratiche').checked, deceduti = document.getElementById('arc-deceduti').checked, collab = document.getElementById('arc-collab').value, ruolo = document.getElementById('arc-ruolo').value;
+    const rif = (document.getElementById('arc-rif') || {}).value || '';
     const recenti = conPrat ? clientiConPraticheRecenti() : null;
     const oggi = typeof dataNum === 'function' ? dataNum(todayIT()) : 0;
     const tutti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []);
@@ -42,6 +50,7 @@ function apriArchivioClienti(testo, filtri) {
       if (deceduti) { if (!c.decedutoIl) return false; }
       else if (c.decedutoIl && (!q || senzaCf || senzaTel || doc || conPrat)) return false;
       if (ruolo && c.ruoloDichiarazione !== ruolo) return false;
+      if (rif && String(c.riferimento || '').trim().toUpperCase() !== rif) return false;
       if (collab === '-' ? !!c.collaboratore : (collab && c.collaboratore !== collab)) return false;
       if (recenti && !(c.codiceFiscale && recenti.cf[c.codiceFiscale]) && !recenti.nome[String(c.nomeCompleto || '').toUpperCase()]) return false;
       if (senzaCf && c.codiceFiscale) return false;
