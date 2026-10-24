@@ -11,7 +11,9 @@ const CODA_RICHIAMI = { lista: [], pos: 0 };
 // Come mandare a tutti: 'wa' solo WhatsApp, 'email' solo e-mail, 'entrambi' WhatsApp e, a chi non ha il cellulare, e-mail
 function canaleRichiami() { try { return localStorage.getItem('richiami-canale') || 'entrambi'; } catch (e) { return 'entrambi'; } }
 function scegliCanaleRichiami(c) { try { localStorage.setItem('richiami-canale', c); } catch (e) {} disegnaRichiami(); }
-function daAvvisareRichiami(x) { return !statoRichiamo(x) && !appuntamentoRichiamo(x); }
+// chi ha «Non vuole ricevere messaggi» nella scheda non riceve i messaggi mandati a tutti
+function noMessaggiRichiamo(x) { const a = typeof trovaInArchivio === 'function' ? trovaInArchivio(x.nome, x.nascita, x.cf) : null; return !!(a && a.noMessaggi); }
+function daAvvisareRichiami(x) { return !statoRichiamo(x) && !appuntamentoRichiamo(x) && !noMessaggiRichiamo(x); }
 // Chi riceve il messaggio: i clienti con lo stesso cellulare (o la stessa e-mail) sono un solo destinatario,
 // es. il collaboratore che ha messo il suo numero su tutti i suoi clienti, o marito e moglie: un messaggio unico con i nomi
 function destinatariRichiami() {

@@ -66,6 +66,7 @@ function renderOggi() {
   const mese = new Date().getMonth() + 1;
   const daRichiamare = mese >= 7 && mese <= 10 && typeof clientiDaRichiamare === 'function' ? clientiDaRichiamare(anno).length : null;
   // da febbraio a giugno: avvio della campagna 730 (clienti dell'anno scorso da avvisare)
+  const auguri = typeof auguriDaMandareOggi === 'function' ? auguriDaMandareOggi() : null;
   const daAvvisareCampagna = mese >= 2 && mese <= 6 && typeof clientiDaRichiamare === 'function' ? clientiDaRichiamare(anno).length : null;
   // agenda
   const ag = typeof AGENDA !== 'undefined' && typeof appuntamentiAttivi === 'function';
@@ -104,6 +105,7 @@ function renderOggi() {
     + tile('🪪', docRinnovo.length, 'Documenti scaduti o in scadenza', '#c0392b', 'apriDocumentiInScadenza()', docRinnovo.length ? (docDaAvvisare ? docDaAvvisare + ' da avvisare' : 'tutti già avvisati') + ' · entro 30 giorni' : 'nessuno entro 30 giorni')
     + tile('📇', docScad, 'Senza scadenza del documento', '#b35f0c', "apriArchivioClienti('', { conPratiche: true, doc: true })", 'clienti venuti di recente: completa la scheda')
     + (promDaMandare ? tile('💬', promDaMandare, 'Promemoria appuntamenti da mandare', '#25a35a', 'apriPromemoriaAgenda()', 'a chi ha l\'appuntamento il prossimo giorno di apertura') : '')
+    + (auguri ? tile(auguri.festa === 'pasqua' ? '🐣' : '🎄', auguri.n, auguri.festa === 'pasqua' ? 'Auguri di Pasqua da mandare' : 'Auguri di Natale e fine anno da mandare', '#c0392b', "apriAuguri('" + auguri.festa + "', " + auguri.anno + ")", 'clienti con cellulare o e-mail che non li hanno ancora ricevuti') : '')
     + (daAvvisareCampagna !== null ? tile('📢', daAvvisareCampagna, 'Campagna 730: clienti da avvisare', '#b35f0c', "apriRichiami('campagna')", '730 dell\'anno scorso non ancora venuti quest\'anno') : '')
     + (daRichiamare !== null ? tile('☎️', daRichiamare, 'Clienti da richiamare', '#0e8a8a', 'apriRichiami()', '730 dell\'anno scorso non ancora tornati') : '')
     + '</div>'

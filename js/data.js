@@ -221,6 +221,7 @@ const schemas = {
     ruoloDichiarazione: 'ruolo_dichiarazione',
     dichiaranteNome: 'dichiarante_nome',
     dichiaranteNascita: 'dichiarante_nascita',
+    noMessaggi: 'no_messaggi',
     creatoIl: 'creato_il',
   },
   scadenza: {
