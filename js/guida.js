@@ -138,7 +138,8 @@ const GUIDA = [
 </ul>` },
 
   { id: 'congiunta', icona: '👫', titolo: 'Dichiarazione congiunta', parole: 'congiunta coniuge marito moglie codice fiscale coniuge vale 2 solo 730 spunta',
-    testo: `<p>Del coniuge puoi scrivere anche <b>cellulare</b> ed <b>e-mail</b> (tutti e due facoltativi): finiscono anche nella sua scheda dell'archivio clienti e si correggono da ✏️ Modifica della pratica.</p>
+    testo: `<p><b>💑 Congiunta automatica</b>: se nell'archivio il coniuge ha il ruolo <b>«coniuge dichiarante»</b> con il nome del dichiarante, scegliendo il <b>dichiarante</b> nella ricerca del cliente il programma spunta da solo <b>Congiunta</b> e compila anche i dati del coniuge (nome, nascita, codice fiscale, telefono, e-mail, documento). Se scegli invece il <b>coniuge</b>, ti chiede se preparare la congiunta con il dichiarante come titolare e il coniuge nella parte della congiunta. Vale anche senza il collegamento in archivio, se l'anno prima c'era già una pratica congiunta. Se quest'anno la pratica è singola, togli la spunta «Congiunta».</p>
+<p>Del coniuge puoi scrivere anche <b>cellulare</b> ed <b>e-mail</b> (tutti e due facoltativi): finiscono anche nella sua scheda dell'archivio clienti e si correggono da ✏️ Modifica della pratica.</p>
 <ol>
 <li>Spunta <b>Congiunta</b>. La spunta compare <b>solo per i 730</b>: per contratti colf e badanti, affitti, IMU, successioni, ISEE, F24, canone RAI, rottamazione, altre pratiche ecc. non c'è, perché non esistono pratiche congiunte. Se cambi il tipo da un 730 a un altro tipo, la spunta si toglie da sola e i dati del coniuge si svuotano.</li>
 <li>Cerca il coniuge nell'archivio oppure scrivi cognome, nome, data di nascita, <b>codice fiscale del coniuge</b> (obbligatorio) e cellulare, o usa <b>📄 Leggi documento coniuge</b>.</li>

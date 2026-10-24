@@ -311,6 +311,49 @@ function scegliCliente(i, ctx){
   const c = match[i];
   if(!c) return;
   if(c.decedutoIl && !confirm(c.nomeCompleto + ' risulta deceduto/a il ' + c.decedutoIl + '.\n\nVuoi usarlo lo stesso (per esempio per il 730 del defunto)?')) return;
+  // coniuge dichiarante scelto come titolare: si propone di mettere il dichiarante come titolare e lui/lei come coniuge
+  if(ctx === 'main'){
+    const dich = c.ruoloDichiarazione === 'coniuge' && c.dichiaranteNome ? trovaInArchivio(c.dichiaranteNome, c.dichiaranteNascita || '', '') : null;
+    if(dich && !dich.decedutoIl && confirm(c.nomeCompleto + ' è coniuge dichiarante di ' + dich.nomeCompleto + '.\n\nPreparo la congiunta con ' + dich.nomeCompleto + ' come dichiarante e ' + c.nomeCompleto + ' come coniuge?')){
+      usaCliente(dich, 'main');
+      compilaConiugeCongiunta(c);
+      box.classList.remove('open');
+      return;
+    }
+  }
+  usaCliente(c, ctx);
+  // dichiarante con il coniuge collegato in archivio: la congiunta si compila da sola
+  if(ctx === 'main'){ const con = coniugeCollegato(c); if(con) compilaConiugeCongiunta(con); }
+  box.classList.remove('open');
+}
+// Coniuge collegato al dichiarante: la scheda del coniuge in archivio (ruolo «coniuge dichiarante» con questo dichiarante),
+// altrimenti il coniuge dell'ultima pratica congiunta del dichiarante
+function coniugeCollegato(c){
+  const nome = String(c.nomeCompleto || '').trim().toUpperCase();
+  if(!nome) return null;
+  const perArchivio = (ARCHIVIO_CLIENTI || []).find(function(x){
+    return x !== c && !x.decedutoIl && x.ruoloDichiarazione === 'coniuge' && String(x.dichiaranteNome || '').trim().toUpperCase() === nome
+      && (!x.dichiaranteNascita || !c.dataNascita || x.dichiaranteNascita === c.dataNascita);
+  });
+  if(perArchivio) return perArchivio;
+  const cf = String(c.codiceFiscale || '').toUpperCase();
+  const p = (state.pratiche || []).filter(function(p){ return !p.annullata && (p.congCognome || p.congNome || p.congiunta) && ((cf && String(p.codiceFiscale || '').toUpperCase() === cf) || String(p.nome || '').toUpperCase() === nome); })
+    .sort(function(a, b){ return annoPratica(b) - annoPratica(a); })[0];
+  if(!p) return null;
+  const con = trovaInArchivio(((p.congCognome || '') + ' ' + (p.congNome || '')).trim() || p.congiunta, p.congData, p.congCodiceFiscale);
+  return con && !con.decedutoIl ? con : null;
+}
+// Mette il coniuge nella parte «congiunta» del modulo (se non è già compilata a mano)
+function compilaConiugeCongiunta(con){
+  const chk = document.getElementById('f-congiunta-on'); if(!chk) return;
+  const gia = ((document.getElementById('f-cong-cognome') || {}).value || '').trim();
+  if(gia && gia.toUpperCase() !== String(con.cognome || '').toUpperCase()) return;
+  if(!chk.checked){ chk.checked = true; toggleCongBox(); }
+  usaCliente(con, 'cong');
+  avviso('💑 Congiunta: ho compilato anche il coniuge ' + con.nomeCompleto + ' (collegato in archivio). Se quest\'anno è singola, togli la spunta «Congiunta».');
+}
+function usaCliente(c, ctx){
+  const box = boxRisultatiClienti(ctx);
   // cliente di un collaboratore: il tipo di pratica si propone da solo
   if(ctx === 'main' && c.collaboratore && getTipiList().indexOf(c.collaboratore) >= 0) pickChip('f-tipo-btns','f-tipo', c.collaboratore);
   if(ctx==='sc'){
