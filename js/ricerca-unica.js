@@ -100,7 +100,7 @@ function disegnaSchedaPersona() {
     const coniuge = String(p.nome || '').trim().toUpperCase() !== x.nome;
     const m = p.annullata ? 0 : residuo(p);
     return '<tr' + (p.annullata ? ' style="color:var(--sub)"' : '') + '><td><b>' + annoPratica(p) + '</b></td><td class="n"' + (p.annullata ? ' style="text-decoration:line-through"' : '') + '>' + formattaProtocollo(p) + '</td>'
-      + '<td class="wrap">' + esc(p.tipo || '-') + (coniuge ? '<div class="sub2">coniuge di ' + esc(p.nome || '') + '</div>' : (p.congiunta ? '<div class="sub2">congiunta con ' + esc(p.congiunta) + '</div>' : '')) + '</td>'
+      + '<td class="wrap">' + esc(p.tipo || '-') + (coniuge && ((p.lavCognome || '') + ' ' + (p.lavNome || '')).trim().toUpperCase() === x.nome ? '<div class="sub2">👷 lavoratore di ' + esc(p.nome || '') + '</div>' : coniuge ? '<div class="sub2">coniuge di ' + esc(p.nome || '') + '</div>' : (p.congiunta ? '<div class="sub2">congiunta con ' + esc(p.congiunta) + '</div>' : '')) + '</td>'
       + '<td>' + (p.annullata ? '🚫 annullata' : esc(statoLabel(p.stato))) + (p.consegnataIl ? '<div class="sub2">📦 ' + esc(p.consegnataIl) + '</div>' : '') + '</td>'
       + '<td style="text-align:right">' + (Number(p.compenso) ? fmtEuro(p.compenso) : '-') + '</td><td style="text-align:right">' + (Number(p.pagato) ? fmtEuro(p.pagato) : '-') + '</td>'
       + '<td style="text-align:right; font-weight:800; color:' + (m > 0.004 ? '#c0392b' : '#1a7f37') + '">' + (p.annullata ? '' : (m > 0.004 ? fmtEuro(m) : '✓')) + '</td>'

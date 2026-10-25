@@ -125,6 +125,17 @@ const schemas = {
     congDocumentoScadenza: 'cong_documento_scadenza',
     congDocumentoNumero: 'cong_documento_numero',
     congDocumentoTipo: 'cong_documento_tipo',
+    lavCognome: 'lav_cognome',
+    lavNome: 'lav_nome',
+    lavCodiceFiscale: 'lav_codice_fiscale',
+    lavData: 'lav_data',
+    lavComuneNascita: 'lav_comune_nascita',
+    lavTelefono: 'lav_telefono',
+    lavDocumentoTipo: 'lav_documento_tipo',
+    lavDocumentoNumero: 'lav_documento_numero',
+    lavDocumentoScadenza: 'lav_documento_scadenza',
+    lavPermessoNumero: 'lav_permesso_numero',
+    lavPermessoScadenza: 'lav_permesso_scadenza',
     comuneNascita: 'comune_nascita',
     congComuneNascita: 'cong_comune_nascita',
     documentoScadenza: 'documento_scadenza',
@@ -228,6 +239,9 @@ const schemas = {
     noWhatsapp: 'no_whatsapp',
     riferimento: 'riferimento',
     note: 'note',
+    lavoratoreColf: 'lavoratore_colf',
+    permessoNumero: 'permesso_numero',
+    permessoScadenza: 'permesso_scadenza',
     creatoIl: 'creato_il',
   },
   scadenza: {
@@ -671,6 +685,23 @@ async function aggiornaCliente(id, campi) {
   }
 }
 
+// Lavoratore di un contratto colf e badanti: segno in archivio, con il permesso di soggiorno (cercato per codice fiscale, altrimenti per nome e data di nascita)
+async function segnaLavoratoreColf(c) {
+  try {
+    const campi = { lavoratore_colf: true };
+    if (c.permessoNumero) campi.permesso_numero = c.permessoNumero;
+    if (c.permessoScadenza) campi.permesso_scadenza = c.permessoScadenza;
+    let q = supabase.from('clienti').update(campi);
+    q = c.codiceFiscale ? q.eq('codice_fiscale', c.codiceFiscale) : q.eq('nome_completo', c.nomeCompleto).eq('data_nascita', c.dataNascita || '');
+    const { error } = await q.select('id');
+    if (error) throw new Error(error.message);
+    return {};
+  } catch (err) {
+    console.error('lavoratore colf', err);
+    return { error: err.message };
+  }
+}
+
 /**
  * Clienti - Elimina definitivamente un cliente dall'archivio (solo admin, per RLS)
  */
@@ -990,6 +1021,7 @@ window.data = {
   clienti: {
     aggiungi: aggiungiCliente,
     aggiorna: aggiornaCliente,
+    segnaLavoratore: segnaLavoratoreColf,
     elimina: eliminaCliente,
     salvaCF: salvaClienteCF,
     salvaTelefono: salvaTelefonoCliente,

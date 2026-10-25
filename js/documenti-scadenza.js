@@ -4,6 +4,7 @@
    Ogni invio resta nel registro delle comunicazioni; chi è già stato avvisato non viene riselezionato. */
 
 const GIORNI_PREAVVISO_DOCUMENTO = 30;
+const GIORNI_PREAVVISO_PERMESSO = 60;
 const DOC_SCADENZA = { coda: [], pos: 0 };
 
 // Le carte d'identità cartacee sono da sostituire con quella elettronica (regolamento UE 2019/1157, dal 3 agosto 2026):
@@ -17,6 +18,9 @@ function clientiDocumentoDaRinnovare() {
   return (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).map(function (c) {
     if (c.decedutoIl) return null;
     const st = c.documentoScadenza ? statoScadenzaDocumento(c.documentoScadenza) : null;
+    // permesso di soggiorno (lavoratori colf e badanti): scaduto o in scadenza entro 60 giorni (il rinnovo si chiede prima)
+    const sp = c.permessoScadenza ? statoScadenzaDocumento(c.permessoScadenza) : null;
+    if (sp && sp.giorni <= GIORNI_PREAVVISO_PERMESSO && !(st && st.giorni < sp.giorni && st.giorni <= GIORNI_PREAVVISO_DOCUMENTO)) return { c: c, giorni: sp.giorni, permesso: true };
     if (st && st.giorni < 0) return { c: c, giorni: st.giorni };
     if (eCartaceaDaSostituire(c)) return { c: c, giorni: Math.floor((DATA_FINE_CARTACEE - new Date()) / 86400000), cartacea: true };
     if (st && st.giorni <= GIORNI_PREAVVISO_DOCUMENTO) return { c: c, giorni: st.giorni };
@@ -29,7 +33,12 @@ function avvisoDocumentoInviato(c) {
   const da = Date.now() - 60 * 86400000;
   return comunicazioniPersona(c.nomeCompleto, c.codiceFiscale, c.dataNascita).find(function (x) { return /documento/i.test(x.motivo || '') && Date.parse(x.quando) >= da; }) || null;
 }
-function messaggioDocumentoDaRinnovare(c, giorni) {
+function messaggioPermessoSoggiorno(c, giorni) {
+  return 'Gentile ' + nomeProprio(c.nomeCompleto) + ', ' + (giorni < 0 ? 'il suo permesso di soggiorno risulta scaduto il ' + c.permessoScadenza + '.' : 'le ricordiamo che il suo permesso di soggiorno scadrà il ' + c.permessoScadenza + ': si ricordi di chiedere il rinnovo in tempo.')
+    + ' Quando avrà il permesso rinnovato (o la ricevuta della richiesta di rinnovo), le chiediamo di portarcene (o inviarci qui) una copia.\nGrazie.\n\n' + righeContattiCaf();
+}
+function messaggioDocumentoDaRinnovare(c, giorni, r) {
+  if (r && r.permesso) return messaggioPermessoSoggiorno(c, giorni);
   if (eCartaceaDaSostituire(c) && !((statoScadenzaDocumento(c.documentoScadenza || '') || { giorni: 0 }).giorni < 0)) return messaggioCartaceaDaSostituire(c);
   if (giorni < 0) return messaggioNuovoDocumento(c.nomeCompleto, c.documentoScadenza, true);
   return 'Gentile ' + nomeProprio(c.nomeCompleto) + ', le ricordiamo che il suo documento d\'identità scadrà il ' + c.documentoScadenza
@@ -39,19 +48,20 @@ function messaggioCartaceaDaSostituire(c) {
   return 'Gentile ' + nomeProprio(c.nomeCompleto) + ', dal 3 agosto 2026 le carte d\'identità di carta vanno sostituite con la carta d\'identità elettronica (regolamento europeo).'
     + ' Quando avrà fatto quella nuova, per poter preparare le sue prossime pratiche le chiediamo di portarci (o inviarci qui) una copia.\nGrazie.\n\n' + righeContattiCaf();
 }
-function motivoDocumento(giorni) { return giorni < 0 ? 'Richiesta documento d\'identità' : 'Documento in scadenza'; }
+function motivoDocumento(giorni, r) {
+  if (r && r.permesso) return 'Richiesta documento: permesso di soggiorno'; return giorni < 0 ? 'Richiesta documento d\'identità' : 'Documento in scadenza'; }
 
 function avvisaDocumentoWhatsApp(id) {
   const r = clientiDocumentoDaRinnovare().find(function (x) { return String(x.c.id) === String(id); }); if (!r) return false;
-  contestoComunicazione({ nome: r.c.nomeCompleto, cf: r.c.codiceFiscale || '', nascita: r.c.dataNascita || '', motivo: motivoDocumento(r.giorni) });
-  const ok = inviaWhatsAppLibero(r.c.telefono, messaggioDocumentoDaRinnovare(r.c, r.giorni), r.c.nomeCompleto);
+  contestoComunicazione({ nome: r.c.nomeCompleto, cf: r.c.codiceFiscale || '', nascita: r.c.dataNascita || '', motivo: motivoDocumento(r.giorni, r) });
+  const ok = inviaWhatsAppLibero(r.c.telefono, messaggioDocumentoDaRinnovare(r.c, r.giorni, r), r.c.nomeCompleto);
   setTimeout(disegnaDocumentiInScadenza, 800);
   return ok;
 }
 function avvisaDocumentoEmail(id) {
   const r = clientiDocumentoDaRinnovare().find(function (x) { return String(x.c.id) === String(id); }); if (!r) return;
-  apriEmail({ titolo: 'Documento d\'identità ' + (r.giorni < 0 ? 'scaduto' : 'in scadenza'), nome: r.c.nomeCompleto, a: r.c.email || '', motivo: motivoDocumento(r.giorni),
-    oggetto: 'Documento d\'identità ' + (r.giorni < 0 ? 'scaduto' : 'in scadenza') + ' – CAF CISL Alì Terme', testo: messaggioDocumentoDaRinnovare(r.c, r.giorni),
+  apriEmail({ titolo: (r.permesso ? 'Permesso di soggiorno ' : 'Documento d\'identità ') + (r.giorni < 0 ? 'scaduto' : 'in scadenza'), nome: r.c.nomeCompleto, a: r.c.email || '', motivo: motivoDocumento(r.giorni, r),
+    oggetto: (r.permesso ? 'Permesso di soggiorno ' : 'Documento d\'identità ') + (r.giorni < 0 ? 'scaduto' : 'in scadenza') + ' – CAF CISL Alì Terme', testo: messaggioDocumentoDaRinnovare(r.c, r.giorni, r),
     dopo: function () { setTimeout(disegnaDocumentiInScadenza, 800); } });
 }
 // WhatsApp a tutti quelli con cellulare non ancora avvisati: uno dopo l'altro (il browser apre una chat per volta)
@@ -77,10 +87,10 @@ async function inviaDocumentiEmailATutti(b) {
   let ok = 0, ko = [];
   for (const r of lista) {
     b.textContent = '⏳ ' + (ok + ko.length + 1) + ' di ' + lista.length + '…';
-    const oggetto = 'Documento d\'identità ' + (r.giorni < 0 ? 'scaduto' : 'in scadenza') + ' – CAF CISL Alì Terme', testo = messaggioDocumentoDaRinnovare(r.c, r.giorni);
+    const oggetto = (r.permesso ? 'Permesso di soggiorno ' : 'Documento d\'identità ') + (r.giorni < 0 ? 'scaduto' : 'in scadenza') + ' – CAF CISL Alì Terme', testo = messaggioDocumentoDaRinnovare(r.c, r.giorni, r);
     try {
       await chiamaInviaEmail('POST', { a: r.c.email, oggetto: oggetto, testo: testo });
-      contestoComunicazione({ nome: r.c.nomeCompleto, cf: r.c.codiceFiscale || '', nascita: r.c.dataNascita || '', motivo: motivoDocumento(r.giorni) });
+      contestoComunicazione({ nome: r.c.nomeCompleto, cf: r.c.codiceFiscale || '', nascita: r.c.dataNascita || '', motivo: motivoDocumento(r.giorni, r) });
       await registraComunicazione({ canale: 'email', email: r.c.email, testo: oggetto + ' – ' + testo });
       ok++;
     } catch (e) { ko.push(r.c.nomeCompleto); }
@@ -109,7 +119,7 @@ function disegnaDocumentiInScadenza() {
   const riga = function (r, tasti) {
     const av = avvisoDocumentoInviato(r.c);
     return '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:7px 0; border-bottom:1px solid var(--line)">'
-      + '<span><b>' + esc(r.c.nomeCompleto) + '</b> <span style="font-size:12px; font-weight:800; color:' + (r.giorni < 0 ? '#c0392b' : '#b35f0c') + '">' + (r.cartacea ? '📄 carta d\'identità cartacea: da sostituire con l\'elettronica' + (r.c.documentoScadenza ? ' (sul documento: ' + esc(r.c.documentoScadenza) + ')' : '') : '🪪 ' + (r.giorni < 0 ? 'scaduto il ' : 'scade il ') + esc(r.c.documentoScadenza) + (typeof annoScadenzaSbagliato === 'function' && annoScadenzaSbagliato(r.c.documentoScadenza) ? ' ⚠️ anno sbagliato? correggi la scheda' : '') + (r.giorni >= 0 ? ' (tra ' + r.giorni + ' giorn' + (r.giorni === 1 ? 'o' : 'i') + ')' : '')) + '</span>'
+      + '<span><b>' + esc(r.c.nomeCompleto) + '</b> <span style="font-size:12px; font-weight:800; color:' + (r.giorni < 0 ? '#c0392b' : '#b35f0c') + '">' + (r.permesso ? '🛂 permesso di soggiorno ' + (r.giorni < 0 ? 'scaduto il ' : 'scade il ') + esc(r.c.permessoScadenza) + (r.giorni >= 0 ? ' (tra ' + r.giorni + ' giorn' + (r.giorni === 1 ? 'o' : 'i') + ')' : '') : r.cartacea ? '📄 carta d\'identità cartacea: da sostituire con l\'elettronica' + (r.c.documentoScadenza ? ' (sul documento: ' + esc(r.c.documentoScadenza) + ')' : '') : '🪪 ' + (r.giorni < 0 ? 'scaduto il ' : 'scade il ') + esc(r.c.documentoScadenza) + (typeof annoScadenzaSbagliato === 'function' && annoScadenzaSbagliato(r.c.documentoScadenza) ? ' ⚠️ anno sbagliato? correggi la scheda' : '') + (r.giorni >= 0 ? ' (tra ' + r.giorni + ' giorn' + (r.giorni === 1 ? 'o' : 'i') + ')' : '')) + '</span>'
       + '<div class="sub2">' + [r.c.telefono ? '📱 ' + esc(r.c.telefono) : '', r.c.telefonoFisso ? '☎️ ' + esc(r.c.telefonoFisso) : '', r.c.email ? '✉️ ' + esc(r.c.email) : ''].filter(Boolean).join(' · ')
       + (av ? ' · <b style="color:#1a7f37">✓ avvisato il ' + esc(quandoComunicazione(av).split(' ')[0]) + '</b>' : '') + '</div></span>'
       + '<span style="display:flex; gap:5px">' + tasti + '</span></div>';

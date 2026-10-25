@@ -560,9 +560,9 @@ function datiRevisione() {
 
 // Documento del titolare o del coniuge (dichiarazione congiunta)
 function apriLetturaDocumentoPer(chi) {
-  docLettura.destinazione = chi === 'coniuge' || chi === 'archivio' || chi === 'modifica' || chi === 'nuovocliente' ? chi : 'titolare';
+  docLettura.destinazione = chi === 'coniuge' || chi === 'lavoratore' || chi === 'archivio' || chi === 'modifica' || chi === 'nuovocliente' ? chi : 'titolare';
   document.getElementById('doc-overlay').style.zIndex = chi === 'modifica' || chi === 'nuovocliente' ? '490' : '';
-  document.getElementById('doc-titolo').textContent = chi === 'coniuge' ? '📄 Leggi documento del coniuge' : chi === 'archivio' ? '📇 Nuovo cliente in archivio da documento' : chi === 'modifica' ? '✏️ Aggiorna la scheda del cliente dal documento' : chi === 'nuovocliente' ? '👤 Nuovo cliente: dati dal documento' : '📄 Leggi documento';
+  document.getElementById('doc-titolo').textContent = chi === 'lavoratore' ? '👷 Leggi documento del lavoratore' : chi === 'coniuge' ? '📄 Leggi documento del coniuge' : chi === 'archivio' ? '📇 Nuovo cliente in archivio da documento' : chi === 'modifica' ? '✏️ Aggiorna la scheda del cliente dal documento' : chi === 'nuovocliente' ? '👤 Nuovo cliente: dati dal documento' : '📄 Leggi documento';
   apriLetturaDocumento();
 }
 
@@ -667,7 +667,7 @@ async function leggiFileDocumento(file) {
 
 // Finestra "Inserisci PDF": si trascina dentro il file (o si incolla con Ctrl+V, o si sceglie) senza fotocamera
 function apriInserisciDocumento(chi) {
-  docLettura.destinazione = chi === 'coniuge' || chi === 'archivio' || chi === 'modifica' || chi === 'nuovocliente' ? chi : 'titolare';
+  docLettura.destinazione = chi === 'coniuge' || chi === 'lavoratore' || chi === 'archivio' || chi === 'modifica' || chi === 'nuovocliente' ? chi : 'titolare';
   document.getElementById('doc-overlay').style.zIndex = chi === 'modifica' || chi === 'nuovocliente' ? '490' : '';
   docLettura.unisci = false;
   const vecchio = document.getElementById('doc-drop'); if (vecchio) vecchio.remove();
@@ -688,7 +688,7 @@ function apriInserisciDocumento(chi) {
   const usa = function (file) {
     if (!file) return;
     chiudi();
-    document.getElementById('doc-titolo').textContent = chi === 'coniuge' ? '📄 Documento del coniuge' : chi === 'archivio' ? '📇 Nuovo cliente in archivio da documento' : chi === 'modifica' ? '✏️ Aggiorna la scheda del cliente dal documento' : chi === 'nuovocliente' ? '👤 Nuovo cliente: dati dal documento' : '📄 Leggi documento';
+    document.getElementById('doc-titolo').textContent = chi === 'lavoratore' ? '👷 Documento del lavoratore' : chi === 'coniuge' ? '📄 Documento del coniuge' : chi === 'archivio' ? '📇 Nuovo cliente in archivio da documento' : chi === 'modifica' ? '✏️ Aggiorna la scheda del cliente dal documento' : chi === 'nuovocliente' ? '👤 Nuovo cliente: dati dal documento' : '📄 Leggi documento';
     document.getElementById('doc-overlay').classList.add('open');
     vistaDoc('cattura');
     messaggioDoc('Lettura del file ' + (file.name || '') + '...');
@@ -1347,6 +1347,12 @@ function usaDatiDocumento() {
     const msg = document.getElementById(pre + 'msg');
     if (msg) msg.innerHTML = '<span style="color:#1a7f37">✓ Dati del documento inseriti (in verde quelli cambiati): controlla e premi <b>' + (pre === 'nc-' ? '💾 Salva in archivio' : '💾 Salva modifiche') + '</b>.</span>';
     avviso('✓ Dati del documento inseriti nella scheda: controlla e salva'); if (typeof aggiornaColoriModulo === 'function') aggiornaColoriModulo();
+    return;
+  }
+  if (docLettura.destinazione === 'lavoratore') {
+    lavoratoreDaDocumento({ cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, scadenza: v('doc-scad'), numero: v('doc-numero').toUpperCase(), luogo: v('doc-luogo').toUpperCase(), tipoDoc: typeof tipoDocDaLettura === 'function' ? tipoDocDaLettura((docLettura.dati || {}).tipo) : '' });
+    chiudiLetturaDocumento();
+    avviso('✓ Dati del lavoratore inseriti nel modulo');
     return;
   }
   if (docLettura.destinazione !== 'archivio') inviaDocumentoAgliAltriDispositivi({ destinazione: docLettura.destinazione, cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, scadenza: v('doc-scad'), numero: v('doc-numero'), tipoDoc: typeof tipoDocDaLettura === 'function' ? tipoDocDaLettura((docLettura.dati || {}).tipo) : '' });

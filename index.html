@@ -729,6 +729,30 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
       </div>
       <div id="f-desctipo-box" style="display:none; margin-top:8px"><label>Descrizione della pratica *</label><input id="f-desctipo" placeholder="Scrivi di che pratica si tratta (es. successione semplificata)" maxlength="120"></div>
     </div>
+    <!-- Contratti colf e badanti: il cliente è il datore di lavoro, qui si scrive il lavoratore -->
+    <div class="full" id="f-lav-wrap" style="display:none; border:2px solid #8e44ad; border-radius:12px; padding:10px 12px; background:rgba(142,68,173,.06)">
+      <div style="font-weight:800; color:#8e44ad; margin-bottom:6px">👷 Lavoratore (colf o badante) <span style="font-weight:600; font-size:12px; color:var(--sub)">· il cliente in alto è il datore di lavoro</span></div>
+      <div class="grid">
+        <div class="full cli-wrap">
+          <label>Cerca il lavoratore nell'archivio (cognome o nome)</label>
+          <input id="cli-cerca-lav" placeholder="Scrivi per cercare tra i clienti già archiviati..." autocomplete="off" oninput="cercaClienti(this.value, 'lav')" onfocus="cercaClienti(this.value, 'lav')">
+          <div class="cli-results" id="cli-results-lav"></div>
+        </div>
+        <div><label>Cognome</label><input id="f-lav-cognome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+        <div><label>Nome</label><input id="f-lav-nome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+        <div><label>Data di nascita</label><input id="f-lav-data" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
+        <div><label>Luogo di nascita (comune o Stato)</label><input id="f-lav-comune" list="lista-comuni" autocomplete="off" placeholder="Es. MESSINA (ME) o ROMANIA" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+        <div><label>Codice fiscale</label><input id="f-lav-cf" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"></div>
+        <div><label>Cellulare</label><input id="f-lav-tel" type="tel" inputmode="tel" placeholder="Facoltativo"></div>
+        <div><label>Documento: tipo, scadenza e numero</label><div style="display:flex; gap:6px; flex-wrap:wrap"><select id="f-lav-doc-tipo" style="width:auto; flex:0 1 130px; min-width:96px"></select>
+          <input id="f-lav-doc-scad" placeholder="Scadenza GG/MM/AAAA" inputmode="numeric" autocomplete="off" style="flex:0 1 150px; min-width:110px; font-weight:700" oninput="autoSlashData(this)">
+          <input id="f-lav-doc-num" placeholder="Numero" autocomplete="off" style="flex:1 1 120px; min-width:100px; text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,'')"></div></div>
+        <div><label>Permesso di soggiorno (stranieri): scadenza e numero</label><div style="display:flex; gap:6px; flex-wrap:wrap">
+          <input id="f-lav-perm-scad" placeholder="Scadenza GG/MM/AAAA" inputmode="numeric" autocomplete="off" style="flex:0 1 150px; min-width:110px; font-weight:700" oninput="autoSlashData(this)">
+          <input id="f-lav-perm-num" placeholder="Numero (facoltativo)" autocomplete="off" style="flex:1 1 120px; min-width:100px; text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,'')"></div></div>
+        <div style="display:flex; align-items:flex-end"><button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('lavoratore')" title="Leggi i dati del lavoratore da carta d'identità, tessera sanitaria, patente o passaporto">📄 Leggi documento lavoratore</button></div>
+      </div>
+    </div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; align-items:start">
       <!-- Fattura, richiesto, pagato e tipo di pagamento non si chiedono più nell'inserimento: si scrivono con ▶ Lavorata e alla Consegna -->
       <div style="display:none">
@@ -1028,8 +1052,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
 <script src="js/comuni.js?v=2"></script>
-<script src="js/cf-auto.js?v=8"></script>
-<script src="js/ocr-documento.js?v=33"></script>
+<script src="js/cf-auto.js?v=9"></script>
+<script src="js/ocr-documento.js?v=34"></script>
 <script src="js/grafici.js?v=24"></script>
 <script src="js/stampe.js?v=33"></script>
 <script src="js/extra.js?v=47"></script>
@@ -1037,19 +1061,20 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=23"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=225"></script>
+<script src="js/guida.js?v=226"></script>
 <script src="js/scadenze.js?v=202610099"></script>
 <script src="js/config.js?v=202610079"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
-<script src="js/data.js?v=202610244"></script>
+<script src="js/data.js?v=202610245"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610352"></script>
+<script src="js/app.js?v=202610353"></script>
+<script src="js/lavoratore-colf.js?v=1"></script>
 <script src="js/email.js?v=4"></script>
 <script src="js/modulistica.js?v=1"></script>
-<script src="js/storico.js?v=6"></script>
+<script src="js/storico.js?v=7"></script>
 <script src="js/richiami.js?v=18"></script>
 <script src="js/auguri.js?v=3"></script>
 <script src="js/pratiche-ferme.js?v=4"></script>
@@ -1060,8 +1085,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/oggi.js?v=17"></script>
 <script src="js/agenda.js?v=6"></script>
 <script src="js/comunicazioni.js?v=4"></script>
-<script src="js/documenti-scadenza.js?v=8"></script>
-<script src="js/ricerca-unica.js?v=7"></script>
+<script src="js/documenti-scadenza.js?v=9"></script>
+<script src="js/ricerca-unica.js?v=8"></script>
 <script src="js/situazione.js?v=7"></script>
 <script src="js/versamenti.js?v=34"></script>
 <script src="js/spese.js?v=11"></script>
@@ -1073,7 +1098,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/chat.js?v=8"></script>
 <script src="js/accesso-qr.js?v=6"></script>
 <script src="js/dettaglio-cont.js?v=15"></script>
-<script src="js/archivio-clienti.js?v=31"></script>
+<script src="js/archivio-clienti.js?v=32"></script>
 
 </body></html>
 <!-- Force rebuild at Sat Oct  3 14:41:00 UTC 2026 -->

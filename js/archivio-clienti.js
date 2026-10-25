@@ -230,6 +230,9 @@ function modificaClienteArchivio(c, dopo) {
     + campo('scad', 'Scadenza documento', c.documentoScadenza, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + '<div><label>Tipo documento</label><select id="mc-doctipo">' + (typeof opzioniTipoDoc === 'function' ? opzioniTipoDoc(c.documentoTipo || '') : '') + '</select></div>'
     + campo('docnum', 'N. documento', c.documentoNumero, 'style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\\s+/g, \'\')"')
+    + campo('permscad', '🛂 Permesso di soggiorno: scadenza', c.permessoScadenza, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
+    + campo('permnum', '🛂 Permesso di soggiorno: numero', c.permessoNumero, 'style="text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\\s+/g, \'\')"')
+    + '<div style="display:flex; align-items:flex-end"><label class="chk" style="margin:0"><input type="checkbox" id="mc-lavcolf"' + (c.lavoratoreColf ? ' checked' : '') + '> 👷 Lavoratore colf o badante</label></div>'
     + '<div><label>Ruolo nella dichiarazione</label><select id="mc-ruolo" onchange="document.getElementById(\'mc-dich-box\').style.display = this.value === \'coniuge\' ? \'\' : \'none\'">' + opzioniRuoloDichiarazione(c.ruoloDichiarazione || '') + '</select></div>'
     + '<div><label title="A chi appartiene il cliente: nelle nuove pratiche il tipo si propone da solo">🤝 Collaboratore</label><select id="mc-collab">' + opzioniCollaboratore(c.collaboratore || '') + '</select></div>'
     + '<div class="full" id="mc-dich-box" style="' + (c.ruoloDichiarazione === 'coniuge' ? '' : 'display:none') + '"><label>💑 Dichiarante (titolare della congiunta): cognome e nome, data di nascita</label>' + campiDichiaranteHTML('mc-', c.dichiaranteNome || coniugeDiCliente(c) || '', nascitaDichiaranteCliente(c)) + '</div>'
@@ -275,6 +278,7 @@ function modificaClienteArchivio(c, dopo) {
     }
     const campi = { nomeCompleto: (cognome + ' ' + nome).trim(), cognome: cognome, nome: nome, dataNascita: nascita || '', codiceFiscale: cf || null, telefono: tel || null, telefonoFisso: fisso || null, email: email || null, documentoScadenza: scad || null, comuneNascita: comune || null, documentoNumero: docnum || null, documentoTipo: doctipo || null, decedutoIl: deceduto || null, collaboratore: v('collab') || null, ruoloDichiarazione: v('ruolo') || null, dichiaranteNome: v('ruolo') === 'coniuge' ? (v('dichiarante').toUpperCase() || null) : null, dichiaranteNascita: v('ruolo') === 'coniuge' ? (v('dichiarante-nascita') || null) : null, noMessaggi: !!(document.getElementById('mc-no-messaggi') && document.getElementById('mc-no-messaggi').checked),
       // cellulare cambiato: si riprova con WhatsApp
+      permessoScadenza: v('permscad') || null, permessoNumero: v('permnum').toUpperCase() || null, lavoratoreColf: !!(document.getElementById('mc-lavcolf') || {}).checked,
       riferimento: v('riferimento').toUpperCase() || null, note: ((document.getElementById('mc-note') || {}).value || '').trim().slice(0, 2000) || null,
       noWhatsapp: !!(document.getElementById('mc-no-whatsapp') && document.getElementById('mc-no-whatsapp').checked) && numeroWhatsApp(tel) === numeroWhatsApp(c.telefono) };
     b.disabled = true; b.textContent = 'Salvataggio…';

@@ -245,5 +245,5 @@ function tipoDocDaLettura(t) {
   return '';
 }
 document.addEventListener('DOMContentLoaded', function () {
-  ['f-doc-tipo', 'f-cong-doc-tipo'].forEach(function (id) { const el = document.getElementById(id); if (el && !el.options.length) el.innerHTML = opzioniTipoDoc(''); });
+  ['f-doc-tipo', 'f-cong-doc-tipo', 'f-lav-doc-tipo'].forEach(function (id) { const el = document.getElementById(id); if (el && !el.options.length) el.innerHTML = opzioniTipoDoc(''); });
 });
