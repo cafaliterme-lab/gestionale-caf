@@ -391,6 +391,7 @@ function coniugeCollegato(c){
 let CONG_AUTO = null;
 function compilaConiugeCongiunta(con, dich){
   const chk = document.getElementById('f-congiunta-on'); if(!chk) return;
+  if(!tipoAmmetteCongiunta((document.getElementById('f-tipo')||{}).value)) return; // solo per i 730
   const gia = ((document.getElementById('f-cong-cognome') || {}).value || '').trim();
   if(gia && gia.toUpperCase() !== String(con.cognome || '').toUpperCase()) return;
   if(!chk.checked){ chk.checked = true; toggleCongBox(); }
@@ -2575,6 +2576,8 @@ function popupErroreCampo(titolo, testo, idCampo){
 }
 async function addPraticaInterna(){
   const msg = document.getElementById('form-msg');
+  // la congiunta esiste solo per i 730: per gli altri tipi si toglie (anche se compilata in automatico dall'archivio)
+  if(!tipoAmmetteCongiunta(document.getElementById('f-tipo').value)){ const chk = document.getElementById('f-congiunta-on'); if(chk){ chk.checked = false; toggleCongBox(); } }
   msg.style.display = 'none';
   const cognome = document.getElementById('f-cognome').value.trim().toUpperCase();
   const nomeProprio = document.getElementById('f-nome').value.trim().toUpperCase();
@@ -3765,6 +3768,8 @@ async function salvaModifica(id){
   const g = k => document.getElementById(k+'-'+id).value;
   var cc = g('e-congcognome').trim().toUpperCase();
   var cn = g('e-congnome').trim().toUpperCase();
+  // la congiunta esiste solo per i 730: per gli altri tipi i dati del coniuge non si salvano
+  if(!tipoAmmetteCongiunta(g('e-tipo'))){ cc = ''; cn = ''; }
   const numFattura = g('e-nf').trim();
   const dataFattura = g('e-df').trim();
   const cognomeTit = g('e-cognome').trim().toUpperCase();
@@ -3773,7 +3778,7 @@ async function salvaModifica(id){
   const campi = {
     nome: (cognomeTit + ' ' + nomeTit).trim(),
     congCognome: cc, congNome: cn,
-    congData: g('e-congdata').trim(),
+    congData: (cc || cn) ? g('e-congdata').trim() : '',
     congCodiceFiscale: (cc || cn) ? normalizzaCF(g('e-congcf')) : '',
     congTelefono: (cc || cn) ? g('e-congtel').trim() : '',
     congEmail: (cc || cn) ? g('e-congemail').trim().toLowerCase() : '',
