@@ -2397,7 +2397,7 @@ function render(){
   { const st = (document.getElementById('filtro-stato')||{}).value || ''; if(st) filtriRiq.push('stato ' + statoLabel(st)); }
   if(FILTRO_CISL) filtriRiq.push('CISL'); if(FILTRO_TIPO) filtriRiq.push('tipo ' + FILTRO_TIPO); if(FILTRO_RIF) filtriRiq.push('riferimento ' + FILTRO_RIF);
   if(SOLO_VIA_EMAIL) filtriRiq.push('via e-mail'); if(filtroFatturaAttivo()) filtriRiq.push('importo fattura'); if(inRicerca) filtriRiq.push('ricerca');
-  const avvisoFiltri = filtriRiq.length ? '<div style="margin:0 0 10px; padding:8px 12px; border-radius:10px; border:2px solid #b35f0c; background:color-mix(in srgb, #b35f0c 8%, var(--card)); font-size:13px; display:flex; gap:8px; flex-wrap:wrap; align-items:center"><span style="flex:1 1 260px">⚠️ <b>Filtri del registro accesi</b> (' + esc(filtriRiq.join(', ')) + '): i riquadri contano solo le pratiche filtrate.</span><button type="button" onclick="azzeraFiltriRegistro()" style="background:#b35f0c; color:#fff; border:none; border-radius:999px; padding:5px 12px; font-weight:700; cursor:pointer">✕ Togli i filtri</button></div>' : '';
+  const avvisoFiltri = filtriRiq.length ? '<div style="grid-column:1/-1; margin:0 0 10px; padding:8px 12px; border-radius:10px; border:2px solid #b35f0c; background:color-mix(in srgb, #b35f0c 8%, var(--card)); font-size:13px; display:flex; gap:8px; flex-wrap:wrap; align-items:center"><span style="flex:1 1 260px">⚠️ <b>Filtri del registro accesi</b> (' + esc(filtriRiq.join(', ')) + '): i riquadri contano solo le pratiche filtrate.</span><button type="button" onclick="azzeraFiltriRegistro()" style="background:#b35f0c; color:#fff; border:none; border-radius:999px; padding:5px 12px; font-weight:700; cursor:pointer">✕ Togli i filtri</button></div>' : '';
   const nomiGruppi = getTipiList().slice();
   visibili.forEach(function(p){ const k = p.tipo || 'SENZA TIPO'; if(nomiGruppi.indexOf(k) < 0) nomiGruppi.push(k); });
   const TOT_RIQ = { n: 0, fe: 0, inc: 0, acc: 0, g: 0 };
@@ -2443,7 +2443,7 @@ function riepilogoRiquadriHTML(t, conFiltri, cont){
     return '<div style="flex:1 1 150px; padding:8px 10px; border-radius:10px; background:' + colore + '; color:#fff; text-align:center"><div style="font-size:17px; font-weight:800">' + (soldi ? fmtEuro(valore) : valore) + '</div><div style="font-size:10.5px; font-weight:700; text-transform:uppercase; opacity:.92">' + etichetta + '</div>'
       + (conFiltri ? '' : '<div style="font-size:11px; margin-top:3px; font-weight:800">' + (ok ? '✓ come in Contabilità' : '⚠️ Contabilità: ' + (soldi ? fmtEuro(confronto) : confronto)) + '</div>') + '</div>';
   };
-  return '<div style="margin-top:12px; padding:10px 12px; border-radius:12px; border:2px dashed #374151; background:var(--card)">'
+  return '<div style="grid-column:1/-1; margin-top:12px; padding:10px 12px; border-radius:12px; border:2px dashed #374151; background:var(--card)">'
     + '<b style="font-size:15px">🧮 Totale di tutti i riquadri – ' + annoAttivo() + '</b> <span class="sub2">' + (conFiltri ? '(solo le pratiche filtrate: togli i filtri per il confronto con la Contabilità)' : '(la somma dei singoli tipi: deve combaciare con la Contabilità generale)') + '</span>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px">'
     + voce('Pratiche (senza rinunce)', t.n, cont.n, false, '#1d4f91')
