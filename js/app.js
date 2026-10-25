@@ -494,7 +494,9 @@ function annoDiData(s){
   return d ? d.a : (new Date()).getFullYear();
 }
 // Una pratica congiunta vale 2, una singola 1
-function pesoPratica(p){ return (p.congCognome || p.congNome) ? 2 : 1; }
+// conteggio delle pratiche: la congiunta vale 2; un contratto colf in continuazione (trasferito o rinnovato) non è una pratica nuova e vale 0
+// (i suoi incassi restano in contabilità dell'anno in cui si riscuotono)
+function pesoPratica(p){ return eContinuazione(p) ? 0 : (p.congCognome || p.congNome) ? 2 : 1; }
 function sommaPeso(lista){ return lista.reduce(function(t,p){ return t + pesoPratica(p); }, 0); }
 // Quante congiunte ci sono in un elenco (per spiegare il conteggio: 7 pratiche di cui 1 congiunta = 8)
 function numeroCongiunte(lista){ return (lista||[]).filter(function(p){ return pesoPratica(p) === 2; }).length; }
@@ -693,7 +695,12 @@ function formattaInserimento(p){
 }
 // Serie del protocollo: "730" per le dichiarazioni 730, "AP" per le altre pratiche
 function serieDi(p){ return (p && p.serie) || (String((p && p.tipo) || '').toUpperCase().indexOf('730') === 0 ? '730' : 'AP'); }
+// Contratto colf in continuazione (trasferito nell'anno nuovo o rinnovato): si vede con il protocollo d'origine
+function eContinuazione(p){ return !!(p && p.continuazione); }
+// protocollo d'origine di un contratto, sempre con l'anno (es. AP-0002/2026)
+function protocolloOrigineDi(p){ return p && p.continuazione && p.protocolloOrigine ? p.protocolloOrigine : serieDi(p) + '-' + String(p.numero).padStart(4,'0') + '/' + annoPratica(p); }
 function formattaProtocollo(p){
+  if(p && p.continuazione && p.protocolloOrigine) return p.protocolloOrigine;
   const anno = annoPratica(p);
   const num = serieDi(p) + '-' + String(p.numero).padStart(4,'0');
   return anno >= ANNO_INIZIO_PROTOCOLLO ? (num + '/' + anno) : num;
@@ -2394,6 +2401,7 @@ function render(){
       <div class="meta">Aperta il ${p.data||'-'}${eColf(p.tipo) ? (p.scadenzaAssistenza ? ' · <b style="color:#c0392b">⏰ Scadenza assistenza il '+esc(p.scadenzaAssistenza)+'</b>' : '') : (p.dataFine ? ' · <b>Fine lavorazione il '+esc(p.dataFine)+'</b>' : '')} ${p.stato === 'pratica_cessata' && p.cessazioneMotivo ? '· <b style="color:#374151">⚫ Cessata' + (p.cessazioneData ? ' il ' + esc(p.cessazioneData) : '') + ': ' + esc(p.cessazioneMotivo) + '</b> <button type="button" onclick="modificaCessazione(\'' + p.id + '\')" style="padding:1px 8px; font-size:11px">✏️</button> ' : ''}${p.riferimento ? '· <b style="color:#6d3fa0">👤 rif. '+esc(p.riferimento)+'</b> ' : ''}${p.note ? '· '+esc(p.note) : ''}</div>
       <div class="meta compenso">Fattura: ${fmtEuro(p.compenso)} · Pagato effettivo: ${fmtEuro(p.pagato)}${p.metodoPagamento ? ' (' + esc(p.metodoPagamento) + ')' : ''}</div>
       ${typeof documentoCardHTML === 'function' ? documentoCardHTML(p) : ''}
+      ${typeof continuazioneCardHTML === 'function' ? continuazioneCardHTML(p) : ''}
       ${typeof lavoratoreCardHTML === 'function' ? lavoratoreCardHTML(p) : ''}
       ${typeof documentiCardHTML === 'function' ? documentiCardHTML(p) : ''}
       ${storicoClienteHTML(p)}
@@ -2499,7 +2507,7 @@ function render(){
     const sola = SCHEDA_SOLA[k] && items.find(function(p){ return p.id === SCHEDA_SOLA[k]; });
     const schede = sola ? [sola] : items.filter(vediNelGruppo(statoGr));
     return '<details class="grp" data-k="' + esc(k) + '" style="--gc:' + col + '" ' + (open ? 'open' : '') + ' ontoggle="gToggle(this)">'
-      + '<summary style="background:' + col + '; background-image:none"><span class="grp-name">' + esc(k) + '</span><span class="grp-n">' + sommaPeso(items) + '</span>'
+      + '<summary style="background:' + col + '; background-image:none"><span class="grp-name">' + esc(k) + '</span><span class="grp-n">' + sommaPeso(items) + '</span>' + (items.filter(eContinuazione).length ? '<span class="grp-n" title="Contratti in continuazione dagli anni prima o rinnovati: non contano tra le pratiche nuove" style="background:#1f8a70; color:#fff">🔁 ' + items.filter(eContinuazione).length + ' in continuazione</span>' : '')
       + ('<span class="grp-soldi">Fatture ' + fmtEuro(fe) + (feAnn ? '<br><small>di cui ' + fmtEuro(feAnn) + ' annullate</small>' : '') + (feAtt ? '<br><small>⏳ in attesa ' + fmtEuro(feAtt) + '</small>' : '') + '<br>Incasso ' + fmtEuro(inc) + (accK ? '<br>Pagamenti ' + fmtEuro(accK) : '') + (vedeGuadagni() && (fe || inc) ? '<br><b>Guadagno ' + fmtEuro(gK) + '</b>' : '') + '</span>') + '</summary>'
       + '<div class="grp-b">' + filtroStatoGruppoHTML(k, tuttiTipo) + contabilitaCollaboratoreHTML(k, items, gK) + tabellaPraticheGruppoHTML(items.filter(vediNelGruppo(statoGr)), k)
       + (items.length ? '<details class="grp-schede" data-k="' + esc(k) + '|schede" ' + (schedeAperte ? 'open' : '') + ' ontoggle="aperti[this.dataset.k]=this.open; if(!this.open) delete SCHEDA_SOLA[this.dataset.k.replace(/\|schede$/, \'\')]" style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; color:var(--sub); padding:6px 0">📋 ' + (sola ? 'Scheda della pratica ' + esc(formattaProtocollo(sola)) + ' – ' + esc(sola.nome || '') : 'Schede complete delle pratiche (' + items.length + ')') + ' – per modificare, ricevuta, WhatsApp…</summary>'
@@ -2692,7 +2700,9 @@ async function addPraticaInterna(){
   }
 
   const annoPr = annoDiData(dataPratica);
-  const doppione = eAltrePratiche(tipo) ? null : await cercaDoppione(annoPr, nome, tipo, codiceFiscale, null);
+  // rinnovo di un contratto colf (🔁 Rinnova dalla scadenza): è la continuazione dello stesso contratto, con il protocollo d'origine
+  const rinnovo = eColf(tipo) && typeof praticaInRinnovo === 'function' ? praticaInRinnovo(nome) : null;
+  const doppione = (eAltrePratiche(tipo) || rinnovo) ? null : await cercaDoppione(annoPr, nome, tipo, codiceFiscale, null);
   if(doppione){
     msg.textContent = '⚠️ ' + nome + ' ha gia\' una pratica ' + tipo + ' nel ' + annoPr + ' (protocollo ' + doppione + '). Non e\' possibile inserire un doppione.';
     msg.style.display = 'block';
@@ -2741,6 +2751,7 @@ async function addPraticaInterna(){
     inseritoIl: new Date().toISOString(),
     riferimento: riferimento || null
   };
+  if(rinnovo){ nuovaPratica.continuazione = true; nuovaPratica.protocolloOrigine = protocolloOrigineDi(rinnovo); }
 
   // Usa la nuova API data.js
   const result = await data.pratiche.aggiungi(nuovaPratica);
@@ -2749,7 +2760,7 @@ async function addPraticaInterna(){
     msg.style.display = 'block';
     return;
   }
-  if(eColf(tipo) && typeof concludiRinnovoScadenza === 'function') concludiRinnovoScadenza();
+  if(eColf(tipo) && typeof concludiRinnovoScadenza === 'function') await concludiRinnovoScadenza(rinnovo, nuovaPratica.protocolloOrigine);
   confermaPraticaSalvata(result.id, nome, tipo, documenti.mancanti);
 
   document.getElementById('f-cognome').value='';
@@ -4076,16 +4087,19 @@ async function caricaNomiOperatori(){
 // Stesso nominativo + stesso tipo + stesso anno = doppione; due omonimi con codice fiscale diverso restano distinti.
 async function cercaDoppione(anno, nome, tipo, codiceFiscale, escludiId){
   if(!nome || !tipo) return null;
-  let elenco = (state.pratiche||[]).map(function(p){ return { id:p.id, numero:p.numero, anno:annoPratica(p), nome:p.nome, tipo:p.tipo, codiceFiscale:p.codiceFiscale }; });
+  let elenco = (state.pratiche||[]).map(function(p){ return { id:p.id, numero:p.numero, anno:annoPratica(p), nome:p.nome, tipo:p.tipo, codiceFiscale:p.codiceFiscale, serie:p.serie, trasferitaIn:p.trasferitaIn, protocolloOrigine:p.continuazione ? p.protocolloOrigine : '' }; });
   try{
-    const { data: righe, error } = await supabase.from('pratiche').select('id,numero,anno,nome,tipo,codice_fiscale').eq('anno', anno).eq('nome', nome).eq('tipo', tipo);
-    if(!error && Array.isArray(righe)) elenco = righe.map(function(r){ return { id:r.id, numero:r.numero, anno:r.anno, nome:r.nome, tipo:r.tipo, codiceFiscale:r.codice_fiscale }; });
+    const { data: righe, error } = await supabase.from('pratiche').select('id,numero,anno,nome,tipo,codice_fiscale,serie,trasferita_in,continuazione,protocollo_origine').eq('anno', anno).eq('nome', nome).eq('tipo', tipo);
+    if(!error && Array.isArray(righe)) elenco = righe.map(function(r){ return { id:r.id, numero:r.numero, anno:r.anno, nome:r.nome, tipo:r.tipo, codiceFiscale:r.codice_fiscale, serie:r.serie, trasferitaIn:r.trasferita_in, protocolloOrigine:r.continuazione ? r.protocollo_origine : '' }; });
   }catch(e){ console.error('controllo doppioni', e); }
   const trovato = elenco.find(function(p){
     if(p.id === escludiId) return false;
+    // contratto colf già trasferito o rinnovato: è chiuso, non conta come doppione
+    if(p.trasferitaIn) return false;
     if(Number(p.anno) !== Number(anno) || (p.nome||'').toUpperCase() !== nome.toUpperCase() || p.tipo !== tipo) return false;
     return !(codiceFiscale && p.codiceFiscale && p.codiceFiscale !== codiceFiscale);
   });
+  if(trovato && trovato.protocolloOrigine) return trovato.protocolloOrigine + ' (continuazione)';
   return trovato ? serieDi(trovato) + '-' + String(trovato.numero).padStart(4,'0') + '/' + anno : null;
 }
 

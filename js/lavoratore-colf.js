@@ -122,3 +122,9 @@ function datiLavoratoreEdit(id, tipo) {
     lavPermessoNumero: v('lavpermnum').toUpperCase(), lavPermessoScadenza: v('lavpermscad')
   };
 }
+// contratto in continuazione (trasferito nell'anno nuovo o rinnovato): protocollo d'origine, non conta tra le pratiche nuove
+function continuazioneCardHTML(p) {
+  if (!p || !p.continuazione) return '';
+  return '<div class="meta" style="margin-top:4px"><span style="display:inline-block; background:#1f8a70; color:#fff; border-radius:999px; padding:1px 9px; font-size:12px; font-weight:800">🔁 Contratto in continuazione</span> '
+    + 'protocollo d\'origine <b>' + esc(p.protocolloOrigine || '') + '</b> · non conta tra le pratiche nuove del ' + esc(String(annoPratica(p))) + '</div>';
+}

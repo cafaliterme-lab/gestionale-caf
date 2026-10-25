@@ -192,6 +192,13 @@ window.addEventListener('resize', posizionaPannelloScadenze);
 // Dalla scadenza si apre una nuova pratica nell'anno attivo, gia' compilata con i dati del cliente:
 // resta da scrivere la nuova scadenza (e l'importo). Salvata la pratica, la vecchia scadenza diventa "fatta".
 let RINNOVO_SCADENZA = null;
+let RINNOVO_PRATICA = null; // pratica colf che si sta rinnovando (il rinnovo ne è la continuazione)
+// pratica in rinnovo, solo se il modulo è ancora per lo stesso cliente
+function praticaInRinnovo(nome) {
+  const p = RINNOVO_PRATICA;
+  if (!p || !p.id || !RINNOVO_SCADENZA) return null;
+  return String(p.nome || '').trim().toUpperCase() === String(nome || '').trim().toUpperCase() ? p : null;
+}
 function eScadenzaColf(s) { return !!s.praticaId || /colf|badant/i.test(s.titolo || ''); }
 function rinnovaScadenza(id) {
   const s = (state.scadenze || []).find(function (x) { return x.id === id; });
@@ -221,19 +228,27 @@ function rinnovaScadenza(id) {
   if (typeof controllaCampoCF === 'function') controllaCampoCF();
   if (typeof aggiornaStoricoForm === 'function') aggiornaStoricoForm();
   RINNOVO_SCADENZA = s.id;
+  RINNOVO_PRATICA = p && p.id ? p : null;
   const df = document.getElementById('f-data-fine');
   setTimeout(function () { if (df) { df.scrollIntoView({ behavior: 'smooth', block: 'center' }); df.focus(); df.style.boxShadow = '0 0 0 3px rgba(47,158,158,.45)'; } }, 200);
   avviso('🔁 Rinnovo di ' + (p.nome || '') + ': scrivi la nuova scadenza assistenza e l\'importo, poi salva');
 }
 // chiamata dopo il salvataggio di una pratica colf: chiude la vecchia scadenza
-async function concludiRinnovoScadenza() {
+async function concludiRinnovoScadenza(vecchia, origine) {
   if (!RINNOVO_SCADENZA) return;
   const id = RINNOVO_SCADENZA;
-  RINNOVO_SCADENZA = null;
+  RINNOVO_SCADENZA = null; RINNOVO_PRATICA = null;
   const sc = (state.scadenze || []).find(function (x) { return x.id === id; });
   const note = [sc && sc.note, 'RINNOVATA'].filter(Boolean).join(' · ');
   const r = await data.scadenze.aggiorna(id, { completata: true, note: note });
   if (r && r.error) avviso('❌ ' + r.error, true);
+  // la pratica rinnovata si chiude: il contratto continua nella pratica nuova (niente doppioni per buste paga e passaggio d'anno);
+  // la sua vecchia scadenza esce dal calendario, la nuova scadenza è quella del rinnovo
+  if (vecchia && vecchia.id && !vecchia.trasferitaIn) {
+    const t = (origine || protocolloOrigineDi(vecchia)) + ' (rinnovata il ' + todayIT() + ')';
+    const r0 = await data.pratiche.aggiorna(vecchia.id, { trasferitaIn: t });
+    if (!(r0 && r0.error)) vecchia.trasferitaIn = t;
+  }
   const df = document.getElementById('f-data-fine'); if (df) df.style.boxShadow = '';
 }
 

@@ -41,7 +41,7 @@ function apriTrasferimentoColf(annoDa) {
   ov.style.cssText = 'position:fixed; inset:0; z-index:470; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #1f8a70; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:18px 20px; max-width:680px; width:100%; max-height:92vh; display:flex; flex-direction:column">'
     + '<div style="font-size:19px; font-weight:800; color:#1f8a70">➡️ Trasferisci colf e badanti dal ' + annoDa + ' al ' + annoA + '</div>'
-    + '<div style="font-size:13px; color:var(--sub); margin:2px 0 10px">Per ogni pratica spuntata viene creata una nuova pratica nel <b>' + annoA + '</b> (registro altre pratiche, nuovo numero) con gli stessi dati, stato <b>Pratica attiva</b>, la stessa <b>scadenza dell\'assistenza</b> e la stessa fattura (da pagare). La pratica del ' + annoDa + ' resta nello storico come "Trasferita nel ' + annoA + '".</div>'
+    + '<div style="font-size:13px; color:var(--sub); margin:2px 0 10px">Per ogni pratica spuntata il contratto continua nel <b>' + annoA + '</b> come <b>🔁 continuazione</b>: <b>nessun numero nuovo</b> (resta il protocollo d\'origine, es. AP-0002/' + annoDa + '), non conta tra le pratiche nuove dell\'anno, con gli stessi dati e lavoratore, stato <b>Pratica attiva</b>, la stessa <b>scadenza dell\'assistenza</b> e la stessa fattura (da pagare). I pagamenti del ' + annoA + ' entrano nella contabilità del ' + annoA + '. La pratica del ' + annoDa + ' resta nello storico come "Trasferita".</div>'
     + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px"><button type="button" data-tutte="1" style="padding:5px 12px">☑ Seleziona tutte</button><button type="button" data-tutte="0" style="padding:5px 12px">☐ Nessuna</button></div>'
     + '<div style="overflow:auto; flex:1; border:1px solid var(--line); border-radius:10px">'
     + lista.map(function (p) {
@@ -71,7 +71,10 @@ function apriTrasferimentoColf(annoDa) {
       // se nel nuovo anno c'è già una pratica colf dello stesso cliente non si crea un doppione
       const gia = await cercaDoppione(annoA, p.nome, p.tipo, p.codiceFiscale, null);
       if (gia) { await supabase.from('pratiche').update({ trasferita_in: gia }).eq('id', p.id).select('id'); p.trasferitaIn = gia; saltate++; continue; }
+      // continuazione: niente numero nuovo della serie AP, resta il protocollo d'origine del contratto
+      const origine = protocolloOrigineDi(p);
       const nuova = {
+        continuazione: true, protocolloOrigine: origine,
         anno: annoA, data: dataNuova, tipo: p.tipo, stato: 'pratica_attiva',
         nome: p.nome, cf: p.cf, codiceFiscale: p.codiceFiscale, telefono: p.telefono, telefonoFisso: p.telefonoFisso, email: p.email,
         documentoScadenza: p.documentoScadenza, documenti: p.documenti,
@@ -80,7 +83,7 @@ function apriTrasferimentoColf(annoDa) {
         lavCognome: p.lavCognome, lavNome: p.lavNome, lavCodiceFiscale: p.lavCodiceFiscale, lavData: p.lavData, lavComuneNascita: p.lavComuneNascita, lavTelefono: p.lavTelefono,
         lavDocumentoTipo: p.lavDocumentoTipo, lavDocumentoNumero: p.lavDocumentoNumero, lavDocumentoScadenza: p.lavDocumentoScadenza, lavPermessoNumero: p.lavPermessoNumero, lavPermessoScadenza: p.lavPermessoScadenza,
         compenso: p.compenso, pagato: 0, metodoPagamento: '', scadenzaAssistenza: p.scadenzaAssistenza || '',
-        note: 'Trasferita dal ' + annoDa + ' (' + formattaProtocollo(p) + ')',
+        note: 'Continuazione nel ' + annoA + ' del contratto ' + origine,
         fatt: 'dafatturare', numFattura: '', dataFattura: '',
         inseritoDa: ((auth.profilo && auth.profilo.nome) || '').toUpperCase(), inseritoIl: new Date().toISOString()
       };
@@ -88,7 +91,7 @@ function apriTrasferimentoColf(annoDa) {
       const ins = await supabase.from('pratiche').insert([db]).select('id,numero,anno,serie');
       if (ins.error || !ins.data || !ins.data.length) { esito.innerHTML = '<b style="color:#c0392b">❌ ' + esc((p.nome || '')) + ' non trasferita' + (ins.error ? ': ' + esc(ins.error.message) : '') + '</b>'; b.disabled = false; break; }
       const r = ins.data[0];
-      const numeroNuovo = formattaProtocollo({ anno: r.anno, serie: r.serie, numero: r.numero, tipo: p.tipo });
+      const numeroNuovo = origine + ' (continuazione ' + annoA + ')';
       const upd = await supabase.from('pratiche').update({ trasferita_in: numeroNuovo }).eq('id', p.id).select('id');
       if (upd.error) { esito.innerHTML = '<b style="color:#c0392b">❌ ' + esc(upd.error.message) + '</b>'; b.disabled = false; break; }
       p.trasferitaIn = numeroNuovo;

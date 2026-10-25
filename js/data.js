@@ -136,6 +136,8 @@ const schemas = {
     lavDocumentoScadenza: 'lav_documento_scadenza',
     lavPermessoNumero: 'lav_permesso_numero',
     lavPermessoScadenza: 'lav_permesso_scadenza',
+    continuazione: 'continuazione',
+    protocolloOrigine: 'protocollo_origine',
     comuneNascita: 'comune_nascita',
     congComuneNascita: 'cong_comune_nascita',
     documentoScadenza: 'documento_scadenza',
