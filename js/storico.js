@@ -104,6 +104,7 @@ function schedaStoricoHTML(x) {
     + '<span style="display:flex; gap:6px; flex-wrap:wrap"><button type="button" onclick="stampaStorico()" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">🖨️ Stampa</button>'
     + '<button type="button" onclick="tornaRicercaStorico()" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">↩️ Altra ricerca</button></span></div>'
     + (typeof avvisoMorosoHTML === 'function' ? avvisoMorosoHTML(tutte) : '')
+    + (typeof percorsoCollaboratoreHTML === 'function' ? percorsoCollaboratoreHTML(tutte) : '')
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">' + tasto('Tutti gli anni', '') + anni.map(function (a) { return tasto(a + (a === annoProt ? ' (in corso)' : ''), a); }).join('') + '</div>'
     + '<div class="meta" style="margin:0 0 8px">' + valide.length + ' pratiche' + (lista.length > valide.length ? ' (+ ' + (lista.length - valide.length) + ' annullate)' : '') + ' · Fatture <b>' + fmtEuro(somma(valide, 'compenso')) + '</b> · Richiesto <b>' + fmtEuro(somma(valide, 'richiesto')) + '</b> · Pagato <b>' + fmtEuro(somma(valide, 'pagato')) + '</b>'
     + (manca > 0.004 ? ' · <b style="color:#c0392b">Deve ancora ' + fmtEuro(manca) + '</b>' : ' · <b style="color:#1a7f37">nulla da pagare</b>') + '</div>'

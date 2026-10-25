@@ -299,6 +299,36 @@ function clientiPortatiDa(nome){
   nome = String(nome || '').trim().toUpperCase(); if(!nome) return [];
   return (ARCHIVIO_CLIENTI || []).filter(function(c){ return String(c.riferimento || '').trim().toUpperCase() === nome; });
 }
+// Collaboratore della scheda dopo una nuova pratica 730: quello della pratica dell'anno più recente
+function aggiornaCollaboratoreDaPratica(nomeCompleto, dataNascita, codiceFiscale, tipo, anno){
+  const rec = trovaInArchivio(nomeCompleto, dataNascita, codiceFiscale);
+  const nome = String(nomeCompleto || '').toUpperCase(), cf = String(codiceFiscale || '').toUpperCase();
+  const piuRecente = (state.pratiche || []).filter(function(p){ return !p.annullata && e730(p) && ((cf && String(p.codiceFiscale || '').toUpperCase() === cf) || String(p.nome || '').toUpperCase() === nome); })
+    .reduce(function(m, p){ return Math.max(m, annoPratica(p)); }, 0);
+  if(rec && rec.collaboratore && rec.collaboratore !== tipo){
+    if(anno < piuRecente) return; // pratica di un anno passato: la scheda resta con il collaboratore attuale
+    salvaCollaboratoreCliente(nomeCompleto, dataNascita, codiceFiscale, tipo, false);
+    avviso('🤝 ' + nomeCompleto + ': collaboratore cambiato da ' + rec.collaboratore + ' a ' + tipo + ' (gli anni prima restano nello storico)');
+    return;
+  }
+  salvaCollaboratoreCliente(nomeCompleto, dataNascita, codiceFiscale, tipo, true);
+}
+// 🤝 Collaboratore negli anni (dalle pratiche 730): es. 2026 730 SEDE → 2027 730 RICCA AGATINO
+function percorsoCollaboratoreHTML(pratiche){
+  const perAnno = {};
+  (pratiche || []).filter(function(p){ return !p.annullata && e730(p) && p.tipo; }).forEach(function(p){
+    const a = annoPratica(p); (perAnno[a] = perAnno[a] || []); if(perAnno[a].indexOf(p.tipo) < 0) perAnno[a].push(p.tipo);
+  });
+  const anni = Object.keys(perAnno).map(Number).sort(function(a, b){ return a - b; });
+  if(!anni.length) return '';
+  let prima = null, cambi = 0;
+  const pezzi = anni.map(function(a){
+    const t = perAnno[a].join(' + '), cambiato = prima !== null && prima !== t; if(cambiato) cambi++; prima = t;
+    return '<span style="white-space:nowrap">' + (cambiato ? '<b style="color:#b35f0c">🔄</b> ' : '') + '<b>' + a + '</b> ' + perAnno[a].map(function(x){ return '<span style="display:inline-block; background:' + coloreCollaboratore(x) + '; color:#fff; border-radius:999px; padding:1px 9px; font-size:12px; font-weight:700">' + esc(x) + '</span>'; }).join(' ') + '</span>';
+  });
+  return '<div style="margin:0 0 8px; padding:7px 12px; border-radius:10px; border:1.5px solid var(--line); font-size:13px; display:flex; gap:8px; flex-wrap:wrap; align-items:center"><b>🤝 Collaboratore negli anni:</b> ' + pezzi.join(' <span style="color:var(--sub)">→</span> ')
+    + (cambi ? ' <span class="sub2">(' + cambi + (cambi === 1 ? ' cambio' : ' cambi') + ' di collaboratore)</span>' : '') + '</div>';
+}
 // Nuovo cliente scritto a mano: va in archivio e poi si ritrova subito nella ricerca, pronto da scegliere per la pratica
 function nuovoClienteAMano(){
   const cerca = document.getElementById('cli-cerca');
@@ -2637,10 +2667,11 @@ async function addPraticaInterna(){
   salvaRuoloCliente((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale, 'dichiarante', true);
   // riferimento scritto nel modulo: va anche nella scheda del cliente
   if(riferimento){ const rc = trovaInArchivio((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale); if(!rc || String(rc.riferimento || '').toUpperCase() !== riferimento) salvaRiferimentoCliente((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale, { riferimento: riferimento }); }
-  // pratica 730: il collaboratore (tipo di pratica) va nella scheda del cliente e del coniuge, se non è già indicato
+  // pratica 730: il collaboratore (tipo di pratica) va nella scheda del cliente e del coniuge.
+  // Se quest'anno è passato a un altro collaboratore, la scheda prende quello nuovo (gli anni prima restano nelle pratiche)
   if(e730({ tipo: tipo })){
-    salvaCollaboratoreCliente((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale, tipo, true);
-    if(congCognome || congNome) salvaCollaboratoreCliente((congCognome + ' ' + congNome).trim(), congData, congCodiceFiscale, tipo, true);
+    aggiornaCollaboratoreDaPratica((cognome + ' ' + nomeProprio).trim(), cf, codiceFiscale, tipo, annoPr);
+    if(congCognome || congNome) aggiornaCollaboratoreDaPratica((congCognome + ' ' + congNome).trim(), congData, congCodiceFiscale, tipo, annoPr);
   }
   if(congCognome || congNome) salvaRuoloCliente((congCognome + ' ' + congNome).trim(), congData, congCodiceFiscale, 'coniuge', true, (cognome + ' ' + nomeProprio).trim(), cf);
   if(congCognome || congNome){ try{ await registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono, '', congDocumentoScadenza, congEmail); }catch(e){ console.error('archivio clienti coniuge', e); }

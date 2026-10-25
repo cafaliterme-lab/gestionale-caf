@@ -134,6 +134,7 @@ function disegnaSchedaPersona() {
     })()
     + (typeof elencoComunicazioniHTML === 'function' ? elencoComunicazioniHTML(x.nome, x.cf, 15, x.nascita || c.dataNascita) : '')
     + (typeof avvisoMorosoHTML === 'function' ? avvisoMorosoHTML(pratiche) : '')
+    + (typeof percorsoCollaboratoreHTML === 'function' ? percorsoCollaboratoreHTML(pratiche) : '')
     + '<div class="meta" style="margin:0 0 6px">' + valide.length + ' pratiche' + (pratiche.length > valide.length ? ' (+ ' + (pratiche.length - valide.length) + ' annullate)' : '') + ' · pagato in tutto <b>' + fmtEuro(valide.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0)) + '</b>'
     + (manca > 0.004 ? ' · <b style="color:#c0392b">deve ancora ' + fmtEuro(manca) + '</b>' : '') + '</div>'
     + (pratiche.length ? '<div class="tab-wrap"><table class="tab-proto"><thead><tr><th>Anno</th><th>Protocollo</th><th>Pratica</th><th>Stato</th><th style="text-align:right">Fattura</th><th style="text-align:right">Pagato</th><th style="text-align:right">Da pagare</th><th>Apri e ricevute</th></tr></thead><tbody>' + righe + '</tbody></table></div>'
