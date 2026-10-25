@@ -6,14 +6,22 @@
 const GIORNI_PREAVVISO_DOCUMENTO = 30;
 const DOC_SCADENZA = { coda: [], pos: 0 };
 
+// Le carte d'identità cartacee sono da sostituire con quella elettronica (regolamento UE 2019/1157, dal 3 agosto 2026):
+// compaiono nell'elenco anche se la data scritta non è ancora passata, con un messaggio apposta.
+const DATA_FINE_CARTACEE = new Date(2026, 7, 3);
+function eCartaceaDaSostituire(c) {
+  return typeof categoriaDocumento === 'function' && categoriaDocumento(c) === 'cartacea' && new Date() >= DATA_FINE_CARTACEE;
+}
 function clientiDocumentoDaRinnovare() {
   // tutti i clienti dell'archivio (non deceduti) con la scadenza scritta: chi ha la scadenza in scheda è un cliente seguito
-  return (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) {
-    if (c.decedutoIl || !c.documentoScadenza) return false;
-    const st = statoScadenzaDocumento(c.documentoScadenza);
-    return st && st.giorni <= GIORNI_PREAVVISO_DOCUMENTO;
-  }).map(function (c) { return { c: c, giorni: statoScadenzaDocumento(c.documentoScadenza).giorni }; })
-    .sort(function (a, b) { return a.giorni - b.giorni; });
+  return (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).map(function (c) {
+    if (c.decedutoIl) return null;
+    const st = c.documentoScadenza ? statoScadenzaDocumento(c.documentoScadenza) : null;
+    if (st && st.giorni < 0) return { c: c, giorni: st.giorni };
+    if (eCartaceaDaSostituire(c)) return { c: c, giorni: Math.floor((DATA_FINE_CARTACEE - new Date()) / 86400000), cartacea: true };
+    if (st && st.giorni <= GIORNI_PREAVVISO_DOCUMENTO) return { c: c, giorni: st.giorni };
+    return null;
+  }).filter(Boolean).sort(function (a, b) { return a.giorni - b.giorni; });
 }
 // Già avvisato per il documento (registro delle comunicazioni, ultimi 60 giorni)
 function avvisoDocumentoInviato(c) {
@@ -22,9 +30,14 @@ function avvisoDocumentoInviato(c) {
   return comunicazioniPersona(c.nomeCompleto, c.codiceFiscale, c.dataNascita).find(function (x) { return /documento/i.test(x.motivo || '') && Date.parse(x.quando) >= da; }) || null;
 }
 function messaggioDocumentoDaRinnovare(c, giorni) {
+  if (eCartaceaDaSostituire(c) && !((statoScadenzaDocumento(c.documentoScadenza || '') || { giorni: 0 }).giorni < 0)) return messaggioCartaceaDaSostituire(c);
   if (giorni < 0) return messaggioNuovoDocumento(c.nomeCompleto, c.documentoScadenza, true);
   return 'Gentile ' + nomeProprio(c.nomeCompleto) + ', le ricordiamo che il suo documento d\'identità scadrà il ' + c.documentoScadenza
     + '. Quando lo avrà rinnovato, per poter preparare le sue prossime pratiche le chiediamo di portarci (o inviarci qui) una copia del nuovo documento.\nGrazie.\n\n' + righeContattiCaf();
+}
+function messaggioCartaceaDaSostituire(c) {
+  return 'Gentile ' + nomeProprio(c.nomeCompleto) + ', dal 3 agosto 2026 le carte d\'identità di carta vanno sostituite con la carta d\'identità elettronica (regolamento europeo).'
+    + ' Quando avrà fatto quella nuova, per poter preparare le sue prossime pratiche le chiediamo di portarci (o inviarci qui) una copia.\nGrazie.\n\n' + righeContattiCaf();
 }
 function motivoDocumento(giorni) { return giorni < 0 ? 'Richiesta documento d\'identità' : 'Documento in scadenza'; }
 
@@ -96,7 +109,7 @@ function disegnaDocumentiInScadenza() {
   const riga = function (r, tasti) {
     const av = avvisoDocumentoInviato(r.c);
     return '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:7px 0; border-bottom:1px solid var(--line)">'
-      + '<span><b>' + esc(r.c.nomeCompleto) + '</b> <span style="font-size:12px; font-weight:800; color:' + (r.giorni < 0 ? '#c0392b' : '#b35f0c') + '">🪪 ' + (r.giorni < 0 ? 'scaduto il ' : 'scade il ') + esc(r.c.documentoScadenza) + (r.giorni >= 0 ? ' (tra ' + r.giorni + ' giorn' + (r.giorni === 1 ? 'o' : 'i') + ')' : '') + '</span>'
+      + '<span><b>' + esc(r.c.nomeCompleto) + '</b> <span style="font-size:12px; font-weight:800; color:' + (r.giorni < 0 ? '#c0392b' : '#b35f0c') + '">' + (r.cartacea ? '📄 carta d\'identità cartacea: da sostituire con l\'elettronica' + (r.c.documentoScadenza ? ' (sul documento: ' + esc(r.c.documentoScadenza) + ')' : '') : '🪪 ' + (r.giorni < 0 ? 'scaduto il ' : 'scade il ') + esc(r.c.documentoScadenza) + (r.giorni >= 0 ? ' (tra ' + r.giorni + ' giorn' + (r.giorni === 1 ? 'o' : 'i') + ')' : '')) + '</span>'
       + '<div class="sub2">' + [r.c.telefono ? '📱 ' + esc(r.c.telefono) : '', r.c.telefonoFisso ? '☎️ ' + esc(r.c.telefonoFisso) : '', r.c.email ? '✉️ ' + esc(r.c.email) : ''].filter(Boolean).join(' · ')
       + (av ? ' · <b style="color:#1a7f37">✓ avvisato il ' + esc(quandoComunicazione(av).split(' ')[0]) + '</b>' : '') + '</div></span>'
       + '<span style="display:flex; gap:5px">' + tasti + '</span></div>';
