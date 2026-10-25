@@ -784,13 +784,16 @@ function renderLogin(){
   // Form di login con email/password
   wrap.innerHTML = `
     <div style="text-align: left">
-      <label style="font-size:12px; color:var(--sub); display:block; margin-bottom:4px">Email</label>
-      <input type="email" id="login-email" placeholder="tuo@email.com" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:10px; font-size:14px">
+      <!-- modulo vero (con nome utente e password) così il browser propone di ricordare la password -->
+      <form id="login-form" autocomplete="on" onsubmit="event.preventDefault(); confermaLogin();" style="margin:0">
+      <label for="login-email" style="font-size:12px; color:var(--sub); display:block; margin-bottom:4px">Email</label>
+      <input type="email" id="login-email" name="email" autocomplete="username" inputmode="email" placeholder="tuo@email.com" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:10px; font-size:14px">
 
       <label style="font-size:12px; color:var(--sub); display:block; margin-bottom:4px">Password</label>
-      <input type="password" id="login-pwd" placeholder="Password" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:10px; font-size:14px" onkeydown="if(event.key==='Enter') confermaLogin()">
+      <input type="password" id="login-pwd" name="password" autocomplete="current-password" placeholder="Password" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); margin-bottom:10px; font-size:14px">
 
-      <button type="button" class="login-btn" style="background:var(--accent); color:var(--accent-ink); border:none; width:100%; margin-bottom:8px" onclick="confermaLogin()">🔓 Accedi</button>
+      <button type="submit" class="login-btn" style="background:var(--accent); color:var(--accent-ink); border:none; width:100%; margin-bottom:8px">🔓 Accedi</button>
+      </form>
       <div style="text-align:center; margin:-2px 0 10px"><a href="#" onclick="apriRecuperoPassword(); return false" style="font-size:13px; font-weight:700; color:#1d4f91">🔑 Password dimenticata?</a></div>
       <div id="recupero-pwd" style="display:none; border:2px solid #1d4f91; border-radius:12px; padding:12px; margin-bottom:12px; background:color-mix(in srgb, #1d4f91 6%, var(--card))">
         <div style="font-weight:800; color:#1d4f91; margin-bottom:6px">🔑 Recupero password</div>
