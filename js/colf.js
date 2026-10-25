@@ -1,11 +1,12 @@
 /* ---------------- Colf e badanti: trasferimento delle pratiche attive all'anno successivo ---------------- */
-// Le pratiche "Pratica attiva" di un anno vengono ricreate nell'anno dopo (registro altre pratiche, nuovo numero AP)
+// Le pratiche colf in corso (non «Pratica cessata») di un anno vengono ricreate nell'anno dopo (registro altre pratiche, nuovo numero AP)
 // con la stessa scadenza dell'assistenza; la pratica vecchia resta nello storico, segnata "Trasferita nel …",
 // e la sua scadenza passa alla pratica nuova.
 
 function colfDaTrasferire(annoDa) {
   return (state.pratiche || []).filter(function (p) {
-    return eColf(p.tipo) && annoPratica(p) === annoDa && p.stato === 'pratica_attiva' && !p.annullata && !p.trasferitaIn;
+    // contratto in corso: qualsiasi stato tranne «Pratica cessata» (come per le buste paga)
+    return eColf(p.tipo) && annoPratica(p) === annoDa && p.stato !== 'pratica_cessata' && !p.annullata && !p.trasferitaIn;
   }).sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || '')); });
 }
 
@@ -15,7 +16,7 @@ function avvisoTrasferimentoColfHTML() {
   const da = annoAttivo() - 1, n = colfDaTrasferire(da).length;
   if (!n) return '';
   return '<div style="margin-bottom:12px; padding:10px 14px; border-radius:12px; background:#e8f6f1; border:2px solid #1f8a70; display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between">'
-    + '<span><b style="color:#1f8a70">🧹 Colf e badanti:</b> ' + n + ' pratiche <b>attive</b> del ' + da + ' non sono ancora state trasferite nel ' + annoAttivo() + '.</span>'
+    + '<span><b style="color:#1f8a70">🧹 Colf e badanti:</b> ' + n + ' pratiche <b>in corso</b> del ' + da + ' non sono ancora state trasferite nel ' + annoAttivo() + '.</span>'
     + '<button type="button" onclick="apriTrasferimentoColf(' + da + ')" style="background:#1f8a70; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">➡️ Trasferisci nel ' + annoAttivo() + '</button></div>';
 }
 
