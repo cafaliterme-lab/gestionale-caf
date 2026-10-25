@@ -877,6 +877,11 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
   <div id="presenze-lista"></div>
 </div>
 <div class="card">
+  <div class="raff-title">🏢 Questo computer</div>
+  <label style="display:flex; gap:8px; align-items:center; font-weight:700; cursor:pointer"><input type="checkbox" id="pc-ufficio" onchange="impostaPcUfficio(this.checked)" style="width:auto"> È il PC dell'ufficio: esci da solo dopo <b>4 ore</b> senza uso (invece di 30 minuti)</label>
+  <div class="sub2" id="pc-ufficio-nota" style="margin-top:4px">Vale solo per questo computer e questo browser. Non spuntarlo su telefoni o computer di casa. Lo cambia solo l'amministratore.</div>
+</div>
+<div class="card">
   <div class="raff-title">La mia password</div>
   <div class="grid">
     <div class="full">
@@ -1032,7 +1037,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=22"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=222"></script>
+<script src="js/guida.js?v=223"></script>
 <script src="js/scadenze.js?v=202610099"></script>
 <script src="js/config.js?v=202610079"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -1041,7 +1046,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script src="js/data.js?v=202610244"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=202610349"></script>
+<script src="js/app.js?v=202610350"></script>
 <script src="js/email.js?v=4"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=6"></script>

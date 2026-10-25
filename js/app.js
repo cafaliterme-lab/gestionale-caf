@@ -977,9 +977,22 @@ async function esciDalProgramma(){
   await logout();
   cambiaUtente();
 }
-// Uscita automatica dopo 30 minuti senza usare il programma (PC condivisi, telefono dimenticato aperto).
+// Uscita automatica dopo 30 minuti senza usare il programma (PC condivisi, telefono dimenticato aperto);
+// sul PC dell'ufficio (segnato dall'amministratore in Utenti e permessi) dopo 4 ore.
 // L'ultima attività è condivisa tra le schede aperte dello stesso browser.
-const MINUTI_USCITA_AUTOMATICA = 30;
+function ePcUfficio(){ try{ return localStorage.getItem('pc-ufficio') === '1'; }catch(e){ return false; } }
+function minutiUscitaAutomatica(){ return ePcUfficio() ? 240 : 30; }
+function impostaPcUfficio(si){
+  if(!(auth && auth.profilo && auth.profilo.ruolo === 'admin')){ aggiornaPcUfficio(); return; }
+  try{ if(si) localStorage.setItem('pc-ufficio', '1'); else localStorage.removeItem('pc-ufficio'); }catch(e){}
+  aggiornaPcUfficio();
+  avviso(si ? '🏢 PC dell\'ufficio: su questo computer esci da solo dopo 4 ore senza uso.' : '🔒 Su questo computer esci di nuovo dopo 30 minuti senza uso.');
+}
+function aggiornaPcUfficio(){
+  const el = document.getElementById('pc-ufficio'); if(!el) return;
+  el.checked = ePcUfficio();
+  el.disabled = !(auth && auth.profilo && auth.profilo.ruolo === 'admin');
+}
 let ULTIMA_ATTIVITA = Date.now(), AVVISO_USCITA_DATO = false;
 function segnaAttivita(){
   const ora = Date.now();
@@ -992,12 +1005,12 @@ async function controllaUscitaAutomatica(){
   if(!auth || !auth.profilo) return;
   let ultima = ULTIMA_ATTIVITA;
   try{ ultima = Math.max(ultima, Number(localStorage.getItem('ultima-attivita') || 0)); }catch(e){}
-  const ferma = Date.now() - ultima, limite = MINUTI_USCITA_AUTOMATICA * 60000;
+  const minuti = minutiUscitaAutomatica(), ferma = Date.now() - ultima, limite = minuti * 60000;
   if(ferma >= limite){
     AVVISO_USCITA_DATO = false;
     await esciDalProgramma();
     // il messaggio si vede nella schermata di accesso
-    setTimeout(function(){ const m = document.getElementById('login-msg'); if(m){ m.textContent = '🔒 Sei uscito dal programma perché non è stato usato per ' + MINUTI_USCITA_AUTOMATICA + ' minuti. Rientra con la tua password.'; m.style.display = 'block'; } }, 1200);
+    setTimeout(function(){ const m = document.getElementById('login-msg'); if(m){ m.textContent = '🔒 Sei uscito dal programma perché non è stato usato per ' + (minuti >= 60 ? (minuti / 60) + ' ore' : minuti + ' minuti') + '. Rientra con la tua password.'; m.style.display = 'block'; } }, 1200);
   } else if(ferma >= limite - 60000 && !AVVISO_USCITA_DATO){
     AVVISO_USCITA_DATO = true;
     avviso('⏳ Tra 1 minuto esci dal programma perché non lo stai usando: tocca lo schermo per restare dentro.');
@@ -1008,6 +1021,7 @@ setInterval(controllaUscitaAutomatica, 20000);
 document.addEventListener('visibilitychange', function(){ if(!document.hidden) controllaUscitaAutomatica(); });
 function applicaPermessi(){
   const bar = document.getElementById('userbar');
+  aggiornaPcUfficio();
   const u = auth.profilo; // Usa profilo da Supabase
 
   if(!u){
