@@ -213,6 +213,8 @@ function rinnovaScadenza(id) {
   metti('f-doc-scad', p.documentoScadenza);
   if (getTipiList().indexOf('CONTRATTI COLF E BADANTI') >= 0) pickChip('f-tipo-btns', 'f-tipo', 'CONTRATTI COLF E BADANTI');
   if (STATI.pratica_attiva) pickChip('f-stato-btns', 'f-stato', 'pratica_attiva');
+  // il lavoratore del contratto passa al rinnovo
+  if ((p.lavCognome || p.lavNome) && typeof usaLavoratore === 'function') usaLavoratore({ cognome: p.lavCognome, nome: p.lavNome, nomeCompleto: ((p.lavCognome || '') + ' ' + (p.lavNome || '')).trim(), dataNascita: p.lavData, comuneNascita: p.lavComuneNascita, codiceFiscale: p.lavCodiceFiscale, telefono: p.lavTelefono, documentoTipo: p.lavDocumentoTipo, documentoNumero: p.lavDocumentoNumero, documentoScadenza: p.lavDocumentoScadenza, permessoNumero: p.lavPermessoNumero, permessoScadenza: p.lavPermessoScadenza });
   metti('f-data-fine', '');
   metti('f-note', 'Rinnovo assistenza (scadenza del ' + dataIT(s.data) + ')');
   if (typeof coloraScadenzaDocumento === 'function') coloraScadenzaDocumento();

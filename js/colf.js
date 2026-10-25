@@ -7,7 +7,11 @@ function colfDaTrasferire(annoDa) {
   return (state.pratiche || []).filter(function (p) {
     // contratto in corso: qualsiasi stato tranne «Pratica cessata» (come per le buste paga)
     return eColf(p.tipo) && annoPratica(p) === annoDa && p.stato !== 'pratica_cessata' && !p.annullata && !p.trasferitaIn;
-  }).sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || '')); });
+  }).sort(function (a, b) {
+    // stesso cliente con più pratiche (es. rinnovo durante l'anno): prima quella con la scadenza più lontana,
+    // così passa al nuovo anno quella giusta e le altre risultano già presenti (non duplicate)
+    return String(a.nome || '').localeCompare(String(b.nome || '')) || ((dataNum(b.scadenzaAssistenza) || 0) - (dataNum(a.scadenzaAssistenza) || 0));
+  });
 }
 
 // Avviso in cima al Registro: pratiche colf attive dell'anno precedente non ancora portate nell'anno di protocollo
@@ -43,8 +47,8 @@ function apriTrasferimentoColf(annoDa) {
     + lista.map(function (p) {
       return '<label style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); cursor:pointer; margin:0">'
         + '<input type="checkbox" class="tc-chk" value="' + p.id + '" checked style="width:auto; margin:0">'
-        + '<span style="flex:1"><b>' + esc((p.nome || '').toUpperCase()) + '</b><div class="sub2">' + formattaProtocollo(p) + (p.telefono ? ' · 📱 ' + esc(p.telefono) : '') + '</div></span>'
-        + '<span style="white-space:nowrap; text-align:right">' + (p.scadenzaAssistenza ? '⏰ ' + esc(p.scadenzaAssistenza) : '<span style="color:#c0392b">senza scadenza</span>') + '<div class="sub2">fattura ' + fmtEuro(p.compenso) + '</div></span></label>';
+        + '<span style="flex:1"><b>' + esc((p.nome || '').toUpperCase()) + '</b><div class="sub2">' + formattaProtocollo(p) + (p.telefono ? ' · 📱 ' + esc(p.telefono) : '') + (p.lavCognome || p.lavNome ? ' · 👷 ' + esc(((p.lavCognome || '') + ' ' + (p.lavNome || '')).trim()) : '') + ' · ' + esc(statoLabel(p.stato)) + '</div></span>'
+        + '<span style="white-space:nowrap; text-align:right">' + (p.scadenzaAssistenza ? ((dataNum(p.scadenzaAssistenza) || 0) < dataNum(todayIT()) ? '<span style="color:#c0392b; font-weight:800" title="Scadenza passata: controlla se è stata rinnovata o se il contratto è cessato">⚠️ scaduta il ' + esc(p.scadenzaAssistenza) + '</span>' : '⏰ ' + esc(p.scadenzaAssistenza)) : '<span style="color:#c0392b">senza scadenza</span>') + '<div class="sub2">fattura ' + fmtEuro(p.compenso) + '</div></span></label>';
     }).join('') + '</div>'
     + '<div id="tc-esito" style="font-size:13px; margin-top:8px"></div>'
     + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px"><button type="button" data-azione="no" style="background:var(--line); color:var(--ink)">Annulla</button><button type="button" data-azione="si" style="background:#1f8a70; color:#fff; font-weight:800">➡️ Trasferisci</button></div></div>';
@@ -71,7 +75,10 @@ function apriTrasferimentoColf(annoDa) {
         anno: annoA, data: dataNuova, tipo: p.tipo, stato: 'pratica_attiva',
         nome: p.nome, cf: p.cf, codiceFiscale: p.codiceFiscale, telefono: p.telefono, telefonoFisso: p.telefonoFisso, email: p.email,
         documentoScadenza: p.documentoScadenza, documenti: p.documenti,
-        congiunta: p.congiunta, congCognome: p.congCognome, congNome: p.congNome, congData: p.congData, congCodiceFiscale: p.congCodiceFiscale, congTelefono: p.congTelefono,
+        comuneNascita: p.comuneNascita, documentoNumero: p.documentoNumero, documentoTipo: p.documentoTipo, riferimento: p.riferimento,
+        // il lavoratore passa con il contratto (la congiunta non esiste per le colf)
+        lavCognome: p.lavCognome, lavNome: p.lavNome, lavCodiceFiscale: p.lavCodiceFiscale, lavData: p.lavData, lavComuneNascita: p.lavComuneNascita, lavTelefono: p.lavTelefono,
+        lavDocumentoTipo: p.lavDocumentoTipo, lavDocumentoNumero: p.lavDocumentoNumero, lavDocumentoScadenza: p.lavDocumentoScadenza, lavPermessoNumero: p.lavPermessoNumero, lavPermessoScadenza: p.lavPermessoScadenza,
         compenso: p.compenso, pagato: 0, metodoPagamento: '', scadenzaAssistenza: p.scadenzaAssistenza || '',
         note: 'Trasferita dal ' + annoDa + ' (' + formattaProtocollo(p) + ')',
         fatt: 'dafatturare', numFattura: '', dataFattura: '',
