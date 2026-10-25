@@ -156,6 +156,7 @@ const GUIDA = [
 <li><b>3 volte</b> = tolto.</li>
 </ul>
 <p>Con <b>+ Aggiungi</b> scrivi un documento che non è in elenco (es. ricevuta asilo nido).</p>
+<p><b>📑 Quante CU</b>: quando segni la <b>CU (Certificazione Unica)</b> come presentata, accanto compare un contatore con <b>−</b> e <b>+</b>: indica quante CU ha portato il cliente (es. 5, 6, 7). Sulla pratica si legge in evidenza, con il bordo verde, <b>«📑 5 × CU (Certificazione Unica)»</b>. Si cambia anche dopo, da 📎 Modifica documentazione.</p>
 <p><b>Se manca anche un solo documento la pratica resta "In arrivo"</b>: non può passare agli stati successivi finché non lo porta. Provando a cambiare stato compare una finestra con l'elenco di ciò che manca.</p>
 <p>Quando il cliente porta un documento, nel Registro apri la pratica e nel riquadro rosso <b>"Da portare"</b> metti la spunta: passa tra i presentati. Con <b>💬 Chiedi i documenti mancanti</b> mandi al cliente la lista su WhatsApp.</p>` },
 

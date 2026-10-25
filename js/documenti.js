@@ -139,14 +139,25 @@ function richiediDocumentiMancanti(id) {
 
 function documentiPratica(p) {
   const d = (p && p.documenti) || {};
-  return { presentati: Array.isArray(d.presentati) ? d.presentati.slice() : [], mancanti: Array.isArray(d.mancanti) ? d.mancanti.slice() : [] };
+  return { presentati: Array.isArray(d.presentati) ? d.presentati.slice() : [], mancanti: Array.isArray(d.mancanti) ? d.mancanti.slice() : [], quantita: Object.assign({}, d.quantita || {}) };
+}
+// Documenti che possono essere più d'uno (es. più CU dello stesso anno): si conta quanti ne ha portati
+const DOC_CON_QUANTITA = ['CU (Certificazione Unica)'];
+function nomeConQuantita(n, q) { return q > 1 ? q + ' × ' + n : n; }
+function contatoreDocHTML(n, q, azioneQta) {
+  return '<span class="doc-qta" style="display:inline-flex; align-items:center; gap:3px; margin:0 6px 6px -2px; padding:2px 4px; border-radius:999px; border:2px solid #1a7f37; background:color-mix(in srgb, #1a7f37 10%, var(--card)); font-size:12.5px; font-weight:800; color:#1a7f37" title="Quante ne ha portate">'
+    + '<button type="button" onclick="' + azioneQta + '(' + esc(JSON.stringify(n)) + ', -1)" style="border:none; background:#1a7f37; color:#fff; border-radius:50%; width:22px; height:22px; padding:0; cursor:pointer; font-weight:800">−</button>'
+    + '<span style="min-width:44px; text-align:center">📑 ' + q + ' CU</span>'
+    + '<button type="button" onclick="' + azioneQta + '(' + esc(JSON.stringify(n)) + ', 1)" style="border:none; background:#1a7f37; color:#fff; border-radius:50%; width:22px; height:22px; padding:0; cursor:pointer; font-weight:800">+</button></span>';
 }
 // stato: { nome: 'presentato' | 'mancante' }, ordine: elenco dei nomi da mostrare
-function chipsDocumentiHTML(stato, ordine, azione) {
+function chipsDocumentiHTML(stato, ordine, azione, qta, azioneQta) {
   const chip = function (n) {
     const s = stato[n] || '';
     const segno = s === 'presentato' ? '✓ ' : s === 'mancante' ? '✗ ' : '';
-    return '<span class="doc-chip ' + s + '" role="button" tabindex="0" data-doc="' + esc(n) + '" onclick="' + azione + '(this.dataset.doc)">' + segno + esc(n) + '</span>';
+    // CU portate: accanto il contatore − 📑 N CU +
+    const conta = s === 'presentato' && qta && azioneQta && DOC_CON_QUANTITA.indexOf(n) >= 0 ? contatoreDocHTML(n, qta[n] || 1, azioneQta) : '';
+    return '<span class="doc-chip ' + s + '" role="button" tabindex="0" data-doc="' + esc(n) + '" onclick="' + azione + '(this.dataset.doc)">' + segno + esc(n) + '</span>' + conta;
   };
   // Le richieste CUD stanno in un riquadro a parte, sempre visibile
   const cud = RICHIESTE_CUD.map(function (n) {
@@ -172,11 +183,13 @@ function prossimoStato(s, nome) {
 
 // Modulo di inserimento
 let DOC_MODULO = {};
+let DOC_MODULO_QTA = {};
 let DOC_EXTRA = [];
+function cambiaQtaModulo(nome, d) { DOC_MODULO_QTA[nome] = Math.max(1, Math.min(30, (DOC_MODULO_QTA[nome] || 1) + d)); disegnaDocumentiModulo(); }
 function ordineModulo() { return DOCUMENTI_STANDARD.concat(DOC_EXTRA.filter(function (n) { return DOCUMENTI_STANDARD.indexOf(n) < 0; })); }
 function disegnaDocumentiModulo() {
   const box = document.getElementById('f-documenti');
-  if (box) box.innerHTML = chipsDocumentiHTML(DOC_MODULO, ordineModulo(), 'cambiaDocumentoModulo');
+  if (box) box.innerHTML = chipsDocumentiHTML(DOC_MODULO, ordineModulo(), 'cambiaDocumentoModulo', DOC_MODULO_QTA, 'cambiaQtaModulo');
 }
 function cambiaDocumentoModulo(nome) {
   const s = prossimoStato(DOC_MODULO[nome], nome);
@@ -198,12 +211,12 @@ function aggiungiDocumentoAltro() {
 function documentiDalModulo() {
   const out = { presentati: [], mancanti: [] };
   ordineModulo().forEach(function (n) {
-    if (DOC_MODULO[n] === 'presentato') out.presentati.push(n);
+    if (DOC_MODULO[n] === 'presentato') { out.presentati.push(n); if ((DOC_MODULO_QTA[n] || 1) > 1) (out.quantita = out.quantita || {})[n] = DOC_MODULO_QTA[n]; }
     if (DOC_MODULO[n] === 'mancante') out.mancanti.push(n);
   });
   return out;
 }
-function azzeraDocumentiModulo() { DOC_MODULO = {}; DOC_EXTRA = []; disegnaDocumentiModulo(); }
+function azzeraDocumentiModulo() { DOC_MODULO = {}; DOC_MODULO_QTA = {}; DOC_EXTRA = []; disegnaDocumentiModulo(); }
 document.addEventListener('DOMContentLoaded', function () { disegnaDocumentiModulo(); coloraScadenzaDocumento(); });
 
 /* ---------------- Registro: scheda della pratica ---------------- */
@@ -231,7 +244,7 @@ function documentiCardHTML(p) {
   const d = documentiPratica(p);
   const btn = 'border:none; border-radius:999px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer';
   let h = '<div class="meta" style="margin-top:6px">';
-  if (d.presentati.length) h += '<div style="margin-bottom:4px"><b>📎 Presentati:</b> ' + d.presentati.map(function (n) { return '<span class="doc-chip presentato" style="cursor:default; padding:2px 9px; font-size:11.5px">✓ ' + esc(n) + '</span>'; }).join(' ') + '</div>';
+  if (d.presentati.length) h += '<div style="margin-bottom:4px"><b>📎 Presentati:</b> ' + d.presentati.map(function (n) { const q = d.quantita[n] || 1; return q > 1 ? '<span class="doc-chip presentato" style="cursor:default; padding:2px 9px; font-size:11.5px; border:2px solid #1a7f37; font-weight:800">📑 ' + q + ' × ' + esc(n) + '</span>' : '<span class="doc-chip presentato" style="cursor:default; padding:2px 9px; font-size:11.5px">✓ ' + esc(n) + '</span>'; }).join(' ') + '</div>';
   const daPortare = senzaCUD(d.mancanti), cud = d.mancanti.filter(eRichiestaCUD);
   if (cud.length) {
     h += '<div style="padding:6px 10px; margin-bottom:4px; border-radius:10px; border:1.5px dashed #1d4f91"><b style="color:#1d4f91">📋 CUD da richiedere (spunta quando arriva):</b>'
@@ -293,7 +306,7 @@ function apriEditorDocumenti(id) {
   const stato = {};
   d.presentati.forEach(function (n) { stato[n] = 'presentato'; });
   d.mancanti.forEach(function (n) { stato[n] = 'mancante'; });
-  DOC_EDITOR = { id: id, stato: stato, ordine: DOCUMENTI_STANDARD.concat(d.presentati, d.mancanti).filter(function (n, i, a) { return a.indexOf(n) === i; }) };
+  DOC_EDITOR = { id: id, stato: stato, qta: Object.assign({}, d.quantita || {}), ordine: DOCUMENTI_STANDARD.concat(d.presentati, d.mancanti).filter(function (n, i, a) { return a.indexOf(n) === i; }) };
   const ov = document.createElement('div');
   ov.id = 'editor-documenti';
   ov.style.cssText = 'position:fixed; inset:0; z-index:400; background:rgba(15,27,45,.45); display:flex; align-items:center; justify-content:center; padding:16px';
@@ -309,8 +322,9 @@ function apriEditorDocumenti(id) {
 }
 function disegnaEditorDocumenti() {
   const box = document.getElementById('editor-doc-chips');
-  if (box && DOC_EDITOR) box.innerHTML = chipsDocumentiHTML(DOC_EDITOR.stato, DOC_EDITOR.ordine, 'cambiaDocumentoEditor');
+  if (box && DOC_EDITOR) box.innerHTML = chipsDocumentiHTML(DOC_EDITOR.stato, DOC_EDITOR.ordine, 'cambiaDocumentoEditor', DOC_EDITOR.qta, 'cambiaQtaEditor');
 }
+function cambiaQtaEditor(nome, d) { if (!DOC_EDITOR) return; DOC_EDITOR.qta[nome] = Math.max(1, Math.min(30, (DOC_EDITOR.qta[nome] || 1) + d)); disegnaEditorDocumenti(); }
 function cambiaDocumentoEditor(nome) {
   const s = prossimoStato(DOC_EDITOR.stato[nome], nome);
   if (s) DOC_EDITOR.stato[nome] = s; else delete DOC_EDITOR.stato[nome];
@@ -332,7 +346,7 @@ function salvaEditorDocumenti() {
   const p = (state.pratiche || []).find(function (x) { return x.id === DOC_EDITOR.id; });
   const d = { presentati: [], mancanti: [] };
   DOC_EDITOR.ordine.forEach(function (n) {
-    if (DOC_EDITOR.stato[n] === 'presentato') d.presentati.push(n);
+    if (DOC_EDITOR.stato[n] === 'presentato') { d.presentati.push(n); if ((DOC_EDITOR.qta[n] || 1) > 1) (d.quantita = d.quantita || {})[n] = DOC_EDITOR.qta[n]; }
     if (DOC_EDITOR.stato[n] === 'mancante') d.mancanti.push(n);
   });
   chiudiEditorDocumenti();
