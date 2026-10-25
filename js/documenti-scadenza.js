@@ -1,5 +1,5 @@
 /* ---------------- 🪪 Documenti scaduti o in scadenza ----------------
-   Clienti recenti (pratiche quest'anno o l'anno scorso, o inseriti in archivio nell'ultimo anno) con il documento d'identità già scaduto o che scade entro 30 giorni:
+   Tutti i clienti dell'archivio (non deceduti) con il documento d'identità già scaduto o che scade entro 30 giorni:
    avviso su WhatsApp o per e-mail (uno alla volta o a tutti), e l'elenco di chi non ha né cellulare né e-mail.
    Ogni invio resta nel registro delle comunicazioni; chi è già stato avvisato non viene riselezionato. */
 
@@ -7,10 +7,9 @@ const GIORNI_PREAVVISO_DOCUMENTO = 30;
 const DOC_SCADENZA = { coda: [], pos: 0 };
 
 function clientiDocumentoDaRinnovare() {
-  const rec = typeof clientiConPraticheRecenti === 'function' ? clientiConPraticheRecenti() : { cf: {}, nome: {} };
+  // tutti i clienti dell'archivio (non deceduti) con la scadenza scritta: chi ha la scadenza in scheda è un cliente seguito
   return (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) {
     if (c.decedutoIl || !c.documentoScadenza) return false;
-    if (!((c.codiceFiscale && rec.cf[c.codiceFiscale]) || rec.nome[String(c.nomeCompleto || '').toUpperCase()])) return false;
     const st = statoScadenzaDocumento(c.documentoScadenza);
     return st && st.giorni <= GIORNI_PREAVVISO_DOCUMENTO;
   }).map(function (c) { return { c: c, giorni: statoScadenzaDocumento(c.documentoScadenza).giorni }; })
@@ -108,7 +107,7 @@ function disegnaDocumentiInScadenza() {
   const inCorso = DOC_SCADENZA.coda.length && DOC_SCADENZA.pos <= DOC_SCADENZA.coda.length;
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border-top:6px solid #c0392b; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:820px; width:100%; max-height:94vh; overflow:auto">'
     + '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start"><div><div style="font-size:19px; font-weight:800; color:#c0392b">🪪 Documenti scaduti o in scadenza</div>'
-    + '<div class="sub2">Clienti venuti quest\'anno o l\'anno scorso, o inseriti in archivio nell\'ultimo anno, con il documento già scaduto o che scade entro ' + GIORNI_PREAVVISO_DOCUMENTO + ' giorni. Quando scrivi la nuova scadenza escono da soli dall\'elenco.</div></div>'
+    + '<div class="sub2">Tutti i clienti dell\'archivio con il documento già scaduto o che scade entro ' + GIORNI_PREAVVISO_DOCUMENTO + ' giorni. Quando scrivi la nuova scadenza escono da soli dall\'elenco.</div></div>'
     + '<button type="button" data-chiudi="1" style="flex:none; white-space:nowrap; background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">✕ Chiudi</button></div>'
     + (!tutti.length ? '<div class="empty" style="margin-top:12px">Nessun documento scaduto o in scadenza 👍</div>' : '')
     + (conCell.length ? titolo('📱 Con cellulare', conCell.length, inCorso
