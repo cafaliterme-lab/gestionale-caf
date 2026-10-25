@@ -119,6 +119,8 @@ const schemas = {
     congCodiceFiscale: 'cong_codice_fiscale',
     congTelefono: 'cong_telefono',
     congEmail: 'cong_email',
+    cessazioneMotivo: 'cessazione_motivo',
+    cessazioneData: 'cessazione_data',
     riferimento: 'riferimento',
     congDocumentoScadenza: 'cong_documento_scadenza',
     congDocumentoNumero: 'cong_documento_numero',

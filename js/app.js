@@ -1229,6 +1229,7 @@ function rigaPratica(p){
     'Data fattura': p.dataFattura||'',
     'Inserito da': p.inseritoDa||'',
     'Riferimento': riferimentoPratica(p),
+    'Cessazione colf/badanti': p.cessazioneMotivo ? (p.cessazioneData ? p.cessazioneData + ' – ' : '') + p.cessazioneMotivo : '',
     'Note': p.note||''
   };
 }
@@ -2264,7 +2265,7 @@ function render(){
               <td>${p.data||'-'}${SOLO_DA_FARE && typeof giorniDaApertura === 'function' ? (function(){ const g = giorniDaApertura(p); return '<div class="sub2" style="font-weight:800; color:' + (g > GIORNI_PRATICA_FERMA ? '#c0392b' : 'var(--sub)') + '">da ' + g + ' gg</div>'; })() : ''}</td>
               <td>${eColf(p.tipo) ? (p.scadenzaAssistenza ? '<span title="Scadenza assistenza" style="color:#c0392b; font-weight:700">⏰ '+esc(p.scadenzaAssistenza)+'</span>' : '-') : (esc(p.dataFine)||'-')}</td>
               <td class="wrap">${(p.nome||'-').toUpperCase()}${p.iscrittoCisl ? ' <span title="Iscritto CISL" style="display:inline-block; background:#c0392b; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; font-weight:700">👤 CISL</span>' : ''}${p.viaEmail ? ' <span title="Pratica pervenuta via e-mail" style="display:inline-block; background:#1d4f91; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px; font-weight:700">📧 e-mail</span>' : ''}${p.congiunta ? '<div class="sub2">Congiunta: '+esc(p.congiunta)+'</div>' : ''}${typeof segnaliDocumentiHTML === 'function' ? segnaliDocumentiHTML(p) : ''}</td>
-              <td class="wrap">${p.tipo ? esc(p.tipo) + (eAltrePratiche(p.tipo) && p.descrizioneTipo ? '<div class="sub2">' + esc(p.descrizioneTipo) + '</div>' : '') : '-'}</td>
+              <td class="wrap">${p.tipo ? esc(p.tipo) + (eAltrePratiche(p.tipo) && p.descrizioneTipo ? '<div class="sub2">' + esc(p.descrizioneTipo) + '</div>' : '') + (p.stato === 'pratica_cessata' && p.cessazioneMotivo ? '<div class="sub2" title="' + esc(p.cessazioneMotivo) + '">⚫ ' + esc(p.cessazioneMotivo) + (p.cessazioneData ? ' (' + esc(p.cessazioneData) + ')' : '') + '</div>' : '') : '-'}</td>
               <td><select class="stato-tab-sel" style="border-left:6px solid ${(STATI[p.stato]||{}).c||'#8a8f98'}" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato, p.tipo)}</select></td>
               <td>${formattaInserimento(p)}${ultimaModifica(p) ? '<div class="sub2" title="Ultima modifica">✏️ ' + ultimaModifica(p) + '</div>' : ''}</td>
               <td>${bottoneAvanti(p)} ${bottoneConsegna(p)} <button type="button" style="background:var(--accent); color:var(--accent-ink); border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer" onclick="apriPraticaDaTabella('${p.id}')">Apri</button> ${bottoneWhatsApp(p, 'border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer', true)} <button type="button" title="Ricevuta da consegnare al cliente" style="background:var(--line); color:var(--ink); border:none; border-radius:6px; padding:5px 8px; font-size:12px; cursor:pointer" onclick="stampaRicevuta('${p.id}')">🧾</button></td>
@@ -2318,7 +2319,7 @@ function render(){
           <span class="badge stato">${pallino(p.stato)}${statoLabel(p.stato)}</span>
         </div>
       </div>
-      <div class="meta">Aperta il ${p.data||'-'}${eColf(p.tipo) ? (p.scadenzaAssistenza ? ' · <b style="color:#c0392b">⏰ Scadenza assistenza il '+esc(p.scadenzaAssistenza)+'</b>' : '') : (p.dataFine ? ' · <b>Fine lavorazione il '+esc(p.dataFine)+'</b>' : '')} ${p.riferimento ? '· <b style="color:#6d3fa0">👤 rif. '+esc(p.riferimento)+'</b> ' : ''}${p.note ? '· '+esc(p.note) : ''}</div>
+      <div class="meta">Aperta il ${p.data||'-'}${eColf(p.tipo) ? (p.scadenzaAssistenza ? ' · <b style="color:#c0392b">⏰ Scadenza assistenza il '+esc(p.scadenzaAssistenza)+'</b>' : '') : (p.dataFine ? ' · <b>Fine lavorazione il '+esc(p.dataFine)+'</b>' : '')} ${p.stato === 'pratica_cessata' && p.cessazioneMotivo ? '· <b style="color:#374151">⚫ Cessata' + (p.cessazioneData ? ' il ' + esc(p.cessazioneData) : '') + ': ' + esc(p.cessazioneMotivo) + '</b> <button type="button" onclick="modificaCessazione(\'' + p.id + '\')" style="padding:1px 8px; font-size:11px">✏️</button> ' : ''}${p.riferimento ? '· <b style="color:#6d3fa0">👤 rif. '+esc(p.riferimento)+'</b> ' : ''}${p.note ? '· '+esc(p.note) : ''}</div>
       <div class="meta compenso">Fattura: ${fmtEuro(p.compenso)} · Pagato effettivo: ${fmtEuro(p.pagato)}${p.metodoPagamento ? ' (' + esc(p.metodoPagamento) + ')' : ''}</div>
       ${typeof documentoCardHTML === 'function' ? documentoCardHTML(p) : ''}
       ${typeof documentiCardHTML === 'function' ? documentiCardHTML(p) : ''}
@@ -2984,6 +2985,55 @@ function chiediImportoPagato(p, stato){
     });
   });
 }
+// Colf e badanti: motivo e data della cessazione del rapporto di lavoro
+const MOTIVI_CESSAZIONE = [
+  'Licenziamento da parte del datore di lavoro',
+  'Dimissioni del lavoratore',
+  'Decesso della persona assistita / del datore di lavoro',
+  'Decesso del lavoratore',
+  'Fine del contratto a termine',
+  'Risoluzione consensuale (accordo tra le parti)',
+  'Licenziamento per giusta causa',
+  'Trasferimento ad altro CAF / consulente'
+];
+function chiediCessazione(p){
+  return new Promise(function(fine){
+    const v = document.getElementById('popup-cessazione'); if(v) v.remove();
+    const ov = document.createElement('div');
+    ov.id = 'popup-cessazione';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:480; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:14px';
+    const gia = p.cessazioneMotivo || '', altro = gia && MOTIVI_CESSAZIONE.indexOf(gia) < 0;
+    ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #6b7280; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:480px; width:100%">'
+      + '<div style="font-size:18px; font-weight:800; color:#374151">⚫ Cessazione del rapporto di lavoro</div>'
+      + '<div style="font-size:13px; color:var(--sub); margin-bottom:10px">' + esc(formattaProtocollo(p)) + ' · ' + esc(p.nome || '') + '. Da questo momento il contratto non chiede più buste paga e non passa all\'anno nuovo.</div>'
+      + '<label>Motivo della cessazione</label><select id="ce-motivo" onchange="document.getElementById(\'ce-altro-box\').style.display = this.value === \'*altro\' ? \'\' : \'none\'">'
+      + '<option value="">— scegli il motivo —</option>' + MOTIVI_CESSAZIONE.map(function(m){ return '<option' + (m === gia ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('') + '<option value="*altro"' + (altro ? ' selected' : '') + '>Altro motivo…</option></select>'
+      + '<div id="ce-altro-box" style="margin-top:6px; ' + (altro ? '' : 'display:none') + '"><label>Scrivi il motivo</label><input id="ce-altro" value="' + esc(altro ? gia : '') + '" placeholder="Es. ricovero in struttura"></div>'
+      + '<div style="margin-top:8px"><label>Data di cessazione</label><input id="ce-data" value="' + esc(p.cessazioneData || todayIT()) + '" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)" style="max-width:180px"></div>'
+      + '<div id="ce-msg" style="color:#c0392b; font-size:12.5px; font-weight:700; margin-top:6px"></div>'
+      + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px"><button type="button" data-az="no" style="background:var(--line); color:var(--ink)">Annulla</button>'
+      + '<button type="button" data-az="si" style="background:#374151; color:#fff; font-weight:800">⚫ Segna come cessata</button></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){
+      const b = e.target.closest('button[data-az]');
+      if(e.target === ov || (b && b.dataset.az === 'no')){ ov.remove(); fine(null); return; }
+      if(!b) return;
+      const sel = document.getElementById('ce-motivo').value, msg = document.getElementById('ce-msg');
+      const motivo = sel === '*altro' ? document.getElementById('ce-altro').value.trim() : sel;
+      const dataC = document.getElementById('ce-data').value.trim();
+      if(!motivo){ msg.textContent = 'Scegli o scrivi il motivo della cessazione.'; return; }
+      if(!parseDataIT(dataC)){ msg.textContent = 'La data deve essere GG/MM/AAAA.'; return; }
+      ov.remove(); fine({ motivo: motivo, data: dataC });
+    });
+  });
+}
+async function modificaCessazione(id){
+  const p = (state.pratiche||[]).find(function(x){ return x.id === id; }); if(!p) return;
+  const c = await chiediCessazione(p); if(!c) return;
+  const r = await data.pratiche.aggiorna(id, { cessazioneMotivo: c.motivo, cessazioneData: c.data });
+  if(r && r.error){ avviso('❌ Non salvato: ' + r.error, true); return; }
+  avviso('✓ Motivo della cessazione aggiornato'); render();
+}
 async function cambiaStato(id, stato){
   const p = (state.pratiche||[]).find(function(x){ return x.id===id; });
   // con documenti mancanti la pratica resta "In arrivo"
@@ -2993,6 +3043,12 @@ async function cambiaStato(id, stato){
     return;
   }
   const campi = { stato: stato };
+  // colf e badanti: chiudendo il contratto si chiede il motivo; riaprendolo il motivo si toglie
+  if(p && eColf(p.tipo) && stato === 'pratica_cessata'){
+    const c = await chiediCessazione(p);
+    if(!c){ render(); return; }
+    campi.cessazioneMotivo = c.motivo; campi.cessazioneData = c.data;
+  } else if(p && p.cessazioneMotivo && stato !== 'pratica_cessata'){ campi.cessazioneMotivo = null; campi.cessazioneData = null; }
   // passando a "Pagato" senza l'importo pagato, si chiede quanto ha pagato (altrimenti la contabilità non lo vede)
   if(p && (stato === 'pagato' || stato === 'pagato_da_ritirare') && !(Number(p.pagato || 0) > 0)){
     const pg = await chiediImportoPagato(p, stato);
