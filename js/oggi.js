@@ -23,8 +23,8 @@ function renderOggi() {
   });
   const scadutePassate = scad.filter(function (s) { return giorniDaOggi(String(s.data).slice(0, 10)) < 0; }).length;
   // archivio: clienti venuti quest'anno o l'anno scorso con dati mancanti
-  const rec = typeof clientiConPraticheRecenti === 'function' ? clientiConPraticheRecenti() : { cf: {}, nome: {} };
-  const recenti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return !c.decedutoIl && ((c.codiceFiscale && rec.cf[c.codiceFiscale]) || rec.nome[String(c.nomeCompleto || '').toUpperCase()]); });
+  const rec = typeof clientiConPraticheRecenti === 'function' ? clientiConPraticheRecenti() : { cf: {}, nome: {}, id: {} };
+  const recenti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return !c.decedutoIl && (typeof eClienteRecente === 'function' ? eClienteRecente(c, rec) : false); });
   const oggiN = typeof dataNum === 'function' ? dataNum(todayIT()) : 0;
   const senzaTel = recenti.filter(function (c) { return !c.telefono && !c.telefonoFisso; }).length;
   const docScad = recenti.filter(function (c) { return !c.documentoScadenza; }).length;

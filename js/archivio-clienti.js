@@ -61,7 +61,7 @@ function apriArchivioClienti(testo, filtri) {
       if (rif && String(c.riferimento || '').trim().toUpperCase() !== rif) return false;
       if (doctipo && categoriaDocumento(c) !== doctipo) return false;
       if (collab === '-' ? !!c.collaboratore : (collab && c.collaboratore !== collab)) return false;
-      if (recenti && !(c.codiceFiscale && recenti.cf[c.codiceFiscale]) && !recenti.nome[String(c.nomeCompleto || '').toUpperCase()]) return false;
+      if (recenti && !eClienteRecente(c, recenti)) return false;
       if (senzaCf && c.codiceFiscale) return false;
       if (senzaTel && c.telefono) return false;
       if (senzaScad && c.documentoScadenza) return false;
@@ -170,24 +170,34 @@ function clientiConPraticheAnno(anno) {
 }
 // Clienti recenti: con pratiche nell'anno in corso o in quello prima, o inseriti in archivio nell'ultimo anno (per completare prima i dati di chi viene davvero)
 function clientiConPraticheRecenti() {
-  const da = annoAttivo() - 1, cf = {}, nome = {};
+  const da = annoAttivo() - 1, cf = {}, nome = {}, id = {};
+  const archivio = typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : [];
+  // codici fiscali presenti in archivio: se la pratica ha un codice fiscale già in archivio, il cliente si riconosce da quello
+  // e il nome non serve (così un omonimo senza codice fiscale non viene preso per sbaglio)
+  const cfArchivio = {};
+  archivio.forEach(function (c) { if (c.codiceFiscale) cfArchivio[String(c.codiceFiscale).toUpperCase()] = true; });
+  const segna = function (codice, n) {
+    const k = String(codice || '').toUpperCase();
+    if (k) cf[k] = true;
+    if (n && !(k && cfArchivio[k])) nome[String(n).trim().toUpperCase()] = true;
+  };
   (state.pratiche || []).concat(state.annullate || []).forEach(function (p) {
     if (annoPratica(p) < da) return;
-    if (p.codiceFiscale) cf[String(p.codiceFiscale).toUpperCase()] = true;
-    if (p.nome) nome[String(p.nome).trim().toUpperCase()] = true;
-    if (p.congCodiceFiscale) cf[String(p.congCodiceFiscale).toUpperCase()] = true;
-    const con = ((p.congCognome || '') + ' ' + (p.congNome || '')).trim() || p.congiunta;
-    if (con) nome[String(con).trim().toUpperCase()] = true;
+    segna(p.codiceFiscale, p.nome);
+    segna(p.congCodiceFiscale, ((p.congCognome || '') + ' ' + (p.congNome || '')).trim() || p.congiunta);
   });
-  // anche chi è stato inserito in archivio nell'ultimo anno (es. cliente nuovo senza ancora una pratica),
-  // ma non il caricamento iniziale dell'archivio (3 ottobre 2026: 1088 clienti degli anni passati)
+  // anche chi è stato inserito in archivio nell'ultimo anno (es. cliente nuovo senza ancora una pratica), riconosciuto dalla sua scheda
+  // e non dal nome (un omonimo vecchio non conta); escluso il caricamento iniziale dell'archivio (3 ottobre 2026: 1088 clienti degli anni passati)
   const limite = Math.max(Date.now() - 365 * 86400000, Date.parse(INIZIO_INSERIMENTI_ARCHIVIO));
-  (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).forEach(function (c) {
+  archivio.forEach(function (c) {
     if (!c.creatoIl || Date.parse(c.creatoIl) < limite) return;
+    if (c.id) id[c.id] = true;
     if (c.codiceFiscale) cf[String(c.codiceFiscale).toUpperCase()] = true;
-    if (c.nomeCompleto) nome[String(c.nomeCompleto).trim().toUpperCase()] = true;
   });
-  return { cf: cf, nome: nome };
+  return { cf: cf, nome: nome, id: id };
+}
+function eClienteRecente(c, rec) {
+  return !!((c.codiceFiscale && rec.cf[String(c.codiceFiscale).toUpperCase()]) || (c.id && rec.id && rec.id[c.id]) || rec.nome[String(c.nomeCompleto || '').trim().toUpperCase()]);
 }
 const INIZIO_INSERIMENTI_ARCHIVIO = '2026-10-04T00:00:00Z';
 function modificaClienteArchivio(c, dopo) {
