@@ -6,6 +6,11 @@
 
 const CAMPI_LAV_MODULO = ['f-lav-cognome', 'f-lav-nome', 'f-lav-data', 'f-lav-comune', 'f-lav-cf', 'f-lav-tel', 'f-lav-doc-scad', 'f-lav-doc-num', 'f-lav-perm-scad', 'f-lav-perm-num', 'cli-cerca-lav'];
 
+// campi del lavoratore: nel modulo di inserimento (id vuoto) o nella finestra di modifica della pratica (id della pratica)
+const ID_LAV_MODULO = { cognome: 'f-lav-cognome', nome: 'f-lav-nome', data: 'f-lav-data', comune: 'f-lav-comune', cf: 'f-lav-cf', tel: 'f-lav-tel', docscad: 'f-lav-doc-scad', docnum: 'f-lav-doc-num', doctipo: 'f-lav-doc-tipo', permscad: 'f-lav-perm-scad', permnum: 'f-lav-perm-num', cerca: 'cli-cerca-lav' };
+function campoLav(k, id) { return document.getElementById(id ? 'e-lav' + k + '-' + id : ID_LAV_MODULO[k]); }
+let LAV_DEST = null; // pratica aperta in modifica a cui va il documento letto (null = modulo di inserimento)
+function apriLetturaLavoratore(id) { LAV_DEST = id || null; apriLetturaDocumentoPer('lavoratore'); }
 function pulisciLavoratoreModulo() {
   CAMPI_LAV_MODULO.forEach(function (id) { const el = document.getElementById(id); if (el) el.value = ''; });
   const t = document.getElementById('f-lav-doc-tipo'); if (t && typeof opzioniTipoDoc === 'function') t.innerHTML = opzioniTipoDoc('');
@@ -18,31 +23,38 @@ function mostraLavoratoreModulo(tipo) {
   if (!si) pulisciLavoratoreModulo();
 }
 // lavoratore scelto dall'archivio
-function usaLavoratore(c) {
-  const metti = function (id, v) { const el = document.getElementById(id); if (el) el.value = v || ''; };
-  metti('f-lav-cognome', String(c.cognome || '').toUpperCase());
-  metti('f-lav-nome', String(c.nome || '').toUpperCase());
-  metti('f-lav-data', c.dataNascita);
-  metti('f-lav-comune', c.comuneNascita);
-  metti('f-lav-cf', c.codiceFiscale);
-  metti('f-lav-tel', c.telefono);
-  metti('f-lav-doc-scad', c.documentoScadenza);
-  metti('f-lav-doc-num', c.documentoNumero);
-  metti('f-lav-perm-scad', c.permessoScadenza);
-  metti('f-lav-perm-num', c.permessoNumero);
-  metti('cli-cerca-lav', c.nomeCompleto);
-  const t = document.getElementById('f-lav-doc-tipo'); if (t && typeof opzioniTipoDoc === 'function') t.innerHTML = opzioniTipoDoc(c.documentoTipo || '');
+function usaLavoratore(c, id) {
+  const metti = function (k, v) { const el = campoLav(k, id); if (el) el.value = v || ''; };
+  metti('cognome', String(c.cognome || '').toUpperCase()); metti('nome', String(c.nome || '').toUpperCase());
+  metti('data', c.dataNascita); metti('comune', c.comuneNascita); metti('cf', c.codiceFiscale); metti('tel', c.telefono);
+  metti('docscad', c.documentoScadenza); metti('docnum', c.documentoNumero); metti('permscad', c.permessoScadenza); metti('permnum', c.permessoNumero);
+  metti('cerca', c.nomeCompleto);
+  const t = campoLav('doctipo', id); if (t && typeof opzioniTipoDoc === 'function') t.innerHTML = opzioniTipoDoc(c.documentoTipo || '');
+  const box = document.getElementById(id ? 'e-lavris-' + id : 'cli-results-lav'); if (box) { box.classList.remove('open'); if (id) box.innerHTML = ''; }
 }
-// lavoratore letto dal documento (📄 Leggi documento lavoratore)
+// lavoratore letto dal documento (📄 Leggi documento lavoratore), nel modulo o nella pratica aperta in modifica
 function lavoratoreDaDocumento(d) {
-  const metti = function (id, v) { const el = document.getElementById(id); if (el && v) el.value = v; };
-  metti('f-lav-cognome', d.cognome); metti('f-lav-nome', d.nome); metti('f-lav-data', d.dataNascita);
-  metti('f-lav-cf', d.codiceFiscale); metti('f-lav-doc-scad', d.scadenza); metti('f-lav-doc-num', d.numero);
+  const id = LAV_DEST && document.getElementById('e-lavcognome-' + LAV_DEST) ? LAV_DEST : null;
+  LAV_DEST = null;
+  const metti = function (k, v) { const el = campoLav(k, id); if (el && v) el.value = v; };
+  metti('cognome', d.cognome); metti('nome', d.nome); metti('data', d.dataNascita);
+  metti('cf', d.codiceFiscale); metti('docscad', d.scadenza); metti('docnum', d.numero);
   const com = (d.codiceFiscale && typeof cfValido === 'function' && cfValido(d.codiceFiscale) && typeof comuneDaCF === 'function' ? comuneDaCF(d.codiceFiscale) : '') || d.luogo;
-  const elC = document.getElementById('f-lav-comune'); if (elC && com && !elC.value.trim()) elC.value = com;
-  if (d.tipoDoc) { const t = document.getElementById('f-lav-doc-tipo'); if (t && typeof opzioniTipoDoc === 'function') t.innerHTML = opzioniTipoDoc(d.tipoDoc); }
-  metti('cli-cerca-lav', ((d.cognome || '') + ' ' + (d.nome || '')).trim());
+  const elC = campoLav('comune', id); if (elC && com && !elC.value.trim()) elC.value = com;
+  if (d.tipoDoc) { const t = campoLav('doctipo', id); if (t && typeof opzioniTipoDoc === 'function') t.innerHTML = opzioniTipoDoc(d.tipoDoc); }
+  metti('cerca', ((d.cognome || '') + ' ' + (d.nome || '')).trim());
 }
+// ricerca del lavoratore nell'archivio dalla finestra di modifica della pratica
+function cercaLavoratoreEdit(id, q) {
+  const box = document.getElementById('e-lavris-' + id); if (!box) return;
+  const kq = chiaveRicerca(q || '');
+  if (kq.length < 2) { box.innerHTML = ''; return; }
+  const lista = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return !c.decedutoIl && (chiaveRicerca(c.nomeCompleto) + '|' + chiaveRicerca(c.codiceFiscale)).indexOf(kq) >= 0; }).slice(0, 8);
+  LAV_RISULTATI[id] = lista;
+  box.innerHTML = lista.length ? lista.map(function (c, i) { return '<div class="cli-row" style="cursor:pointer; padding:6px 8px; border-bottom:1px solid var(--line)" onclick="usaLavoratore(LAV_RISULTATI[\'' + id + '\'][' + i + '], \'' + id + '\')"><b>' + esc(c.nomeCompleto) + '</b>' + (typeof badgeRuolo === 'function' ? badgeRuolo(c) : '') + '<div class="sub2">' + (c.dataNascita ? 'Nato/a il ' + esc(c.dataNascita) : '') + (c.telefono ? ' · 📞 ' + esc(c.telefono) : '') + '</div></div>'; }).join('')
+    : '<div class="sub2" style="padding:6px 8px">Nessun cliente trovato: scrivi i dati qui sotto.</div>';
+}
+const LAV_RISULTATI = {};
 // dati del lavoratore dal modulo (vuoti se la pratica non è colf)
 function datiLavoratoreModulo(tipo) {
   const v = function (id) { return ((document.getElementById(id) || {}).value || '').trim(); };
@@ -85,6 +97,9 @@ function lavoratoreEditHTML(p) {
   const up = 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"', data = 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"';
   return '<div class="full" id="e-lavwrap-' + p.id + '" style="display:' + (eColf(p.tipo) ? '' : 'none') + '; border:2px solid #8e44ad; border-radius:12px; padding:8px 10px; background:rgba(142,68,173,.06)">'
     + '<div style="font-weight:800; color:#8e44ad; margin-bottom:6px">👷 Lavoratore (colf o badante)</div><div class="grid">'
+    + '<div class="full" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end"><div style="flex:1 1 240px"><label>Cerca il lavoratore nell\'archivio (cognome o nome)</label><input id="e-lavcerca-' + p.id + '" autocomplete="off" placeholder="Scrivi per cercare tra i clienti già archiviati..." oninput="cercaLavoratoreEdit(\'' + p.id + '\', this.value)"></div>'
+    + '<button type="button" class="btn-scan-cf" onclick="apriLetturaLavoratore(\'' + p.id + '\')" title="Leggi i dati del lavoratore da una foto o dal PDF del documento">📄 Leggi documento (foto o PDF)</button>'
+    + '<div id="e-lavris-' + p.id + '" style="flex:1 1 100%; max-height:220px; overflow:auto; border-radius:8px; background:var(--card)"></div></div>'
     + c('lavcognome', 'Cognome', p.lavCognome, up) + c('lavnome', 'Nome', p.lavNome, up)
     + c('lavdata', 'Data di nascita', p.lavData, data) + c('lavcomune', 'Luogo di nascita', p.lavComuneNascita, up)
     + c('lavcf', 'Codice fiscale', p.lavCodiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"')

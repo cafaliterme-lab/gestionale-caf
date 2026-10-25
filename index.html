@@ -738,6 +738,7 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
           <input id="cli-cerca-lav" placeholder="Scrivi per cercare tra i clienti già archiviati..." autocomplete="off" oninput="cercaClienti(this.value, 'lav')" onfocus="cercaClienti(this.value, 'lav')">
           <div class="cli-results" id="cli-results-lav"></div>
         </div>
+        <div class="full"><button type="button" class="btn-scan-cf" onclick="apriLetturaLavoratore('')" title="Leggi i dati del lavoratore da una foto o dal PDF di carta d'identità, tessera sanitaria, patente o passaporto">📄 Leggi documento lavoratore (foto o PDF)</button></div>
         <div><label>Cognome</label><input id="f-lav-cognome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
         <div><label>Nome</label><input id="f-lav-nome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
         <div><label>Data di nascita</label><input id="f-lav-data" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
@@ -750,7 +751,6 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
         <div><label>Permesso di soggiorno (stranieri): scadenza e numero</label><div style="display:flex; gap:6px; flex-wrap:wrap">
           <input id="f-lav-perm-scad" placeholder="Scadenza GG/MM/AAAA" inputmode="numeric" autocomplete="off" style="flex:0 1 150px; min-width:110px; font-weight:700" oninput="autoSlashData(this)">
           <input id="f-lav-perm-num" placeholder="Numero (facoltativo)" autocomplete="off" style="flex:1 1 120px; min-width:100px; text-transform:uppercase; font-family:monospace" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,'')"></div></div>
-        <div style="display:flex; align-items:flex-end"><button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('lavoratore')" title="Leggi i dati del lavoratore da carta d'identità, tessera sanitaria, patente o passaporto">📄 Leggi documento lavoratore</button></div>
       </div>
     </div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; align-items:start">
@@ -1061,7 +1061,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=23"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=226"></script>
+<script src="js/guida.js?v=227"></script>
 <script src="js/scadenze.js?v=202610099"></script>
 <script src="js/config.js?v=202610079"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -1071,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/data.js?v=202610245"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
 <script src="js/app.js?v=202610353"></script>
-<script src="js/lavoratore-colf.js?v=1"></script>
+<script src="js/lavoratore-colf.js?v=2"></script>
 <script src="js/email.js?v=4"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=7"></script>
