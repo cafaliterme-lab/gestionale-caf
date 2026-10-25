@@ -3655,6 +3655,8 @@ function consegnaPratica(id){
       // non paga: la fattura entra in contabilità, ma in cassa non entra niente
       if(Number(p.pagato || 0)) campi.pagato = '';
     }
+    // contratto colf definito: da «In arrivo» (o un altro stato di lavoro) passa a «Pratica attiva»; se è cessato resta cessato
+    if(colf && p.stato !== 'pratica_cessata' && p.stato !== 'pratica_attiva') campi.stato = 'pratica_attiva';
     b.disabled = true;
     const r = await data.pratiche.aggiorna(p.id, campi);
     if(r && r.error){ b.disabled = false; msg.textContent = 'Non salvato: ' + r.error; return; }
