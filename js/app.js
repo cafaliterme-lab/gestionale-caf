@@ -3069,7 +3069,7 @@ function senzaSoldi(k, fatt, inc){
 }
 function bottoneStampaCollaboratore(k){
   const kk = k.replace(/'/g, "\\'");
-  return (typeof bottoneTrasferimentoColf === 'function' ? bottoneTrasferimentoColf(k) : '') + (haAcconti(k) && puoScrivereAcconti() ? '<button type="button" onclick="pagamentoCumulativo(\'' + kk + '\')" style="background:#2f9e5f; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer; margin-right:6px">✓ Togli dai morosi</button>' : '')
+  return (eColf(k) && typeof apriBustePaga === 'function' ? '<button type="button" onclick="apriBustePaga()" style="background:#0e7c86; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer; margin-right:6px">💼 Buste paga del mese</button>' : '') + (typeof bottoneTrasferimentoColf === 'function' ? bottoneTrasferimentoColf(k) : '') + (haAcconti(k) && puoScrivereAcconti() ? '<button type="button" onclick="pagamentoCumulativo(\'' + kk + '\')" style="background:#2f9e5f; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer; margin-right:6px">✓ Togli dai morosi</button>' : '')
     + '<button type="button" onclick="stampaCollaboratore(\'' + k.replace(/'/g, "\\'") + '\')" style="background:#374151; color:#fff; border:none; border-radius:999px; padding:5px 14px; font-weight:800; cursor:pointer">🖨️ Stampa</button>';
 }
 function contabilitaCollaboratoreHTML(k, items, guadagno){
