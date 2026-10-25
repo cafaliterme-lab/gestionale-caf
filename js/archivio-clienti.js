@@ -21,6 +21,12 @@ function apriArchivioClienti(testo, filtri) {
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-doc"' + (filtri.doc ? ' checked' : '') + '> Documento scaduto o mancante</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-con-pratiche"' + (filtri.conPratiche ? ' checked' : '') + '> Solo clienti recenti (pratiche quest\'anno o l\'anno scorso, o inseriti nell\'ultimo anno)</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-deceduti"' + (filtri.deceduti ? ' checked' : '') + '> ✝️ Solo deceduti</label>'
+    + (function () {
+      // tipo di documento: carta elettronica, cartacea, patente… con quanti clienti
+      const n = {}; (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).forEach(function (c) { if (!c.decedutoIl) { const k = categoriaDocumento(c); n[k] = (n[k] || 0) + 1; } });
+      return '<select id="arc-doctipo" style="width:auto; padding:4px 8px; font-size:12.5px" title="Tipo di documento d\'identità"><option value="">🪪 Tutti i documenti</option>'
+        + Object.keys(CATEGORIE_DOCUMENTO).filter(function (k) { return n[k]; }).map(function (k) { return '<option value="' + k + '"' + (filtri.doctipo === k ? ' selected' : '') + '>' + CATEGORIE_DOCUMENTO[k] + ' (' + n[k] + ')</option>'; }).join('') + '</select>';
+    })()
     + '<select id="arc-ruolo" style="width:auto; padding:4px 8px; font-size:12.5px" title="Dichiaranti o coniugi"><option value="">Dichiaranti e coniugi</option><option value="dichiarante">👤 Solo dichiaranti</option><option value="coniuge">💑 Solo coniugi dichiaranti</option></select>'
     + '<select id="arc-collab" style="width:auto; padding:4px 8px; font-size:12.5px" title="Solo i clienti di un collaboratore"><option value="">🤝 Tutti i collaboratori</option><option value="-">Senza collaboratore</option>' + getTipiList().map(function (t) { return '<option value="' + esc(t) + '" style="' + stileOpzioneTipo(t) + '">' + esc(t) + '</option>'; }).join('') + '</select>'
     + (function () {
@@ -42,6 +48,7 @@ function apriArchivioClienti(testo, filtri) {
     const senzaCf = document.getElementById('arc-senza-cf').checked, senzaTel = document.getElementById('arc-senza-tel').checked, doc = document.getElementById('arc-doc').checked;
     const conPrat = document.getElementById('arc-con-pratiche').checked, deceduti = document.getElementById('arc-deceduti').checked, collab = document.getElementById('arc-collab').value, ruolo = document.getElementById('arc-ruolo').value;
     const rif = (document.getElementById('arc-rif') || {}).value || '';
+    const doctipo = (document.getElementById('arc-doctipo') || {}).value || '';
     const recenti = conPrat ? clientiConPraticheRecenti() : null;
     const oggi = typeof dataNum === 'function' ? dataNum(todayIT()) : 0;
     const tutti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []);
@@ -51,6 +58,7 @@ function apriArchivioClienti(testo, filtri) {
       else if (c.decedutoIl && (!q || senzaCf || senzaTel || doc || conPrat)) return false;
       if (ruolo && c.ruoloDichiarazione !== ruolo) return false;
       if (rif && String(c.riferimento || '').trim().toUpperCase() !== rif) return false;
+      if (doctipo && categoriaDocumento(c) !== doctipo) return false;
       if (collab === '-' ? !!c.collaboratore : (collab && c.collaboratore !== collab)) return false;
       if (recenti && !(c.codiceFiscale && recenti.cf[c.codiceFiscale]) && !recenti.nome[String(c.nomeCompleto || '').toUpperCase()]) return false;
       if (senzaCf && c.codiceFiscale) return false;
@@ -101,7 +109,7 @@ function apriArchivioClienti(testo, filtri) {
         + '<span style="flex:1"><b>' + esc(c.nomeCompleto) + '</b>' + badgeCollaboratore(c) + badgeRuolo(c) + badgeRiferimento(c) + (c.noWhatsapp ? ' <span style="font-size:11.5px; font-weight:800; color:#b35f0c" title="Il cellulare non ha WhatsApp">📵 senza WhatsApp</span>' : '') + (c.noMessaggi ? ' <span style="font-size:11.5px; font-weight:800; color:#c0392b" title="Non vuole ricevere messaggi">🚫 no messaggi</span>' : '') + (c._venuto === true ? ' <span style="font-size:11.5px; font-weight:800; color:#1a7f37">✅ pratica ' + annoAttivo() + '</span>' : (c._venuto === false ? ' <span style="font-size:11.5px; font-weight:800; color:#c0392b">⏳ non ancora venuto</span>' : '')) + (c.decedutoIl ? ' <span style="display:inline-block; background:#374151; color:#fff; border-radius:999px; padding:1px 8px; font-size:11.5px; font-weight:700">✝️ deceduto/a il ' + esc(c.decedutoIl) + '</span>' : '') + '<div style="font-size:12px; color:var(--sub)">'
         + (c.dataNascita ? 'nato/a il ' + esc(c.dataNascita) : 'data di nascita mancante') + ((c.comuneNascita || (c.codiceFiscale && typeof comuneDaCF === 'function' && comuneDaCF(c.codiceFiscale))) ? ' a ' + esc(c.comuneNascita || comuneDaCF(c.codiceFiscale)) : '') + (c.codiceFiscale ? ' · CF ' + esc(c.codiceFiscale) : '')
         + (c.telefono || c.telefonoFisso ? ' · 📞 ' + esc(c.telefono || c.telefonoFisso) : '') + (c.email ? ' · ✉️ ' + esc(c.email) : '')
-        + (c.documentoScadenza ? ' · 🪪 ' + esc(c.documentoScadenza) + (scaduto ? ' <b style="color:#c0392b">scaduto</b>' : '') : '') + '</div>'
+        + (c.documentoScadenza ? ' · 🪪 ' + esc(c.documentoScadenza) + (scaduto ? ' <b style="color:#c0392b">scaduto</b>' : '') : '') + (genereCartaIdentita(c) === 'cartacea' ? ' · <b style="color:#b35f0c" title="Carta d\'identità cartacea: non più valida dal 3 agosto 2026 (regolamento UE)">📄 cartacea</b>' : genereCartaIdentita(c) === 'elettronica' ? ' · <span style="color:#1a7f37; font-weight:700">💳 CIE</span>' : '') + '</div>'
         // documento scaduto o mancante: richiesta diretta del nuovo documento
         + ((scaduto || !c.documentoScadenza) && !c.decedutoIl && c.id ? '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px"><button type="button" data-az="doc-wa" data-cid="' + esc(String(c.id)) + '" title="Chiedi il nuovo documento su WhatsApp" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; cursor:pointer">💬 Chiedi documento</button>'
           + '<button type="button" data-az="doc-mail" data-cid="' + esc(String(c.id)) + '" title="Chiedi il nuovo documento per e-mail" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:700; cursor:pointer">📧 E-mail</button></div>' : '')

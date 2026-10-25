@@ -212,6 +212,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // ---- Tipo del documento d'identità ----
 const TIPI_DOCUMENTO = ["Carta d'identità", 'Passaporto', 'Patente', 'Altro'];
+// Carta d'identità elettronica (CIE, numero tipo CA12345AB) o cartacea (numero tipo AX1234567), dal numero del documento.
+// La carta cartacea non ha la zona a lettura ottica: per il regolamento UE 2019/1157 non è più valida dal 3 agosto 2026.
+function genereCartaIdentita(c) {
+  const n = String((c && c.documentoNumero) || '').toUpperCase().replace(/\s+/g, '');
+  const tipo = String((c && c.documentoTipo) || '');
+  if (/^[A-Z]{2}\d{5}[A-Z]{2}$/.test(n)) return 'elettronica';
+  if (/^[A-Z]{2}\d{7}$/.test(n) && (!tipo || /identit/i.test(tipo))) return 'cartacea';
+  return '';
+}
+function categoriaDocumento(c) {
+  const g = genereCartaIdentita(c);
+  if (g) return g;
+  const tipo = String((c && c.documentoTipo) || '');
+  if (/patente/i.test(tipo)) return 'patente';
+  if (/passap/i.test(tipo)) return 'passaporto';
+  if (c && (c.documentoNumero || c.documentoScadenza || tipo)) return 'altro';
+  return 'nessuno';
+}
+const CATEGORIE_DOCUMENTO = { elettronica: '💳 Carta d\'identità elettronica', cartacea: '📄 Carta d\'identità cartacea', patente: '🚗 Patente', passaporto: '🛂 Passaporto', altro: '❔ Altro / da controllare', nessuno: '— Senza documento' };
 function opzioniTipoDoc(sel) {
   sel = String(sel || '');
   const extra = sel && TIPI_DOCUMENTO.indexOf(sel) < 0 ? [sel] : [];
