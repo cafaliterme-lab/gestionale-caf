@@ -27,6 +27,19 @@ function statoScadenzaDocumento(dataIT) {
   return { valido: giorni >= 0, giorni: giorni };
 }
 
+// Scadenza del documento con l'anno prima del 2000 (es. 1935 invece di 2035): è quasi sempre un errore di battitura,
+// si corregge da sola in 20.. con un avviso
+const CAMPI_SCADENZA_DOCUMENTO = ['f-doc-scad', 'f-cong-doc-scad', 'doc-scad', 'ca-scad', 'mc-scad'];
+function annoScadenzaSbagliato(dataIT) { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(dataIT || '').trim()); return !!m && +m[3] < 2000; }
+document.addEventListener('change', function (e) {
+  const el = e.target;
+  if (!el || CAMPI_SCADENZA_DOCUMENTO.indexOf(el.id) < 0 || !annoScadenzaSbagliato(el.value)) return;
+  const vecchio = el.value.trim(), nuovo = vecchio.slice(0, 6) + '20' + vecchio.slice(8);
+  el.value = nuovo;
+  if (el.id === 'f-doc-scad') coloraScadenzaDocumento();
+  avviso('✏️ Scadenza del documento corretta: ' + vecchio + ' → ' + nuovo + ' (l\'anno ' + vecchio.slice(6) + ' era sbagliato). Controlla che sia giusta.');
+}, true);
+
 function coloraScadenzaDocumento() {
   const el = document.getElementById('f-doc-scad');
   if (!el) return;
