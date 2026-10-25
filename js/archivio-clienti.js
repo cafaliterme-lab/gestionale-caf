@@ -19,7 +19,7 @@ function apriArchivioClienti(testo, filtri) {
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-senza-cf"' + (filtri.senzaCf ? ' checked' : '') + '> Senza codice fiscale</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-senza-tel"' + (filtri.senzaTel ? ' checked' : '') + '> Senza cellulare</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-doc"' + (filtri.doc ? ' checked' : '') + '> Documento scaduto o mancante</label>'
-    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-con-pratiche"' + (filtri.conPratiche ? ' checked' : '') + '> Solo clienti con pratiche (quest\'anno e l\'anno scorso)</label>'
+    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-con-pratiche"' + (filtri.conPratiche ? ' checked' : '') + '> Solo clienti recenti (pratiche quest\'anno o l\'anno scorso, o inseriti nell\'ultimo anno)</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-deceduti"' + (filtri.deceduti ? ' checked' : '') + '> ✝️ Solo deceduti</label>'
     + '<select id="arc-ruolo" style="width:auto; padding:4px 8px; font-size:12.5px" title="Dichiaranti o coniugi"><option value="">Dichiaranti e coniugi</option><option value="dichiarante">👤 Solo dichiaranti</option><option value="coniuge">💑 Solo coniugi dichiaranti</option></select>'
     + '<select id="arc-collab" style="width:auto; padding:4px 8px; font-size:12.5px" title="Solo i clienti di un collaboratore"><option value="">🤝 Tutti i collaboratori</option><option value="-">Senza collaboratore</option>' + getTipiList().map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('') + '</select>'
@@ -158,7 +158,7 @@ function clientiConPraticheAnno(anno) {
   });
   return { cf: cf, nome: nome };
 }
-// Clienti che hanno pratiche nell'anno in corso o in quello prima (per completare prima i dati di chi viene davvero)
+// Clienti recenti: con pratiche nell'anno in corso o in quello prima, o inseriti in archivio nell'ultimo anno (per completare prima i dati di chi viene davvero)
 function clientiConPraticheRecenti() {
   const da = annoAttivo() - 1, cf = {}, nome = {};
   (state.pratiche || []).concat(state.annullate || []).forEach(function (p) {
@@ -169,8 +169,17 @@ function clientiConPraticheRecenti() {
     const con = ((p.congCognome || '') + ' ' + (p.congNome || '')).trim() || p.congiunta;
     if (con) nome[String(con).trim().toUpperCase()] = true;
   });
+  // anche chi è stato inserito in archivio nell'ultimo anno (es. cliente nuovo senza ancora una pratica),
+  // ma non il caricamento iniziale dell'archivio (3 ottobre 2026: 1088 clienti degli anni passati)
+  const limite = Math.max(Date.now() - 365 * 86400000, Date.parse(INIZIO_INSERIMENTI_ARCHIVIO));
+  (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).forEach(function (c) {
+    if (!c.creatoIl || Date.parse(c.creatoIl) < limite) return;
+    if (c.codiceFiscale) cf[String(c.codiceFiscale).toUpperCase()] = true;
+    if (c.nomeCompleto) nome[String(c.nomeCompleto).trim().toUpperCase()] = true;
+  });
   return { cf: cf, nome: nome };
 }
+const INIZIO_INSERIMENTI_ARCHIVIO = '2026-10-04T00:00:00Z';
 function modificaClienteArchivio(c, dopo) {
   if (!c.id) { avviso('Cliente appena inserito: riapri l\'archivio tra qualche secondo per modificarlo', true); return; }
   const vecchio = document.getElementById('popup-mod-cliente'); if (vecchio) vecchio.remove();
