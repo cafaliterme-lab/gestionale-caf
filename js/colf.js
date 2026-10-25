@@ -19,6 +19,7 @@ function avvisoTrasferimentoColfHTML() {
   if (!auth.profilo || document.body.classList.contains('sola-lettura')) return '';
   const da = annoAttivo() - 1, n = colfDaTrasferire(da).length;
   if (!n) return '';
+  if (trasferimentoColfAutomatico()) setTimeout(trasferisciColfAutomatico, 1500);
   return '<div style="margin-bottom:12px; padding:10px 14px; border-radius:12px; background:#e8f6f1; border:2px solid #1f8a70; display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between">'
     + '<span><b style="color:#1f8a70">🧹 Colf e badanti:</b> ' + n + ' pratiche <b>in corso</b> del ' + da + ' non sono ancora state trasferite nel ' + annoAttivo() + '.</span>'
     + '<button type="button" onclick="apriTrasferimentoColf(' + da + ')" style="background:#1f8a70; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">➡️ Trasferisci nel ' + annoAttivo() + '</button></div>';
@@ -63,40 +64,9 @@ function apriTrasferimentoColf(annoDa) {
     const esito = document.getElementById('tc-esito');
     if (!scelte.length) { esito.innerHTML = '<b style="color:#c0392b">Spunta almeno una pratica</b>'; return; }
     b.disabled = true;
-    const oggi = todayIT();
-    const dataNuova = annoDiData(oggi) === annoA ? oggi : '01/01/' + annoA;
-    let fatte = 0, saltate = 0;
-    for (const p of scelte) {
-      esito.textContent = 'Trasferimento ' + (fatte + saltate + 1) + ' di ' + scelte.length + '…';
-      // se nel nuovo anno c'è già una pratica colf dello stesso cliente non si crea un doppione
-      const gia = await cercaDoppione(annoA, p.nome, p.tipo, p.codiceFiscale, null);
-      if (gia) { await supabase.from('pratiche').update({ trasferita_in: gia }).eq('id', p.id).select('id'); p.trasferitaIn = gia; saltate++; continue; }
-      // continuazione: niente numero nuovo della serie AP, resta il protocollo d'origine del contratto
-      const origine = protocolloOrigineDi(p);
-      const nuova = {
-        continuazione: true, protocolloOrigine: origine,
-        anno: annoA, data: dataNuova, tipo: p.tipo, stato: 'pratica_attiva',
-        nome: p.nome, cf: p.cf, codiceFiscale: p.codiceFiscale, telefono: p.telefono, telefonoFisso: p.telefonoFisso, email: p.email,
-        documentoScadenza: p.documentoScadenza, documenti: p.documenti,
-        comuneNascita: p.comuneNascita, documentoNumero: p.documentoNumero, documentoTipo: p.documentoTipo, riferimento: p.riferimento,
-        // il lavoratore passa con il contratto (la congiunta non esiste per le colf)
-        lavCognome: p.lavCognome, lavNome: p.lavNome, lavCodiceFiscale: p.lavCodiceFiscale, lavData: p.lavData, lavComuneNascita: p.lavComuneNascita, lavTelefono: p.lavTelefono,
-        lavDocumentoTipo: p.lavDocumentoTipo, lavDocumentoNumero: p.lavDocumentoNumero, lavDocumentoScadenza: p.lavDocumentoScadenza, lavPermessoNumero: p.lavPermessoNumero, lavPermessoScadenza: p.lavPermessoScadenza,
-        compenso: p.compenso, pagato: 0, metodoPagamento: '', scadenzaAssistenza: p.scadenzaAssistenza || '',
-        note: 'Continuazione nel ' + annoA + ' del contratto ' + origine,
-        fatt: 'dafatturare', numFattura: '', dataFattura: '',
-        inseritoDa: ((auth.profilo && auth.profilo.nome) || '').toUpperCase(), inseritoIl: new Date().toISOString()
-      };
-      const db = praticaToDb(nuova); delete db.numero;
-      const ins = await supabase.from('pratiche').insert([db]).select('id,numero,anno,serie');
-      if (ins.error || !ins.data || !ins.data.length) { esito.innerHTML = '<b style="color:#c0392b">❌ ' + esc((p.nome || '')) + ' non trasferita' + (ins.error ? ': ' + esc(ins.error.message) : '') + '</b>'; b.disabled = false; break; }
-      const r = ins.data[0];
-      const numeroNuovo = origine + ' (continuazione ' + annoA + ')';
-      const upd = await supabase.from('pratiche').update({ trasferita_in: numeroNuovo }).eq('id', p.id).select('id');
-      if (upd.error) { esito.innerHTML = '<b style="color:#c0392b">❌ ' + esc(upd.error.message) + '</b>'; b.disabled = false; break; }
-      p.trasferitaIn = numeroNuovo;
-      fatte++;
-    }
+    const esitoT = await eseguiTrasferimentoColf(scelte, annoDa, function (n) { esito.textContent = 'Trasferimento ' + n + ' di ' + scelte.length + '…'; });
+    const fatte = esitoT.fatte, saltate = esitoT.saltate;
+    if (esitoT.errore) { esito.innerHTML = '<b style="color:#c0392b">❌ ' + esc(esitoT.errore) + '</b>'; b.disabled = false; }
     if (typeof caricaTutto === 'function') await caricaTutto();
     if (fatte + saltate === scelte.length) {
       ov.remove();
@@ -104,4 +74,76 @@ function apriTrasferimentoColf(annoDa) {
     }
     render();
   });
+}
+
+// Trasferisce all'anno dopo i contratti dati (dal tasto ➡️ Trasferisci o in automatico a inizio anno)
+async function eseguiTrasferimentoColf(scelte, annoDa, avanzamento) {
+  const annoA = annoDa + 1;
+  const oggi = todayIT();
+  const dataNuova = annoDiData(oggi) === annoA ? oggi : '01/01/' + annoA;
+  let fatte = 0, saltate = 0;
+  for (const p of scelte) {
+    if (avanzamento) avanzamento(fatte + saltate + 1);
+    // se nel nuovo anno c'è già una pratica colf dello stesso cliente non si crea un doppione
+    const gia = await cercaDoppione(annoA, p.nome, p.tipo, p.codiceFiscale, null);
+    if (gia) { await supabase.from('pratiche').update({ trasferita_in: gia }).eq('id', p.id).select('id'); p.trasferitaIn = gia; saltate++; continue; }
+    // continuazione: niente numero nuovo della serie AP, resta il protocollo d'origine del contratto
+    const origine = protocolloOrigineDi(p);
+    const nuova = {
+      continuazione: true, protocolloOrigine: origine,
+      anno: annoA, data: dataNuova, tipo: p.tipo, stato: 'pratica_attiva',
+      nome: p.nome, cf: p.cf, codiceFiscale: p.codiceFiscale, telefono: p.telefono, telefonoFisso: p.telefonoFisso, email: p.email,
+      documentoScadenza: p.documentoScadenza, documenti: p.documenti,
+      comuneNascita: p.comuneNascita, documentoNumero: p.documentoNumero, documentoTipo: p.documentoTipo, riferimento: p.riferimento,
+      // il lavoratore passa con il contratto (la congiunta non esiste per le colf)
+      lavCognome: p.lavCognome, lavNome: p.lavNome, lavCodiceFiscale: p.lavCodiceFiscale, lavData: p.lavData, lavComuneNascita: p.lavComuneNascita, lavTelefono: p.lavTelefono,
+      lavDocumentoTipo: p.lavDocumentoTipo, lavDocumentoNumero: p.lavDocumentoNumero, lavDocumentoScadenza: p.lavDocumentoScadenza, lavPermessoNumero: p.lavPermessoNumero, lavPermessoScadenza: p.lavPermessoScadenza,
+      compenso: p.compenso, pagato: 0, metodoPagamento: '', scadenzaAssistenza: p.scadenzaAssistenza || '',
+      note: 'Continuazione nel ' + annoA + ' del contratto ' + origine,
+      fatt: 'dafatturare', numFattura: '', dataFattura: '',
+      inseritoDa: ((auth.profilo && auth.profilo.nome) || '').toUpperCase(), inseritoIl: new Date().toISOString()
+    };
+    const db = praticaToDb(nuova); delete db.numero;
+    const ins = await supabase.from('pratiche').insert([db]).select('id,numero,anno,serie');
+    if (ins.error || !ins.data || !ins.data.length) return { fatte: fatte, saltate: saltate, errore: (p.nome || '') + ' non trasferita' + (ins.error ? ': ' + ins.error.message : '') };
+    const numeroNuovo = origine + ' (continuazione ' + annoA + ')';
+    const upd = await supabase.from('pratiche').update({ trasferita_in: numeroNuovo }).eq('id', p.id).select('id');
+    if (upd.error) return { fatte: fatte, saltate: saltate, errore: upd.error.message };
+    p.trasferitaIn = numeroNuovo;
+    fatte++;
+  }
+  return { fatte: fatte, saltate: saltate, errore: '' };
+}
+
+// ⚙️ Impostazione dell'amministratore (Utenti e permessi): trasferimento automatico a inizio anno, spento finché non lo accende
+function trasferimentoColfAutomatico() { return typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI.colf_trasferimento_auto === 'si'; }
+async function impostaTrasferimentoColfAutomatico(si) {
+  const valore = si ? 'si' : 'no';
+  const { data: righe, error } = await supabase.from('impostazioni').upsert([{ chiave: 'colf_trasferimento_auto', valore: valore, aggiornato_il: new Date().toISOString() }], { onConflict: 'chiave' }).select('chiave');
+  if (error || !righe || !righe.length) { avviso('❌ Non salvato' + (error ? ': ' + error.message : ''), true); return; }
+  IMPOSTAZIONI.colf_trasferimento_auto = valore;
+  avviso(si ? '✓ Colf e badanti: a inizio anno i contratti attivi passeranno da soli all\'anno nuovo' : '✓ Colf e badanti: il passaggio d\'anno si fa a mano con il tasto ➡️ Trasferisci');
+  render();
+}
+function rigaImpostazioneColfHTML() {
+  return '<div class="perm-row" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:var(--bg); border:1px solid var(--line)"><span><b>🧹 Colf e badanti: passaggio all\'anno nuovo</b> <span style="font-size:12px; color:var(--sub)">spento = lo fai tu con il tasto ➡️ Trasferisci (controllando l\'elenco); acceso = a inizio anno i contratti non cessati passano da soli quando entra l\'amministratore</span></span>'
+    + '<label class="chk"><input type="checkbox" ' + (trasferimentoColfAutomatico() ? 'checked' : '') + ' onchange="impostaTrasferimentoColfAutomatico(this.checked)"> Automatico</label></div>';
+}
+// a inizio anno, se acceso: lo fa l'amministratore appena entra (una volta sola per sessione), poi mostra il riepilogo
+let TRASF_COLF_AUTO_FATTO = false;
+async function trasferisciColfAutomatico() {
+  if (TRASF_COLF_AUTO_FATTO || !trasferimentoColfAutomatico() || !auth.profilo || auth.profilo.ruolo !== 'admin') return;
+  const da = annoAttivo() - 1;
+  if (new Date().getFullYear() < annoAttivo()) return; // solo quando l'anno nuovo è davvero cominciato
+  const lista = colfDaTrasferire(da);
+  if (!lista.length) return;
+  TRASF_COLF_AUTO_FATTO = true;
+  const esito = await eseguiTrasferimentoColf(lista, da, null);
+  if (typeof caricaTutto === 'function') await caricaTutto();
+  render();
+  const scadute = lista.filter(function (p) { return p.scadenzaAssistenza && (dataNum(p.scadenzaAssistenza) || 0) < dataNum(todayIT()); });
+  alert('🧹 Colf e badanti: passaggio automatico al ' + (da + 1) + '\n\n'
+    + esito.fatte + ' contratti trasferiti come continuazione (stesso protocollo d\'origine)' + (esito.saltate ? '\n' + esito.saltate + ' già presenti nel ' + (da + 1) + ' (non duplicati)' : '')
+    + (esito.errore ? '\n\n❌ Fermato per un errore: ' + esito.errore + '\nRiprova con il tasto ➡️ Trasferisci.' : '')
+    + (scadute.length ? '\n\n⚠️ Con la scadenza dell\'assistenza già passata (controlla se rinnovare o cessare):\n' + scadute.map(function (p) { return '• ' + p.nome + ' – ' + p.scadenzaAssistenza; }).join('\n') : ''));
 }

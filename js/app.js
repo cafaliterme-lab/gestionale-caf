@@ -1442,7 +1442,7 @@ async function renderPermessi(){
   const operatori = allProfili.filter(function(u){ return u.id !== io; });
 
   if(!operatori.length) {
-    wrap.innerHTML = '<div class="empty">Nessun altro utente oltre a te</div>';
+    wrap.innerHTML = (typeof rigaImpostazioneColfHTML === 'function' ? rigaImpostazioneColfHTML() : '') + '<div class="empty">Nessun altro utente oltre a te</div>';
     return;
   }
 
@@ -1478,7 +1478,7 @@ async function renderPermessi(){
   const buttonHtml = '<div style="margin-top:12px; text-align:left"><button type="button" class="btn-add" onclick="salvaPermessi()">💾 Salva permessi</button></div>';
   const chatHtml = '<div class="perm-row" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:var(--bg); border:1px solid var(--line)"><span><b>💬 Chat interna</b> <span style="font-size:12px; color:var(--sub)">(il tasto in basso a destra; per ogni utente si può togliere qui sotto)</span></span>'
     + '<label class="chk"><input type="checkbox" ' + (IMPOSTAZIONI.chat_attiva !== 'no' ? 'checked' : '') + ' onchange="impostaChatAttiva(this.checked)"> Attiva per tutti</label></div>';
-  wrap.innerHTML = chatHtml + cardsHtml + buttonHtml;
+  wrap.innerHTML = chatHtml + (typeof rigaImpostazioneColfHTML === 'function' ? rigaImpostazioneColfHTML() : '') + cardsHtml + buttonHtml;
 }
 
 async function impostaChatAttiva(si){
