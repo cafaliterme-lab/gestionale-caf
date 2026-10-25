@@ -56,7 +56,7 @@ function statoOptions(sel, tipo){ return Object.keys(STATI).filter(k=>statoVisib
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 function tipoOptions(sel){
   const list = (sel && TIPI.indexOf(sel)<0) ? [sel].concat(TIPI) : TIPI;
-  return '<option value="">-</option>' + list.map(o=>'<option value="'+esc(o)+'"'+(o===sel?' selected':'')+'>'+esc(o)+'</option>').join('');
+  return '<option value="">-</option>' + list.map(o=>'<option value="'+esc(o)+'"'+(o===sel?' selected':'')+' style="'+stileOpzioneTipo(o)+'">'+esc(o)+'</option>').join('');
 }
 
 let chStati = null, chEur = null;
@@ -191,8 +191,21 @@ function cercaClienti(q, ctx){
 // Collaboratore a cui appartiene un cliente (scelto dalla lista dei tipi di pratica)
 function opzioniCollaboratore(sel){
   const l = getTipiList().slice(); if(sel && l.indexOf(sel) < 0) l.push(sel);
-  return '<option value="">— nessuno —</option>' + l.map(function(t){ return '<option value="'+esc(t)+'"'+(t === sel ? ' selected' : '')+'>'+esc(t)+'</option>'; }).join('');
+  return '<option value="">— nessuno —</option>' + l.map(function(t){ return '<option value="'+esc(t)+'"'+(t === sel ? ' selected' : '')+' style="'+stileOpzioneTipo(t)+'">'+esc(t)+'</option>'; }).join('');
 }
+// Ogni collaboratore / tipo di pratica col suo colore anche nelle tendine (le voci e la casella scelta)
+function stileOpzioneTipo(t){ return 'background:' + coloreCollaboratore(t) + '; color:#fff; font-weight:700'; }
+function coloraTendineCollaboratore(){
+  document.querySelectorAll('#mc-collab, #nc-collab, #arc-collab, select[id^="e-tipo-"]').forEach(function(el){
+    const v = el.value && el.value !== '-' ? el.value : '';
+    if(el.dataset.colore === v) return;
+    el.dataset.colore = v;
+    if(v){ const c = coloreCollaboratore(v); el.style.background = c; el.style.color = '#fff'; el.style.fontWeight = '700'; el.style.borderColor = c; }
+    else { el.style.background = ''; el.style.color = ''; el.style.fontWeight = ''; el.style.borderColor = ''; }
+  });
+}
+document.addEventListener('change', function(e){ if(e.target && e.target.tagName === 'SELECT') coloraTendineCollaboratore(); });
+setInterval(coloraTendineCollaboratore, 800);
 function badgeCollaboratore(c){
   return c && c.collaboratore ? ' <span title="Collaboratore" style="display:inline-block; background:'+coloreCollaboratore(c.collaboratore)+'; color:#fff; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700">🤝 '+esc(c.collaboratore)+'</span>' : '';
 }
@@ -1233,11 +1246,18 @@ function tipoConfig(k){ return tipiConfig()[String(k||'').toUpperCase().trim()] 
 function coloreCollaboratore(nome){
   const cfg = tipoConfig(nome);
   if(cfg.colore) return cfg.colore;
+  // tipo senza colore scelto: un colore libero (non usato dagli altri tipi), sempre lo stesso per quel tipo
+  const usati = {}; getTipiList().forEach(function(t){ const c = tipoConfig(t).colore; if(c) usati[String(c).toLowerCase()] = true; });
+  const liberi = PALETTE_EXTRA.concat(PALETTE_COLLABORATORI).filter(function(c){ return !usati[c.toLowerCase()]; });
+  const senza = getTipiList().filter(function(t){ return !tipoConfig(t).colore; });
+  const i = senza.indexOf(nome);
+  if(i >= 0 && liberi.length) return liberi[i % liberi.length];
   let h = 0;
   const s = String(nome||'');
-  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) >>> 0; }
-  return PALETTE_COLLABORATORI[h % PALETTE_COLLABORATORI.length];
+  for(let k=0;k<s.length;k++){ h = (h*31 + s.charCodeAt(k)) >>> 0; }
+  return (liberi.length ? liberi : PALETTE_COLLABORATORI)[h % (liberi.length || PALETTE_COLLABORATORI.length)];
 }
+const PALETTE_EXTRA = ['#a16207','#525252','#e11d48','#65a30d','#1e40af','#7c2d12','#047857','#9333ea'];
 function nomeFoglio(s){
   return String(s||'Senza tipo').replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,31) || 'Foglio';
 }
