@@ -977,16 +977,16 @@ async function esciDalProgramma(){
   await logout();
   cambiaUtente();
 }
-// Uscita automatica dopo 30 minuti senza usare il programma (PC condivisi, telefono dimenticato aperto);
+// Uscita automatica dopo 60 minuti senza usare il programma (PC condivisi, telefono dimenticato aperto);
 // sul PC dell'ufficio (segnato dall'amministratore in Utenti e permessi) dopo 4 ore.
 // L'ultima attività è condivisa tra le schede aperte dello stesso browser.
 function ePcUfficio(){ try{ return localStorage.getItem('pc-ufficio') === '1'; }catch(e){ return false; } }
-function minutiUscitaAutomatica(){ return ePcUfficio() ? 240 : 30; }
+function minutiUscitaAutomatica(){ return ePcUfficio() ? 240 : 60; }
 function impostaPcUfficio(si){
   if(!(auth && auth.profilo && auth.profilo.ruolo === 'admin')){ aggiornaPcUfficio(); return; }
   try{ if(si) localStorage.setItem('pc-ufficio', '1'); else localStorage.removeItem('pc-ufficio'); }catch(e){}
   aggiornaPcUfficio();
-  avviso(si ? '🏢 PC dell\'ufficio: su questo computer esci da solo dopo 4 ore senza uso.' : '🔒 Su questo computer esci di nuovo dopo 30 minuti senza uso.');
+  avviso(si ? '🏢 PC dell\'ufficio: su questo computer esci da solo dopo 4 ore senza uso.' : '🔒 Su questo computer esci di nuovo dopo 60 minuti senza uso.');
 }
 function aggiornaPcUfficio(){
   const el = document.getElementById('pc-ufficio'); if(!el) return;
@@ -1010,7 +1010,7 @@ async function controllaUscitaAutomatica(){
     AVVISO_USCITA_DATO = false;
     await esciDalProgramma();
     // il messaggio si vede nella schermata di accesso
-    setTimeout(function(){ const m = document.getElementById('login-msg'); if(m){ m.textContent = '🔒 Sei uscito dal programma perché non è stato usato per ' + (minuti >= 60 ? (minuti / 60) + ' ore' : minuti + ' minuti') + '. Rientra con la tua password.'; m.style.display = 'block'; } }, 1200);
+    setTimeout(function(){ const m = document.getElementById('login-msg'); if(m){ m.textContent = '🔒 Sei uscito dal programma perché non è stato usato per ' + (minuti === 60 ? 'un\'ora' : minuti > 60 ? (minuti / 60) + ' ore' : minuti + ' minuti') + '. Rientra con la tua password.'; m.style.display = 'block'; } }, 1200);
   } else if(ferma >= limite - 60000 && !AVVISO_USCITA_DATO){
     AVVISO_USCITA_DATO = true;
     avviso('⏳ Tra 1 minuto esci dal programma perché non lo stai usando: tocca lo schermo per restare dentro.');
