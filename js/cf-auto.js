@@ -117,21 +117,57 @@ function coloraScadenzaConiuge() {
 }
 
 // Numero del documento d'identità letto con l'OCR: dalle righe MRZ della carta d'identità elettronica, altrimenti dal testo
+// Numero del documento dal testo letto. La lettura confonde spesso lettere e cifre (O/0, I/1, S/5, B/8, Z/2, G/6)
+// e mette spazi in mezzo: si provano i formati italiani correggendo le lettere al posto delle cifre e viceversa.
+//   carta d'identità elettronica CA12345AB · cartacea AX1234567 · passaporto YA1234567 · patente U1A23B456C o MI1234567X
 function numeroDocumentoDaTesto(testo) {
-  const righe = String(testo || '').toUpperCase().split(/\n/).map(function (r) { return r.replace(/\s/g, '').replace(/[«‹(\[{]/g, '<'); });
+  const T = String(testo || '').toUpperCase();
+  const cifra = function (c) { return ({ O: '0', Q: '0', D: '0', I: '1', L: '1', T: '1', Z: '2', S: '5', B: '8', G: '6' })[c] || c; };
+  const lettera = function (c) { return ({ '0': 'O', '1': 'I', '2': 'Z', '5': 'S', '8': 'B', '6': 'G' })[c] || c; };
+  const sistema = function (str, schema) { // schema: L = lettera, D = cifra, X = lettera o cifra
+    let out = '';
+    for (let k = 0; k < schema.length; k++) {
+      const c = schema[k] === 'D' ? cifra(str[k]) : schema[k] === 'L' ? lettera(str[k]) : str[k];
+      if (schema[k] === 'D' && !/\d/.test(c)) return null;
+      if (schema[k] === 'L' && !/[A-Z]/.test(c)) return null;
+      out += c;
+    }
+    return out;
+  };
+  // 1) righe MRZ del retro (le più sicure): CIITACA12345AB…  oppure IDITA…
+  const righe = T.split(/\n/).map(function (r) { return r.replace(/\s/g, '').replace(/[«‹(\[{]/g, '<'); });
   for (const r of righe) {
-    const m = /(?:^|[^A-Z])(?:C[A-Z<]|I[A-Z<]|ID)ITA([A-Z0-9]{2}\d{5}[A-Z0-9]{2})/.exec(r);
-    if (m && /^[A-Z]{2}\d{5}[A-Z]{2}$/.test(m[1])) return m[1];
+    const m = /(?:^|[^A-Z])(?:C[A-Z<]|I[A-Z<]|ID)[I1]TA([A-Z0-9]{9})/.exec(r);
+    if (m) { const n = sistema(m[1], 'LLDDDDDLL') || sistema(m[1], 'LLDDDDDDD'); if (n) return n; }
   }
-  const t = String(testo || '').toUpperCase();
-  let m = /\b([A-Z]{2})\s?(\d{5})\s?([A-Z]{2})\b/.exec(t);           // carta d'identità elettronica: CA12345AB
-  if (m) return m[1] + m[2] + m[3];
-  m = /\b(A[A-Z])\s?(\d{7})\b/.exec(t);                               // carta d'identità cartacea: AX 1234567
-  if (m) return m[1] + m[2];
-  m = /\b([A-Z]{2}\d{7})\b/.exec(t);                                  // passaporto: YA1234567
-  if (m) return m[1];
-  m = /\b(U1[A-Z0-9]{7}[A-Z])\b/.exec(t);                             // patente: U1ABC1234D
-  if (m) return m[1];
+  // 2) vicino alle scritte «N.», «NUMERO», «DOCUMENTO N.», «CARTA N.»
+  const vicino = /(?:N[°º.]\s*|NUMERO|NUM\.|DOC(?:UMENTO)?\s*N[°º.]?|CARTA\s*N[°º.]?|PATENTE\s*N[°º.]?)\s*[:.]?\s*([A-Z0-9][A-Z0-9 ]{6,20})/g;
+  const prova = function (grezzo) {
+    const c = String(grezzo || '').replace(/[^A-Z0-9]/g, '');
+    for (let len = Math.min(c.length, 10); len >= 9; len--) {
+      const x = c.slice(0, len);
+      const n = len === 9 ? (sistema(x, 'LLDDDDDLL') || sistema(x, 'LLDDDDDDD')) : (sistema(x, 'LDXXXXXXXL') || sistema(x, 'LLDDDDDDDL'));
+      if (n && (len === 9 || /^U1/.test(n) || /^[A-Z]{2}\d{7}[A-Z]$/.test(n))) return n;
+    }
+    return '';
+  };
+  let m;
+  while ((m = vicino.exec(T))) { const n = prova(m[1]); if (n) return n; }
+  // 3) ovunque nel testo, formati esatti (con eventuali spazi)
+  m = /\b([A-Z]{2})\s?(\d{5})\s?([A-Z]{2})\b/.exec(T); if (m) return m[1] + m[2] + m[3];            // CIE
+  m = /\b(U1[A-Z0-9]{7}[A-Z])\b/.exec(T); if (m) return m[1];                                        // patente nuova
+  m = /\b([A-Z]{2}\d{7}[A-Z])\b/.exec(T); if (m) return m[1];                                        // patente vecchia
+  m = /\b([A-Z]{2})\s?(\d{7})\b/.exec(T); if (m) return m[1] + m[2];                                 // cartacea / passaporto
+  // 4) ovunque, con le lettere e le cifre confuse (blocchi di 9 caratteri che sembrano un numero CIE)
+  const blocchi = T.replace(/[^A-Z0-9\s]/g, ' ').split(/\s+/);
+  for (let k = 0; k < blocchi.length; k++) {
+    const uniti = [blocchi[k], blocchi[k] + (blocchi[k + 1] || ''), blocchi[k] + (blocchi[k + 1] || '') + (blocchi[k + 2] || '')];
+    for (const u of uniti) {
+      if (u.length !== 9 || !/\d.*\d.*\d/.test(u)) continue;
+      const n = sistema(u, 'LLDDDDDLL');
+      if (n && /^[A-Z]{2}/.test(u)) return n;
+    }
+  }
   return '';
 }
 
