@@ -286,6 +286,10 @@ function nuovoClienteArchivio(testo, dopo) {
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; border-top:6px solid #1a7f37; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:16px 18px; max-width:560px; width:100%; max-height:92vh; overflow:auto">'
     + '<div style="font-size:19px; font-weight:800; color:#1a7f37; margin-bottom:2px">👤 Nuovo cliente in archivio</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">Il cliente viene salvato nell\'archivio e lo ritrovi poi in tutte le ricerche (anagrafica, scadenze…).</div>'
+    + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px">'
+    + '<button type="button" onclick="apriLetturaDocumentoPer(\'nuovocliente\')" style="background:#2f9e9e; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:800; cursor:pointer">📷 Leggi documento</button>'
+    + '<button type="button" onclick="apriInserisciDocumento(\'nuovocliente\')" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:800; cursor:pointer">📥 Inserisci PDF / foto</button>'
+    + '<span style="font-size:12px; color:var(--sub); align-self:center">carta d\'identità, patente o tessera sanitaria: i dati si scrivono da soli</span></div>'
     + '<div class="grid">'
     + campo('cognome', 'Cognome *', 'value="' + esc(cognome0) + '" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('nome', 'Nome *', 'value="' + esc(nome0) + '" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')

@@ -560,9 +560,9 @@ function datiRevisione() {
 
 // Documento del titolare o del coniuge (dichiarazione congiunta)
 function apriLetturaDocumentoPer(chi) {
-  docLettura.destinazione = chi === 'coniuge' || chi === 'archivio' || chi === 'modifica' ? chi : 'titolare';
-  document.getElementById('doc-overlay').style.zIndex = chi === 'modifica' ? '490' : '';
-  document.getElementById('doc-titolo').textContent = chi === 'coniuge' ? '📄 Leggi documento del coniuge' : chi === 'archivio' ? '📇 Nuovo cliente in archivio da documento' : chi === 'modifica' ? '✏️ Aggiorna la scheda del cliente dal documento' : '📄 Leggi documento';
+  docLettura.destinazione = chi === 'coniuge' || chi === 'archivio' || chi === 'modifica' || chi === 'nuovocliente' ? chi : 'titolare';
+  document.getElementById('doc-overlay').style.zIndex = chi === 'modifica' || chi === 'nuovocliente' ? '490' : '';
+  document.getElementById('doc-titolo').textContent = chi === 'coniuge' ? '📄 Leggi documento del coniuge' : chi === 'archivio' ? '📇 Nuovo cliente in archivio da documento' : chi === 'modifica' ? '✏️ Aggiorna la scheda del cliente dal documento' : chi === 'nuovocliente' ? '👤 Nuovo cliente: dati dal documento' : '📄 Leggi documento';
   apriLetturaDocumento();
 }
 
@@ -667,15 +667,15 @@ async function leggiFileDocumento(file) {
 
 // Finestra "Inserisci PDF": si trascina dentro il file (o si incolla con Ctrl+V, o si sceglie) senza fotocamera
 function apriInserisciDocumento(chi) {
-  docLettura.destinazione = chi === 'coniuge' || chi === 'archivio' || chi === 'modifica' ? chi : 'titolare';
-  document.getElementById('doc-overlay').style.zIndex = chi === 'modifica' ? '490' : '';
+  docLettura.destinazione = chi === 'coniuge' || chi === 'archivio' || chi === 'modifica' || chi === 'nuovocliente' ? chi : 'titolare';
+  document.getElementById('doc-overlay').style.zIndex = chi === 'modifica' || chi === 'nuovocliente' ? '490' : '';
   docLettura.unisci = false;
   const vecchio = document.getElementById('doc-drop'); if (vecchio) vecchio.remove();
   const ov = document.createElement('div');
   ov.id = 'doc-drop';
   ov.style.cssText = 'position:fixed; inset:0; z-index:480; background:rgba(15,27,45,.55); display:flex; align-items:center; justify-content:center; padding:16px';
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; padding:18px; width:min(520px, 100%); box-shadow:0 20px 50px rgba(0,0,0,.3)">'
-    + '<div style="font-weight:800; font-size:17px; margin-bottom:10px">' + (chi === 'archivio' ? '📇 Nuovo cliente da PDF' : chi === 'modifica' ? '✏️ PDF del documento del cliente' : chi === 'coniuge' ? '📥 PDF del documento del coniuge' : '📥 Inserisci il PDF del documento') + '</div>'
+    + '<div style="font-weight:800; font-size:17px; margin-bottom:10px">' + (chi === 'archivio' ? '📇 Nuovo cliente da PDF' : chi === 'modifica' || chi === 'nuovocliente' ? '✏️ PDF del documento del cliente' : chi === 'coniuge' ? '📥 PDF del documento del coniuge' : '📥 Inserisci il PDF del documento') + '</div>'
     + '<label id="doc-drop-zona" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:200px; border:3px dashed #1d4f91; border-radius:14px; background:#eef3fa; color:#1d4f91; text-align:center; padding:18px; cursor:pointer; margin:0">'
     + '<span style="font-size:42px">📄</span><b style="font-size:16px">Trascina qui il PDF o la foto del documento</b>'
     + '<span style="font-size:13px; color:#3b5578">oppure copialo e incollalo qui con <b>Ctrl+V</b>, oppure tocca qui per sceglierlo</span>'
@@ -688,7 +688,7 @@ function apriInserisciDocumento(chi) {
   const usa = function (file) {
     if (!file) return;
     chiudi();
-    document.getElementById('doc-titolo').textContent = chi === 'coniuge' ? '📄 Documento del coniuge' : chi === 'archivio' ? '📇 Nuovo cliente in archivio da documento' : chi === 'modifica' ? '✏️ Aggiorna la scheda del cliente dal documento' : '📄 Leggi documento';
+    document.getElementById('doc-titolo').textContent = chi === 'coniuge' ? '📄 Documento del coniuge' : chi === 'archivio' ? '📇 Nuovo cliente in archivio da documento' : chi === 'modifica' ? '✏️ Aggiorna la scheda del cliente dal documento' : chi === 'nuovocliente' ? '👤 Nuovo cliente: dati dal documento' : '📄 Leggi documento';
     document.getElementById('doc-overlay').classList.add('open');
     vistaDoc('cattura');
     messaggioDoc('Lettura del file ' + (file.name || '') + '...');
@@ -1326,26 +1326,27 @@ function usaDatiDocumento() {
     apriSchedaClienteArchivio(dati);
     return;
   }
-  if (docLettura.destinazione === 'modifica') {
-    // scheda del cliente aperta in "Archivio clienti – modifica": si aggiornano i suoi campi, nessuna pratica
+  if (docLettura.destinazione === 'modifica' || docLettura.destinazione === 'nuovocliente') {
+    // scheda del cliente aperta (modifica «mc-» o nuovo cliente «nc-»): si compilano i suoi campi, nessuna pratica
+    const pre = docLettura.destinazione === 'nuovocliente' ? 'nc-' : 'mc-';
     const metti = function (id, val) {
-      const el = document.getElementById('mc-' + id);
+      const el = document.getElementById(pre + id);
       if (!el || !val || el.value.trim().toUpperCase() === String(val).toUpperCase()) return;
       el.value = val; el.style.outline = '3px solid #1a7f37'; el.style.background = '#e8f6ee';
     };
     metti('cognome', v('doc-cognome').toUpperCase()); metti('nome', v('doc-nome').toUpperCase());
     metti('nascita', v('doc-nascita')); metti('cf', cf); metti('scad', v('doc-scad')); metti('docnum', v('doc-numero'));
-    const ms = document.getElementById('mc-sesso'); if (ms && v('doc-sesso')) { ms.value = v('doc-sesso'); ms.dataset.manuale = '1'; }
-    { const td = typeof tipoDocDaLettura === 'function' ? tipoDocDaLettura((docLettura.dati || {}).tipo) : ''; const el = document.getElementById('mc-doctipo'); if (td && el && el.value !== td) { el.innerHTML = opzioniTipoDoc(td); el.style.outline = '3px solid #1a7f37'; } }
-    if (!cf && typeof proponiCFCampi === 'function') { proponiCFCampi({ cognome: 'mc-cognome', nome: 'mc-nome', data: 'mc-nascita', sesso: 'mc-sesso', comune: 'mc-comune', cf: 'mc-cf' }); }
+    const ms = document.getElementById(pre + 'sesso'); if (ms && v('doc-sesso')) { ms.value = v('doc-sesso'); ms.dataset.manuale = '1'; }
+    { const td = typeof tipoDocDaLettura === 'function' ? tipoDocDaLettura((docLettura.dati || {}).tipo) : ''; const el = document.getElementById(pre + 'doctipo'); if (td && el && el.value !== td) { el.innerHTML = opzioniTipoDoc(td); el.style.outline = '3px solid #1a7f37'; } }
+    if (!cf && typeof proponiCFCampi === 'function') { proponiCFCampi({ cognome: pre + 'cognome', nome: pre + 'nome', data: pre + 'nascita', sesso: pre + 'sesso', comune: pre + 'comune', cf: pre + 'cf' }); }
     // comune di nascita: dal codice fiscale (sicuro), altrimenti quello letto sul documento
     const comune = (cf && cfValido(cf) && typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '') || v('doc-luogo').toUpperCase();
-    const elC = document.getElementById('mc-comune');
+    const elC = document.getElementById(pre + 'comune');
     if (elC && comune && elC.value.trim().toUpperCase() !== comune) { elC.value = comune; elC.dataset.auto = '1'; elC.style.outline = '3px solid #1a7f37'; elC.style.background = '#e8f6ee'; }
     chiudiLetturaDocumento();
-    const msg = document.getElementById('mc-msg');
-    if (msg) msg.innerHTML = '<span style="color:#1a7f37">✓ Dati del documento inseriti (in verde quelli cambiati): controlla e premi <b>💾 Salva modifiche</b>.</span>';
-    avviso('✓ Dati del documento inseriti nella scheda: premi 💾 Salva modifiche');
+    const msg = document.getElementById(pre + 'msg');
+    if (msg) msg.innerHTML = '<span style="color:#1a7f37">✓ Dati del documento inseriti (in verde quelli cambiati): controlla e premi <b>' + (pre === 'nc-' ? '💾 Salva in archivio' : '💾 Salva modifiche') + '</b>.</span>';
+    avviso('✓ Dati del documento inseriti nella scheda: controlla e salva'); if (typeof aggiornaColoriModulo === 'function') aggiornaColoriModulo();
     return;
   }
   if (docLettura.destinazione !== 'archivio') inviaDocumentoAgliAltriDispositivi({ destinazione: docLettura.destinazione, cognome: v('doc-cognome').toUpperCase(), nome: v('doc-nome').toUpperCase(), dataNascita: v('doc-nascita'), codiceFiscale: cf, scadenza: v('doc-scad'), numero: v('doc-numero'), tipoDoc: typeof tipoDocDaLettura === 'function' ? tipoDocDaLettura((docLettura.dati || {}).tipo) : '' });
