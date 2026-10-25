@@ -422,7 +422,7 @@ const GUIDA = [
 <li>Le pratiche si contano senza le rinunce, le congiunte valgono 2, come nella Contabilità.</li>
 <li>Se nel Registro è acceso un filtro (stato, tipo, CISL, riferimento, importo, ricerca) i riquadri contano solo le pratiche filtrate: lo dice l'avviso arancione, con <b>✕ Togli i filtri</b>. Il tasto «Solo da fare» invece non cambia i riquadri.</li></ul>` },
   { id: 'buste-paga', icona: '💼', titolo: 'Buste paga colf e badanti', parole: 'buste paga busta paga colf badanti fine mese mensile compilare spunta contratto attivo',
-    testo: `<p>Ogni contratto <b>colf e badanti</b> attivo (pratica «Contratti colf e badanti» con stato <b>Pratica attiva</b>) ha una busta paga da compilare <b>ogni mese</b>.</p><ul>
+    testo: `<p>Ogni contratto <b>colf e badanti</b> in corso (pratica «Contratti colf e badanti» in qualsiasi stato tranne <b>Pratica cessata</b>, non annullata) ha una busta paga da compilare <b>ogni mese</b>.</p><ul>
 <li>Dal <b>25 del mese</b> il programma avvisa: entrando compare la finestra <b>💼 Buste paga colf e badanti</b> (una volta al giorno) e in <b>Oggi</b> c'è la casella con quante mancano e di quale mese.</li>
 <li>Nella finestra ci sono i 12 mesi dell'anno: verde ✓ = tutte compilate, rosso = ne mancano (es. «3/5»). Per il mese scelto c'è l'elenco dei contratti: <b>spunta ✓</b> quando la busta paga è compilata (resta scritto quando e da chi). Se togli la spunta torna «da fare».</li>
 <li>Se un mese passato non è stato spuntato resta in evidenza («⚠️ Mancano anche…») finché non lo spunti.</li>

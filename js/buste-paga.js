@@ -1,5 +1,5 @@
 /* ---------------- 💼 Buste paga colf e badanti, mese per mese ----------------
-   Ogni contratto colf e badanti attivo («Pratica attiva», non annullata e non trasferita nell'anno dopo)
+   Ogni contratto colf e badanti in corso (qualsiasi stato tranne «Pratica cessata», non annullato e non trasferito nell'anno dopo)
    ha una busta paga da compilare ogni mese. Dal giorno 25 il mese in corso è «da fare»: entrando nel
    programma compare l'avviso e in «Oggi» c'è la casella. Si spunta ✓ quando la busta paga è compilata
    (tabella «buste_paga», una riga per contratto e mese): i mesi passati non spuntati restano in evidenza. */
@@ -17,7 +17,7 @@ function meseDopo(m, k) { const [a, n] = String(m).split('-').map(Number); const
 function meseBusteDovuto() { const d = new Date(); return d.getDate() >= GIORNO_AVVISO_BUSTE ? meseIso(d) : meseDopo(meseIso(d), -1); }
 
 function contrattiColfAttivi() {
-  return (state.pratiche || []).filter(function (p) { return eColf(p.tipo) && p.stato === 'pratica_attiva' && !p.annullata && !p.trasferitaIn; })
+  return (state.pratiche || []).filter(function (p) { return eColf(p.tipo) && p.stato !== 'pratica_cessata' && !p.annullata && !p.trasferitaIn; })
     .sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || '')); });
 }
 // Primo mese da chiedere per un contratto: il mese di apertura della pratica (non prima di PRIMO_MESE_BUSTE)
@@ -97,7 +97,7 @@ function disegnaBustePaga() {
         + '<input type="checkbox"' + (f ? ' checked' : '') + ' onchange="spuntaBustaPaga(' + esc(JSON.stringify(p.id)) + ', \'' + mese + '\', this.checked)" style="width:20px; height:20px">'
         + '<span style="flex:1"><b>' + esc(p.nome || '') + '</b> <span class="sub2">· ' + esc(formattaProtocollo(p)) + (p.scadenzaAssistenza ? ' · assistenza fino al ' + esc(p.scadenzaAssistenza) : '') + '</span></span>'
         + (f ? '<span style="font-size:12px; font-weight:800; color:#1a7f37">✓ compilata il ' + esc(new Date(f.fatta_il || Date.now()).toLocaleDateString('it-IT')) + (f.chi ? ' da ' + esc(f.chi) : '') + '</span>' : (mese <= dovuto ? '<span style="font-size:12px; font-weight:800; color:#c0392b">da fare</span>' : '')) + '</label>';
-    }).join('') : '<div class="empty" style="padding:14px">Nessun contratto colf e badanti attivo in questo mese (le pratiche «Contratti colf e badanti» con stato «Pratica attiva»).</div>')
+    }).join('') : '<div class="empty" style="padding:14px">Nessun contratto colf e badanti in corso in questo mese (le pratiche «Contratti colf e badanti» non cessate né annullate).</div>')
     + (altriMesi.length ? '<div style="margin-top:10px; padding:8px 12px; border-radius:10px; border:2px solid #c0392b; font-size:13px"><b style="color:#c0392b">⚠️ Mancano anche:</b> ' + Object.keys(altriMesi.reduce(function (o, x) { o[x.mese] = (o[x.mese] || 0) + 1; return o; }, {})).sort().map(function (m) { const n = altriMesi.filter(function (x) { return x.mese === m; }).length; return '<a href="#" onclick="scegliMeseBuste(\'' + m + '\'); return false">' + nomeMese(m) + ' (' + n + ')</a>'; }).join(' · ') + '</div>' : '')
     + '<div style="text-align:right; margin-top:10px"><button type="button" data-chiudi style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 16px; font-weight:700; cursor:pointer">Chiudi</button></div>';
 }
