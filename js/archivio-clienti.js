@@ -2,7 +2,7 @@
    Si completano i dati mancanti (codice fiscale, telefoni, e-mail, scadenza documento…)
    direttamente nell'archivio, che è quello usato da tutte le ricerche del programma. */
 
-// filtri: { senzaCf, senzaTel, doc, conPratiche } per aprire l'archivio già filtrato (es. dal riquadro "Oggi")
+// filtri: { senzaCf, senzaTel, senzaScad, doc, conPratiche } per aprire l'archivio già filtrato (es. dal riquadro "Oggi")
 function apriArchivioClienti(testo, filtri) {
   filtri = filtri || {};
   ARCHIVIO_VISTA.venuti = ''; ARCHIVIO_VISTA.foglio = 0;
@@ -18,7 +18,8 @@ function apriArchivioClienti(testo, filtri) {
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; font-size:12.5px">'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-senza-cf"' + (filtri.senzaCf ? ' checked' : '') + '> Senza codice fiscale</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-senza-tel"' + (filtri.senzaTel ? ' checked' : '') + '> Senza cellulare</label>'
-    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-doc"' + (filtri.doc ? ' checked' : '') + '> Documento scaduto o mancante</label>'
+    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-senza-scad"' + (filtri.senzaScad ? ' checked' : '') + '> Senza scadenza del documento</label>'
+    + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-doc"' + (filtri.doc ? ' checked' : '') + '> Documento scaduto</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-con-pratiche"' + (filtri.conPratiche ? ' checked' : '') + '> Solo clienti recenti (pratiche quest\'anno o l\'anno scorso, o inseriti nell\'ultimo anno)</label>'
     + '<label class="chk" style="margin:0"><input type="checkbox" id="arc-deceduti"' + (filtri.deceduti ? ' checked' : '') + '> ✝️ Solo deceduti</label>'
     + (function () {
@@ -45,7 +46,7 @@ function apriArchivioClienti(testo, filtri) {
   document.body.appendChild(ov);
   const disegna = function () {
     const q = (document.getElementById('arc-cerca').value || '').trim().toUpperCase();
-    const senzaCf = document.getElementById('arc-senza-cf').checked, senzaTel = document.getElementById('arc-senza-tel').checked, doc = document.getElementById('arc-doc').checked;
+    const senzaCf = document.getElementById('arc-senza-cf').checked, senzaTel = document.getElementById('arc-senza-tel').checked, doc = document.getElementById('arc-doc').checked; const senzaScad = document.getElementById('arc-senza-scad').checked;
     const conPrat = document.getElementById('arc-con-pratiche').checked, deceduti = document.getElementById('arc-deceduti').checked, collab = document.getElementById('arc-collab').value, ruolo = document.getElementById('arc-ruolo').value;
     const rif = (document.getElementById('arc-rif') || {}).value || '';
     const doctipo = (document.getElementById('arc-doctipo') || {}).value || '';
@@ -55,7 +56,7 @@ function apriArchivioClienti(testo, filtri) {
     const filtrati = tutti.filter(function (c) {
       // i deceduti si vedono con «Solo deceduti» o cercandoli per nome; non contano nei dati da completare
       if (deceduti) { if (!c.decedutoIl) return false; }
-      else if (c.decedutoIl && (!q || senzaCf || senzaTel || doc || conPrat)) return false;
+      else if (c.decedutoIl && (!q || senzaCf || senzaTel || doc || senzaScad || conPrat)) return false;
       if (ruolo && c.ruoloDichiarazione !== ruolo) return false;
       if (rif && String(c.riferimento || '').trim().toUpperCase() !== rif) return false;
       if (doctipo && categoriaDocumento(c) !== doctipo) return false;
@@ -63,7 +64,8 @@ function apriArchivioClienti(testo, filtri) {
       if (recenti && !(c.codiceFiscale && recenti.cf[c.codiceFiscale]) && !recenti.nome[String(c.nomeCompleto || '').toUpperCase()]) return false;
       if (senzaCf && c.codiceFiscale) return false;
       if (senzaTel && c.telefono) return false;
-      if (doc && c.documentoScadenza && (dataNum(c.documentoScadenza) || 0) >= oggi) return false;
+      if (senzaScad && c.documentoScadenza) return false;
+      if (doc && (!c.documentoScadenza || (dataNum(c.documentoScadenza) || 0) >= oggi)) return false;
       if (!q) return true;
       if ([c.nomeCompleto, c.codiceFiscale, c.telefono, c.telefonoFisso, c.email, c.riferimento].join(' ').toUpperCase().indexOf(q) >= 0) return true;
       const kq = typeof chiaveRicerca === 'function' ? chiaveRicerca(q) : '';
