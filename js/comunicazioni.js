@@ -184,10 +184,18 @@ function mostraBarraNoWhatsApp() {
   // è solo una domanda: il programma non sa se il numero è su WhatsApp, lo dice WhatsApp nella sua finestra
   d.innerHTML = '<span>💬 Messaggio aperto su WhatsApp' + (nome ? ' per <b>' + esc(nomeGentile ? nomeGentile(nome) : nome) + '</b>' : '') + '. <span class="sub2">Solo se <b>WhatsApp</b> ti ha risposto che il numero non c\'è:</span></span>'
     + '<button type="button" onclick="nonHaWhatsApp()" style="background:#c0392b; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">❌ Non ha WhatsApp</button>'
-    + '<button type="button" onclick="this.parentNode.remove()" title="Il messaggio è partito: chiudi" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:6px 12px; font-weight:800; cursor:pointer">✓ Partito</button>';
+    + '<button type="button" onclick="this.parentNode.remove()" title="Il messaggio è partito: chiudi" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:6px 12px; font-weight:800; cursor:pointer">✓ Partito</button>'
+    + '<a href="sms:+' + esc(ULTIMO_WA.num) + '?&body=' + encodeURIComponent(ULTIMO_WA.testo || '') + '" onclick="registraSmsUltimo()" title="Apre i messaggi del telefono con lo stesso testo (sul PC solo se è collegato al telefono)" style="background:#5b6b82; color:#fff; text-decoration:none; border-radius:999px; padding:6px 14px; font-weight:800">📱 Manda anche come SMS</a>';
   document.body.appendChild(d);
   const mio = ULTIMO_WA;
   setTimeout(function () { if (ULTIMO_WA === mio) { const b = document.getElementById('barra-no-wa'); if (b) b.remove(); } }, 5 * 60000);
+}
+// 📱 stesso messaggio mandato anche come SMS: resta nelle comunicazioni delle stesse persone
+function registraSmsUltimo() {
+  const u = ULTIMO_WA; if (!u) return;
+  const persone = u.righe.length ? u.righe : [{ nome: u.nome }];
+  persone.forEach(function (r) { registraComunicazione({ canale: 'sms', telefono: u.num, testo: u.testo, nome: r.nome || '', cf: r.codice_fiscale || '', nascita: r.data_nascita || '', motivo: r.motivo || '', praticaId: r.pratica_id || null, senzaContesto: true }); });
+  setTimeout(function () { const b = document.getElementById('barra-no-wa'); if (b) b.remove(); }, 300);
 }
 async function nonHaWhatsApp() {
   const u = ULTIMO_WA; if (!u) return;
