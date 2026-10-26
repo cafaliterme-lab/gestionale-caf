@@ -64,6 +64,22 @@ function avvisoRitiriHTML(pratAnno) {
 
 /* ---------------- Ricevuta da consegnare al cliente ---------------- */
 
+// Tipo di pratica scritto per il cliente nelle ricevute (senza il nome del collaboratore dei 730)
+function tipoPraticaRicevuta(p) {
+  const anno = annoPratica(p);
+  if (typeof e730 === 'function' && e730(p)) return 'Dichiarazione dei redditi – modello 730/' + anno + ((p.congCognome || p.congNome) ? ' congiunta' : '');
+  if (typeof eColf === 'function' && eColf(p.tipo)) return 'Contratto colf e badanti' + (p.continuazione ? ' (continuazione)' : '');
+  if (typeof eAffitto === 'function' && eAffitto(p.tipo)) return 'Contratto di affitto' + (p.affittoRegime === 'cedolare_agevolato' ? ' – cedolare secca agevolata' : p.affittoRegime === 'cedolare_normale' ? ' – cedolare secca' : p.affittoRegime === 'senza_cedolare' ? ' – senza cedolare secca' : '');
+  if (typeof eAltrePratiche === 'function' && eAltrePratiche(p.tipo) && p.descrizioneTipo) return String(p.descrizioneTipo);
+  return String(p.tipo || '').trim() || 'Pratica';
+}
+// Altre persone della pratica da scrivere nella ricevuta (lavoratore della colf, inquilini dell'affitto)
+function altrePersoneRicevuta(p) {
+  if (typeof eColf === 'function' && eColf(p.tipo) && (p.lavCognome || p.lavNome)) return 'Lavoratore: <b>' + esc(((p.lavCognome || '') + ' ' + (p.lavNome || '')).trim()) + '</b>' + (p.lavCodiceFiscale ? ', codice fiscale <b>' + esc(p.lavCodiceFiscale) + '</b>' : '');
+  if (typeof eAffitto === 'function' && eAffitto(p.tipo) && typeof nomiInquilini === 'function' && nomiInquilini(p).length) return (nomiInquilini(p).length > 1 ? 'Inquilini' : 'Inquilino') + ': <b>' + esc(nomiInquilini(p).join(', ')) + '</b>' + (p.affittoInizio ? ' · contratto dal <b>' + esc(p.affittoInizio) + '</b>' + (p.affittoFine ? ' al <b>' + esc(p.affittoFine) + '</b>' : '') : '');
+  return '';
+}
+
 function stampaRicevuta(id) {
   const p = (state.pratiche || []).find(function (x) { return x.id === id; });
   if (!p) { avviso('❌ Pratica non trovata: riprova tra qualche secondo.', true); return; }
@@ -82,10 +98,11 @@ function ricevutaHTML(p, perEmail) {
       + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div>'
       + '<div class="copia">' + perChi + '</div></div>'
       + '<div class="titolo">RICEVUTA DI PRESA IN CARICO</div>'
-      + '<div class="proto">Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b></div>'
-      + '<div class="attesta">Si attesta che in data <b>' + esc(p.data || todayIT()) + '</b> è stata consegnata e <b>presa in carico</b> la pratica protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b>'
+      + '<div class="proto">' + esc(tipoPraticaRicevuta(p)) + ' · Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b></div>'
+      + '<div class="attesta">Si attesta che in data <b>' + esc(p.data || todayIT()) + '</b> è stata consegnata e <b>presa in carico</b> la pratica <b>' + esc(tipoPraticaRicevuta(p)) + '</b>, protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b>'
       + (p.nome ? ' di <b>' + esc(p.nome) + '</b>' + (p.comuneNascita ? ', nato/a a <b>' + esc(p.comuneNascita) + '</b>' : '') + (p.cf ? (p.comuneNascita ? ' il' : ', nato/a il') + ' <b>' + esc(p.cf) + '</b>' : '') + (p.codiceFiscale ? ', codice fiscale <b>' + esc(p.codiceFiscale) + '</b>' : '')
         + (p.congiunta ? ' e del coniuge <b>' + esc(p.congiunta) + '</b>' + (p.congComuneNascita ? ', nato/a a <b>' + esc(p.congComuneNascita) + '</b>' : '') + (p.congData ? (p.congComuneNascita ? ' il' : ', nato/a il') + ' <b>' + esc(p.congData) + '</b>' : '') + (p.congCodiceFiscale ? ', codice fiscale <b>' + esc(p.congCodiceFiscale) + '</b>' : '') : '') : '') + '.</div>'
+      + (altrePersoneRicevuta(p) ? '<div class="attesta" style="margin-top:-4px">' + altrePersoneRicevuta(p) + '.</div>' : '')
       + '<div class="nota">Conservare la ricevuta e presentarla al ritiro della pratica.</div>'
       + '<div class="firme"><div>L\'operatore<br><span>' + esc(p.inseritoDa || '') + '</span></div><div>Il contribuente</div></div>'
       + '</div>';
@@ -140,11 +157,11 @@ function ricevutaConsegnaHTML(p) {
       + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div>'
       + '<div class="copia">' + perChi + '</div></div>'
       + '<div class="titolo">RICEVUTA DI CONSEGNA</div>'
-      + '<div class="proto">Pratica <b>' + esc(p.tipo || '') + '</b> · Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b></div>'
+      + '<div class="proto">Pratica <b>' + esc(tipoPraticaRicevuta(p)) + '</b> · Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b></div>'
       + '<div class="attesta">' + (delegato
           ? 'Il/La sottoscritto/a <b>' + esc(delegato) + '</b>, <b>delegato/a</b> dal contribuente, dichiara di aver ritirato'
           : 'Il/La sottoscritto/a ' + intestatario + ', dichiara di aver ritirato')
-      + ' in data <b>' + esc(quando) + '</b> presso il CAF CISL – Sede di Alì Terme la pratica <b>' + esc(p.tipo || '') + '</b> protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b>'
+      + ' in data <b>' + esc(quando) + '</b> presso il CAF CISL – Sede di Alì Terme la pratica <b>' + esc(tipoPraticaRicevuta(p)) + '</b> protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b>'
       + (delegato ? ' intestata a ' + intestatario : '') + ', comprensiva di:</div>'
       + '<ul class="elenco">' + elenco.map(function (t) { return '<li>☐ ' + t + '</li>'; }).join('') + '</ul>'
       + '<div class="nota">Il contribuente dichiara di aver controllato la pratica ricevuta. ' + (delegato ? 'Il delegato allega la delega firmata e la copia del documento d\'identità del delegante e del delegato. ' : '') + 'Si prega di conservare la presente ricevuta.</div>'
@@ -224,7 +241,7 @@ function ricevutaPagamentoHTML(p) {
   const anno = annoPratica(p);
   const servizio = (typeof e730 === 'function' && e730(p))
     ? 'assistenza fiscale per la compilazione e la trasmissione della dichiarazione dei redditi <b>modello 730/' + anno + '</b> (redditi ' + (anno - 1) + ')'
-    : 'pratica <b>' + esc(p.tipo || '') + '</b>';
+    : 'pratica <b>' + esc(tipoPraticaRicevuta(p)) + '</b>';
   const copia = function (perChi) {
     return '<div class="ric">'
       + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1>'
@@ -907,12 +924,13 @@ setTimeout(controllaAvvisoBackupCartella, 8000);
 
 // Stato dei backup per la scheda Oggi (solo amministratore): ultimo backup del server e copia nella cartella del PC
 const STATO_COPIA = { pronto: false, giorniServer: null, ultimoServer: '', picker: false, cartella: false, attiva: false, nome: '', giorniCartella: null };
-function giorniDa(iso) { const t = Date.parse(iso || ''); return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000); }
+// giorni passati da una data ISO (backup); diversa da giorniDa(), che lavora con le date GG/MM/AAAA delle pratiche
+function giorniDaIso(iso) { const t = Date.parse(iso || ''); return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000); }
 async function aggiornaStatoCopia() {
   if (typeof isAdmin !== 'function' || !isAdmin()) return;
   try {
     const r = await fetchSupabase('/rest/v1/backup_automatici?select=creato_il&order=creato_il.desc&limit=1', 'GET');
-    if (r && r.ok && Array.isArray(r.data)) { STATO_COPIA.ultimoServer = r.data[0] ? r.data[0].creato_il : ''; STATO_COPIA.giorniServer = r.data[0] ? giorniDa(r.data[0].creato_il) : 999; }
+    if (r && r.ok && Array.isArray(r.data)) { STATO_COPIA.ultimoServer = r.data[0] ? r.data[0].creato_il : ''; STATO_COPIA.giorniServer = r.data[0] ? giorniDaIso(r.data[0].creato_il) : 999; }
   } catch (e) {}
   STATO_COPIA.picker = !!window.showDirectoryPicker && window.matchMedia && window.matchMedia('(pointer: fine)').matches;
   if (STATO_COPIA.picker) {
@@ -921,7 +939,7 @@ async function aggiornaStatoCopia() {
     STATO_COPIA.attiva = h ? await permessoCartella(h, false) : false;
     // data del backup che c'è adesso nel file della cartella
     let u = ''; try { u = (localStorage.getItem('backup-completo-ultimo') || '').split('|')[1] || ''; } catch (e) {}
-    STATO_COPIA.giorniCartella = u ? giorniDa(u) : null;
+    STATO_COPIA.giorniCartella = u ? giorniDaIso(u) : null;
   }
   STATO_COPIA.pronto = true;
   if (typeof renderOggi === 'function') renderOggi();
