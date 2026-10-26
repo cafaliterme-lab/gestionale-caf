@@ -35,18 +35,18 @@ function avvisoDocumentoInviato(c) {
 }
 function messaggioPermessoSoggiorno(c, giorni) {
   return 'Gentile ' + nomeProprio(c.nomeCompleto) + ', ' + (giorni < 0 ? 'il suo permesso di soggiorno risulta scaduto il ' + c.permessoScadenza + '.' : 'le ricordiamo che il suo permesso di soggiorno scadrà il ' + c.permessoScadenza + ': si ricordi di chiedere il rinnovo in tempo.')
-    + ' Quando avrà il permesso rinnovato (o la ricevuta della richiesta di rinnovo), le chiediamo di portarcene (o inviarci qui) una copia.\nGrazie.\n\n' + righeContattiCaf();
+    + ' Quando avrà il permesso rinnovato (o la ricevuta della richiesta di rinnovo), le chiediamo di inviarcene qui una copia in formato PDF (fronte e retro). Non vanno bene le foto: se non sa come fare il PDF, può portarcelo in ufficio e lo facciamo noi.\nGrazie.\n\n' + righeContattiCaf();
 }
 function messaggioDocumentoDaRinnovare(c, giorni, r) {
   if (r && r.permesso) return messaggioPermessoSoggiorno(c, giorni);
   if (eCartaceaDaSostituire(c) && !((statoScadenzaDocumento(c.documentoScadenza || '') || { giorni: 0 }).giorni < 0)) return messaggioCartaceaDaSostituire(c);
   if (giorni < 0) return messaggioNuovoDocumento(c.nomeCompleto, c.documentoScadenza, true);
   return 'Gentile ' + nomeProprio(c.nomeCompleto) + ', le ricordiamo che il suo documento d\'identità scadrà il ' + c.documentoScadenza
-    + '. Quando lo avrà rinnovato, per poter preparare le sue prossime pratiche le chiediamo di portarci (o inviarci qui) una copia del nuovo documento.\nGrazie.\n\n' + righeContattiCaf();
+    + '. Quando lo avrà rinnovato, per poter preparare le sue prossime pratiche le chiediamo di inviarci qui una copia del nuovo documento in formato PDF (fronte e retro). Non vanno bene le foto: se non sa come fare il PDF, può portarcelo in ufficio e lo facciamo noi.\nGrazie.\n\n' + righeContattiCaf();
 }
 function messaggioCartaceaDaSostituire(c) {
   return 'Gentile ' + nomeProprio(c.nomeCompleto) + ', dal 3 agosto 2026 le carte d\'identità di carta vanno sostituite con la carta d\'identità elettronica (regolamento europeo).'
-    + ' Quando avrà fatto quella nuova, per poter preparare le sue prossime pratiche le chiediamo di portarci (o inviarci qui) una copia.\nGrazie.\n\n' + righeContattiCaf();
+    + ' Quando avrà fatto quella nuova, per poter preparare le sue prossime pratiche le chiediamo di inviarci qui una copia della nuova carta in formato PDF (fronte e retro). Non vanno bene le foto: se non sa come fare il PDF, può portarcela in ufficio e lo facciamo noi.\nGrazie.\n\n' + righeContattiCaf();
 }
 function motivoDocumento(giorni, r) {
   if (r && r.permesso) return 'Richiesta documento: permesso di soggiorno'; return giorni < 0 ? 'Richiesta documento d\'identità' : 'Documento in scadenza'; }
@@ -62,7 +62,7 @@ function rigaDocumentoGruppo(r) {
 function messaggioDocumentiGruppo(lista) {
   return 'Buongiorno, per poter preparare le prossime pratiche le chiediamo una copia del documento nuovo di queste persone:\n'
     + lista.map(rigaDocumentoGruppo).join('\n')
-    + '\n\nPotete portarcela in ufficio o inviarcela qui (anche una foto va bene).\nGrazie.\n\n' + righeContattiCaf();
+    + '\n\nIl documento va inviato qui in formato PDF (fronte e retro), un file per ogni persona. Non vanno bene le foto: se non sapete come fare il PDF, potete portarci i documenti in ufficio e lo facciamo noi.\nGrazie.\n\n' + righeContattiCaf();
 }
 // Clienti dell'elenco con lo stesso cellulare e non ancora avvisati (compreso quello scelto): un solo messaggio
 function gruppoDocumentoStessoNumero(r, tutti) {

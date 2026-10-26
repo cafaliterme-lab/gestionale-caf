@@ -81,7 +81,7 @@ function messaggioNuovoDocumento(nome, scadenza, perArchivio) {
     : 'le ricordiamo che il suo documento d\'identità risulta scaduto' + (scadenza ? ' il ' + scadenza : '');
   return 'Gentile ' + nomeProprio(nome) + ', ' + inizio
     + (perArchivio ? '. Per poter preparare le sue prossime pratiche' : '. Per completare la sua pratica')
-    + ' le chiediamo di portarci (o inviarci qui) una copia del nuovo documento.\nGrazie.\n\n' + righeContattiCaf();
+    + ' le chiediamo di inviarci qui una copia del nuovo documento in formato PDF (fronte e retro). Non vanno bene le foto: se non sa come fare il PDF, può portarcelo in ufficio e lo facciamo noi.\nGrazie.\n\n' + righeContattiCaf();
 }
 // Richiesta del nuovo documento dall'archivio clienti (via: 'wa' o 'email')
 function richiediDocumentoCliente(id, via) {
