@@ -2237,17 +2237,17 @@ function render(){
       if(!(chi in perOperatore)) perOperatore[chi] = 0;
       if(e730(p) && eLavorata(p)) perOperatore[chi] += pesoPratica(p);
     });
-    const badge = function(testo, numero, colore, titolo){
-      return '<span title="' + esc(titolo) + '" style="display:flex; align-items:center; justify-content:space-between; gap:8px; background:' + colore + '; color:#fff; font-size:13.5px; font-weight:700; padding:5px 6px 5px 12px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2); white-space:nowrap">' + testo
+    const badge = function(testo, numero, colore, titolo, chiave){
+      return '<span title="' + esc(titolo) + ' Tocca per vedere l\'elenco." onclick="apriElencoContatore(' + esc(JSON.stringify(chiave || '')) + ')" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:8px; background:' + colore + '; color:#fff; font-size:13.5px; font-weight:700; padding:5px 6px 5px 12px; border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2); white-space:nowrap">' + testo
         + ' <span style="background:#fff; color:' + colore + '; font-size:16px; font-weight:800; min-width:30px; text-align:center; padding:1px 8px; border-radius:999px">' + numero + '</span></span>';
     };
     const nota = ' del ' + annoSel + ': solo 730, le congiunte valgono 2.';
     lavorateEl.innerHTML = '<div style="display:flex; flex-direction:column; align-items:stretch; gap:5px; min-width:210px">'
-      + badge('TOTALE PRATICHE', c.tot, '#374151', 'Pratiche lavorate e da lavorare' + nota + ' Le rinunce e le annullate sono a parte.')
-      + badge('DA LAVORARE', c.daFare, c.daFare ? '#c0392b' : '#2f9e5f', 'In arrivo, in lavorazione o da lavorare scansionata' + nota)
-      + badge('TOTALE LAVORATE', c.lav, '#2f9e5f', 'Lavorate, da fatturare, da pagare, pagate o non pagate' + nota)
-      + (c.rinunce ? badge('RINUNCE', c.rinunce, '#6b7280', 'Rinunce alla compilazione' + nota + ' Non contano tra le pratiche.') : '')
-      + Object.keys(perOperatore).sort().map(function(chi){ return badge(esc(chi), perOperatore[chi], '#1d4f91', 'Pratiche 730 lavorate da ' + chi + nota); }).join('')
+      + badge('TOTALE PRATICHE', c.tot, '#374151', 'Pratiche lavorate e da lavorare' + nota + ' Le rinunce e le annullate sono a parte.', 'tot')
+      + badge('DA LAVORARE', c.daFare, c.daFare ? '#c0392b' : '#2f9e5f', 'In arrivo, in lavorazione o da lavorare scansionata' + nota, 'dafare')
+      + badge('TOTALE LAVORATE', c.lav, '#2f9e5f', 'Lavorate, da fatturare, da pagare, pagate o non pagate' + nota, 'lav')
+      + (c.rinunce ? badge('RINUNCE', c.rinunce, '#6b7280', 'Rinunce alla compilazione' + nota + ' Non contano tra le pratiche.', 'rinunce') : '')
+      + Object.keys(perOperatore).sort().map(function(chi){ return badge(esc(chi), perOperatore[chi], '#1d4f91', 'Pratiche 730 lavorate da ' + chi + nota, 'op:' + chi); }).join('')
       + '</div>';
     if(typeof posizionaPannelloScadenze === 'function') posizionaPannelloScadenze();
   }
@@ -4173,6 +4173,36 @@ function eRinuncia(p){
 function eLavorata(p){ return !eDaLavorare(p) && !eRinuncia(p); }
 function e730Conta(p){ return e730(p) && !eRinuncia(p); }
 function eAltraConta(p){ return !e730(p) && !eRinuncia(p); }
+// Elenco delle pratiche di un contatore in alto (tocca il contatore): 730 dell'anno, congiunte valgono 2
+function apriElencoContatore(chiave){
+  const anno = annoAttivo();
+  const l730 = state.pratiche.filter(function(p){ return annoPratica(p) === anno && e730(p); });
+  let lista, titolo, colore;
+  if(chiave === 'dafare'){ lista = l730.filter(eDaLavorare); titolo = '730 da lavorare'; colore = '#c0392b'; }
+  else if(chiave === 'lav'){ lista = l730.filter(eLavorata); titolo = '730 lavorati'; colore = '#2f9e5f'; }
+  else if(chiave === 'rinunce'){ lista = l730.filter(eRinuncia); titolo = 'Rinunce alla compilazione'; colore = '#6b7280'; }
+  else if(String(chiave).indexOf('op:') === 0){ const chi = chiave.slice(3); lista = l730.filter(function(p){ return eLavorata(p) && String(p.inseritoDa || '').toUpperCase() === chi; }); titolo = '730 lavorati da ' + chi; colore = '#1d4f91'; }
+  else { lista = l730.filter(function(p){ return eDaLavorare(p) || eLavorata(p); }); titolo = 'Tutti i 730 (lavorati e da lavorare)'; colore = '#374151'; }
+  lista = lista.slice().sort(function(a,b){ return (a.numero||0) - (b.numero||0); });
+  const vecchio = document.getElementById('popup-contatore'); if(vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-contatore';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:457; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:10px';
+  ov.addEventListener('click', function(e){ if(e.target === ov || e.target.closest('[data-chiudi]')) ov.remove(); });
+  // tipi (collaboratori) presenti nell'elenco, con quante pratiche
+  const perTipo = {}; lista.forEach(function(p){ perTipo[p.tipo || '-'] = (perTipo[p.tipo || '-'] || 0) + pesoPratica(p); });
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:14px; border-top:6px solid ' + colore + '; max-width:860px; width:100%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,.3)"><div style="padding:14px 16px; overflow:auto">'
+    + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><b style="font-size:18px; color:' + colore + '">' + esc(titolo) + ' – ' + anno + ' (' + sommaPeso(lista) + ')</b><button type="button" data-chiudi style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:6px 12px; cursor:pointer">✕</button></div>'
+    + '<div class="sub2" style="margin:4px 0 8px">' + lista.length + (lista.length === 1 ? ' pratica' : ' pratiche') + (numeroCongiunte(lista) ? ', di cui ' + numeroCongiunte(lista) + (numeroCongiunte(lista) === 1 ? ' congiunta (vale 2)' : ' congiunte (valgono 2)') : '') + (Object.keys(perTipo).length > 1 ? ' · ' + Object.keys(perTipo).sort().map(function(t){ return esc(t) + ' ' + perTipo[t]; }).join(' · ') : '') + '</div>'
+    + (lista.length ? lista.map(function(p){
+        return '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px">'
+          + '<span style="flex:1 1 280px"><b>' + esc(formattaProtocollo(p)) + '</b> · <b>' + esc(p.nome || '') + '</b>' + (p.congiunta ? ' <span class="sub2">(congiunta con ' + esc(p.congiunta) + ')</span>' : '')
+          + ' <span class="sub2">· ' + esc(p.tipo || '') + ' · ' + esc((STATI[p.stato] || {}).e || '') + ' ' + esc(statoLabel(p.stato)) + (p.inseritoDa ? ' · inserita da ' + esc(p.inseritoDa) : '') + '</span></span>'
+          + '<button type="button" onclick="document.getElementById(\'popup-contatore\').remove(); apriDaStorico(' + esc(JSON.stringify(p.id)) + ')" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer">📂 Apri</button></div>';
+      }).join('') : '<div class="empty" style="padding:14px">Nessuna pratica.</div>')
+    + '</div></div>';
+  document.body.appendChild(ov);
+}
 function conteggi730(pratiche){
   const l = (pratiche||[]).filter(e730);
   const daFare = sommaPeso(l.filter(eDaLavorare)), lav = sommaPeso(l.filter(eLavorata));
