@@ -185,6 +185,7 @@ function mostraBarraNoWhatsApp() {
   d.innerHTML = '<span>💬 Messaggio aperto su WhatsApp' + (nome ? ' per <b>' + esc(nomeGentile ? nomeGentile(nome) : nome) + '</b>' : '') + '. <span class="sub2">Solo se <b>WhatsApp</b> ti ha risposto che il numero non c\'è:</span></span>'
     + '<button type="button" onclick="nonHaWhatsApp()" style="background:#c0392b; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">❌ Non ha WhatsApp</button>'
     + '<button type="button" onclick="this.parentNode.remove()" title="Il messaggio è partito: chiudi" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:6px 12px; font-weight:800; cursor:pointer">✓ Partito</button>'
+    + '<button type="button" onclick="annullaInvioWhatsApp()" title="Non l\'ho mandato (aperto per sbaglio): tolgo il messaggio dalle comunicazioni e torna tutto com\'era" style="background:none; border:1.5px solid #6d3fa0; color:#6d3fa0; border-radius:999px; padding:6px 12px; font-weight:800; cursor:pointer">↩️ Annulla</button>'
     + '<a href="sms:+' + esc(ULTIMO_WA.num) + '?&body=' + encodeURIComponent(ULTIMO_WA.testo || '') + '" onclick="registraSmsUltimo()" title="Apre i messaggi del telefono con lo stesso testo (sul PC solo se è collegato al telefono)" style="background:#5b6b82; color:#fff; text-decoration:none; border-radius:999px; padding:6px 14px; font-weight:800">📱 Manda anche come SMS</a>';
   document.body.appendChild(d);
   const mio = ULTIMO_WA;
@@ -194,33 +195,92 @@ function mostraBarraNoWhatsApp() {
 function registraSmsUltimo() {
   const u = ULTIMO_WA; if (!u) return;
   const persone = u.righe.length ? u.righe : [{ nome: u.nome }];
-  persone.forEach(function (r) { registraComunicazione({ canale: 'sms', telefono: u.num, testo: u.testo, nome: r.nome || '', cf: r.codice_fiscale || '', nascita: r.data_nascita || '', motivo: r.motivo || '', praticaId: r.pratica_id || null, senzaContesto: true }); });
-  setTimeout(function () { const b = document.getElementById('barra-no-wa'); if (b) b.remove(); }, 300);
+  u.sms = u.sms || [];
+  persone.forEach(function (r) { registraComunicazione({ canale: 'sms', telefono: u.num, testo: u.testo, nome: r.nome || '', cf: r.codice_fiscale || '', nascita: r.data_nascita || '', motivo: r.motivo || '', praticaId: r.pratica_id || null, senzaContesto: true }); if (COMUNICAZIONI.lista[0] && COMUNICAZIONI.lista[0].canale === 'sms') u.sms.push(COMUNICAZIONI.lista[0]); });
+  // la barra resta, con la possibilità di togliere l'SMS segnato per sbaglio
+  setTimeout(function () {
+    const b = document.getElementById('barra-no-wa'); if (!b) return;
+    b.innerHTML = '<span>📱 SMS segnato tra le comunicazioni.</span>'
+      + '<button type="button" onclick="annullaSmsUltimo()" style="background:none; border:1.5px solid #6d3fa0; color:#6d3fa0; border-radius:999px; padding:6px 12px; font-weight:800; cursor:pointer">↩️ Annulla SMS</button>'
+      + '<button type="button" onclick="this.parentNode.remove()" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:6px 12px; font-weight:800; cursor:pointer">✓ Partito</button>';
+  }, 300);
 }
-async function nonHaWhatsApp() {
-  const u = ULTIMO_WA; if (!u) return;
-  const barra = document.getElementById('barra-no-wa'); if (barra) barra.remove();
+async function annullaSmsUltimo() {
+  const u = ULTIMO_WA; const b = document.getElementById('barra-no-wa'); if (b) b.remove();
+  if (!u || !u.sms) return;
+  for (let i = 0; i < 15 && u.sms.some(function (r) { return !r.id; }); i++) await new Promise(function (ok) { setTimeout(ok, 200); });
+  for (const r of u.sms) await togliComunicazione(r);
+  u.sms = [];
+  ridisegnaDopoInvio();
+  avviso('↩️ SMS tolto dalle comunicazioni');
+}
+// Toglie le righe di un invio (messaggio non partito): comunicazioni, «avvisato» della campagna e della pratica pronta
+async function annullaRigheInvio(u) {
   // le righe registrate prendono il numero dal server dopo un attimo
   for (let i = 0; i < 15 && u.righe.some(function (r) { return !r.id; }); i++) await new Promise(function (ok) { setTimeout(ok, 200); });
-  const persone = [], richiamiTolti = [];
+  const persone = [], richiamiTolti = [], righeTolte = [], pratiche = [];
   for (const r of u.righe) {
-    await togliComunicazione(r);
+    if (await togliComunicazione(r)) righeTolte.push(r);
     (await annullaEffettiComunicazione(r)).forEach(function (x) { richiamiTolti.push(x); });
     // «avvisato su WhatsApp» della pratica pronta: si toglie
     if (r.pratica_id) {
       const p = (state.pratiche || []).find(function (x) { return x.id === r.pratica_id; });
-      if (p && p.whatsappInviato === todayIT()) { p.whatsappInviato = null; data.pratiche.aggiorna(p.id, { whatsappInviato: null }); }
+      if (p && p.whatsappInviato === todayIT()) { p.whatsappInviato = null; pratiche.push(p.id); data.pratiche.aggiorna(p.id, { whatsappInviato: null }); }
     }
     persone.push({ nome: r.nome, cf: r.codice_fiscale, nascita: r.data_nascita, motivo: r.motivo, praticaId: r.pratica_id });
   }
-  // nella scheda dei clienti con questo cellulare: «senza WhatsApp»
-  const clienti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return numeroWhatsApp(c.telefono) === u.num; });
-  for (const c of clienti) { if (!c.noWhatsapp) { c.noWhatsapp = true; if (c.id) data.clienti.aggiorna(c.id, { noWhatsapp: true }); } }
+  u.righe = [];
+  return { persone: persone, richiamiTolti: richiamiTolti, righeTolte: righeTolte, pratiche: pratiche };
+}
+// Rimette quello che annullaRigheInvio ha tolto (annullato per sbaglio)
+async function ripristinaRigheInvio(t) {
+  for (const r of t.righeTolte || []) {
+    const riga = Object.assign({}, r); delete riga.id;
+    COMUNICAZIONI.lista.unshift(riga);
+    try { const x = await fetchSupabase('/rest/v1/comunicazioni', 'POST', riga, { Prefer: 'return=representation' }); if (x && x.ok && Array.isArray(x.data) && x.data[0]) Object.assign(riga, x.data[0]); } catch (e) { /* resta solo qui */ }
+  }
+  for (const x of t.richiamiTolti || []) {
+    const riga = Object.assign({}, x); delete riga.id;
+    try { const r = await fetchSupabase('/rest/v1/richiami?on_conflict=anno,chiave', 'POST', riga, { Prefer: 'resolution=merge-duplicates,return=representation' }); if (r && r.ok && typeof RICHIAMI !== 'undefined') RICHIAMI.esiti[x.chiave] = (Array.isArray(r.data) && r.data[0]) || riga; } catch (e) { /* niente */ }
+  }
+  (t.pratiche || []).forEach(function (id) { const p = (state.pratiche || []).find(function (x) { return x.id === id; }); if (p) { p.whatsappInviato = todayIT(); data.pratiche.aggiorna(id, { whatsappInviato: todayIT() }); } });
+  ridisegnaDopoInvio();
+}
+function ridisegnaDopoInvio() {
   if (typeof disegnaRichiami === 'function' && document.getElementById('ric-invio')) disegnaRichiami();
   if (typeof disegnaAuguri === 'function') disegnaAuguri();
   if (typeof disegnaSchedaPersona === 'function' && document.getElementById('popup-persona')) disegnaSchedaPersona();
+  if (typeof render === 'function') render();
+}
+// ↩️ Annulla: il messaggio non è stato mandato (aperto per sbaglio); tutto torna com'era prima
+async function annullaInvioWhatsApp() {
+  const u = ULTIMO_WA; if (!u) return;
+  ULTIMO_WA = null;
+  const barra = document.getElementById('barra-no-wa'); if (barra) barra.remove();
+  const t = await annullaRigheInvio(u);
+  (u.sms || []).forEach(function (r) { togliComunicazione(r); });
+  ridisegnaDopoInvio();
+  avviso('↩️ Annullato: il messaggio' + (u.nome ? ' a ' + (typeof nomeGentile === 'function' ? nomeGentile(u.nome) : u.nome) : '') + ' non risulta inviato');
+  return t;
+}
+async function nonHaWhatsApp() {
+  const u = ULTIMO_WA; if (!u) return;
+  const barra = document.getElementById('barra-no-wa'); if (barra) barra.remove();
+  const t = await annullaRigheInvio(u);
+  const persone = t.persone, richiamiTolti = t.richiamiTolti;
+  // nella scheda dei clienti con questo cellulare: «senza WhatsApp»
+  const clienti = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return numeroWhatsApp(c.telefono) === u.num; });
+  const segnati = [];
+  for (const c of clienti) { if (!c.noWhatsapp) { c.noWhatsapp = true; segnati.push(c); if (c.id) data.clienti.aggiorna(c.id, { noWhatsapp: true }); } }
+  ridisegnaDopoInvio();
   altriModiMessaggio({ num: u.num, testo: u.testo, persone: persone.length ? persone : [{ nome: u.nome || (clienti[0] && clienti[0].nomeCompleto) || '' }], richiamiTolti: richiamiTolti,
-    email: (clienti.find(function (c) { return c.email; }) || {}).email || '', tolto: true });
+    email: (clienti.find(function (c) { return c.email; }) || {}).email || '', tolto: true,
+    // ↩️ «Non ha WhatsApp» toccato per sbaglio: si rimette tutto com'era
+    annulla: async function () {
+      for (const c of segnati) { c.noWhatsapp = false; if (c.id) await data.clienti.aggiorna(c.id, { noWhatsapp: false }); }
+      await ripristinaRigheInvio(t);
+      avviso('↩️ Annullato: il numero resta con WhatsApp e il messaggio risulta inviato come prima');
+    } });
 }
 // Altri modi per far arrivare il messaggio: e-mail (parte da sola), SMS, chiamata
 function altriModiMessaggio(m, provaWhatsApp) {
@@ -239,6 +299,7 @@ function altriModiMessaggio(m, provaWhatsApp) {
     + b('href="sms:' + tel + '?&body=' + corpo + '" data-az="sms"', '📱 Manda un SMS (stesso testo)', '#5b6b82')
     + b('href="tel:' + tel + '" data-az="tel"', '📞 Chiama', '#1a7f37')
     + (provaWhatsApp ? b('data-az="wa"', '💬 Prova lo stesso con WhatsApp', '#25a35a') : '')
+    + (m.annulla ? b('data-az="annulla"', '↩️ Annulla: ho toccato «Non ha WhatsApp» per sbaglio', '#6d3fa0') : '')
     + '<div style="font-size:11.5px; color:var(--sub); margin:2px 0 10px">L\'SMS si apre già scritto sul telefono; sul PC solo se è collegato al telefono (es. «Collegamento al telefono» di Windows).</div>'
     + '<div style="text-align:right"><button type="button" data-az="chiudi" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 16px; font-weight:700; cursor:pointer">' + (m.tolto ? 'Lascia così (resta da avvisare)' : 'Chiudi') + '</button></div></div>';
   // dopo l'invio con un altro modo: riga nelle comunicazioni per ogni cliente e di nuovo «avvisato» nella campagna
@@ -257,6 +318,7 @@ function altriModiMessaggio(m, provaWhatsApp) {
     const az = el ? el.dataset.az : 'chiudi';
     if (az === 'sms') { registra('sms'); setTimeout(function () { ov.remove(); }, 300); return; }
     if (az === 'tel') { setTimeout(function () { ov.remove(); }, 300); return; }
+    if (az === 'annulla') { ov.remove(); await m.annulla(); return; }
     if (az === 'wa') { ov.remove(); if (provaWhatsApp) provaWhatsApp(); return; }
     if (az === 'email') {
       el.disabled = true; el.textContent = '⏳ Invio…';
