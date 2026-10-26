@@ -181,9 +181,10 @@ function mostraBarraNoWhatsApp() {
   d.id = 'barra-no-wa';
   d.style.cssText = 'position:fixed; left:50%; bottom:14px; transform:translateX(-50%); z-index:470; max-width:94vw; display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center; padding:8px 12px; border-radius:14px; background:var(--card); color:var(--ink); border:2px solid #c0392b; box-shadow:0 8px 24px rgba(0,0,0,.25); font-size:13px';
   const nome = ULTIMO_WA.nome || (ULTIMO_WA.righe[0] && ULTIMO_WA.righe[0].nome) || '';
-  d.innerHTML = '<span>WhatsApp dice che il numero' + (nome ? ' di <b>' + esc(nomeGentile ? nomeGentile(nome) : nome) + '</b>' : '') + ' <b>non è su WhatsApp</b>?</span>'
+  // è solo una domanda: il programma non sa se il numero è su WhatsApp, lo dice WhatsApp nella sua finestra
+  d.innerHTML = '<span>💬 Messaggio aperto su WhatsApp' + (nome ? ' per <b>' + esc(nomeGentile ? nomeGentile(nome) : nome) + '</b>' : '') + '. <span class="sub2">Solo se <b>WhatsApp</b> ti ha risposto che il numero non c\'è:</span></span>'
     + '<button type="button" onclick="nonHaWhatsApp()" style="background:#c0392b; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer">❌ Non ha WhatsApp</button>'
-    + '<button type="button" onclick="this.parentNode.remove()" title="Il messaggio è partito" style="background:none; border:1px solid var(--line); color:var(--ink); border-radius:999px; padding:6px 10px; cursor:pointer">✕</button>';
+    + '<button type="button" onclick="this.parentNode.remove()" title="Il messaggio è partito: chiudi" style="background:#1a7f37; color:#fff; border:none; border-radius:999px; padding:6px 12px; font-weight:800; cursor:pointer">✓ Partito</button>';
   document.body.appendChild(d);
   const mio = ULTIMO_WA;
   setTimeout(function () { if (ULTIMO_WA === mio) { const b = document.getElementById('barra-no-wa'); if (b) b.remove(); } }, 5 * 60000);
