@@ -4194,14 +4194,24 @@ function apriElencoContatore(chiave){
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:14px; border-top:6px solid ' + colore + '; max-width:860px; width:100%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,.3)"><div style="padding:14px 16px; overflow:auto">'
     + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><b style="font-size:18px; color:' + colore + '">' + esc(titolo) + ' – ' + anno + ' (' + sommaPeso(lista) + ')</b><button type="button" data-chiudi style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:6px 12px; cursor:pointer">✕</button></div>'
     + '<div class="sub2" style="margin:4px 0 8px">' + lista.length + (lista.length === 1 ? ' pratica' : ' pratiche') + (numeroCongiunte(lista) ? ', di cui ' + numeroCongiunte(lista) + (numeroCongiunte(lista) === 1 ? ' congiunta (vale 2)' : ' congiunte (valgono 2)') : '') + (Object.keys(perTipo).length > 1 ? ' · ' + Object.keys(perTipo).sort().map(function(t){ return esc(t) + ' ' + perTipo[t]; }).join(' · ') : '') + '</div>'
+    + (lista.length > 1 ? '<input type="search" id="cont-cerca" autocomplete="off" placeholder="🔎 Cerca per cognome, nome, protocollo, tipo o stato…" oninput="filtraElencoContatore(this.value)" style="margin-bottom:6px"><div id="cont-trovate" class="sub2" style="margin-bottom:4px"></div>' : '')
     + (lista.length ? lista.map(function(p){
-        return '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px">'
+        const cerca = chiaveRicerca([formattaProtocollo(p), p.nome, p.congiunta, p.codiceFiscale, p.tipo, statoLabel(p.stato), p.inseritoDa].join(' '));
+        return '<div class="cont-riga" data-cerca="' + esc(cerca) + '" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px">'
           + '<span style="flex:1 1 280px"><b>' + esc(formattaProtocollo(p)) + '</b> · <b>' + esc(p.nome || '') + '</b>' + (p.congiunta ? ' <span class="sub2">(congiunta con ' + esc(p.congiunta) + ')</span>' : '')
           + ' <span class="sub2">· ' + esc(p.tipo || '') + ' · ' + esc((STATI[p.stato] || {}).e || '') + ' ' + esc(statoLabel(p.stato)) + (p.inseritoDa ? ' · inserita da ' + esc(p.inseritoDa) : '') + '</span></span>'
           + '<button type="button" onclick="document.getElementById(\'popup-contatore\').remove(); apriDaStorico(' + esc(JSON.stringify(p.id)) + ')" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer">📂 Apri</button></div>';
       }).join('') : '<div class="empty" style="padding:14px">Nessuna pratica.</div>')
     + '</div></div>';
   document.body.appendChild(ov);
+  const c = document.getElementById('cont-cerca'); if(c) setTimeout(function(){ c.focus(); }, 50);
+}
+// ricerca dentro l'elenco del contatore (apostrofi, spazi e accenti non contano)
+function filtraElencoContatore(q){
+  const k = chiaveRicerca(q || '');
+  let n = 0;
+  document.querySelectorAll('#popup-contatore .cont-riga').forEach(function(r){ const si = !k || r.dataset.cerca.indexOf(k) >= 0; r.style.display = si ? '' : 'none'; if(si) n++; });
+  const t = document.getElementById('cont-trovate'); if(t) t.textContent = k ? (n ? 'Trovate ' + n : 'Nessuna pratica trovata') : '';
 }
 function conteggi730(pratiche){
   const l = (pratiche||[]).filter(e730);

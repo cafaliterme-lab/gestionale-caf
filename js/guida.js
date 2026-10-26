@@ -77,7 +77,7 @@ const GUIDA = [
     testo: `
 <p>I riquadri colorati in alto contano <b>solo le pratiche 730</b> (di tutti i tipi 730) dell'anno scelto:</p>
 <ul>
-<li><b>👆 Tocca un contatore</b> per vedere l'elenco delle sue pratiche (protocollo, cliente, tipo, stato, chi l'ha inserita) con il tasto <b>📂 Apri</b>: per esempio tocca <b>FEDERICA</b> per i 730 lavorati da Federica, o <b>TOTALE LAVORATE</b> per tutti i lavorati. In cima c'è anche quante sono per ogni tipo (730 SEDE, collaboratori…).</li><li><b>TOTALE PRATICHE</b>: le pratiche 730 lavorate e da lavorare (le <b>rinunce</b> e le <b>annullate</b> non contano: sono a parte).</li>
+<li><b>👆 Tocca un contatore</b> per vedere l'elenco delle sue pratiche (protocollo, cliente, tipo, stato, chi l'ha inserita) con il tasto <b>📂 Apri</b>: per esempio tocca <b>FEDERICA</b> per i 730 lavorati da Federica, o <b>TOTALE LAVORATE</b> per tutti i lavorati. In cima c'è anche quante sono per ogni tipo (730 SEDE, collaboratori…) e la casella <b>🔎 Cerca</b> per trovare subito una pratica per cognome, nome, protocollo, tipo o stato.</li><li><b>TOTALE PRATICHE</b>: le pratiche 730 lavorate e da lavorare (le <b>rinunce</b> e le <b>annullate</b> non contano: sono a parte).</li>
 <li><b>Da lavorare</b>: quelle In arrivo, In lavorazione o Da lavorare scansionata.</li>
 <li><b>Lavorate</b>: tutte le altre, tranne la rinuncia alla compilazione.</li>
 <li><b>Rinunce</b> (grigio, solo se ce ne sono): le rinunce alla compilazione, contate a parte.</li>
