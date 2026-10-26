@@ -51,10 +51,37 @@ function messaggioCartaceaDaSostituire(c) {
 function motivoDocumento(giorni, r) {
   if (r && r.permesso) return 'Richiesta documento: permesso di soggiorno'; return giorni < 0 ? 'Richiesta documento d\'identità' : 'Documento in scadenza'; }
 
+// Riga di una persona nel messaggio unico (più clienti con lo stesso cellulare)
+function rigaDocumentoGruppo(r) {
+  const c = r.c;
+  const cosa = r.permesso ? 'permesso di soggiorno ' + (r.giorni < 0 ? 'scaduto il ' : 'che scade il ') + c.permessoScadenza
+    : r.cartacea ? 'carta d\'identità di carta, da sostituire con quella elettronica'
+    : 'documento d\'identità ' + (r.giorni < 0 ? 'scaduto il ' : 'che scade il ') + c.documentoScadenza;
+  return '• ' + nomeProprio(c.nomeCompleto) + ' – ' + cosa;
+}
+function messaggioDocumentiGruppo(lista) {
+  return 'Buongiorno, per poter preparare le prossime pratiche le chiediamo una copia del documento nuovo di queste persone:\n'
+    + lista.map(rigaDocumentoGruppo).join('\n')
+    + '\n\nPotete portarcela in ufficio o inviarcela qui (anche una foto va bene).\nGrazie.\n\n' + righeContattiCaf();
+}
+// Clienti dell'elenco con lo stesso cellulare e non ancora avvisati (compreso quello scelto): un solo messaggio
+function gruppoDocumentoStessoNumero(r, tutti) {
+  const n = numeroWhatsApp(r.c.telefono); if (!n) return [r];
+  const altri = (tutti || clientiDocumentoDaRinnovare()).filter(function (x) { return x !== r && x.c.id !== r.c.id && numeroWhatsApp(x.c.telefono) === n && !avvisoDocumentoInviato(x.c); });
+  return [r].concat(altri);
+}
 function avvisaDocumentoWhatsApp(id) {
-  const r = clientiDocumentoDaRinnovare().find(function (x) { return String(x.c.id) === String(id); }); if (!r) return false;
+  const tutti = clientiDocumentoDaRinnovare();
+  const r = tutti.find(function (x) { return String(x.c.id) === String(id); }); if (!r) return false;
+  return avvisaGruppoDocumenti(gruppoDocumentoStessoNumero(r, tutti));
+}
+function avvisaGruppoDocumenti(gruppo) {
+  const r = gruppo[0];
   contestoComunicazione({ nome: r.c.nomeCompleto, cf: r.c.codiceFiscale || '', nascita: r.c.dataNascita || '', motivo: motivoDocumento(r.giorni, r) });
-  const ok = inviaWhatsAppLibero(r.c.telefono, messaggioDocumentoDaRinnovare(r.c, r.giorni, r), r.c.nomeCompleto);
+  const testo = gruppo.length > 1 ? messaggioDocumentiGruppo(gruppo) : messaggioDocumentoDaRinnovare(r.c, r.giorni, r);
+  const ok = inviaWhatsAppLibero(r.c.telefono, testo, r.c.nomeCompleto);
+  // gli altri clienti dello stesso messaggio: una riga nelle comunicazioni di ognuno
+  if (ok) gruppo.slice(1).forEach(function (x) { registraComunicazione({ canale: 'whatsapp', telefono: numeroWhatsApp(x.c.telefono), testo: testo, nome: x.c.nomeCompleto, cf: x.c.codiceFiscale || '', nascita: x.c.dataNascita || '', motivo: motivoDocumento(x.giorni, x), senzaContesto: true }); });
   setTimeout(disegnaDocumentiInScadenza, 800);
   return ok;
 }
@@ -66,34 +93,44 @@ function avvisaDocumentoEmail(id) {
 }
 // WhatsApp a tutti quelli con cellulare non ancora avvisati: uno dopo l'altro (il browser apre una chat per volta)
 function avviaInvioDocumentiWhatsApp() {
-  DOC_SCADENZA.coda = clientiDocumentoDaRinnovare().filter(function (r) { return haWhatsApp(r.c.telefono) && !avvisoDocumentoInviato(r.c); }).map(function (r) { return r.c.id; });
+  // un messaggio per cellulare: chi ha lo stesso numero (collaboratore, famiglia) è nello stesso messaggio
+  const gruppi = {}; DOC_SCADENZA.coda = [];
+  clientiDocumentoDaRinnovare().filter(function (r) { return haWhatsApp(r.c.telefono) && !avvisoDocumentoInviato(r.c); }).forEach(function (r) {
+    const k = numeroWhatsApp(r.c.telefono);
+    if (!gruppi[k]) { gruppi[k] = []; DOC_SCADENZA.coda.push(gruppi[k]); }
+    gruppi[k].push(r);
+  });
   DOC_SCADENZA.pos = 0;
   if (!DOC_SCADENZA.coda.length) { avviso('Tutti i clienti con cellulare sono già stati avvisati'); return; }
   prossimoDocumentoWhatsApp();
 }
 function prossimoDocumentoWhatsApp() {
   if (DOC_SCADENZA.pos >= DOC_SCADENZA.coda.length) { DOC_SCADENZA.coda = []; avviso('✓ Avvisi su WhatsApp finiti'); disegnaDocumentiInScadenza(); return; }
-  avvisaDocumentoWhatsApp(DOC_SCADENZA.coda[DOC_SCADENZA.pos]);
+  avvisaGruppoDocumenti(DOC_SCADENZA.coda[DOC_SCADENZA.pos]);
   DOC_SCADENZA.pos++;
   if (DOC_SCADENZA.pos >= DOC_SCADENZA.coda.length) { DOC_SCADENZA.coda = []; avviso('✓ Ultimo avviso aperto: invio su WhatsApp finito'); }
   disegnaDocumentiInScadenza();
 }
 // E-mail a tutti quelli con solo e-mail non ancora avvisati: partono dalla casella del CAF
 async function inviaDocumentiEmailATutti(b) {
-  const lista = clientiDocumentoDaRinnovare().filter(function (r) { return !haWhatsApp(r.c.telefono) && r.c.email && !avvisoDocumentoInviato(r.c); });
-  if (!lista.length) { avviso('Nessuna e-mail da mandare'); return; }
+  const tutti = clientiDocumentoDaRinnovare().filter(function (r) { return !haWhatsApp(r.c.telefono) && r.c.email && !avvisoDocumentoInviato(r.c); });
+  if (!tutti.length) { avviso('Nessuna e-mail da mandare'); return; }
+  // stessa e-mail per più clienti: una sola e-mail con tutti i nominativi
+  const perEmail = {}, lista = [];
+  tutti.forEach(function (r) { const k = String(r.c.email).trim().toLowerCase(); if (!perEmail[k]) { perEmail[k] = []; lista.push(perEmail[k]); } perEmail[k].push(r); });
   if (!confirm('Mando l\'e-mail a ' + lista.length + ' client' + (lista.length === 1 ? 'e' : 'i') + ' dalla casella del CAF?')) return;
   b.disabled = true;
   let ok = 0, ko = [];
-  for (const r of lista) {
+  for (const g of lista) {
+    const r = g[0];
     b.textContent = '⏳ ' + (ok + ko.length + 1) + ' di ' + lista.length + '…';
-    const oggetto = (r.permesso ? 'Permesso di soggiorno ' : 'Documento d\'identità ') + (r.giorni < 0 ? 'scaduto' : 'in scadenza') + ' – CAF CISL Alì Terme', testo = messaggioDocumentoDaRinnovare(r.c, r.giorni, r);
+    const oggetto = g.length > 1 ? 'Documenti da rinnovare – CAF CISL Alì Terme' : (r.permesso ? 'Permesso di soggiorno ' : 'Documento d\'identità ') + (r.giorni < 0 ? 'scaduto' : 'in scadenza') + ' – CAF CISL Alì Terme';
+    const testo = g.length > 1 ? messaggioDocumentiGruppo(g) : messaggioDocumentoDaRinnovare(r.c, r.giorni, r);
     try {
       await chiamaInviaEmail('POST', { a: r.c.email, oggetto: oggetto, testo: testo });
-      contestoComunicazione({ nome: r.c.nomeCompleto, cf: r.c.codiceFiscale || '', nascita: r.c.dataNascita || '', motivo: motivoDocumento(r.giorni, r) });
-      await registraComunicazione({ canale: 'email', email: r.c.email, testo: oggetto + ' – ' + testo });
+      for (const x of g) await registraComunicazione({ canale: 'email', email: x.c.email, testo: oggetto + ' – ' + testo, nome: x.c.nomeCompleto, cf: x.c.codiceFiscale || '', nascita: x.c.dataNascita || '', motivo: motivoDocumento(x.giorni, x), senzaContesto: true });
       ok++;
-    } catch (e) { ko.push(r.c.nomeCompleto); }
+    } catch (e) { ko.push(g.map(function (x) { return x.c.nomeCompleto; }).join(' e ')); }
   }
   b.disabled = false;
   avviso('📧 E-mail inviate: ' + ok + (ko.length ? ' · non partite: ' + ko.join(', ') : ''), !!ko.length);
