@@ -4777,6 +4777,8 @@ function disegnaInvioMultiplo(){
   let corpo = '';
   if(st.fase === 'scelta'){
     const n = st.lista.filter(function(p){ return st.scelti[p.id]; }).length;
+    // pratiche con lo stesso cellulare: un solo messaggio
+    const nMsg = Object.keys(st.lista.filter(function(p){ return st.scelti[p.id] && numeroWhatsApp(p.telefono); }).reduce(function(o, p){ o[numeroWhatsApp(p.telefono)] = 1; return o; }, {})).length;
     corpo = '<div style="font-size:18px; font-weight:800; margin-bottom:2px">💬 WhatsApp multiplo</div>'
       + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">Pratiche in stato Lavorata del ' + annoAttivo() + '. Sono già selezionate quelle con un cellulare valido non ancora avvisate.</div>'
       + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">'
@@ -4795,7 +4797,7 @@ function disegnaInvioMultiplo(){
           + modelli.map(function(m, i){ return '<option value="' + i + '"' + (i === st.modello ? ' selected' : '') + '>' + (i + 1) + (i === indiceModelloPredefinito() ? ' ⭐' : '') + ' – ' + esc(m.slice(0, 70)) + '…</option>'; }).join('') + '</select></div>' : '')
       + '<div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px">'
       + '<button type="button" style="background:var(--line); color:var(--ink)" onclick="chiudiInvioMultiplo()">Annulla</button>'
-      + '<button type="button" style="background:#25d366; color:#fff"' + (n ? '' : ' disabled') + ' onclick="avviaInvioMultiplo()">Avanti: ' + n + (n === 1 ? ' messaggio' : ' messaggi') + ' ›</button></div>';
+      + '<button type="button" style="background:#25d366; color:#fff"' + (n ? '' : ' disabled') + ' onclick="avviaInvioMultiplo()">Avanti: ' + nMsg + (nMsg === 1 ? ' messaggio' : ' messaggi') + (nMsg < n ? ' per ' + n + ' pratiche' : '') + ' ›</button></div>';
   } else {
     const tot = st.coda.length;
     const prossimo = st.coda[st.pos];
@@ -4803,14 +4805,14 @@ function disegnaInvioMultiplo(){
       + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">Per ogni cliente si apre WhatsApp con il messaggio già scritto: premi Invio in WhatsApp, poi torna qui e clicca il cliente successivo.</div>'
       + rigaModoWhatsAppPC()
       + (prossimo
-          ? '<button type="button" style="display:block; width:100%; background:#25d366; color:#fff; font-size:16px; padding:14px" onclick="inviaProssimoMultiplo()">💬 Apri WhatsApp per ' + esc(nomeProprio(prossimo.nome)) + ' (' + (st.pos + 1) + '/' + tot + ')</button>'
+          ? '<button type="button" style="display:block; width:100%; background:#25d366; color:#fff; font-size:16px; padding:14px" onclick="inviaProssimoMultiplo()">💬 Apri WhatsApp per ' + esc(prossimo.pratiche.map(function(p){ return nomeProprio(p.nome); }).join(', ')) + (prossimo.pratiche.length > 1 ? ' (un solo messaggio)' : '') + ' (' + (st.pos + 1) + '/' + tot + ')</button>'
             + '<div style="text-align:right; margin-top:6px"><button type="button" style="background:none; color:var(--sub); font-size:12.5px; padding:4px 0" onclick="INVIO_MULTIPLO.pos++; disegnaInvioMultiplo()">Salta questo cliente ›</button></div>'
           : '<div style="padding:14px; border-radius:10px; background:color-mix(in srgb, #25d366 15%, var(--card)); font-weight:700; text-align:center">✅ Finito: aperte ' + Object.keys(st.inviati).length + ' chat su ' + tot + '</div>')
       + '<div style="max-height:40vh; overflow-y:auto; margin-top:10px; border:1px solid var(--line); border-radius:10px">'
       + st.coda.map(function(p, i){
           const fatto = st.inviati[p.id];
           const stato = fatto ? '<span style="color:#1a9e4b; font-weight:700">✓ aperto</span>' : (i < st.pos ? '<span style="color:var(--sub)">saltato</span>' : (i === st.pos ? '<span style="color:#d4881c; font-weight:700">● prossimo</span>' : '<span style="color:var(--sub)">in attesa</span>'));
-          return '<div style="display:flex; justify-content:space-between; gap:8px; padding:7px 10px; border-bottom:1px solid var(--line); font-size:13px"><span>' + (i + 1) + '. ' + esc(p.nome||'') + '</span>' + stato + '</div>';
+          return '<div style="display:flex; justify-content:space-between; gap:8px; padding:7px 10px; border-bottom:1px solid var(--line); font-size:13px"><span>' + (i + 1) + '. ' + esc(p.nome||'') + (p.pratiche.length > 1 ? ' <span style="color:#1a9e4b; font-weight:700">· 📱 stesso numero: ' + p.pratiche.length + ' pratiche in un messaggio</span>' : '') + '</span>' + stato + '</div>';
         }).join('') + '</div>'
       + '<div style="display:flex; justify-content:flex-end; margin-top:12px"><button type="button" style="background:var(--line); color:var(--ink)" onclick="chiudiInvioMultiplo()">' + (prossimo ? 'Interrompi' : 'Chiudi') + '</button></div>';
   }
@@ -4823,17 +4825,39 @@ function selezionaInvioMultiplo(tutti){
 }
 function avviaInvioMultiplo(){
   const st = INVIO_MULTIPLO;
-  st.coda = st.lista.filter(function(p){ return st.scelti[p.id] && numeroWhatsApp(p.telefono); });
+  // stesso cellulare (es. collaboratore o famiglia): un solo messaggio con tutte le pratiche
+  const gruppi = {};
+  st.coda = [];
+  st.lista.filter(function(p){ return st.scelti[p.id] && numeroWhatsApp(p.telefono); }).forEach(function(p){
+    const k = numeroWhatsApp(p.telefono);
+    if(!gruppi[k]){ gruppi[k] = { id: 'g' + st.coda.length, num: k, pratiche: [] }; st.coda.push(gruppi[k]); }
+    gruppi[k].pratiche.push(p);
+  });
+  st.coda.forEach(function(g){ g.nome = g.pratiche.map(function(p){ return p.nome || ''; }).join(', '); });
   st.pos = 0;
   st.fase = 'invio';
   disegnaInvioMultiplo();
 }
+// Un solo messaggio per più pratiche pronte con lo stesso cellulare
+function messaggioRitiroGruppo(pratiche){
+  const righe = pratiche.map(function(p){ return '• ' + nomeProprio(p.nome) + ' – ' + (/^730/.test(p.tipo||'') ? 'dichiarazione 730' : (p.tipo || 'pratica').toLowerCase()) + ' (protocollo n. ' + formattaProtocollo(p) + ')'; }).join('\n');
+  return compilaMessaggio('Buongiorno, la informiamo che sono pronte queste pratiche:\n' + righe + '\n\nPotete passare a ritirarle presso il CAF CISL di Alì Terme' + (IMPOSTAZIONI.caf_indirizzo ? ', in {indirizzo}' : '') + '.' + (IMPOSTAZIONI.caf_telefono ? ' Per informazioni può chiamare il {telefono}.' : '') + (IMPOSTAZIONI.caf_orari ? ' Orari di apertura: {orari}.' : '') + ' Cordiali saluti.', pratiche[0]);
+}
 function inviaProssimoMultiplo(){
   const st = INVIO_MULTIPLO;
-  const p = st && st.coda[st.pos];
-  if(!p) return;
-  apriWhatsApp(numeroWhatsApp(p.telefono), messaggioRitiro(p, st.modello), p);
-  st.inviati[p.id] = true;
+  const g = st && st.coda[st.pos];
+  if(!g) return;
+  if(g.pratiche.length === 1){ apriWhatsApp(g.num, messaggioRitiro(g.pratiche[0], st.modello), g.pratiche[0]); }
+  else {
+    const testo = messaggioRitiroGruppo(g.pratiche);
+    apriWhatsApp(g.num, testo, g.pratiche[0]);
+    // le altre pratiche dello stesso messaggio: «avvisato» e una riga nelle comunicazioni per ogni cliente
+    g.pratiche.slice(1).forEach(function(p){
+      if(typeof registraComunicazione === 'function') registraComunicazione({ canale: 'whatsapp', telefono: g.num, testo: testo, nome: p.nome, cf: p.codiceFiscale || '', nascita: p.cf || '', praticaId: p.id, motivo: 'Pratica pronta', senzaContesto: true });
+      p.whatsappInviato = todayIT(); data.pratiche.aggiorna(p.id, { whatsappInviato: p.whatsappInviato });
+    });
+  }
+  st.inviati[g.id] = true;
   st.pos++;
   disegnaInvioMultiplo();
 }

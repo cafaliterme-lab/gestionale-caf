@@ -267,7 +267,7 @@ const GUIDA = [
 <ul>
 <li>Il pulsante <b>💬</b> sulla pratica avvisa il cliente che la pratica è pronta, con il messaggio predefinito (si scelgono i modelli in <b>Messaggi</b>). La data dell'avviso resta scritta sulla pratica.</li>
 <li><b>Numero giusto</b>: WhatsApp funziona solo con un <b>cellulare completo</b> (in Italia 10 cifre che iniziano con 3, es. 333 1234567). Se il cellulare salvato ha cifre in meno o in più, o è un fisso, il programma non apre WhatsApp: ti dice cosa non va e ti chiede il numero giusto, che viene salvato nella pratica e nell'archivio. Anche quando inserisci o modifichi una pratica, un cellulare con un numero sbagliato di cifre viene segnalato prima di salvare.</li>
-<li><b>💬 WhatsApp multiplo</b> nel Registro avvisa in sequenza tutte le pratiche lavorate.</li>
+<li><b>💬 WhatsApp multiplo</b> nel Registro avvisa in sequenza tutte le pratiche lavorate. Le pratiche con lo <b>stesso cellulare</b> (es. clienti di un collaboratore che usano il suo numero, o una famiglia) partono in <b>un solo messaggio</b> con l'elenco di tutti i nominativi e i protocolli; ogni pratica risulta comunque «avvisata» e il messaggio resta nelle comunicazioni di ogni cliente.</li>
 <li>Un avviso in alto ricorda le pratiche lavorate e non ancora comunicate.</li>
 </ul>
 <p><b>Dal PC</b> la prima volta il programma chiede <b>come inviare</b>:</p>
