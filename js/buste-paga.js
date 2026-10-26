@@ -91,9 +91,10 @@ function disegnaBustePaga() {
     + '<div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center; margin-bottom:8px"><button type="button" onclick="scegliMeseBuste(\'' + meseDopo(mesi[0], -12) + '\')" style="border:none; background:none; cursor:pointer; font-weight:800">◀ ' + (anno - 1) + '</button>'
     + mesi.map(chip).join('') + '<button type="button" onclick="scegliMeseBuste(\'' + meseDopo(mesi[0], 12) + '\')" style="border:none; background:none; cursor:pointer; font-weight:800">' + (anno + 1) + ' ▶</button></div>'
     + '<div style="font-size:15px; font-weight:800; margin:6px 0">' + nomeMese(mese).replace(/^./, function (c) { return c.toUpperCase(); }) + ': ' + (dovute.length ? fatte + ' di ' + dovute.length + ' compilate' + (fatte === dovute.length ? ' ✓' : '') : 'nessun contratto attivo') + (mese > dovuto ? ' <span class="sub2">(si fanno dal ' + GIORNO_AVVISO_BUSTE + ' del mese)</span>' : '') + '</div>'
+    + (dovute.length > 1 ? campoRicercaElenco('buste-paga', 'Cerca un datore di lavoro…') : '')
     + (dovute.length ? dovute.map(function (p) {
       const f = BUSTE_PAGA.fatte[p.id + '|' + mese];
-      return '<label style="display:flex; gap:10px; align-items:center; padding:7px 4px; border-bottom:1px solid var(--line); cursor:pointer; font-size:13.5px' + (f ? '; background:color-mix(in srgb, #1a7f37 7%, var(--card))' : '') + '">'
+      return '<label class="el-riga" style="display:flex; gap:10px; align-items:center; padding:7px 4px; border-bottom:1px solid var(--line); cursor:pointer; font-size:13.5px' + (f ? '; background:color-mix(in srgb, #1a7f37 7%, var(--card))' : '') + '">'
         + '<input type="checkbox"' + (f ? ' checked' : '') + ' onchange="spuntaBustaPaga(' + esc(JSON.stringify(p.id)) + ', \'' + mese + '\', this.checked)" style="width:20px; height:20px">'
         + '<span style="flex:1"><b>' + esc(p.nome || '') + '</b> <span class="sub2">· ' + esc(formattaProtocollo(p)) + (p.scadenzaAssistenza ? ' · assistenza fino al ' + esc(p.scadenzaAssistenza) : '') + '</span></span>'
         + (f ? '<span style="font-size:12px; font-weight:800; color:#1a7f37">✓ compilata il ' + esc(new Date(f.fatta_il || Date.now()).toLocaleDateString('it-IT')) + (f.chi ? ' da ' + esc(f.chi) : '') + '</span>' : (mese <= dovuto ? '<span style="font-size:12px; font-weight:800; color:#c0392b">da fare</span>' : '')) + '</label>';

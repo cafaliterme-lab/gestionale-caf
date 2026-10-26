@@ -79,7 +79,7 @@ function rigaPraticaFermaHTML(p, conRiattiva) {
   const g = giorniDaApertura(p), st = statoAvvisoPratica(p), a = AVVISI_PRATICHE.lista[p.id];
   const bt = function (onclick, testo, col, titolo) { return '<button type="button" onclick="' + onclick + '" title="' + (titolo || '') + '" style="background:' + col + '; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer">' + testo + '</button>'; };
   const id = esc(JSON.stringify(p.id));
-  return '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px">'
+  return '<div class="el-riga" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px">'
     + '<span style="flex:1 1 260px"><b>' + esc(formattaProtocollo(p)) + '</b> · <b>' + esc(p.nome || '') + '</b> <span class="sub2">· ' + esc(p.tipo || '') + ' · ' + esc((STATI[p.stato] || {}).e || '') + ' ' + esc(statoLabel(p.stato)) + '</span>'
     + '<div class="sub2">aperta il ' + esc(p.data || '') + ' · <b style="color:' + (g > GIORNI_PRATICA_FERMA ? '#c0392b' : 'inherit') + '">da ' + g + ' giorn' + (g === 1 ? 'o' : 'i') + '</b>' + (p.inseritoDa ? ' · inserita da ' + esc(p.inseritoDa) : '')
     + (st === 'rimandato' ? ' · ⏳ avviso rimandato al ' + esc(new Date(a.rimanda_al).toLocaleDateString('it-IT')) : st === 'tolto' ? ' · 🔕 avviso tolto' : '') + '</div></span>'
@@ -106,6 +106,7 @@ function disegnaPraticheFerme() {
   const l = praticheFerme();
   ov.querySelector('[data-corpo]').innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><b style="font-size:18px; color:#c0392b">⏰ Pratiche del ' + annoPraticheFerme() + ' ferme da più di un mese (' + l.length + ')</b><button type="button" data-chiudi style="border:none; background:none; font-size:22px; cursor:pointer; color:var(--ink)">✕</button></div>'
     + '<div class="sub2" style="margin:4px 0 8px">Pratiche aperte da più di ' + GIORNI_PRATICA_FERMA + ' giorni e non ancora portate a lavorazione ultimata (in arrivo, da lavorare scansionata, in lavorazione). Puoi aprirle, rimandare l\'avviso o toglierlo: la scelta vale per tutti.</div>'
+    + (l.length > 1 ? campoRicercaElenco('ferme', 'Cerca un nome, un protocollo o un tipo…') : '')
     + (l.length ? l.map(function (p) { return rigaPraticaFermaHTML(p, false); }).join('') : '<div class="empty" style="padding:14px">✓ Nessuna pratica ferma da più di un mese.</div>')
     + '<div style="display:flex; justify-content:space-between; gap:8px; margin-top:10px; flex-wrap:wrap"><button type="button" onclick="apriReportPraticheVecchie()" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">📜 Tutte le pratiche da fare del ' + annoPraticheFerme() + ', dalla più vecchia</button><button type="button" onclick="vediDaFareNelRegistro()" style="background:#6d3fa0; color:#fff; border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">📋 Vedi nel registro</button><button type="button" data-chiudi style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 16px; font-weight:700; cursor:pointer">Chiudi</button></div>';
 }
@@ -119,6 +120,7 @@ function disegnaReportVecchie() {
   ov.querySelector('[data-corpo]').innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><b style="font-size:18px; color:#1d4f91">📜 Pratiche da fare del ' + annoPraticheFerme() + ', dalla più vecchia</b><button type="button" data-chiudi style="border:none; background:none; font-size:22px; cursor:pointer; color:var(--ink)">✕</button></div>'
     + '<div style="margin:6px 0 8px; font-size:13.5px">' + (l.length ? '<b>' + l.length + '</b> pratiche non ancora portate a lavorazione ultimata · la più vecchia è del <b>' + esc(l[0].data || '') + '</b> (da ' + giorniDaApertura(l[0]) + ' giorni)' + (ferme ? ' · <b style="color:#c0392b">' + ferme + ' ferme da più di un mese</b>' : '') : 'Nessuna pratica da fare.') + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">' + bt('vediDaFareNelRegistro()', '📋 Vedi nel registro', '#6d3fa0') + bt('stampaReportVecchie()', '🖨️ Stampa', '#1d4f91') + bt('excelReportVecchie()', '📊 Excel', '#1a7f37') + '</div>'
+    + (l.length > 1 ? campoRicercaElenco('report-vecchie', 'Cerca un nome, un protocollo o un tipo…') : '')
     + l.map(function (p) { return rigaPraticaFermaHTML(p, true); }).join('');
 }
 function righeReportVecchie() {

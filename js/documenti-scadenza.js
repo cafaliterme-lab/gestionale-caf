@@ -5,7 +5,7 @@
 
 const GIORNI_PREAVVISO_DOCUMENTO = 30;
 const GIORNI_PREAVVISO_PERMESSO = 60;
-const DOC_SCADENZA = { coda: [], pos: 0 };
+const DOC_SCADENZA = { coda: [], pos: 0, filtro: '' }; // filtro: '' tutti, 'da' da avvisare, 'avvisati' già avvisati
 
 // Le carte d'identità cartacee sono da sostituire con quella elettronica (regolamento UE 2019/1157, dal 3 agosto 2026):
 // compaiono nell'elenco anche se la data scritta non è ancora passata, con un messaggio apposta.
@@ -155,7 +155,8 @@ function disegnaDocumentiInScadenza() {
   const b = function (onclick, testo, colore) { return '<button type="button" onclick="' + onclick + '" style="background:' + colore + '; color:#fff; border:none; border-radius:999px; padding:5px 12px; font-size:12.5px; font-weight:800; cursor:pointer">' + testo + '</button>'; };
   const riga = function (r, tasti) {
     const av = avvisoDocumentoInviato(r.c);
-    return '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:7px 0; border-bottom:1px solid var(--line)">'
+    if ((DOC_SCADENZA.filtro === 'da' && av) || (DOC_SCADENZA.filtro === 'avvisati' && !av)) return '';
+    return '<div class="el-riga" data-cerca="' + esc([r.c.nomeCompleto, r.c.codiceFiscale, r.c.telefono, r.c.telefonoFisso, r.c.email].join(' ')) + '" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:7px 0; border-bottom:1px solid var(--line)">'
       + '<span><b>' + esc(r.c.nomeCompleto) + '</b> <span style="font-size:12px; font-weight:800; color:' + (r.giorni < 0 ? '#c0392b' : '#b35f0c') + '">' + (r.permesso ? '🛂 permesso di soggiorno ' + (r.giorni < 0 ? 'scaduto il ' : 'scade il ') + esc(r.c.permessoScadenza) + (r.giorni >= 0 ? ' (tra ' + r.giorni + ' giorn' + (r.giorni === 1 ? 'o' : 'i') + ')' : '') : r.cartacea ? '📄 carta d\'identità cartacea: da sostituire con l\'elettronica' + (r.c.documentoScadenza ? ' (sul documento: ' + esc(r.c.documentoScadenza) + ')' : '') : '🪪 ' + (r.giorni < 0 ? 'scaduto il ' : 'scade il ') + esc(r.c.documentoScadenza) + (typeof annoScadenzaSbagliato === 'function' && annoScadenzaSbagliato(r.c.documentoScadenza) ? ' ⚠️ anno sbagliato? correggi la scheda' : '') + (r.giorni >= 0 ? ' (tra ' + r.giorni + ' giorn' + (r.giorni === 1 ? 'o' : 'i') + ')' : '')) + '</span>'
       + '<div class="sub2">' + [r.c.telefono ? '📱 ' + esc(r.c.telefono) : '', r.c.telefonoFisso ? '☎️ ' + esc(r.c.telefonoFisso) : '', r.c.email ? '✉️ ' + esc(r.c.email) : ''].filter(Boolean).join(' · ')
       + (av ? ' · <b style="color:#1a7f37">✓ avvisato il ' + esc(quandoComunicazione(av).split(' ')[0]) + '</b>' : '') + '</div></span>'
@@ -170,6 +171,12 @@ function disegnaDocumentiInScadenza() {
     + '<div class="sub2">Tutti i clienti dell\'archivio con il documento già scaduto o che scade entro ' + GIORNI_PREAVVISO_DOCUMENTO + ' giorni. Quando scrivi la nuova scadenza escono da soli dall\'elenco.</div></div>'
     + '<button type="button" data-chiudi="1" style="flex:none; white-space:nowrap; background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">✕ Chiudi</button></div>'
     + (!tutti.length ? '<div class="empty" style="margin-top:12px">Nessun documento scaduto o in scadenza 👍</div>' : '')
+    + (tutti.length ? (function () {
+        const nAvv = tutti.filter(function (r) { return avvisoDocumentoInviato(r.c); }).length;
+        const chip = function (v, testo) { const on = DOC_SCADENZA.filtro === v; return '<button type="button" onclick="DOC_SCADENZA.filtro=\'' + v + '\'; disegnaDocumentiInScadenza()" style="border:2px solid #c0392b; background:' + (on ? '#c0392b' : 'transparent') + '; color:' + (on ? '#fff' : '#c0392b') + '; border-radius:999px; padding:4px 12px; font-weight:800; cursor:pointer">' + testo + '</button>'; };
+        return '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px">' + chip('', 'Tutti (' + tutti.length + ')') + chip('da', '⏳ Da avvisare (' + (tutti.length - nAvv) + ')') + chip('avvisati', '✓ Già avvisati (' + nAvv + ')') + '</div>'
+          + campoRicercaElenco('doc-scadenza', 'Cerca un nome, un telefono o un\'e-mail…');
+      })() : '')
     + (conCell.length ? titolo('📱 Con cellulare', conCell.length, inCorso
         ? b('prossimoDocumentoWhatsApp()', '💬 Prossimo (' + (DOC_SCADENZA.pos + 1) + ' di ' + DOC_SCADENZA.coda.length + ')', '#25a35a')
         : (daAvvisareCell ? b('avviaInvioDocumentiWhatsApp()', '💬 Manda a tutti, uno dopo l\'altro (' + daAvvisareCell + ')', '#25a35a') : '<span class="sub2">tutti avvisati</span>'))

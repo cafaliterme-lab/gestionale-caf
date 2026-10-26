@@ -4824,10 +4824,11 @@ function disegnaInvioMultiplo(){
       + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">'
       + '<button type="button" style="background:var(--line); color:var(--ink); padding:6px 10px; font-size:12.5px" onclick="selezionaInvioMultiplo(true)">Seleziona tutti</button>'
       + '<button type="button" style="background:var(--line); color:var(--ink); padding:6px 10px; font-size:12.5px" onclick="selezionaInvioMultiplo(false)">Nessuno</button></div>'
+      + (st.lista.length > 1 ? campoRicercaElenco('invio-multiplo', 'Cerca un nome o un protocollo…') : '')
       + '<div style="max-height:45vh; overflow-y:auto; border:1px solid var(--line); border-radius:10px">'
       + st.lista.map(function(p){
           const num = numeroWhatsApp(p.telefono);
-          return '<label style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); margin:0; font-size:13px; color:var(--ink); cursor:' + (num ? 'pointer' : 'not-allowed') + '; opacity:' + (num ? '1' : '.5') + '">'
+          return '<label class="el-riga" style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); margin:0; font-size:13px; color:var(--ink); cursor:' + (num ? 'pointer' : 'not-allowed') + '; opacity:' + (num ? '1' : '.5') + '">'
             + '<input type="checkbox" style="width:auto" ' + (st.scelti[p.id] ? 'checked' : '') + (num ? '' : ' disabled') + ' onchange="INVIO_MULTIPLO.scelti[\'' + p.id + '\']=this.checked; disegnaInvioMultiplo()">'
             + '<span style="flex:1; min-width:0"><b>' + esc(formattaProtocollo(p)) + '</b> · ' + esc(p.nome||'') + ' <span style="color:var(--sub)">(' + esc(p.tipo||'') + ')</span><br>'
             + '<span style="font-size:12px; color:var(--sub)">' + (num ? '📱 ' + esc(p.telefono) : '⚠️ cellulare mancante o non valido') + '</span>'

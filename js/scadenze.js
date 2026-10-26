@@ -89,7 +89,7 @@ function renderScadenze() {
   const fatte = scadenze.filter(function (s) { return s.completata; }).slice(-10).reverse();
   const riga = function (s) {
     const st = statoScadenza(s);
-    return '<div class="sc-riga">'
+    return '<div class="sc-riga el-riga" data-cerca="' + esc([s.titolo, s.cliente, s.note, dataIT(s.data)].join(' ')) + '">'
       + '<span class="dot" style="background:' + COLORI_SCADENZA[st] + '"></span>'
       + '<div style="flex:1; min-width:0"><b>' + esc(s.titolo) + '</b>' + (s.cliente ? ' · ' + esc(s.cliente) : '')
       + '<div class="sub2">' + dataIT(s.data) + ' · ' + (s.completata ? esitoScadenza(s) : quandoScadenza(s)) + (s.avvisoGiorni ? ' · avviso ' + s.avvisoGiorni + ' gg prima' : ' · avviso il giorno stesso') + (s.note ? ' · ' + esc(s.note) : '') + '</div></div>'
@@ -100,7 +100,8 @@ function renderScadenze() {
       + '</div>';
   };
   document.getElementById('lista-scadenze').innerHTML =
-    (daFare.length ? daFare.map(riga).join('') : '<div class="empty">Nessuna scadenza in programma.</div>')
+    (daFare.length + fatte.length > 1 ? campoRicercaElenco('scadenze', 'Cerca un cliente, una scadenza o una data…') : '')
+    + (daFare.length ? daFare.map(riga).join('') : '<div class="empty">Nessuna scadenza in programma.</div>')
     + (fatte.length ? '<div class="raff-title" style="margin-top:14px">Completate di recente</div>' + fatte.map(riga).join('') : '');
 }
 

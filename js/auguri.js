@@ -140,7 +140,7 @@ function disegnaAuguri() {
     const testa = g.persone.length > 1
       ? '<b>👥 ' + esc(g.collab || g.persone.map(function (c) { return c.nomeCompleto; }).join(' e ')) + '</b> <span class="sub2">(' + g.persone.length + ' clienti, un solo messaggio)</span>' + (g.collab ? '<div style="font-size:12px; color:var(--sub)">' + g.persone.map(function (c) { return esc(c.nomeCompleto); }).join(' · ') + '</div>' : '')
       : '<b>' + esc(g.persone[0].nomeCompleto) + '</b>' + (g.persone[0].collaboratore ? ' <span class="sub2">· ' + esc(g.persone[0].collaboratore) + '</span>' : '');
-    return '<label style="display:flex; gap:8px; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:13.5px; cursor:pointer"><input type="checkbox" checked data-canale="' + canale + '" value="' + esc(g.chiave) + '" onchange="contaAuguri()" style="width:18px; height:18px">'
+    return '<label class="el-riga" style="display:flex; gap:8px; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:13.5px; cursor:pointer"><input type="checkbox" checked data-canale="' + canale + '" value="' + esc(g.chiave) + '" onchange="contaAuguri()" style="width:18px; height:18px">'
       + '<span style="flex:1; color:var(--ink)">' + testa + '</span><span class="sub2">' + esc(recapito) + '</span></label>';
   };
   const gruppo = function (titolo, colore, canale, lista, recapito) {
@@ -169,7 +169,7 @@ function disegnaAuguri() {
     + chip("scegliCanaleAuguri('wa')", '💬 Solo WhatsApp', can === 'wa', '#25a35a') + chip("scegliCanaleAuguri('email')", '📧 Solo e-mail', can === 'email', '#25a35a') + chip("scegliCanaleAuguri('entrambi')", '💬 + 📧 Tutti e due', can === 'entrambi', '#25a35a') + '</div>'
     + '<div style="margin-top:10px"><b style="font-size:14px">✏️ Testo degli auguri</b> <span class="sub2">(prima c\'è «Gentile …» con il nome, dopo i recapiti del CAF)</span>'
     + '<textarea rows="3" oninput="cambiaTestoAuguri(this.value)" style="width:100%; margin-top:4px; font-size:13.5px; font-family:inherit">' + esc(testoAuguri()) + '</textarea></div>'
-    + (inCoda ? '' : (nW || nM ? gruppo('📧 E-mail (partono tutte insieme dalla casella del CAF)', '#1d4f91', 'email', d.email, function (g) { return g.email; })
+    + (inCoda ? '' : (nW || nM ? campoRicercaElenco('auguri', 'Cerca un nome…') + gruppo('📧 E-mail (partono tutte insieme dalla casella del CAF)', '#1d4f91', 'email', d.email, function (g) { return g.email; })
         + gruppo('💬 WhatsApp (uno dopo l\'altro)', '#1a7f37', 'wa', d.wa, function (g) { return g.tel; })
         + '<div style="margin-top:12px; font-weight:800; font-size:15px">👁️ Ecco cosa riceveranno</div>'
         + esempio('📧 L\'e-mail', '#1d4f91', d.email, 'email', oggettoAuguri()) + esempio('💬 Il messaggio WhatsApp', '#1a7f37', d.wa, 'wa')

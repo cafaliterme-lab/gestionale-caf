@@ -70,7 +70,7 @@ function riepilogoInvioRichiami() {
     const testa = g.persone.length > 1
       ? '<b>👥 ' + esc(g.collab || nomeGentile(g.saluto).toUpperCase()) + ' – ' + g.persone.length + ' clienti</b> <span class="sub2">(un solo messaggio)</span><div style="font-size:12px; color:var(--sub)">' + g.persone.map(function (y) { return esc(y.nome); }).join(' · ') + '</div>'
       : '<b>' + esc(x.nome) + '</b>' + (cl !== SENZA_COLLAB ? ' <span class="sub2">· ' + esc(cl) + '</span>' : '');
-    return '<label style="display:flex; gap:8px; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:13.5px; cursor:pointer"><input type="checkbox" checked data-canale="' + canale + '" value="' + esc(g.chiave) + '" onchange="contaInvioRichiami()" style="width:18px; height:18px">'
+    return '<label class="el-riga" style="display:flex; gap:8px; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:13.5px; cursor:pointer"><input type="checkbox" checked data-canale="' + canale + '" value="' + esc(g.chiave) + '" onchange="contaInvioRichiami()" style="width:18px; height:18px">'
       + '<span style="flex:1; color:var(--ink)">' + testa + '</span><span class="sub2">' + esc(recapito) + '</span></label>';
   };
   const gruppo = function (titolo, colore, canale, lista, recapito) {
@@ -94,6 +94,7 @@ function riepilogoInvioRichiami() {
     + '<div style="padding:14px 16px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center"><b style="font-size:17px">📤 A chi mando il messaggio</b><button type="button" data-chiudi style="border:none; background:none; font-size:22px; cursor:pointer; color:var(--ink)">✕</button></div>'
     + '<div style="padding:4px 16px 12px; overflow:auto">'
     + '<div class="sub2" style="margin-top:8px">Controlla l\'elenco: togli la spunta a chi non vuoi mandarlo.</div>'
+    + campoRicercaElenco('invio-richiami', 'Cerca un nome…')
     + gruppo('📧 E-mail (partono tutte insieme dalla casella del CAF)', '#1d4f91', 'email', d.email, function (g) { return g.email; })
     + gruppo('💬 WhatsApp (uno dopo l\'altro)', '#1a7f37', 'wa', d.wa, function (g) { return g.tel; })
     + '<div style="margin-top:14px; font-weight:800; font-size:15px">👁️ Ecco cosa riceveranno</div>'

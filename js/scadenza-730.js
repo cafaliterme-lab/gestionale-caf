@@ -21,7 +21,7 @@ function apriAvviso730() {
   const lavorati = l.filter(function (p) { return daLavorare.indexOf(p) < 0; });
   const g = giorniAllaScadenza730();
   const riga = function (p) {
-    return '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px">'
+    return '<div class="el-riga" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px">'
       + '<span style="flex:1 1 260px"><b>' + esc(formattaProtocollo(p)) + '</b> · <b>' + esc(p.nome || '') + '</b>' + (p.congiunta ? ' <span class="sub2">(congiunta con ' + esc(p.congiunta) + ')</span>' : '')
       + ' <span class="sub2">· ' + esc(p.tipo || '') + ' · ' + esc((STATI[p.stato] || {}).e || '') + ' ' + esc(statoLabel(p.stato)) + '</span></span>'
       + '<button type="button" onclick="document.getElementById(\'popup-scad730\').remove(); apriDaStorico(' + esc(JSON.stringify(p.id)) + ')" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer">📂 Apri</button></div>';
@@ -30,6 +30,7 @@ function apriAvviso730() {
   ov.querySelector('[data-corpo]').innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><b style="font-size:18px; color:#1d4f91">📅 730 da definire entro il 30 settembre</b><button type="button" data-chiudi style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:6px 12px; cursor:pointer">✕</button></div>'
     + '<div style="margin:6px 0; font-size:13.5px">' + (g > 0 ? 'Mancano <b>' + g + ' giorn' + (g === 1 ? 'o' : 'i') + '</b> alla scadenza del 30/09.' : '<b style="color:#c0392b">Oggi è l\'ultimo giorno.</b>')
     + ' Ci sono <b>' + sommaPeso(l) + '</b> dichiarazioni 730 del ' + (typeof annoAttivo === 'function' ? annoAttivo() : '') + ' non ancora definite (la congiunta conta 2).</div>'
+    + (l.length > 1 ? campoRicercaElenco('scad730', 'Cerca un nome, un protocollo o un collaboratore…') : '')
     + (l.length ? sez('📥 Ancora da lavorare', '#c0392b', daLavorare) + sez('📦 Lavorati, da consegnare/definire', '#8d5a3b', lavorati) : '<div class="empty" style="padding:14px">✓ Tutti i 730 sono definiti.</div>');
 }
 // casella in «Oggi» (solo a settembre, fino al 30)
