@@ -384,10 +384,12 @@ function ncControllaCF() {
   if (cf.length < 16) { out.style.color = 'var(--sub)'; out.textContent = cf.length + '/16 caratteri'; return; }
   if (!cfValido(cf)) { out.style.color = '#c0392b'; out.textContent = '❌ Codice fiscale non valido'; return; }
   const d = datiDaCF(cf);
-  if (typeof datiAnagraficiDaCF === 'function') datiAnagraficiDaCF({ cf: 'nc-cf', data: 'nc-nascita', sesso: 'nc-sesso', comune: 'nc-comune' });
+  if (typeof compilaDaCF === 'function') compilaDaCF({ cf: 'nc-cf', cognome: 'nc-cognome', nome: 'nc-nome', data: 'nc-nascita', sesso: 'nc-sesso', comune: 'nc-comune', tel: 'nc-tel' });
+  else if (typeof datiAnagraficiDaCF === 'function') datiAnagraficiDaCF({ cf: 'nc-cf', data: 'nc-nascita', sesso: 'nc-sesso', comune: 'nc-comune' });
   else { const n = document.getElementById('nc-nascita'); if (n && !n.value.trim()) n.value = d.dataNascita; }
   const c = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).find(function (x) { return x.codiceFiscale === cf; });
   out.style.color = c ? '#b35f0c' : '#1a7f37';
   const com = typeof comuneDaCF === 'function' ? comuneDaCF(cf) : '';
-  out.textContent = c ? '⚠️ Questo codice fiscale è già in archivio: ' + c.nomeCompleto : '✓ Codice valido · ' + (d.sesso === 'F' ? 'nata' : 'nato') + ' il ' + d.dataNascita + (com ? ' a ' + com : '');
+  const senzaNomi = !((document.getElementById('nc-cognome') || {}).value || '').trim();
+  out.textContent = c ? '⚠️ Questo codice fiscale è già in archivio: ' + c.nomeCompleto : '✓ Codice valido · ' + (d.sesso === 'F' ? 'nata' : 'nato') + ' il ' + d.dataNascita + (com ? ' a ' + com : '') + (senzaNomi ? ' · scrivi cognome e nome (il codice fiscale non li contiene per intero)' : '');
 }

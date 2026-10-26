@@ -102,7 +102,7 @@ function lavoratoreEditHTML(p) {
     + '<div id="e-lavris-' + p.id + '" style="flex:1 1 100%; max-height:220px; overflow:auto; border-radius:8px; background:var(--card)"></div></div>'
     + c('lavcognome', 'Cognome', p.lavCognome, up) + c('lavnome', 'Nome', p.lavNome, up)
     + c('lavdata', 'Data di nascita', p.lavData, data) + c('lavcomune', 'Luogo di nascita', p.lavComuneNascita, up)
-    + c('lavcf', 'Codice fiscale', p.lavCodiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"')
+    + c('lavcf', 'Codice fiscale', p.lavCodiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); compilaLavoratoreDaCF(\'' + p.id + '\')"')
     + c('lavtel', 'Cellulare', p.lavTelefono, 'type="tel" inputmode="tel"')
     + '<div><label>Tipo documento</label><select id="e-lavdoctipo-' + p.id + '">' + (typeof opzioniTipoDoc === 'function' ? opzioniTipoDoc(p.lavDocumentoTipo || '') : '') + '</select></div>'
     + c('lavdocscad', 'Scadenza documento', p.lavDocumentoScadenza, data) + c('lavdocnum', 'N. documento', p.lavDocumentoNumero, up)
@@ -127,4 +127,16 @@ function continuazioneCardHTML(p) {
   if (!p || !p.continuazione) return '';
   return '<div class="meta" style="margin-top:4px"><span style="display:inline-block; background:#1f8a70; color:#fff; border-radius:999px; padding:1px 9px; font-size:12px; font-weight:800">🔁 Contratto in continuazione</span> '
     + 'protocollo d\'origine <b>' + esc(p.protocolloOrigine || '') + '</b> · non conta tra le pratiche nuove del ' + esc(String(annoPratica(p))) + '</div>';
+}
+// codice fiscale del lavoratore scritto a mano: dati dall'archivio (se c'è) e data, sesso e comune dal codice
+function compilaLavoratoreDaCF(id) {
+  const cfEl = campoLav('cf', id); if (!cfEl) return;
+  const cf = normalizzaCF(cfEl.value);
+  if (cf.length !== 16 || !cfValido(cf)) return;
+  const c = typeof personaDaCF === 'function' ? personaDaCF(cf) : null;
+  const cog = campoLav('cognome', id);
+  if (c && cog && !cog.value.trim()) { usaLavoratore(c, id); if (typeof avviso === 'function') avviso('📇 ' + (c.nomeCompleto || '') + ': dati del lavoratore presi dall\'archivio'); }
+  const d = typeof datiDaCF === 'function' ? datiDaCF(cf) : null;
+  const da = campoLav('data', id); if (d && da && !da.value.trim()) da.value = d.dataNascita;
+  const co = campoLav('comune', id); if (co && !co.value.trim() && typeof comuneDaCF === 'function') { const x = comuneDaCF(cf); if (x) co.value = x; }
 }

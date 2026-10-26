@@ -89,7 +89,7 @@ function controllaCFConiuge() {
   el.style.display = 'block';
   if (cf.length < 16) { el.style.color = 'var(--sub)'; el.textContent = cf.length + '/16 caratteri'; return; }
   if (!cfValido(cf)) { el.style.color = '#c0392b'; el.textContent = '❌ Codice fiscale non valido (controlla i caratteri)'; return; }
-  if (cfEl.dataset.auto !== '1') aggiornaSessoCampi(CAMPI_CF_CONIUGE);
+  if (cfEl.dataset.auto !== '1') { compilaDaCF(Object.assign({ tel: 'f-cong-tel' }, CAMPI_CF_CONIUGE)); aggiornaSessoCampi(CAMPI_CF_CONIUGE); }
   const g = function (id) { return ((document.getElementById(id) || {}).value || '').trim(); };
   const avvisi = controllaCoerenzaCF(cf, g('f-cong-cognome'), g('f-cong-nome'), g('f-cong-data'));
   if (avvisi.length) { el.style.color = '#b5842a'; el.textContent = '⚠️ Attenzione: ' + avvisi.join('; ') + '.'; return; }
@@ -187,6 +187,44 @@ function datiAnagraficiDaCF(ids) {
   const da = el('data'); if (da && !da.value.trim()) da.value = d.dataNascita;
   const se = el('sesso'); if (se && !se.value) { se.value = d.sesso; se.dataset.manuale = '1'; }
   const co = el('comune'); if (co && (!co.value.trim() || co.dataset.auto === '1') && typeof comuneDaCF === 'function') { const c = comuneDaCF(cf); if (c) { co.value = c; co.dataset.auto = '1'; } }
+}
+// Persona già conosciuta dal codice fiscale: prima l'archivio clienti, poi le pratiche (titolare, coniuge,
+// lavoratore colf, inquilini). Il codice fiscale da solo non contiene cognome e nome per intero: si prendono da qui.
+function personaDaCF(cf) {
+  cf = normalizzaCF(cf || '');
+  if (cf.length !== 16 || !cfValido(cf)) return null;
+  const c = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).find(function (x) { return x.codiceFiscale === cf; });
+  if (c) return c;
+  const tutte = (typeof state !== 'undefined' && state.pratiche ? state.pratiche : []).concat(typeof state !== 'undefined' && state.annullate ? state.annullate : []);
+  for (const p of tutte) {
+    if (p.codiceFiscale === cf) { const n = typeof dividiNominativo === 'function' ? dividiNominativo(p) : { cognome: p.nome, nome: '' }; return { cognome: n.cognome, nome: n.nome, nomeCompleto: p.nome, dataNascita: p.cf, codiceFiscale: cf, telefono: p.telefono, comuneNascita: p.comuneNascita }; }
+    if (p.congCodiceFiscale === cf && (p.congCognome || p.congNome)) return { cognome: p.congCognome, nome: p.congNome, nomeCompleto: ((p.congCognome || '') + ' ' + (p.congNome || '')).trim(), dataNascita: p.congData, codiceFiscale: cf, telefono: p.congTelefono, comuneNascita: p.congComuneNascita };
+    if (p.lavCodiceFiscale === cf && (p.lavCognome || p.lavNome)) return { cognome: p.lavCognome, nome: p.lavNome, nomeCompleto: ((p.lavCognome || '') + ' ' + (p.lavNome || '')).trim(), dataNascita: p.lavData, codiceFiscale: cf, telefono: p.lavTelefono, comuneNascita: p.lavComuneNascita };
+    const q = (Array.isArray(p.inquilini) ? p.inquilini : []).find(function (x) { return x.codiceFiscale === cf; });
+    if (q) return Object.assign({ nomeCompleto: ((q.cognome || '') + ' ' + (q.nome || '')).trim() }, q);
+  }
+  return null;
+}
+// Cognome e nome (e gli altri dati, solo nelle caselle vuote) di una persona già conosciuta dal codice fiscale
+function riempiNomiDaCF(ids) {
+  const el = function (k) { return ids[k] ? document.getElementById(ids[k]) : null; };
+  const cfEl = el('cf'); if (!cfEl) return null;
+  const c = personaDaCF(cfEl.value); if (!c) return null;
+  let n = 0;
+  const metti = function (k, v) { const e = el(k); if (e && v && !String(e.value || '').trim()) { e.value = String(v); e.style.background = '#e8f6ee'; n++; } };
+  metti('cognome', String(c.cognome || '').toUpperCase()); metti('nome', String(c.nome || '').toUpperCase());
+  metti('data', c.dataNascita); metti('comune', c.comuneNascita); metti('tel', c.telefono);
+  if (n && typeof avviso === 'function' && riempiNomiDaCF._ultimo !== c.codiceFiscale + '|' + ids.cf) avviso('📇 ' + (c.nomeCompleto || ((c.cognome || '') + ' ' + (c.nome || ''))) + ': dati presi dall\'archivio');
+  riempiNomiDaCF._ultimo = c.codiceFiscale + '|' + ids.cf;
+  return c;
+}
+// Codice fiscale scritto a mano in una qualsiasi anagrafica: data, sesso e comune dal codice, cognome e nome dall'archivio
+function compilaDaCF(ids) {
+  const cfEl = document.getElementById(ids.cf); if (!cfEl) return;
+  const cf = normalizzaCF(cfEl.value);
+  if (cf.length !== 16 || !cfValido(cf)) return;
+  riempiNomiDaCF(ids);
+  datiAnagraficiDaCF(ids);
 }
 // Collega le caselle: cambiando cognome, nome, data, sesso o comune il codice fiscale (se vuoto o già calcolato) si ricalcola
 function collegaCFAuto(ids, dopo) {

@@ -56,7 +56,7 @@ function rigaInquilinoHTML(k, i, q) {
     + '<div class="i-ris" style="flex:1 1 100%; max-height:200px; overflow:auto; border-radius:8px; background:var(--card)"></div></div>'
     + '<div class="grid">' + c('i-cognome', 'Cognome', q.cognome, up) + c('i-nome', 'Nome', q.nome, up) + c('i-data', 'Data di nascita', q.dataNascita, data)
     + c('i-comune', 'Luogo di nascita', q.comuneNascita, up)
-    + c('i-cf', 'Codice fiscale', q.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"')
+    + c('i-cf', 'Codice fiscale', q.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); compilaInquilinoDaCF(this)"')
     + c('i-tel', 'Cellulare', q.telefono, 'type="tel" inputmode="tel"')
     + '<div><label>Tipo documento</label><select class="i-doctipo">' + (typeof opzioniTipoDoc === 'function' ? opzioniTipoDoc(q.documentoTipo || '') : '') + '</select></div>'
     + c('i-docscad', 'Scadenza documento', q.documentoScadenza, data) + c('i-docnum', 'N. documento', q.documentoNumero, up)
@@ -175,3 +175,18 @@ async function annualitaAffittoPagata(s) {
 }
 function eScadenzaAffitto(s) { return /affitto/i.test((s && s.titolo) || ''); }
 function eAnnualitaAffitto(s) { return /^annualit/i.test((s && s.titolo) || '') && eScadenzaAffitto(s); }
+// codice fiscale dell'inquilino scritto a mano: dati dall'archivio (se c'è) e data e comune dal codice
+function compilaInquilinoDaCF(input) {
+  const r = input.closest('.aff-inq'); if (!r) return;
+  const cf = normalizzaCF(input.value);
+  if (cf.length !== 16 || !cfValido(cf)) return;
+  const metti = function (cl, v) { const el = r.querySelector('.' + cl); if (el && v && !String(el.value || '').trim()) el.value = v; };
+  const c = typeof personaDaCF === 'function' ? personaDaCF(cf) : null;
+  if (c) {
+    metti('i-cognome', String(c.cognome || '').toUpperCase()); metti('i-nome', String(c.nome || '').toUpperCase()); metti('i-tel', c.telefono);
+    metti('i-docscad', c.documentoScadenza); metti('i-docnum', c.documentoNumero); metti('i-cerca', c.nomeCompleto);
+  }
+  const d = typeof datiDaCF === 'function' ? datiDaCF(cf) : null;
+  metti('i-data', (c && c.dataNascita) || (d && d.dataNascita));
+  metti('i-comune', (c && c.comuneNascita) || (typeof comuneDaCF === 'function' ? comuneDaCF(cf) : ''));
+}

@@ -745,7 +745,7 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
         <div><label>Nome</label><input id="f-lav-nome" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
         <div><label>Data di nascita</label><input id="f-lav-data" placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"></div>
         <div><label>Luogo di nascita (comune o Stato)</label><input id="f-lav-comune" list="lista-comuni" autocomplete="off" placeholder="Es. MESSINA (ME) o ROMANIA" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
-        <div><label>Codice fiscale</label><input id="f-lav-cf" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"></div>
+        <div><label>Codice fiscale</label><input id="f-lav-cf" placeholder="16 caratteri" maxlength="16" autocomplete="off" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); compilaLavoratoreDaCF('')"></div>
         <div><label>Cellulare</label><input id="f-lav-tel" type="tel" inputmode="tel" placeholder="Facoltativo"></div>
         <div><label>Documento: tipo, scadenza e numero</label><div style="display:flex; gap:6px; flex-wrap:wrap"><select id="f-lav-doc-tipo" style="width:auto; flex:0 1 130px; min-width:96px"></select>
           <input id="f-lav-doc-scad" placeholder="Scadenza GG/MM/AAAA" inputmode="numeric" autocomplete="off" style="flex:0 1 150px; min-width:110px; font-weight:700" oninput="autoSlashData(this)">
@@ -1054,7 +1054,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/vendor/barcode-detector.js?v=3.2.2"></script>
 <script src="js/codice-fiscale.js?v=2"></script>
 <script src="js/comuni.js?v=2"></script>
-<script src="js/cf-auto.js?v=9"></script>
+<script src="js/cf-auto.js?v=10"></script>
 <script src="js/ocr-documento.js?v=35"></script>
 <script src="js/grafici.js?v=24"></script>
 <script src="js/stampe.js?v=33"></script>
@@ -1063,8 +1063,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=24"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=241"></script>
-<script src="js/scadenze.js?v=202610103"></script>
+<script src="js/guida.js?v=242"></script>
+<script src="js/scadenze.js?v=202610105"></script>
 <script src="js/config.js?v=202610079"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
@@ -1074,8 +1074,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/data.js?v=202610247"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
 <script src="js/app.js?v=202610364"></script>
-<script src="js/lavoratore-colf.js?v=3"></script>
-<script src="js/affitti.js?v=2"></script>
+<script src="js/lavoratore-colf.js?v=4"></script>
+<script src="js/affitti.js?v=3"></script>
 <script src="js/scadenza-730.js?v=2"></script>
 <script src="js/email.js?v=4"></script>
 <script src="js/modulistica.js?v=1"></script>
