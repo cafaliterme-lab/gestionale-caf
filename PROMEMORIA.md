@@ -48,6 +48,7 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 24/10/2026. L'uso vero 
   - `richiami.js`: campagna 730 e richiami (invio a tutti, raggruppato per numero, scelta del canale);
   - `auguri.js`: auguri di Natale e Pasqua;
   - contratti colf in continuazione (trasferiti o rinnovati): `continuazione = true`, serie interna `CT` decisa dal trigger, si mostrano con `protocollo_origine`; `pesoPratica` = 0, quindi non contano tra le pratiche ma gli incassi restano in contabilità;
+  - `scadenza-730.js`: avviso di settembre con i 730 da definire entro il 30/09;
   - `affitti.js`: contratti di affitto (inquilini in `pratiche.inquilini` jsonb, `affitto_regime/inizio/durata/fine/prossima`; scadenze create dal trigger `sincronizza_scadenza_assistenza`, una per pratica; `clienti.inquilino`);
   - `lavoratore-colf.js`: lavoratore dei contratti colf e badanti (campi `lav_*` in pratiche; `lavoratore_colf` e permesso di soggiorno in clienti);
   - `comunicazioni.js`: storico dei messaggi, «Non ha WhatsApp», cancellazione degli sbagli;
