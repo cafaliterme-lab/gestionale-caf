@@ -253,7 +253,7 @@ function nascitaDichiaranteDaArchivio(prefisso){
   const l = ARCHIVIO_CLIENTI.filter(function(c){ return String(c.nomeCompleto || '').toUpperCase() === v && c.dataNascita; });
   if(l.length === 1) d.value = l[0].dataNascita;
 }
-function badgeLavoratore(c){ return c && c.lavoratoreColf ? ' <span title="Lavoratore di un contratto colf e badanti" style="display:inline-block; background:#8e44ad; color:#fff; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700">👷 lavoratore colf</span>' : ''; }
+function badgeLavoratore(c){ return (c && c.inquilino ? ' <span title="Inquilino di un contratto di affitto" style="display:inline-block; background:#a0522d; color:#fff; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700">🏠 inquilino</span>' : '') + (c && c.lavoratoreColf ? ' <span title="Lavoratore di un contratto colf e badanti" style="display:inline-block; background:#8e44ad; color:#fff; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700">👷 lavoratore colf</span>' : ''); }
 function badgeRuolo(c){
   if(!c) return '';
   if(!c.ruoloDichiarazione || !RUOLI_DICHIARAZIONE[c.ruoloDichiarazione]) return badgeLavoratore(c);
@@ -2205,11 +2205,11 @@ function filtra(lista, escludi){
   if(FILTRO_RIF && !escludi.rif){ lista = lista.filter(function(p){ return riferimentoPratica(p) === FILTRO_RIF; }); }
   // contribuente: titolare o coniuge, per nome o codice fiscale (apostrofi, spazi e accenti non contano)
   const cli = filtroContribuente();
-  if(cli){ const kc = chiaveRicerca(cli); lista = lista.filter(function(p){ const t = [p.nome, p.congiunta, ((p.congCognome||'') + ' ' + (p.congNome||'')), p.codiceFiscale, p.congCodiceFiscale, ((p.lavCognome||'') + ' ' + (p.lavNome||'')), p.lavCodiceFiscale].join(' ').toUpperCase(); return t.indexOf(cli) >= 0 || (!!kc && chiaveRicerca(t).indexOf(kc) >= 0); }); }
+  if(cli){ const kc = chiaveRicerca(cli); lista = lista.filter(function(p){ const t = [p.nome, p.congiunta, ((p.congCognome||'') + ' ' + (p.congNome||'')), p.codiceFiscale, p.congCodiceFiscale, ((p.lavCognome||'') + ' ' + (p.lavNome||'')), p.lavCodiceFiscale, (typeof nomiInquilini === 'function' ? nomiInquilini(p).join(' ') : '')].join(' ').toUpperCase(); return t.indexOf(cli) >= 0 || (!!kc && chiaveRicerca(t).indexOf(kc) >= 0); }); }
   const q = ((document.getElementById('cerca')||{}).value||'').trim().toLowerCase();
   if(!q) return lista;
   return lista.filter(function(p){
-    return [String(p.numero).padStart(4,'0'), formattaProtocollo(p), p.nome, p.congiunta, p.congData, ((p.lavCognome||'') + ' ' + (p.lavNome||'')), p.lavCodiceFiscale, p.telefono, p.telefonoFisso, p.tipo, p.cf, p.data, p.consegnataIl, p.note, statoLabel(p.stato), p.numFattura, p.inseritoDa].join(' ').toLowerCase().indexOf(q) >= 0;
+    return [String(p.numero).padStart(4,'0'), formattaProtocollo(p), p.nome, p.congiunta, p.congData, ((p.lavCognome||'') + ' ' + (p.lavNome||'')), p.lavCodiceFiscale, (typeof nomiInquilini === 'function' ? nomiInquilini(p).join(' ') : ''), p.telefono, p.telefonoFisso, p.tipo, p.cf, p.data, p.consegnataIl, p.note, statoLabel(p.stato), p.numFattura, p.inseritoDa].join(' ').toLowerCase().indexOf(q) >= 0;
   });
 }
 
@@ -2402,6 +2402,7 @@ function render(){
       <div class="meta compenso">Fattura: ${fmtEuro(p.compenso)} · Pagato effettivo: ${fmtEuro(p.pagato)}${p.metodoPagamento ? ' (' + esc(p.metodoPagamento) + ')' : ''}</div>
       ${typeof documentoCardHTML === 'function' ? documentoCardHTML(p) : ''}
       ${typeof continuazioneCardHTML === 'function' ? continuazioneCardHTML(p) : ''}
+      ${typeof affittoCardHTML === 'function' ? affittoCardHTML(p) : ''}
       ${typeof lavoratoreCardHTML === 'function' ? lavoratoreCardHTML(p) : ''}
       ${typeof documentiCardHTML === 'function' ? documentiCardHTML(p) : ''}
       ${storicoClienteHTML(p)}
@@ -2434,10 +2435,11 @@ function render(){
           <div><label>Scadenza documento</label><input id="e-docscad-${p.id}" value="${esc(p.documentoScadenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>N. documento</label><input id="e-docnum-${p.id}" value="${esc(p.documentoNumero||'')}" style="text-transform:uppercase; font-family:monospace"></div>
           <div><label>Tipo documento</label><select id="e-doctipo-${p.id}">${opzioniTipoDoc(p.documentoTipo)}</select></div>
-          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="aggiornaCongiuntaEdit('${p.id}', this.value); if(typeof mostraLavoratoreEdit === 'function') mostraLavoratoreEdit('${p.id}', this.value); document.getElementById('e-desctipo-box-${p.id}').style.display = eAltrePratiche(this.value) ? '' : 'none'; document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
+          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="aggiornaCongiuntaEdit('${p.id}', this.value); if(typeof mostraLavoratoreEdit === 'function') mostraLavoratoreEdit('${p.id}', this.value); if(typeof mostraAffittoEdit === 'function') mostraAffittoEdit('${p.id}', this.value); document.getElementById('e-desctipo-box-${p.id}').style.display = eAltrePratiche(this.value) ? '' : 'none'; document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
           <div id="e-desctipo-box-${p.id}" style="${eAltrePratiche(p.tipo) ? '' : 'display:none'}"><label>Descrizione della pratica *</label><input id="e-desctipo-${p.id}" value="${esc(p.descrizioneTipo)}" maxlength="120"></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           ${typeof lavoratoreEditHTML === 'function' ? lavoratoreEditHTML(p) : ''}
+          ${typeof affittoEditHTML === 'function' ? affittoEditHTML(p) : ''}
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
           <div><label title="Solo promemoria: non entra in contabilità">Pagamento richiesto (€)</label><input id="e-ric-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.richiesto)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div><div class="full" id="e-ric-cisl-${p.id}" style="${p.iscrittoCisl ? '' : 'display:none'}">${typeof selectPrezziCisl === 'function' ? selectPrezziCisl('e-ric-' + p.id, 'e-comp-' + p.id) : ''}</div>
           <div><label>Pagato effettivo (€)</label><div style="display:flex; gap:6px"><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0"><select id="e-met-${p.id}" title="Tipo di pagamento" style="width:auto; flex:0 0 auto">${metodoOptions(p.metodoPagamento)}</select></div></div>
@@ -2702,7 +2704,10 @@ async function addPraticaInterna(){
   const annoPr = annoDiData(dataPratica);
   // rinnovo di un contratto colf (🔁 Rinnova dalla scadenza): è la continuazione dello stesso contratto, con il protocollo d'origine
   const rinnovo = eColf(tipo) && typeof praticaInRinnovo === 'function' ? praticaInRinnovo(nome) : null;
-  const doppione = (eAltrePratiche(tipo) || rinnovo) ? null : await cercaDoppione(annoPr, nome, tipo, codiceFiscale, null);
+  // contratto di affitto: regime, date e inquilini (un proprietario può registrare più contratti nello stesso anno: niente controllo doppioni)
+  const affitto = typeof datiAffitto === 'function' ? datiAffitto('f', tipo) : {};
+  if(typeof eAffitto === 'function' && eAffitto(tipo)){ const errA = erroreAffitto(affitto); if(errA){ msg.textContent = '⚠️ ' + errA; msg.style.display = 'block'; msg.scrollIntoView({ behavior:'smooth', block:'center' }); return; } }
+  const doppione = (eAltrePratiche(tipo) || rinnovo || (typeof eAffitto === 'function' && eAffitto(tipo))) ? null : await cercaDoppione(annoPr, nome, tipo, codiceFiscale, null);
   if(doppione){
     msg.textContent = '⚠️ ' + nome + ' ha gia\' una pratica ' + tipo + ' nel ' + annoPr + ' (protocollo ' + doppione + '). Non e\' possibile inserire un doppione.';
     msg.style.display = 'block';
@@ -2736,9 +2741,11 @@ async function addPraticaInterna(){
   else if(!documenti.mancanti.length && documenti.presentati.length && statoNuovo === 'arrivo' && !eColf(tipo) && statoVisibile('da_lavorare_scansionata', tipo) && confirm('Ci sono tutti i documenti.\n\nSalvo la pratica come "' + statoLabel('da_lavorare_scansionata') + '" invece di "In arrivo"?')) statoNuovo = 'da_lavorare_scansionata';
   const lavoratore = typeof datiLavoratoreModulo === 'function' ? datiLavoratoreModulo(tipo) : {};
   if(lavoratore.lavCognome || lavoratore.lavNome){ try{ await registraLavoratoreArchivio(lavoratore); }catch(e){ console.error('archivio lavoratore', e); } }
+  if(affitto.inquilini && affitto.inquilini.length){ try{ await registraInquiliniArchivio(affitto.inquilini); }catch(e){ console.error('archivio inquilini', e); } }
   const nuovaPratica = {
     anno: annoPr,
     ...lavoratore,
+    ...affitto,
     nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, congEmail, comuneNascita, congComuneNascita, congDocumentoScadenza, congDocumentoNumero, congDocumentoTipo, documentoTipo, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documentoNumero, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note, viaEmail, iscrittoCisl,
     stato: statoNuovo,
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
@@ -2780,6 +2787,7 @@ async function addPraticaInterna(){
   document.getElementById('cli-cerca-cong').value='';
   document.getElementById('f-congiunta-on').checked=false;
   if(typeof pulisciLavoratoreModulo === 'function') pulisciLavoratoreModulo();
+  if(typeof pulisciAffittoModulo === 'function') pulisciAffittoModulo();
   toggleCongBox();
   pickChip('f-stato-btns','f-stato','arrivo');
   document.getElementById('f-tel').value='';
@@ -3810,6 +3818,7 @@ async function salvaModifica(id){
     congDocumentoTipo: (cc || cn) ? g('e-congdoctipo') : '',
     congiunta: [cc, cn].filter(Boolean).join(' '),
     ...(typeof datiLavoratoreEdit === 'function' ? datiLavoratoreEdit(id, g('e-tipo')) : {}),
+    ...(typeof datiAffitto === 'function' ? datiAffitto(id, g('e-tipo'), p) : {}),
     telefono: g('e-tel').trim(),
     telefonoFisso: g('e-telfisso').trim(),
     email: g('e-email').trim().toLowerCase(),
@@ -3862,7 +3871,8 @@ async function salvaModifica(id){
     return;
   }
   const annoP = annoPratica(p);
-  const doppione = eAltrePratiche(campi.tipo) ? null : await cercaDoppione(annoP, campi.nome, campi.tipo, p.codiceFiscale, id);
+  if(typeof eAffitto === 'function' && eAffitto(campi.tipo)){ const errA = erroreAffitto(campi); if(errA){ avviso('❌ ' + errA, true); return; } }
+  const doppione = (eAltrePratiche(campi.tipo) || (typeof eAffitto === 'function' && eAffitto(campi.tipo))) ? null : await cercaDoppione(annoP, campi.nome, campi.tipo, p.codiceFiscale, id);
   if(doppione){
     avviso('❌ ' + campi.nome + ' ha gia\' una pratica ' + campi.tipo + ' nel ' + annoP + ' (protocollo ' + doppione + '): modifica non salvata.', true);
     return;
@@ -3880,6 +3890,7 @@ async function salvaModifica(id){
   if(cc || cn) salvaRuoloCliente((cc + ' ' + cn).trim(), campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', 'coniuge', true, campi.nome, campi.cf);
   if((cc || cn) && (campi.congCodiceFiscale || campi.congTelefono || campi.congEmail)) registraClienteSeNuovo(cc, cn, campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', campi.congTelefono, '', '', campi.congEmail);
   if(campi.lavCognome || campi.lavNome){ if(typeof registraLavoratoreArchivio === 'function') registraLavoratoreArchivio(campi); }
+  if(campi.inquilini && campi.inquilini.length && typeof registraInquiliniArchivio === 'function') registraInquiliniArchivio(campi.inquilini);
   // pagato tutto ma lo stato e' ancora "lavorata", "da pagare"...: si propone di passare a "Pagato"
   if(propostaStatoPagato(campi.tipo, p.stato, campi.compenso, campi.pagato) && confirm('Il cliente ha pagato tutto (' + fmtEuro(campi.pagato) + ').\n\nPasso lo stato della pratica da "' + statoLabel(p.stato) + '" a "Pagato"?')){
     const r2 = await data.pratiche.aggiorna(id, { stato: 'pagato' });
@@ -4117,6 +4128,7 @@ function aggiornaCongiuntaForm(){
   if(!chk) return;
   const ok = tipoAmmetteCongiunta((document.getElementById('f-tipo')||{}).value);
   if(typeof mostraLavoratoreModulo === 'function') mostraLavoratoreModulo((document.getElementById('f-tipo')||{}).value);
+  if(typeof mostraAffittoModulo === 'function') mostraAffittoModulo((document.getElementById('f-tipo')||{}).value);
   const riga = chk.closest('.full');
   if(riga) riga.style.display = ok ? '' : 'none';
   if(!ok && chk.checked){ chk.checked = false; toggleCongBox(); }

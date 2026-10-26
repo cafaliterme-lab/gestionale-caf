@@ -129,6 +129,9 @@ async function aggiungiScadenzaForm() {
   avviso('✓ Scadenza aggiunta');
 }
 async function segnaScadenza(id, fatta) {
+  // annualità di un contratto di affitto: «pagata» porta la scadenza all'anno dopo invece di chiuderla
+  const sa = (state.scadenze || []).find(function (x) { return x.id === id; });
+  if (fatta && sa && sa.praticaId && typeof eAnnualitaAffitto === 'function' && eAnnualitaAffitto(sa)) { if (await annualitaAffittoPagata(sa)) { renderScadenze(); return; } }
   const r = await data.scadenze.aggiorna(id, { completata: fatta });
   if (r.error) { avviso('❌ ' + r.error, true); renderScadenze(); return; }
   const sc = (state.scadenze || []).find(function (x) { return x.id === id; });
@@ -199,7 +202,7 @@ function praticaInRinnovo(nome) {
   if (!p || !p.id || !RINNOVO_SCADENZA) return null;
   return String(p.nome || '').trim().toUpperCase() === String(nome || '').trim().toUpperCase() ? p : null;
 }
-function eScadenzaColf(s) { return !!s.praticaId || /colf|badant/i.test(s.titolo || ''); }
+function eScadenzaColf(s) { return !(typeof eScadenzaAffitto === 'function' && eScadenzaAffitto(s)) && (!!s.praticaId || /colf|badant/i.test(s.titolo || '')); }
 function rinnovaScadenza(id) {
   const s = (state.scadenze || []).find(function (x) { return x.id === id; });
   if (!s) return;
@@ -253,7 +256,7 @@ async function concludiRinnovoScadenza(vecchia, origine) {
 }
 
 // Per colf e badanti la spunta dice "Non rinnova"; se rinnovata con il pulsante resta scritto "rinnovata"
-function etichettaFatta(s) { return eScadenzaColf(s) ? 'Non rinnova' : 'Fatta'; }
+function etichettaFatta(s) { return typeof eAnnualitaAffitto === 'function' && eAnnualitaAffitto(s) ? 'Annualità pagata' : eScadenzaColf(s) ? 'Non rinnova' : 'Fatta'; }
 function esitoScadenza(s) {
   if (!eScadenzaColf(s)) return 'fatta';
   return /RINNOVATA/.test(s.note || '') ? '🔁 rinnovata' : 'non rinnova';

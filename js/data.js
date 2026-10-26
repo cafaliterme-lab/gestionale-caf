@@ -137,6 +137,12 @@ const schemas = {
     lavPermessoNumero: 'lav_permesso_numero',
     lavPermessoScadenza: 'lav_permesso_scadenza',
     continuazione: 'continuazione',
+    inquilini: 'inquilini',
+    affittoRegime: 'affitto_regime',
+    affittoInizio: 'affitto_inizio',
+    affittoDurata: 'affitto_durata',
+    affittoFine: 'affitto_fine',
+    affittoProssima: 'affitto_prossima',
     protocolloOrigine: 'protocollo_origine',
     comuneNascita: 'comune_nascita',
     congComuneNascita: 'cong_comune_nascita',
@@ -242,6 +248,7 @@ const schemas = {
     riferimento: 'riferimento',
     note: 'note',
     lavoratoreColf: 'lavoratore_colf',
+    inquilino: 'inquilino',
     permessoNumero: 'permesso_numero',
     permessoScadenza: 'permesso_scadenza',
     creatoIl: 'creato_il',
@@ -690,7 +697,7 @@ async function aggiornaCliente(id, campi) {
 // Lavoratore di un contratto colf e badanti: segno in archivio, con il permesso di soggiorno (cercato per codice fiscale, altrimenti per nome e data di nascita)
 async function segnaLavoratoreColf(c) {
   try {
-    const campi = { lavoratore_colf: true };
+    const campi = c.inquilino ? { inquilino: true } : { lavoratore_colf: true };
     if (c.permessoNumero) campi.permesso_numero = c.permessoNumero;
     if (c.permessoScadenza) campi.permesso_scadenza = c.permessoScadenza;
     let q = supabase.from('clienti').update(campi);

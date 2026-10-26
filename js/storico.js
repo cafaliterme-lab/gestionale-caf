@@ -23,6 +23,8 @@ function personeStorico(q) {
     // lavoratore dei contratti colf e badanti: cercando la colf si trova la pratica del datore di lavoro
     const lav = ((p.lavCognome || '') + ' ' + (p.lavNome || '')).trim();
     if (lav) aggiungi(lav, p.lavData, p.lavCodiceFiscale, p.lavTelefono);
+    // inquilini dei contratti di affitto: cercando l'inquilino si trova la pratica del proprietario
+    (Array.isArray(p.inquilini) ? p.inquilini : []).forEach(function (q) { aggiungi(((q.cognome || '') + ' ' + (q.nome || '')).trim(), q.dataNascita, q.codiceFiscale, q.telefono); });
   });
   return Object.keys(persone).map(function (k) { return persone[k]; }).sort(function (a, b) { return a.nome.localeCompare(b.nome); }).slice(0, 40);
 }
@@ -36,7 +38,8 @@ function praticheStorico(x) {
   return (state.pratiche || []).concat(state.annullate || []).filter(function (p) {
     const coniuge = ((p.congCognome || '') + ' ' + (p.congNome || '')).trim() || p.congiunta;
     const lav = ((p.lavCognome || '') + ' ' + (p.lavNome || '')).trim();
-    return stessa(p.nome, p.cf, p.codiceFiscale) || (coniuge && stessa(coniuge, p.congData, p.congCodiceFiscale)) || (lav && stessa(lav, p.lavData, p.lavCodiceFiscale));
+    return stessa(p.nome, p.cf, p.codiceFiscale) || (coniuge && stessa(coniuge, p.congData, p.congCodiceFiscale)) || (lav && stessa(lav, p.lavData, p.lavCodiceFiscale))
+      || (Array.isArray(p.inquilini) && p.inquilini.some(function (q) { const n = ((q.cognome || '') + ' ' + (q.nome || '')).trim(); return n && stessa(n, q.dataNascita, q.codiceFiscale); }));
   }).sort(function (a, b) { return (annoPratica(b) - annoPratica(a)) || (b.numero - a.numero); });
 }
 
@@ -95,7 +98,7 @@ function schedaStoricoHTML(x) {
     const apribile = !p.annullata && a === annoProt;
     righe += '<tr' + (p.annullata ? ' style="color:var(--sub)"' : '') + '>'
       + '<td class="n"' + (p.annullata ? ' style="text-decoration:line-through"' : '') + '>' + formattaProtocollo(p) + '</td><td>' + esc(p.data || '-') + '</td>'
-      + '<td class="wrap">' + esc(p.tipo || '-') + (p.viaEmail ? ' <span style="background:#1d4f91; color:#fff; border-radius:999px; padding:0 6px; font-size:11px">📧 e-mail</span>' : '') + (coniuge && ((p.lavCognome || '') + ' ' + (p.lavNome || '')).trim().toUpperCase() === x.nome ? '<div class="sub2">👷 come lavoratore di ' + esc(p.nome || '') + '</div>' : coniuge ? '<div class="sub2">come coniuge di ' + esc(p.nome || '') + '</div>' : (p.congiunta ? '<div class="sub2">congiunta con ' + esc(p.congiunta) + '</div>' : '')) + '</td>'
+      + '<td class="wrap">' + esc(p.tipo || '-') + (p.viaEmail ? ' <span style="background:#1d4f91; color:#fff; border-radius:999px; padding:0 6px; font-size:11px">📧 e-mail</span>' : '') + (coniuge && typeof nomiInquilini === 'function' && nomiInquilini(p).map(function (n) { return n.toUpperCase(); }).indexOf(x.nome) >= 0 ? '<div class="sub2">🏠 come inquilino di ' + esc(p.nome || '') + '</div>' : coniuge && ((p.lavCognome || '') + ' ' + (p.lavNome || '')).trim().toUpperCase() === x.nome ? '<div class="sub2">👷 come lavoratore di ' + esc(p.nome || '') + '</div>' : coniuge ? '<div class="sub2">come coniuge di ' + esc(p.nome || '') + '</div>' : (p.congiunta ? '<div class="sub2">congiunta con ' + esc(p.congiunta) + '</div>' : '')) + '</td>'
       + '<td>' + (p.annullata ? '<b style="color:#c0392b">🚫 ANNULLATA</b>' : esc(statoLabel(p.stato))) + (p.consegnataIl ? '<div class="sub2">📦 ' + (e730(p) ? 'consegnata' : 'definita') + ' il ' + esc(p.consegnataIl) + '</div>' : '') + '</td>'
       + '<td>' + (p.numFattura ? 'n. ' + esc(p.numFattura) + (p.dataFattura ? '<div class="sub2">' + esc(p.dataFattura) + '</div>' : '') : '-') + '</td>'
       + '<td style="text-align:right">' + euro(p.compenso) + '</td><td style="text-align:right">' + euro(p.richiesto) + '</td><td style="text-align:right">' + euro(p.pagato) + (p.metodoPagamento && Number(p.pagato) ? '<div class="sub2">' + esc(p.metodoPagamento) + '</div>' : '') + '</td>'
