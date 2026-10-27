@@ -4349,7 +4349,7 @@ function aggiungiOcchioPassword(input){
   const larghezza = input.style.width && input.style.width !== '100%' ? input.style.width : '';
   wrap.style.cssText = 'position:relative; display:' + (larghezza ? 'inline-block; width:'+larghezza : 'block') + '; margin-bottom:' + (input.style.marginBottom || '0');
   input.style.marginBottom = '0';
-  input.style.paddingRight = '38px';
+  input.style.paddingRight = '46px';
   if(larghezza) input.style.width = '100%';
   input.parentNode.insertBefore(wrap, input);
   wrap.appendChild(input);
@@ -4358,14 +4358,14 @@ function aggiungiOcchioPassword(input){
   btn.textContent = '👁';
   btn.title = 'Mostra password';
   btn.setAttribute('aria-label', 'Mostra password');
-  btn.style.cssText = 'position:absolute; right:4px; top:50%; transform:translateY(-50%); background:none; border:none; padding:4px 6px; font-size:16px; line-height:1; cursor:pointer; opacity:.55';
+  btn.style.cssText = 'position:absolute; right:4px; top:50%; transform:translateY(-50%); background:#e8eef7; border:1px solid #c5d3e8; border-radius:8px; padding:3px 7px; font-size:18px; line-height:1; cursor:pointer';
   btn.addEventListener('click', function(){
     const nascosta = input.type === 'password';
     input.type = nascosta ? 'text' : 'password';
     btn.textContent = nascosta ? '🙈' : '👁';
     btn.title = nascosta ? 'Nascondi password' : 'Mostra password';
     btn.setAttribute('aria-label', btn.title);
-    btn.style.opacity = nascosta ? '.9' : '.55';
+    btn.style.background = nascosta ? '#fde8d7' : '#e8eef7';
     input.focus();
   });
   wrap.appendChild(btn);
