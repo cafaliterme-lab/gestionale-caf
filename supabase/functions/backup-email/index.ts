@@ -14,15 +14,22 @@ const PASSWORD = Deno.env.get("SMTP_PASS") || ""
 const GIORNI_TRA_INVII = 6
 
 const H = { apikey: CHIAVE, Authorization: "Bearer " + CHIAVE, "Content-Type": "application/json" }
+// il tasto del programma chiama la funzione dal browser: servono le intestazioni CORS (come invia-email)
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info",
+}
 function risposta(corpo: unknown, status = 200) {
-  return new Response(JSON.stringify(corpo), { status, headers: { "Content-Type": "application/json" } })
+  return new Response(JSON.stringify(corpo), { status, headers: { ...CORS, "Content-Type": "application/json" } })
 }
 async function gzip(testo: string): Promise<Uint8Array> {
   const flusso = new Blob([testo]).stream().pipeThrough(new CompressionStream("gzip"))
   return new Uint8Array(await new Response(flusso).arrayBuffer())
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS })
   try {
     if (!PASSWORD) return risposta({ error: "Manca SMTP_PASS" }, 503)
     // già mandato da poco: niente
