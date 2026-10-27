@@ -14,6 +14,7 @@ function motivoDaTesto(t) {
   if (/appuntamento/.test(t) && /ricordiamo/.test(t)) return 'Promemoria appuntamento';
   if (/iniziata la campagna/.test(t)) return 'Avvio campagna 730';
   if (/ancora possibile presentare/.test(t)) return 'Richiamo 730';
+  if (/non (è|sono) ancora stat[ae] ritirat/.test(t)) return 'Sollecito ritiro';
   if (/documento d'identit|documento d’identit/.test(t)) return 'Richiesta documento d\'identità';
   if (/ci mancano ancora|documenti mancanti/.test(t)) return 'Documenti mancanti';
   if (/ricevuta/.test(t)) return 'Invio ricevuta';
