@@ -49,6 +49,8 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 24/10/2026. L'uso vero 
   - `auguri.js`: auguri di Natale e Pasqua;
   - contratti colf in continuazione (trasferiti o rinnovati): `continuazione = true`, serie interna `CT` decisa dal trigger, si mostrano con `protocollo_origine`; `pesoPratica` = 0, quindi non contano tra le pratiche ma gli incassi restano in contabilità;
   - `ricerca-elenchi.js`: casella «Cerca» comune agli elenchi delle finestre (righe con classe `el-riga`);
+  - `confronto-anni.js`: confronto pratiche/incasso/clienti con l'anno prima (tasto in Contabilità);
+  - `api/battito.js` + `vercel.json` crons: battito quotidiano su Supabase perché il piano gratuito non vada in pausa;
   - `scadenza-730.js`: avviso di settembre con i 730 da definire entro il 30/09;
   - `affitti.js`: contratti di affitto (inquilini in `pratiche.inquilini` jsonb, `affitto_regime/inizio/durata/fine/prossima`; scadenze create dal trigger `sincronizza_scadenza_assistenza`, una per pratica; `clienti.inquilino`);
   - `lavoratore-colf.js`: lavoratore dei contratti colf e badanti (campi `lav_*` in pratiche; `lavoratore_colf` e permesso di soggiorno in clienti);
