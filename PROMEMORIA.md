@@ -78,4 +78,5 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 24/10/2026. L'uso vero 
 - Unire con «🔗 Unisci con un'altra scheda» i 3 clienti doppi per uno spazio in più nel nome.
 - Completare cellulari, e-mail e codici fiscali man mano che i clienti vengono; segnare i deceduti.
 - Prima della campagna 2027: cancellare le pratiche di prova del 2026 (lo fa Angelo).
+- **DA RICORDARE AD ANGELO A OGNI OCCASIONE (entro fine ottobre 2026)**: casella e-mail di riserva per l'invio (se quella Aruba del CAF ha problemi). Aspetta da lui: quale indirizzo (consigliata una seconda casella Aruba, oppure Alice/Libero; Gmail e Yahoo vogliono la «password per le app», Outlook non va) e se automatico (consigliato: se Aruba rifiuta, riprova con la riserva) o a mano (interruttore in Utenti e permessi). La password la mette lui nei segreti di Supabase (es. SMTP2_USER, SMTP2_HOST, SMTP2_PASS), mai in chat. Riguarda invia-email, recupera-password e backup-email.
 - Idee non ancora fatte: nessuna richiesta aperta.

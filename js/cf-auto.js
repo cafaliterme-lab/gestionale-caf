@@ -245,7 +245,8 @@ document.addEventListener('DOMContentLoaded', function () {
   ['doc-cognome', 'doc-nome', 'doc-nascita', 'doc-luogo'].forEach(function (id) { const e = document.getElementById(id); if (e) e.addEventListener('input', ricalcola); });
   const se = document.getElementById('doc-sesso'); if (se) se.addEventListener('change', function () { se.dataset.manuale = '1'; ricalcola(); });
   const lu = document.getElementById('doc-luogo'); if (lu) { lu.setAttribute('list', 'lista-comuni'); lu.addEventListener('input', function () { suggerisciComuni(lu); }); }
-  document.getElementById('doc-cf').addEventListener('input', function () { this.dataset.auto = ''; });
+  // codice fiscale scritto a mano: data, sesso e comune dal codice (cognome e nome se la persona è già conosciuta)
+  document.getElementById('doc-cf').addEventListener('input', function () { this.dataset.auto = ''; compilaDaCF(CAMPI_CF_LETTURA); if (typeof verificaRevisioneDocumento === 'function') verificaRevisioneDocumento(); });
 });
 
 // ---- Tipo del documento d'identità ----

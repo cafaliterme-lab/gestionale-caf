@@ -1512,7 +1512,7 @@ function apriSchedaClienteArchivio(d) {
     + campo('ca-nome', 'Nome', d.nome, 'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"')
     + campo('ca-nascita', 'Data di nascita', d.dataNascita, 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + (typeof htmlSessoComune === 'function' ? htmlSessoComune('ca-', d.sesso || '', d.comuneNascita || '') : '')
-    + campo('ca-cf', 'Codice fiscale *', d.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value)"')
+    + campo('ca-cf', 'Codice fiscale *', d.codiceFiscale, 'maxlength="16" style="text-transform:uppercase; font-family:monospace" oninput="this.value=normalizzaCF(this.value); this.dataset.auto=\'\'; compilaDaCF({ cf: \'ca-cf\', cognome: \'ca-cognome\', nome: \'ca-nome\', data: \'ca-nascita\', sesso: \'ca-sesso\', comune: \'ca-comune\', tel: \'ca-tel\' })"')
     + campo('ca-scad', 'Scadenza documento', d.documentoScadenza || (esiste && esiste.documentoScadenza), 'placeholder="GG/MM/AAAA" inputmode="numeric" oninput="autoSlashData(this)"')
     + campo('ca-docnum', 'N. documento', d.documentoNumero || (esiste && esiste.documentoNumero), 'style="text-transform:uppercase; font-family:monospace"')
     + '<div><label style="font-size:12px">Tipo documento</label><select id="ca-doctipo">' + opzioniTipoDoc(d.documentoTipo || (esiste && esiste.documentoTipo) || '') + '</select></div>'
