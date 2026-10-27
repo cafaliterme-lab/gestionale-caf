@@ -62,6 +62,10 @@
     {
       "path": "/api/battito",
       "schedule": "17 6 * * *"
+    },
+    {
+      "path": "/api/backup-settimanale",
+      "schedule": "41 6 * * 1"
     }
   ]
 }

@@ -394,6 +394,19 @@ function mostraAttesaRipristino() {
   document.body.appendChild(ov);
   return { testo: function (t) { const el = ov.querySelector('.att'); if (el) el.textContent = t + ' Non chiudere la pagina.'; }, chiudi: function () { ov.remove(); } };
 }
+// 📧 Copia di sicurezza fuori dal programma: l'ultimo backup compresso va per e-mail alla casella del CAF
+// (parte da sola ogni lunedì dal cron di Vercel; qui si manda subito; al massimo una ogni 6 giorni)
+async function inviaBackupEmailOra(b) {
+  if (b) { b.disabled = true; b.textContent = '⏳ Invio…'; }
+  try {
+    if (typeof rinnovaToken === 'function') await rinnovaToken();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/backup-email', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (localStorage.getItem('auth_token') || '') } });
+    const j = await r.json().catch(function () { return {}; });
+    if (!r.ok || j.error) throw new Error(j.error || ('errore ' + r.status));
+    avviso(j.saltato ? '📧 La copia di questa settimana è già partita (' + new Date(j.saltato.replace(/^.* il /, '')).toLocaleDateString('it-IT') + ')' : '📧 Copia di sicurezza inviata alla casella del CAF');
+  } catch (e) { avviso('❌ Copia per e-mail non partita: ' + e.message, true); }
+  if (b) { b.disabled = false; b.textContent = '📧 Copia per e-mail alla casella del CAF'; }
+}
 async function creaBackupOra() {
   const { error } = await supabase.rpc('crea_backup', { p_tipo: 'manuale' });
   if (error) { avviso('❌ Backup non riuscito: ' + error.message, true); return; }

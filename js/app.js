@@ -1399,7 +1399,11 @@ async function importaBackup(){
   const btn = document.getElementById('btn-importa');
   btn.disabled = true; btn.textContent = 'Importazione in corso...';
   try{
-    const testo = await inp.files[0].text();
+    // copia settimanale arrivata per e-mail: file compresso .json.gz
+    const f = inp.files[0];
+    const testo = /\.gz$/i.test(f.name) && typeof DecompressionStream !== 'undefined'
+      ? await new Response(f.stream().pipeThrough(new DecompressionStream('gzip'))).text()
+      : await f.text();
     const dati = JSON.parse(testo);
     if(!dati || !Array.isArray(dati.pratiche)) throw new Error('Il file non sembra un backup valido.');
     // Usa la nuova API data.js
