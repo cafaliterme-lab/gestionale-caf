@@ -57,5 +57,11 @@
       "main": false,
       "claude/upbeat-bardeen-6mt5ij": false
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/battito",
+      "schedule": "17 6 * * *"
+    }
+  ]
 }
