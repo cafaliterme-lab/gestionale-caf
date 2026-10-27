@@ -16,16 +16,34 @@ function eCartaceaDaSostituire(c) {
 function clientiDocumentoDaRinnovare() {
   // tutti i clienti dell'archivio (non deceduti) con la scadenza scritta: chi ha la scadenza in scheda è un cliente seguito
   return (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).map(function (c) {
-    if (c.decedutoIl) return null;
-    const st = c.documentoScadenza ? statoScadenzaDocumento(c.documentoScadenza) : null;
-    // permesso di soggiorno (lavoratori colf e badanti): scaduto o in scadenza entro 60 giorni (il rinnovo si chiede prima)
-    const sp = c.permessoScadenza ? statoScadenzaDocumento(c.permessoScadenza) : null;
-    if (sp && sp.giorni <= GIORNI_PREAVVISO_PERMESSO && !(st && st.giorni < sp.giorni && st.giorni <= GIORNI_PREAVVISO_DOCUMENTO)) return { c: c, giorni: sp.giorni, permesso: true };
-    if (st && st.giorni < 0) return { c: c, giorni: st.giorni };
-    if (eCartaceaDaSostituire(c)) return { c: c, giorni: Math.floor((DATA_FINE_CARTACEE - new Date()) / 86400000), cartacea: true };
-    if (st && st.giorni <= GIORNI_PREAVVISO_DOCUMENTO) return { c: c, giorni: st.giorni };
-    return null;
+    return c.decedutoIl ? null : documentoDaRinnovare(c);
   }).filter(Boolean).sort(function (a, b) { return a.giorni - b.giorni; });
+}
+// Il documento (o il permesso) di un cliente da rinnovare: null se è a posto
+function documentoDaRinnovare(c) {
+  const st = c.documentoScadenza ? statoScadenzaDocumento(c.documentoScadenza) : null;
+  // permesso di soggiorno (lavoratori colf e badanti): scaduto o in scadenza entro 60 giorni (il rinnovo si chiede prima)
+  const sp = c.permessoScadenza ? statoScadenzaDocumento(c.permessoScadenza) : null;
+  if (sp && sp.giorni <= GIORNI_PREAVVISO_PERMESSO && !(st && st.giorni < sp.giorni && st.giorni <= GIORNI_PREAVVISO_DOCUMENTO)) return { c: c, giorni: sp.giorni, permesso: true };
+  if (st && st.giorni < 0) return { c: c, giorni: st.giorni };
+  if (eCartaceaDaSostituire(c)) return { c: c, giorni: Math.floor((DATA_FINE_CARTACEE - new Date()) / 86400000), cartacea: true };
+  if (st && st.giorni <= GIORNI_PREAVVISO_DOCUMENTO) return { c: c, giorni: st.giorni };
+  return null;
+}
+// Richiesta di documento già risolta: il cliente ha portato il documento nuovo (scadenza aggiornata in archivio o nella pratica)
+function richiestaDocumentoRisolta(x) {
+  if (!x || !/documento/i.test(x.motivo || '')) return false;
+  const cf = String(x.codice_fiscale || '').toUpperCase(), nome = String(x.nome || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  const arc = (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) {
+    if (cf && c.codiceFiscale) return String(c.codiceFiscale).toUpperCase() === cf;
+    return nome && String(c.nomeCompleto || '').trim().toUpperCase().replace(/\s+/g, ' ') === nome && (!x.data_nascita || !c.dataNascita || c.dataNascita === x.data_nascita);
+  });
+  if (arc.length === 1) return !!(arc[0].documentoScadenza || arc[0].permessoScadenza) && !documentoDaRinnovare(arc[0]);
+  if (arc.length) return false;
+  // non in archivio: la pratica del messaggio
+  const p = x.pratica_id && (state.pratiche || []).find(function (q) { return String(q.id) === String(x.pratica_id); });
+  const st = p && p.documentoScadenza ? statoScadenzaDocumento(p.documentoScadenza) : null;
+  return !!(st && st.giorni > GIORNI_PREAVVISO_DOCUMENTO);
 }
 // Già avvisato per il documento (registro delle comunicazioni, ultimi 60 giorni)
 function avvisoDocumentoInviato(c) {

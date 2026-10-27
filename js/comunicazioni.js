@@ -104,11 +104,15 @@ function quandoComunicazione(c) {
   return isNaN(d) ? '' : d.toLocaleDateString('it-IT') + ' ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
 function iconaCanale(c) { return c.canale === 'email' ? '📧' : c.canale === 'sms' ? '📱' : '💬'; }
+// Richiesta di documento a cui il cliente ha già risposto (documento nuovo inserito): «✅ documento arrivato»
+function etichettaDocumentoArrivato(c) {
+  return typeof richiestaDocumentoRisolta === 'function' && richiestaDocumentoRisolta(c) ? ' <span style="color:#1a7f37; font-weight:800">✅ documento arrivato</span>' : '';
+}
 // Riga breve con l'ultimo contatto (archivio clienti)
 function ultimoContattoHTML(nome, cf, nascita) {
   const l = comunicazioniPersona(nome, cf, nascita); if (!l.length) return '';
   const c = l[0];
-  return '<div style="font-size:11.5px; color:#1d4f91; font-weight:700">📨 Ultimo contatto: ' + iconaCanale(c) + ' ' + esc(quandoComunicazione(c).split(' ')[0]) + ' · ' + esc(c.motivo || '') + (l.length > 1 ? ' <span style="color:var(--sub); font-weight:600">(' + l.length + ' in tutto)</span>' : '') + '</div>';
+  return '<div style="font-size:11.5px; color:#1d4f91; font-weight:700">📨 Ultimo contatto: ' + iconaCanale(c) + ' ' + esc(quandoComunicazione(c).split(' ')[0]) + ' · ' + esc(c.motivo || '') + etichettaDocumentoArrivato(c) + (l.length > 1 ? ' <span style="color:var(--sub); font-weight:600">(' + l.length + ' in tutto)</span>' : '') + '</div>';
 }
 // Elenco completo (scheda della persona, modifica cliente)
 function elencoComunicazioniHTML(nome, cf, max, nascita) {
@@ -119,7 +123,7 @@ function elencoComunicazioniHTML(nome, cf, max, nascita) {
     + mostra.map(function (c) {
       const elimina = c.id && auth && auth.profilo && auth.profilo.ruolo === 'admin' ? '<button type="button" title="Togli questa comunicazione (se è uno sbaglio)" onclick="eliminaComunicazione(\'' + esc(String(c.id)) + '\', this)" style="flex:none; background:none; border:none; cursor:pointer; font-size:14px; padding:0 2px">🗑️</button>' : '';
       return '<div data-com-id="' + esc(String(c.id || '')) + '" style="display:flex; gap:8px; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:13px" title="' + esc(c.testo || '') + '"><span style="flex:none">' + iconaCanale(c) + '</span>'
-        + '<span style="flex:1"><b>' + esc(c.motivo || 'Messaggio') + '</b> <span class="sub2">' + esc(quandoComunicazione(c)) + (c.operatore ? ' · da ' + esc(c.operatore) : '') + (c.canale === 'email' && c.email ? ' · ' + esc(c.email) : (c.telefono ? ' · ' + esc(c.telefono) : '')) + '</span></span>' + elimina + '</div>';
+        + '<span style="flex:1"><b>' + esc(c.motivo || 'Messaggio') + '</b>' + etichettaDocumentoArrivato(c) + ' <span class="sub2">' + esc(quandoComunicazione(c)) + (c.operatore ? ' · da ' + esc(c.operatore) : '') + (c.canale === 'email' && c.email ? ' · ' + esc(c.email) : (c.telefono ? ' · ' + esc(c.telefono) : '')) + '</span></span>' + elimina + '</div>';
     }).join('') + (l.length > mostra.length ? '<div class="sub2" style="margin-top:4px">… e altre ' + (l.length - mostra.length) + '</div>' : '') + '</details>';
 }
 
