@@ -1,15 +1,15 @@
 /* ---------------- 🔔 Sollecito di ritiro ----------------
-   Dal 1° novembre dell'anno della campagna, le pratiche già pronte (lavorate) e non ancora consegnate:
+   Dal 7 ottobre dell'anno della campagna, le pratiche già pronte (lavorate) e non ancora consegnate:
    un WhatsApp per ricordare al cliente di passare a ritirarle. Uno per volta, come il WhatsApp multiplo;
    le pratiche con lo stesso cellulare partono in un solo messaggio. Ogni invio resta nelle comunicazioni
    («Sollecito ritiro»), così si vede chi è già stato sollecitato e quando. */
 
-const SOLLECITO_DAL_MESE = 11; // novembre
+const SOLLECITO_DAL_MESE = 10, SOLLECITO_DAL_GIORNO = 7; // 7 ottobre
 const SOLLECITO = { lista: [], scelti: {}, coda: [], pos: 0, inviati: {}, fase: 'scelta' };
 
 function sollecitoRitiroAttivo(anno) {
   anno = anno || annoAttivo();
-  return new Date() >= new Date(anno, SOLLECITO_DAL_MESE - 1, 1);
+  return new Date() >= new Date(anno, SOLLECITO_DAL_MESE - 1, SOLLECITO_DAL_GIORNO);
 }
 // pronte e non ritirate: come il riquadro «Pronte da consegnare» (senza colf e badanti)
 function praticheDaSollecitare(anno) {
@@ -130,7 +130,7 @@ function inviaProssimoSollecito() {
   st.pos++;
   disegnaSollecitoRitiro();
 }
-// Riquadro nella pagina Oggi (solo dal 1° novembre): quante pratiche pronte non sono ancora state ritirate
+// Riquadro nella pagina Oggi (solo dal 7 ottobre): quante pratiche pronte non sono ancora state ritirate
 function tileSollecitoRitiro(tile) {
   if (!sollecitoRitiroAttivo()) return '';
   const l = praticheDaSollecitare();

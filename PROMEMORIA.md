@@ -53,7 +53,7 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 24/10/2026. L'uso vero 
   - `confronto-anni.js`: confronto pratiche/incasso/clienti con l'anno prima (tasto in Contabilità);
   - `api/battito.js` + `vercel.json` crons: battito quotidiano su Supabase perché il piano gratuito non vada in pausa;
   - `scadenza-730.js`: avviso di settembre con i 730 da definire entro il 30/09;
-- `js/sollecito-ritiro.js`: 🔔 sollecito di ritiro dal 1° novembre (riquadro in Oggi, WhatsApp uno per volta, stesso cellulare = un messaggio, motivo «Sollecito ritiro» nelle comunicazioni).
+- `js/sollecito-ritiro.js`: 🔔 sollecito di ritiro dal 7 ottobre (riquadro in Oggi, WhatsApp uno per volta, stesso cellulare = un messaggio, motivo «Sollecito ritiro» nelle comunicazioni).
   - `affitti.js`: contratti di affitto (inquilini in `pratiche.inquilini` jsonb, `affitto_regime/inizio/durata/fine/prossima`; scadenze create dal trigger `sincronizza_scadenza_assistenza`, una per pratica; `clienti.inquilino`);
   - `lavoratore-colf.js`: lavoratore dei contratti colf e badanti (campi `lav_*` in pratiche; `lavoratore_colf` e permesso di soggiorno in clienti);
   - `comunicazioni.js`: storico dei messaggi, «Non ha WhatsApp», cancellazione degli sbagli;
