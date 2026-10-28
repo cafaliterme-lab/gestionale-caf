@@ -43,11 +43,11 @@ function messaggioSollecitoRitiro(pratiche) {
     + '\n\nVi preghiamo di passare a ritirarle il prima possibile presso il CAF CISL di Alì Terme' + codaSollecito();
 }
 
-function apriSollecitoRitiro() {
-  const anno = annoAttivo();
+function apriSollecitoRitiro(annoScelto) {
+  const anno = annoScelto || annoAttivo();
   const lista = praticheDaSollecitare(anno);
   if (!lista.length) { avviso('Nessuna pratica pronta da ritirare nel ' + anno); return; }
-  SOLLECITO.lista = lista; SOLLECITO.scelti = {}; SOLLECITO.coda = []; SOLLECITO.pos = 0; SOLLECITO.inviati = {}; SOLLECITO.fase = 'scelta';
+  SOLLECITO.anno = anno; SOLLECITO.lista = lista; SOLLECITO.scelti = {}; SOLLECITO.coda = []; SOLLECITO.pos = 0; SOLLECITO.inviati = {}; SOLLECITO.fase = 'scelta';
   // già selezionate: con il cellulare e non sollecitate negli ultimi 15 giorni
   lista.forEach(function (p) { const u = ultimoSollecitoRitiro(p); if (numeroWhatsApp(p.telefono) && !(u && Date.now() - Date.parse(u.quando) < 15 * 86400000)) SOLLECITO.scelti[p.id] = true; });
   let ov = document.getElementById('popup-sollecito'); if (ov) ov.remove();
@@ -66,7 +66,7 @@ function disegnaSollecitoRitiro() {
     const scelte = st.lista.filter(function (p) { return st.scelti[p.id] && numeroWhatsApp(p.telefono); });
     const nMsg = Object.keys(scelte.reduce(function (o, p) { o[numeroWhatsApp(p.telefono)] = 1; return o; }, {})).length;
     corpo = '<div style="font-size:18px; font-weight:800; margin-bottom:2px; color:#b35f0c">🔔 Sollecito di ritiro</div>'
-      + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">Pratiche del ' + annoAttivo() + ' già pronte e non ancora ritirate. Sono già selezionate quelle con il cellulare non sollecitate negli ultimi 15 giorni. Le pratiche con lo stesso cellulare partono in un solo messaggio.</div>'
+      + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:10px">Pratiche del ' + (st.anno || annoAttivo()) + ' già pronte e non ancora ritirate. Sono già selezionate quelle con il cellulare non sollecitate negli ultimi 15 giorni. Le pratiche con lo stesso cellulare partono in un solo messaggio.</div>'
       + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">'
       + '<button type="button" style="background:var(--line); color:var(--ink); padding:6px 10px; font-size:12.5px" onclick="selezionaSollecito(true)">Seleziona tutti</button>'
       + '<button type="button" style="background:var(--line); color:var(--ink); padding:6px 10px; font-size:12.5px" onclick="selezionaSollecito(false)">Nessuno</button></div>'

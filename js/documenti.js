@@ -39,6 +39,40 @@ document.addEventListener('change', function (e) {
   if (el.id === 'f-doc-scad') coloraScadenzaDocumento();
   avviso('✏️ Scadenza del documento corretta: ' + vecchio + ' → ' + nuovo + ' (l\'anno ' + vecchio.slice(6) + ' era sbagliato). Controlla che sia giusta.');
 }, true);
+// Scadenza troppo lontana (es. 2099 al posto di 2029): nessun documento dura più di 10 anni.
+// Il programma la crederebbe valida per sempre e il cliente non comparirebbe mai tra i documenti scaduti.
+const ANNI_MAX_DOCUMENTO = 11;
+function annoScadenzaTroppoLontano(dataIT) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(dataIT || '').trim());
+  if (!m) return false;
+  const limite = new Date(); limite.setFullYear(limite.getFullYear() + ANNI_MAX_DOCUMENTO);
+  return new Date(+m[3], +m[2] - 1, +m[1]) > limite;
+}
+// tutte le caselle di scadenza di documento e permesso (pratica, coniuge, lavoratore, inquilini, archivio, lettura)
+function eCampoScadenzaDocumento(el) {
+  return !!(el && el.tagName === 'INPUT' && /(^|-)(doc-?scad|perm-?scad|lavdocscad|lavpermscad|docscad|permscad|congdocscad)$|^(nc|mc|ca)-scad$/.test(el.id || ''));
+}
+function segnaScadenzaLontana(el) {
+  const lontana = annoScadenzaTroppoLontano(el.value);
+  el.style.outline = lontana ? '3px solid #e67e22' : '';
+  el.title = lontana ? '⚠️ Anno da controllare: nessun documento dura più di 10 anni' : '';
+  return lontana;
+}
+document.addEventListener('input', function (e) { if (eCampoScadenzaDocumento(e.target) && e.target.style.outline) segnaScadenzaLontana(e.target); }, true);
+document.addEventListener('change', function (e) {
+  const el = e.target;
+  if (!eCampoScadenzaDocumento(el) || !segnaScadenzaLontana(el)) return;
+  avviso('⚠️ Scadenza ' + el.value.trim() + ': l\'anno sembra sbagliato (nessun documento dura più di 10 anni). Controllala: se è giusta puoi salvare lo stesso.', true);
+});
+// Dati sospetti di un cliente dell'archivio (filtro «⚠️ Dati da controllare»)
+function datiSospettiCliente(c) {
+  const out = [];
+  if (annoScadenzaTroppoLontano(c.documentoScadenza) || annoScadenzaSbagliato(c.documentoScadenza)) out.push('scadenza documento ' + c.documentoScadenza);
+  if (annoScadenzaTroppoLontano(c.permessoScadenza) || annoScadenzaSbagliato(c.permessoScadenza)) out.push('scadenza permesso ' + c.permessoScadenza);
+  const cifre = String(c.telefono || '').replace(/\D/g, '').replace(/^(00)?39(?=\d{9,10}$)/, '');
+  if (c.telefono && cifre.length < 9) out.push('cellulare ' + c.telefono + ' (cifre mancanti)');
+  return out;
+}
 
 function coloraScadenzaDocumento() {
   const el = document.getElementById('f-doc-scad');

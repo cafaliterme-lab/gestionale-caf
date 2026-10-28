@@ -54,6 +54,8 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 24/10/2026. L'uso vero 
   - `api/battito.js` + `vercel.json` crons: battito quotidiano su Supabase perché il piano gratuito non vada in pausa;
   - `scadenza-730.js`: avviso di settembre con i 730 da definire entro il 30/09;
 - `js/sollecito-ritiro.js`: 🔔 sollecito di ritiro dal 7 ottobre (riquadro in Oggi, WhatsApp uno per volta, stesso cellulare = un messaggio, motivo «Sollecito ritiro» nelle comunicazioni).
+- `js/fine-anno.js`: 🧹 controllo di fine anno «Pronti per il nuovo anno?» (riquadro Oggi solo admin dal 15/12 al 31/01, tasto in Utenti e permessi). Solo lista di controllo con tasti verso le pagine: non cancella niente da sola.
+- `js/documenti.js`: avviso arancione per scadenze più lontane di 11 anni; `datiSospettiCliente` (scadenze sbagliate, cellulari <9 cifre) usato dal filtro archivio «⚠️ Dati da controllare» e dal riquadro in Oggi.
   - `affitti.js`: contratti di affitto (inquilini in `pratiche.inquilini` jsonb, `affitto_regime/inizio/durata/fine/prossima`; scadenze create dal trigger `sincronizza_scadenza_assistenza`, una per pratica; `clienti.inquilino`);
   - `lavoratore-colf.js`: lavoratore dei contratti colf e badanti (campi `lav_*` in pratiche; `lavoratore_colf` e permesso di soggiorno in clienti);
   - `comunicazioni.js`: storico dei messaggi, «Non ha WhatsApp», cancellazione degli sbagli;
@@ -74,6 +76,9 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 24/10/2026. L'uso vero 
    - push su `claude/great-albattani-2ox788` e su `main`.
 
 ## Cose rimaste da fare
+
+- **Metodo richiesto da Angelo**: per controlli, modifiche e consigli ragionare sempre «da utente esperto» e spiegargli prima cosa cambia, rischi e consiglio.
+- Riassunto mensile per e-mail (idea 3): da fare dopo che Angelo sistema Vercel. Idea da proporre: spostare battito e copia del lunedì da Vercel a pg_cron + pg_net di Supabase (i backup notturni e di fine anno girano già con pg_cron).
 
 - Correggere a mano in archivio 6 cellulari finti e 2 date di nascita con l'anno sbagliato. I nomi si trovano con una query sul database; non sono scritti qui per riservatezza.
 - Unire con «🔗 Unisci con un'altra scheda» i 3 clienti doppi per uno spazio in più nel nome.

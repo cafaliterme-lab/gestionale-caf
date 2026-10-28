@@ -95,6 +95,7 @@ function renderOggi() {
     + '</div>'
     + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">📋 DA FARE</div>'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px">'
+    + (typeof tileFineAnno === 'function' ? tileFineAnno(tile) : '')
     + (typeof tileAvviso730 === 'function' ? tileAvviso730(tile) : '')
     + tile('📥', sommaPeso(daLavorare), 'Da lavorare', '#c0392b', "oggiVaiRegistro('aperte')", 'in arrivo, scansionate, in lavorazione')
     + (typeof contrattiColfAttivi === 'function' && contrattiColfAttivi().length ? (function () { const n = bustePagaMancanti().length; const mesi = Array.from(new Set(bustePagaMancanti().map(function (x) { return x.mese; }))).sort(); return tile('💼', n, 'Buste paga colf e badanti da compilare', '#1f8a70', 'apriBustePaga()', n ? 'mese di ' + mesi.map(nomeMese).join(', ') : 'tutte compilate fino a ' + nomeMese(meseBusteDovuto())); })() : '')
@@ -108,6 +109,7 @@ function renderOggi() {
     + tile('📞', senzaTel, 'Clienti senza telefono', '#1d4f91', "apriArchivioClienti('', { conPratiche: true, senzaTel: true })", 'venuti quest\'anno o l\'anno scorso')
     + tile('🪪', docRinnovo.length, 'Documenti scaduti o in scadenza', '#c0392b', 'apriDocumentiInScadenza()', docRinnovo.length ? (docDaAvvisare ? docDaAvvisare + ' da avvisare' : 'tutti già avvisati') + ' · entro 30 giorni' : 'nessuno entro 30 giorni')
     + tile('📇', docScad, 'Senza scadenza del documento', '#b35f0c', "apriArchivioClienti('', { conPratiche: true, senzaScad: true })", 'clienti venuti o inseriti di recente: completa la scheda')
+    + (function () { const n = typeof datiSospettiCliente === 'function' ? (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).filter(function (c) { return !c.decedutoIl && datiSospettiCliente(c).length; }).length : 0; return n ? tile('⚠️', n, 'Dati da controllare in archivio', '#c0392b', "apriArchivioClienti('', { sospetti: true })", 'scadenze con l\'anno sbagliato, cellulari incompleti') : ''; })()
     + (promDaMandare ? tile('💬', promDaMandare, 'Promemoria appuntamenti da mandare', '#25a35a', 'apriPromemoriaAgenda()', 'a chi ha l\'appuntamento il prossimo giorno di apertura') : '')
     + (auguri ? tile(auguri.festa === 'pasqua' ? '🐣' : '🎄', auguri.n, auguri.festa === 'pasqua' ? 'Auguri di Pasqua da mandare' : 'Auguri di Natale e fine anno da mandare', '#c0392b', "apriAuguri('" + auguri.festa + "', " + auguri.anno + ")", 'clienti con cellulare o e-mail che non li hanno ancora ricevuti') : '')
     + (daAvvisareCampagna !== null ? tile('📢', daAvvisareCampagna, 'Campagna 730: clienti da avvisare', '#b35f0c', "apriRichiami('campagna')", '730 dell\'anno scorso non ancora venuti quest\'anno') : '')
