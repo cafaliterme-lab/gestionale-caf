@@ -461,7 +461,7 @@ function usaCliente(c, ctx){
   } else if(ctx==='cong'){
     document.getElementById('f-cong-cognome').value = c.cognome.toUpperCase();
     document.getElementById('f-cong-nome').value = c.nome.toUpperCase();
-    document.getElementById('f-cong-data').value = c.dataNascita;
+    document.getElementById('f-cong-data').value = c.dataNascita || '';
     document.getElementById('cli-cerca-cong').value = c.nomeCompleto;
     document.getElementById('f-cong-cf').value = c.codiceFiscale || '';
     document.getElementById('f-cong-cf').dataset.auto = '';
@@ -478,7 +478,7 @@ function usaCliente(c, ctx){
   } else {
     document.getElementById('f-cognome').value = c.cognome.toUpperCase();
     document.getElementById('f-nome').value = c.nome.toUpperCase();
-    document.getElementById('f-cf').value = c.dataNascita;
+    document.getElementById('f-cf').value = c.dataNascita || '';
     document.getElementById('cli-cerca').value = c.nomeCompleto;
     document.getElementById('f-codfisc').value = c.codiceFiscale || '';
     if(c.telefono) document.getElementById('f-tel').value = c.telefono;
@@ -492,6 +492,7 @@ function usaCliente(c, ctx){
     document.getElementById('f-codfisc').dataset.auto = '';
     controllaCampoCF();
     aggiornaStoricoForm();
+    if(typeof avvisoAnnoPrecedente === 'function') avvisoAnnoPrecedente(c);
   }
   box.classList.remove('open');
 }
@@ -646,6 +647,8 @@ function controllaCampoCF(){
   if(cf.length < 16){ el.style.color = 'var(--sub)'; el.textContent = cf.length + '/16 caratteri'; return; }
   if(!cfValido(cf)){ el.style.color = '#c0392b'; el.textContent = '❌ Codice fiscale non valido (controlla i caratteri)'; return; }
   riempiDaArchivioPerCF(cf);
+  // pratiche del cliente nell'anno prima (una volta per cliente)
+  if(typeof avvisoAnnoPrecedente === 'function' && document.getElementById('f-codfisc').dataset.auto !== '1') avvisoAnnoPrecedente({ codiceFiscale: cf, nomeCompleto: ((document.getElementById('f-cognome').value || '') + ' ' + (document.getElementById('f-nome').value || '')).trim() });
   const dati = datiDaCF(cf);
   // data di nascita vuota: si prende dal codice fiscale
   const dn = document.getElementById('f-cf'); if(dn && !dn.value.trim() && dati.dataNascita) dn.value = dati.dataNascita;
