@@ -77,6 +77,12 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 24/10/2026. L'uso vero 
    - commit;
    - push su `claude/great-albattani-2ox788` e su `main`.
 
+## Ripartenza (abbonamento sospeso dal 2/11/2026?)
+
+- Angelo potrebbe sospendere l'abbonamento a Claude dal 2/11/2026 e riattivarlo più avanti. Il programma funziona da solo (copie notturne e di fine anno con pg_cron, battito e copia del lunedì con i cron di Vercel, casella di riserva).
+- Al ritorno: rileggere questo file, fare un controllo generale da esperto (database, backup, battito, `backup_email_ultimo`, log, advisor), poi chiedere ad Angelo cosa serve. Ha una guida «Gestionale CAF: come ripartire con Claude» con il primo messaggio da incollare.
+- Rischio noto: archivio GitHub **pubblico** (nessun dato clienti, ma in `tests/db/test.sql` ci sono nomi di prova). Renderlo privato può fermare i deploy automatici di Vercel Hobby (archivio di un'organizzazione): da decidere con Angelo.
+
 ## Cose rimaste da fare
 
 - **Metodo richiesto da Angelo**: per controlli, modifiche e consigli ragionare sempre «da utente esperto» e spiegargli prima cosa cambia, rischi e consiglio.
