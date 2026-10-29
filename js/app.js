@@ -97,9 +97,17 @@ function toggleCong(cbId, inId){
   inp.disabled = !on;
   if(on){ inp.focus(); } else { inp.value = ''; }
 }
+// Congiunta: il coniuge senza cellulare prende quello del dichiarante (di solito la famiglia ne usa uno solo); si può cambiare
+function telefonoConiugeDaDichiarante(){
+  const t = document.getElementById('f-tel'), c = document.getElementById('f-cong-tel');
+  if(!t || !c || c.value.trim() || !t.value.trim()) return;
+  c.value = t.value.trim();
+  avviso('📱 Cellulare del coniuge: messo quello del dichiarante (' + c.value + '). Se ne ha uno suo, cambialo.');
+}
 function toggleCongBox(){
   const on = document.getElementById('f-congiunta-on').checked;
   document.getElementById('f-cong-box').style.display = on ? '' : 'none';
+  if(on) telefonoConiugeDaDichiarante();
   if(!on){ CONG_AUTO = null; if(typeof avvisoCongiuntaAutomatica === 'function') avvisoCongiuntaAutomatica(); ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel','f-cong-email','f-cong-comune','f-cong-sesso','f-cong-doc-scad','f-cong-doc-num','f-cong-doc-tipo'].forEach(function(id){ const el = document.getElementById(id); if(el){ el.value=''; el.dataset.auto=''; el.dataset.manuale=''; } }); document.getElementById('cli-cerca-cong').value='';
     if(typeof controllaCFConiuge === 'function') controllaCFConiuge(); if(typeof coloraScadenzaConiuge === 'function') coloraScadenzaConiuge(); }
   // importo convenzione: singola e congiunta possono avere importi predefiniti diversi
@@ -242,16 +250,30 @@ function nascitaDichiaranteCliente(c){
 function campiDichiaranteHTML(prefisso, nome, nascita){
   return '<div style="display:flex; gap:8px; flex-wrap:wrap">'
     + '<input id="'+prefisso+'dichiarante" list="lista-nomi-archivio" autocomplete="off" value="'+esc(nome || '')+'" placeholder="Cognome e nome, es. ROSSI MARIO" style="flex:2 1 220px; text-transform:uppercase" oninput="this.value=this.value.toUpperCase(); nascitaDichiaranteDaArchivio(\''+prefisso+'\')">'
-    + '<input id="'+prefisso+'dichiarante-nascita" value="'+esc(nascita || '')+'" placeholder="Nato/a il GG/MM/AAAA" inputmode="numeric" title="Data di nascita del dichiarante" style="flex:1 1 140px" oninput="autoSlashData(this)">'
+    + '<input id="'+prefisso+'dichiarante-nascita" value="'+esc(nascita || '')+'" placeholder="Nato/a il GG/MM/AAAA" inputmode="numeric" title="Data di nascita del dichiarante" style="flex:1 1 140px" oninput="autoSlashData(this); telefonoDaDichiarante(\''+prefisso+'\')">'
     + '</div>' + (typeof datalistNomiArchivio === 'function' ? datalistNomiArchivio() : '');
 }
 // scelto un nome dell'archivio, la data di nascita si compila da sola (se c'è un solo cliente con quel nome)
+// Coniuge dichiarante nella scheda del cliente (nuovo nc- / modifica mc-): senza cellulare prende quello del dichiarante
+function telefonoDaDichiarante(prefisso){
+  const ruolo = document.getElementById(prefisso + 'ruolo'), tel = document.getElementById(prefisso + 'tel');
+  const n = document.getElementById(prefisso + 'dichiarante'), d = document.getElementById(prefisso + 'dichiarante-nascita');
+  if(!tel || !n || tel.value.trim() || (ruolo && ruolo.value !== 'coniuge')) return;
+  const v = n.value.trim().toUpperCase().replace(/\s+/g, ' '), nascita = d ? d.value.trim() : '';
+  if(!v) return;
+  const l = ARCHIVIO_CLIENTI.filter(function(c){ return !c.decedutoIl && c.telefono && String(c.nomeCompleto || '').trim().toUpperCase().replace(/\s+/g, ' ') === v && (!nascita || !c.dataNascita || c.dataNascita === nascita); });
+  if(l.length !== 1) return; // omonimi: non si sa quale
+  tel.value = l[0].telefono;
+  tel.dispatchEvent(new Event('input', { bubbles: true }));
+  avviso('📱 Cellulare preso dal dichiarante ' + l[0].nomeCompleto + ' (' + l[0].telefono + '). Se il coniuge ne ha uno suo, cambialo.');
+}
 function nascitaDichiaranteDaArchivio(prefisso){
   const n = document.getElementById(prefisso + 'dichiarante'), d = document.getElementById(prefisso + 'dichiarante-nascita');
   if(!n || !d || d.value.trim()) return;
   const v = n.value.trim().toUpperCase();
   const l = ARCHIVIO_CLIENTI.filter(function(c){ return String(c.nomeCompleto || '').toUpperCase() === v && c.dataNascita; });
   if(l.length === 1) d.value = l[0].dataNascita;
+  telefonoDaDichiarante(prefisso);
 }
 function badgeLavoratore(c){ return (c && c.inquilino ? ' <span title="Inquilino di un contratto di affitto" style="display:inline-block; background:#a0522d; color:#fff; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700">🏠 inquilino</span>' : '') + (c && c.lavoratoreColf ? ' <span title="Lavoratore di un contratto colf e badanti" style="display:inline-block; background:#8e44ad; color:#fff; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700">👷 lavoratore colf</span>' : ''); }
 function badgeRuolo(c){
@@ -446,6 +468,7 @@ function usaCliente(c, ctx){
     if(c.comuneNascita){ document.getElementById('f-cong-comune').value = c.comuneNascita; document.getElementById('f-cong-comune').dataset.auto = ''; }
     comuneNelCampo('f-cong-cf', 'f-cong-comune');
     document.getElementById('f-cong-tel').value = c.telefono || '';
+    telefonoConiugeDaDichiarante();
     if(document.getElementById('f-cong-email')) document.getElementById('f-cong-email').value = c.email || '';
     if(document.getElementById('f-cong-doc-scad')) document.getElementById('f-cong-doc-scad').value = c.documentoScadenza || '';
     if(document.getElementById('f-cong-doc-num')) document.getElementById('f-cong-doc-num').value = c.documentoNumero || '';
