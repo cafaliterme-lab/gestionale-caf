@@ -30,7 +30,21 @@ async function chiamaInviaEmail(metodo, corpo) {
   let dati = {};
   try { dati = await r.json(); } catch (e) {}
   if (!r.ok) throw new Error(dati.error || dati.message || ('errore ' + r.status));
+  // la casella del CAF non ha funzionato: l'e-mail è partita dalla casella di riserva (avviso al massimo ogni 10 minuti)
+  if (dati.riserva && !(corpo && corpo.provaRiserva) && Date.now() - (chiamaInviaEmail._avvisoRiserva || 0) > 600000) {
+    chiamaInviaEmail._avvisoRiserva = Date.now();
+    avviso('📧 La casella del CAF non funziona: l\'e-mail è partita dalla casella di riserva (' + (dati.mittente || 'riserva') + '). Controlla la casella del CAF.', true);
+  }
   return dati;
+}
+// 🧪 Utenti e permessi: prova della casella di riserva (manda un'e-mail dalla riserva a se stessa)
+async function provaCasellaRiserva(b) {
+  if (b) { b.disabled = true; b.textContent = 'Prova in corso…'; }
+  try {
+    const d = await chiamaInviaEmail('POST', { provaRiserva: true });
+    avviso('✅ Casella di riserva funzionante: e-mail di prova mandata a ' + (d.mittente || 'riserva'));
+  } catch (e) { avviso('❌ Casella di riserva: ' + e.message, true); }
+  if (b) { b.disabled = false; b.textContent = '🧪 Prova la casella di riserva'; }
 }
 
 // Finestra per scrivere / controllare l'e-mail prima dell'invio

@@ -3,13 +3,31 @@
 // 2) { azione: "cambia", email, codice, password } → se il codice è giusto imposta la nuova password
 // Il codice viene salvato solo come impronta (SHA-256); dopo 5 tentativi sbagliati non vale più.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts"
+// invio con nodemailer, come invia-email (denomailer superava il limite di CPU), con la casella di riserva
+import nodemailer from "npm:nodemailer@6.9.16"
 
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
 const MITTENTE = Deno.env.get("SMTP_USER") || "aliterme@cafcislsicilia.com"
 const HOST = Deno.env.get("SMTP_HOST") || "smtps.aruba.it"
 const PASSWORD = Deno.env.get("SMTP_PASS") || ""
 const MINUTI = 15
+// Casella di riserva (TIM): se quella del CAF non funziona (password rifiutata, server giù) si riprova da qui.
+// Segreti: SMTP2_PASS (senza, la riserva non si usa) · SMTP2_USER · SMTP2_HOST · SMTP2_PORT (predefiniti per TIM: smtp.tim.it, 587 STARTTLS)
+const RISERVA = { user: Deno.env.get("SMTP2_USER") || "cafcislaliterme@tim.it", host: Deno.env.get("SMTP2_HOST") || "smtp.tim.it", port: Number(Deno.env.get("SMTP2_PORT") || 587), pass: Deno.env.get("SMTP2_PASS") || "" }
+const ATTESE = { connectionTimeout: 15000, greetingTimeout: 10000, socketTimeout: 30000 }
+function trasportoCaf() { return nodemailer.createTransport({ host: HOST, port: 465, secure: true, auth: { user: MITTENTE, pass: PASSWORD }, ...ATTESE }) }
+function trasportoRiserva() { return nodemailer.createTransport({ host: RISERVA.host, port: RISERVA.port, secure: RISERVA.port === 465, requireTLS: RISERVA.port !== 465, auth: { user: RISERVA.user, pass: RISERVA.pass }, ...ATTESE }) }
+// manda dalla casella del CAF; se non riesce riprova dalla casella di riserva (le risposte vanno alla riserva).
+// anchePerRiserva: dalla riserva l'e-mail va anche alla casella di riserva stessa (la copia di sicurezza arriva comunque)
+async function mandaMail(nome: string, m: Record<string, unknown>, anchePerRiserva = false) {
+  let erroreCaf = ""
+  if (PASSWORD) {
+    try { await trasportoCaf().sendMail({ ...m, from: nome + " <" + MITTENTE + ">" }); return { riserva: false, erroreCaf } }
+    catch (e) { erroreCaf = String((e as Error)?.message || e); if (!RISERVA.pass) throw e }
+  } else if (!RISERVA.pass) throw new Error("Manca la password della casella")
+  await trasportoRiserva().sendMail({ ...m, from: nome + " <" + RISERVA.user + ">", replyTo: RISERVA.user, ...(anchePerRiserva ? { to: [String(m.to), RISERVA.user] } : {}) })
+  return { riserva: true, erroreCaf }
+}
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -37,7 +55,7 @@ Deno.serve(async (req) => {
     if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(mail)) return risposta({ error: "Scrivi un indirizzo e-mail valido" }, 400)
 
     if (azione === "invia") {
-      if (!PASSWORD) return risposta({ error: "Invio e-mail non configurato: chiedi all'amministratore di cambiarti la password" }, 503)
+      if (!PASSWORD && !RISERVA.pass) return risposta({ error: "Invio e-mail non configurato: chiedi all'amministratore di cambiarti la password" }, 503)
       const profilo = await trovaProfilo(mail)
       // Per non far capire quali e-mail esistono, la risposta è sempre la stessa
       if (!profilo) return risposta({ ok: true })
@@ -47,18 +65,12 @@ Deno.serve(async (req) => {
       if ((count || 0) >= 3) return risposta({ error: "Hai già chiesto troppi codici: aspetta 15 minuti" }, 429)
       const cod = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0")
       await supabase.from("recupero_password").insert({ utente_id: profilo.id, codice_hash: await impronta(profilo.id + ":" + cod), scade: new Date(Date.now() + MINUTI * 60000).toISOString() })
-      const client = new SMTPClient({ connection: { hostname: HOST, port: 465, tls: true, auth: { username: MITTENTE, password: PASSWORD } } })
-      try {
-        await client.send({
-          from: "CAF CISL Alì Terme <" + MITTENTE + ">",
-          to: profilo.email,
-          subject: "Codice per cambiare la password del Protocollo CAF",
-          content: "Ciao " + (profilo.nome || "") + ",\n\nil tuo codice per cambiare la password del programma Protocollo CAF CISL Alì Terme è:\n\n" + cod + "\n\nVale " + MINUTI + " minuti. Se non l'hai chiesto tu, ignora questa e-mail: la tua password resta quella di prima.\n\nCAF CISL Alì Terme",
-          html: "<p>Ciao " + (profilo.nome || "") + ",</p><p>il tuo codice per cambiare la password del programma <b>Protocollo CAF CISL Alì Terme</b> è:</p><p style=\"font-size:28px; font-weight:bold; letter-spacing:6px\">" + cod + "</p><p>Vale " + MINUTI + " minuti. Se non l'hai chiesto tu, ignora questa e-mail: la tua password resta quella di prima.</p><p>CAF CISL Alì Terme</p>",
-        })
-      } finally {
-        try { await client.close() } catch (_) { /* gia' chiusa */ }
-      }
+      await mandaMail("CAF CISL Alì Terme", {
+        to: profilo.email,
+        subject: "Codice per cambiare la password del Protocollo CAF",
+        text: "Ciao " + (profilo.nome || "") + ",\n\nil tuo codice per cambiare la password del programma Protocollo CAF CISL Alì Terme è:\n\n" + cod + "\n\nVale " + MINUTI + " minuti. Se non l'hai chiesto tu, ignora questa e-mail: la tua password resta quella di prima.\n\nCAF CISL Alì Terme",
+        html: "<p>Ciao " + (profilo.nome || "") + ",</p><p>il tuo codice per cambiare la password del programma <b>Protocollo CAF CISL Alì Terme</b> è:</p><p style=\"font-size:28px; font-weight:bold; letter-spacing:6px\">" + cod + "</p><p>Vale " + MINUTI + " minuti. Se non l'hai chiesto tu, ignora questa e-mail: la tua password resta quella di prima.</p><p>CAF CISL Alì Terme</p>",
+      })
       return risposta({ ok: true })
     }
 
