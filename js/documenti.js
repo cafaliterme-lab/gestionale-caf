@@ -44,14 +44,70 @@ document.addEventListener('change', function (e) {
 const ANNI_MAX_DOCUMENTO = 11;
 function annoScadenzaTroppoLontano(dataIT) {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(dataIT || '').trim());
-  if (!m) return false;
+  if (!m || eScadenzaIllimitata(dataIT)) return false;
   const limite = new Date(); limite.setFullYear(limite.getFullYear() + ANNI_MAX_DOCUMENTO);
   return new Date(+m[3], +m[2] - 1, +m[1]) > limite;
 }
-// tutte le caselle di scadenza di documento e permesso (pratica, coniuge, lavoratore, inquilini, archivio, lettura)
+// tutte le caselle di scadenza di documento e permesso (pratica, coniuge, lavoratore, inquilini, archivio, lettura, modifica pratica)
 function eCampoScadenzaDocumento(el) {
-  return !!(el && el.tagName === 'INPUT' && /(^|-)(doc-?scad|perm-?scad|lavdocscad|lavpermscad|docscad|permscad|congdocscad)$|^(nc|mc|ca)-scad$/.test(el.id || ''));
+  return !!(el && el.tagName === 'INPUT' && /(^|-)(doc-?scad|perm-?scad|lavdocscad|lavpermscad|docscad|permscad|congdocscad)(-[A-Za-z0-9-]+)?$|^(nc|mc|ca)-scad$/.test(el.id || ''));
 }
+// solo le caselle del documento d'identità (non il permesso di soggiorno)
+function eCampoScadenzaIdentita(el) { return eCampoScadenzaDocumento(el) && !/perm/.test(el.id); }
+
+/* ---- ♾️ Carta d'identità a validità illimitata (dai 70 anni) ----
+   Si salva come 31/12/2099 (le schede già scritte con un giorno del 2099 valgono come illimitate) e dappertutto
+   si mostra «♾️ illimitata»: non compare tra i documenti in scadenza né tra i dati da controllare. */
+const SCADENZA_ILLIMITATA = '31/12/2099';
+const ETA_DOCUMENTO_ILLIMITATO = 70;
+function eScadenzaIllimitata(dataIT) { return /^\d{2}\/\d{2}\/2099$/.test(String(dataIT || '').trim()); }
+function testoScadenzaDoc(dataIT) { return eScadenzaIllimitata(dataIT) ? '♾️ illimitata' : String(dataIT || ''); }
+function etaDa(dataIT) {
+  const d = parseDataIT(dataIT); if (!d) return null;
+  const oggi = new Date(); let anni = oggi.getFullYear() - d.a;
+  if (oggi.getMonth() + 1 < d.m || (oggi.getMonth() + 1 === d.m && oggi.getDate() < d.g)) anni--;
+  return anni;
+}
+// la data di nascita della stessa persona della casella di scadenza
+function nascitaPerScadenza(el) {
+  const id = el.id || '';
+  const fisse = { 'f-doc-scad': 'f-cf', 'f-cong-doc-scad': 'f-cong-data', 'f-lav-doc-scad': 'f-lav-data', 'nc-scad': 'nc-nascita', 'mc-scad': 'mc-nascita', 'ca-scad': 'ca-nascita', 'doc-scad': 'doc-nascita' };
+  let n = fisse[id] ? document.getElementById(fisse[id]) : null;
+  if (!n && /^e-docscad-/.test(id)) n = document.getElementById(id.replace('e-docscad-', 'e-cf-'));
+  if (!n && /^e-congdocscad-/.test(id)) n = document.getElementById(id.replace('e-congdocscad-', 'e-congdata-'));
+  if (!n && el.closest) { const riga = el.closest('.aff-inq'); if (riga) n = riga.querySelector('[id$="i-data"], .i-data'); }
+  return n ? n.value : '';
+}
+function impostaScadenzaIllimitata(el) {
+  const eta = etaDa(nascitaPerScadenza(el));
+  if (eta !== null && eta < ETA_DOCUMENTO_ILLIMITATO && !confirm('Attenzione: la carta d\'identità a validità illimitata è prevista dai ' + ETA_DOCUMENTO_ILLIMITATO + ' anni, e questa persona ne ha ' + eta + '.\n\nVuoi metterla illimitata lo stesso?')) return;
+  el.value = SCADENZA_ILLIMITATA;
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+  aggiornaTastiIllimitata();
+  avviso('♾️ Documento a validità illimitata' + (eta !== null ? ' (' + eta + ' anni)' : '') + ': non comparirà più tra i documenti in scadenza');
+}
+// tasto «♾️ Illimitata» accanto a ogni casella di scadenza del documento d'identità (anche nelle schede aperte dopo)
+function aggiornaTastiIllimitata() {
+  document.querySelectorAll('input[id]').forEach(function (el) {
+    if (!eCampoScadenzaIdentita(el)) return;
+    let b = el.nextElementSibling && el.nextElementSibling.classList && el.nextElementSibling.classList.contains('btn-illimitata') ? el.nextElementSibling : null;
+    if (!b) {
+      b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn-illimitata';
+      b.title = 'Carta d\'identità a validità illimitata (dai ' + ETA_DOCUMENTO_ILLIMITATO + ' anni)';
+      b.addEventListener('click', function () { impostaScadenzaIllimitata(el); });
+      el.insertAdjacentElement('afterend', b);
+    }
+    const si = eScadenzaIllimitata(el.value);
+    const testo = si ? '♾️ Illimitata ✓' : '♾️ Illimitata';
+    if (b.textContent !== testo) b.textContent = testo;
+    b.style.cssText = 'flex:none; margin:4px 0 0 0; padding:3px 9px; border-radius:999px; font-size:11.5px; font-weight:800; cursor:pointer; white-space:nowrap; border:1.5px solid #1a7f37; '
+      + (si ? 'background:#1a7f37; color:#fff' : 'background:transparent; color:#1a7f37');
+  });
+}
+document.addEventListener('DOMContentLoaded', aggiornaTastiIllimitata);
+setInterval(aggiornaTastiIllimitata, 800);
 function segnaScadenzaLontana(el) {
   const lontana = annoScadenzaTroppoLontano(el.value);
   el.style.outline = lontana ? '3px solid #e67e22' : '';
@@ -91,7 +147,7 @@ function coloraScadenzaDocumento() {
   if (msg) {
     msg.style.color = st ? (st.valido ? '#1a7f37' : '#c0392b') : 'var(--sub)';
     msg.textContent = !st ? '' : st.valido
-      ? '✓ Documento valido' + (st.giorni <= 60 ? ' (scade tra ' + st.giorni + (st.giorni === 1 ? ' giorno' : ' giorni') + ')' : '')
+      ? (eScadenzaIllimitata(el.value) ? '✓ Documento a validità ♾️ illimitata' : '✓ Documento valido' + (st.giorni <= 60 ? ' (scade tra ' + st.giorni + (st.giorni === 1 ? ' giorno' : ' giorni') + ')' : ''))
       : '✗ Documento SCADUTO da ' + (-st.giorni) + (st.giorni === -1 ? ' giorno' : ' giorni') + ': se il cliente ha il nuovo, leggilo con 📷 «Leggi il nuovo»; altrimenti chiediglielo';
   }
 }
@@ -273,7 +329,7 @@ function documentoCardHTML(p) {
   if (!st) return documentoConiugeCardHTML(p);
   return '<div class="meta" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">'
     + '<span style="display:inline-block; padding:3px 10px; border-radius:999px; font-weight:700; color:#fff; background:' + (st.valido ? '#1a7f37' : '#c0392b') + '">🪪 Documento '
-    + (st.valido ? 'valido fino al ' : 'SCADUTO il ') + esc(p.documentoScadenza) + '</span>'
+    + (eScadenzaIllimitata(p.documentoScadenza) ? 'a validità ♾️ illimitata' : (st.valido ? 'valido fino al ' : 'SCADUTO il ') + esc(p.documentoScadenza)) + '</span>'
     + (st.valido ? '' : '<button type="button" style="background:#25d366; color:#fff; border:none; border-radius:999px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer" onclick="richiediNuovoDocumento(\'' + p.id + '\')">💬 Richiedi nuovo documento</button> ' + bottoneEmail('emailNuovoDocumento(\'' + p.id + '\')', 'E-mail'))
     + '</div>' + documentoConiugeCardHTML(p);
 }
