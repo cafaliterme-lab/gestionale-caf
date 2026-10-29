@@ -30,12 +30,35 @@ async function chiamaInviaEmail(metodo, corpo) {
   let dati = {};
   try { dati = await r.json(); } catch (e) {}
   if (!r.ok) throw new Error(dati.error || dati.message || ('errore ' + r.status));
-  // la casella del CAF non ha funzionato: l'e-mail è partita dalla casella di riserva (avviso al massimo ogni 10 minuti)
-  if (dati.riserva && !(corpo && corpo.provaRiserva) && Date.now() - (chiamaInviaEmail._avvisoRiserva || 0) > 600000) {
+  // la casella scelta non ha funzionato: l'e-mail è partita dall'altra (avviso al massimo ogni 10 minuti)
+  if (dati.cambiata && Date.now() - (chiamaInviaEmail._avvisoRiserva || 0) > 600000) {
     chiamaInviaEmail._avvisoRiserva = Date.now();
-    avviso('📧 La casella del CAF non funziona: l\'e-mail è partita dalla casella di riserva (' + (dati.mittente || 'riserva') + '). Controlla la casella del CAF.', true);
+    avviso('📧 La casella scelta non funziona: l\'e-mail è partita dall\'altra casella (' + (dati.mittente || '') + '). Controlla la casella che non va.', true);
   }
   return dati;
+}
+
+/* ---- 📧 Da quale casella partono le e-mail (scelta dell'amministratore, vale per tutti e per gli invii a tutti) ---- */
+const CASELLE_EMAIL = { caf: 'aliterme@cafcislsicilia.com', riserva: 'cafcislaliterme@tim.it' };
+function casellaInvio() { return typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI.casella_invio === 'riserva' ? 'riserva' : 'caf'; }
+async function impostaCasellaInvio(valore) {
+  if (!auth || !auth.profilo || auth.profilo.ruolo !== 'admin') { avviso('Solo l\'amministratore sceglie la casella', true); return; }
+  const { data: righe, error } = await supabase.from('impostazioni').upsert([{ chiave: 'casella_invio', valore: valore, aggiornato_il: new Date().toISOString() }], { onConflict: 'chiave' }).select('chiave');
+  if (error || !righe || !righe.length) { avviso('❌ Non salvato' + (error ? ': ' + error.message : ''), true); return; }
+  IMPOSTAZIONI.casella_invio = valore;
+  avviso('✓ Da adesso le e-mail partono dalla casella ' + (valore === 'riserva' ? 'di riserva (' + CASELLE_EMAIL.riserva + ')' : 'del CAF (' + CASELLE_EMAIL.caf + ')'));
+  document.querySelectorAll('.riga-casella-invio').forEach(function (el) { el.outerHTML = rigaCasellaInvioHTML(); });
+}
+// riga in Utenti e permessi: le due caselle, si tocca quella da usare
+function rigaCasellaInvioHTML() {
+  const c = casellaInvio();
+  const chip = function (k, testo) {
+    const on = c === k;
+    return '<button type="button" onclick="impostaCasellaInvio(\'' + k + '\')" style="border-radius:999px; padding:6px 14px; font-weight:800; cursor:pointer; border:2px solid #1d4f91; background:' + (on ? '#1d4f91' : 'transparent') + '; color:' + (on ? '#fff' : '#1d4f91') + '">' + (on ? '✓ ' : '') + testo + '</button>';
+  };
+  return '<div class="riga-casella-invio perm-row" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:var(--bg); border:1px solid var(--line); flex-wrap:wrap; gap:8px">'
+    + '<span><b>📧 Casella da cui partono le e-mail</b> <span style="font-size:12px; color:var(--sub)">vale per tutti, anche per gli invii a tutti; se quella scelta non funziona il programma prova l\'altra e avvisa</span></span>'
+    + '<span style="display:flex; gap:6px; flex-wrap:wrap">' + chip('caf', 'CAF · ' + CASELLE_EMAIL.caf) + chip('riserva', 'Riserva · ' + CASELLE_EMAIL.riserva) + '</span></div>';
 }
 // 🧪 Utenti e permessi: prova della casella di riserva (manda un'e-mail dalla riserva a se stessa)
 async function provaCasellaRiserva(b) {
@@ -66,7 +89,9 @@ function apriEmail(opz) {
   ov.style.cssText = 'position:fixed; inset:0; z-index:480; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #1d4f91; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:20px 22px; max-width:560px; width:100%; max-height:92vh; overflow:auto">'
     + '<div style="font-size:19px; font-weight:800; color:#1d4f91; margin-bottom:2px">📧 ' + esc(opz.titolo || 'Invia e-mail') + '</div>'
-    + '<div style="font-size:12px; color:var(--sub); margin-bottom:10px">Da: <b>CAF CISL Alì Terme &lt;aliterme@cafcislsicilia.com&gt;</b></div>'
+    + '<div style="font-size:12px; color:var(--sub); margin-bottom:10px; display:flex; align-items:center; gap:6px; flex-wrap:wrap">Da: <select id="em-da" style="width:auto; padding:3px 8px; font-size:12.5px; font-weight:700" title="Da quale casella parte questa e-mail">'
+      + '<option value="caf"' + (casellaInvio() === 'caf' ? ' selected' : '') + '>CAF CISL Alì Terme &lt;' + CASELLE_EMAIL.caf + '&gt;</option>'
+      + '<option value="riserva"' + (casellaInvio() === 'riserva' ? ' selected' : '') + '>Riserva &lt;' + CASELLE_EMAIL.riserva + '&gt;</option></select></div>'
     + '<label style="font-size:12px">A (e-mail del destinatario)</label><input id="em-a" type="email" inputmode="email" value="' + esc(opz.a || '') + '" placeholder="nome@esempio.it" style="text-transform:lowercase">'
     + (opz.a ? '' : '<div style="font-size:12px; color:#b5842a; margin-top:3px">Per ' + esc(opz.nome || 'questo cliente') + ' non c\'è un\'e-mail salvata: scrivila qui, verrà salvata anche nella pratica.</div>')
     + '<label style="font-size:12px; margin-top:8px; display:block">Oggetto</label><input id="em-ogg" value="' + esc(opz.oggetto || '') + '">'
@@ -90,7 +115,8 @@ function apriEmail(opz) {
     b.disabled = true; b.textContent = '⏳ Invio in corso...';
     try {
       const html = opz.html ? '<div style="font-family:Arial,Helvetica,sans-serif; font-size:14px; white-space:pre-wrap">' + esc(testo) + '</div><hr>' + opz.html : undefined;
-      await chiamaInviaEmail('POST', { a: a, oggetto: oggetto, testo: testo, html: html });
+      const da = (document.getElementById('em-da') || {}).value || casellaInvio();
+      await chiamaInviaEmail('POST', { a: a, oggetto: oggetto, testo: testo, html: html, casella: da });
       ov.remove();
       popupEmailInviata(a, opz.nome);
       if (typeof registraComunicazione === 'function') registraComunicazione({ canale: 'email', email: a, nome: opz.nome, motivo: opz.motivo || motivoDaTesto(oggetto + ' ' + testo), testo: oggetto + ' – ' + testo });

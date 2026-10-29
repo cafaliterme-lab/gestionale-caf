@@ -404,7 +404,7 @@ async function inviaBackupEmailOra(b) {
     const j = await r.json().catch(function () { return {}; });
     if (!r.ok || j.error) throw new Error(j.error || ('errore ' + r.status));
     avviso(j.saltato ? '📧 La copia di questa settimana è già partita (' + new Date(j.saltato.replace(/^.* il /, '')).toLocaleDateString('it-IT') + ')' : '📧 Copia di sicurezza inviata alla casella del CAF');
-    if (j.riserva) avviso('📧 La casella del CAF non funziona: la copia è partita dalla casella di riserva e arriva anche lì. Controlla la casella del CAF.', true);
+    if (j.cambiata) avviso('📧 La casella scelta non funziona: la copia è partita dall\'altra casella. Controlla la casella che non va.', true);
   } catch (e) { avviso('❌ Copia per e-mail non partita: ' + e.message, true); }
   if (b) { b.disabled = false; b.textContent = '📧 Copia per e-mail alla casella del CAF'; }
 }

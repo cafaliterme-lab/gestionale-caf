@@ -1,7 +1,8 @@
 // Invia un'e-mail dal programma con la casella Aruba del CAF (SMTP SSL, porta 465).
 // La password NON e' nel codice: sta nei "Secrets" delle Edge Functions di Supabase
 //   SMTP_PASS (obbligatoria) · SMTP_USER (predefinito aliterme@cafcislsicilia.com) · SMTP_HOST (predefinito smtps.aruba.it)
-// Se la casella del CAF non funziona, l'e-mail parte dalla casella di riserva (SMTP2_*, sotto) e la risposta lo dice (riserva: true).
+// Casella di riserva (SMTP2_*, sotto): l'amministratore sceglie da quale partono le e-mail (o si sceglie per la singola e-mail);
+// se quella scelta non funziona si prova l'altra e la risposta lo dice (cambiata: true).
 // Versione leggera: nodemailer (al posto di denomailer, che superava il limite di CPU) e niente supabase-js.
 import nodemailer from "npm:nodemailer@6.9.16"
 
@@ -10,22 +11,37 @@ const CHIAVE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const MITTENTE = Deno.env.get("SMTP_USER") || "aliterme@cafcislsicilia.com"
 const HOST = Deno.env.get("SMTP_HOST") || "smtps.aruba.it"
 const PASSWORD = Deno.env.get("SMTP_PASS") || ""
-// Casella di riserva (TIM): se quella del CAF non funziona (password rifiutata, server giù) si riprova da qui.
+// Casella di riserva (TIM): l'amministratore sceglie da quale casella partono le e-mail; se quella scelta non funziona si prova l'altra.
 // Segreti: SMTP2_PASS (senza, la riserva non si usa) · SMTP2_USER · SMTP2_HOST · SMTP2_PORT (predefiniti per TIM: smtp.tim.it, 587 STARTTLS)
 const RISERVA = { user: Deno.env.get("SMTP2_USER") || "cafcislaliterme@tim.it", host: Deno.env.get("SMTP2_HOST") || "smtp.tim.it", port: Number(Deno.env.get("SMTP2_PORT") || 587), pass: Deno.env.get("SMTP2_PASS") || "" }
 const ATTESE = { connectionTimeout: 15000, greetingTimeout: 10000, socketTimeout: 30000 }
 function trasportoCaf() { return nodemailer.createTransport({ host: HOST, port: 465, secure: true, auth: { user: MITTENTE, pass: PASSWORD }, ...ATTESE }) }
 function trasportoRiserva() { return nodemailer.createTransport({ host: RISERVA.host, port: RISERVA.port, secure: RISERVA.port === 465, requireTLS: RISERVA.port !== 465, auth: { user: RISERVA.user, pass: RISERVA.pass }, ...ATTESE }) }
-// manda dalla casella del CAF; se non riesce riprova dalla casella di riserva (le risposte vanno alla riserva).
+// manda dalla casella scelta (impostazione «casella_invio» di Utenti e permessi, o quella scelta per questa e-mail);
+// se non riesce prova l'altra. Dalla riserva le risposte vanno alla riserva.
 // anchePerRiserva: dalla riserva l'e-mail va anche alla casella di riserva stessa (la copia di sicurezza arriva comunque)
-async function mandaMail(nome: string, m: Record<string, unknown>, anchePerRiserva = false) {
-  let erroreCaf = ""
-  if (PASSWORD) {
-    try { await trasportoCaf().sendMail({ ...m, from: nome + " <" + MITTENTE + ">" }); return { riserva: false, erroreCaf } }
-    catch (e) { erroreCaf = String((e as Error)?.message || e); if (!RISERVA.pass) throw e }
-  } else if (!RISERVA.pass) throw new Error("Manca la password della casella")
-  await trasportoRiserva().sendMail({ ...m, from: nome + " <" + RISERVA.user + ">", replyTo: RISERVA.user, ...(anchePerRiserva ? { to: [String(m.to), RISERVA.user] } : {}) })
-  return { riserva: true, erroreCaf }
+async function mandaMail(nome: string, m: Record<string, unknown>, anchePerRiserva = false, preferita = "caf") {
+  const caselle = [
+    { riserva: false, pronta: !!PASSWORD, invia: () => trasportoCaf().sendMail({ ...m, from: nome + " <" + MITTENTE + ">" }) },
+    { riserva: true, pronta: !!RISERVA.pass, invia: () => trasportoRiserva().sendMail({ ...m, from: nome + " <" + RISERVA.user + ">", replyTo: RISERVA.user, ...(anchePerRiserva ? { to: [String(m.to), RISERVA.user] } : {}) }) },
+  ].filter((c) => c.pronta)
+  if (preferita === "riserva") caselle.reverse()
+  if (!caselle.length) throw new Error("Manca la password della casella")
+  let errore: unknown = null, primoErrore = ""
+  for (let i = 0; i < caselle.length; i++) {
+    try { await caselle[i].invia(); return { riserva: caselle[i].riserva, cambiata: i > 0, primoErrore } }
+    catch (e) { errore = e; if (!primoErrore) primoErrore = String((e as Error)?.message || e) }
+  }
+  throw errore
+}
+// casella scelta dall'amministratore in Utenti e permessi ("caf" se non scelta)
+async function casellaScelta() {
+  try {
+    const k = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    const r = await fetch(Deno.env.get("SUPABASE_URL") + "/rest/v1/impostazioni?select=valore&chiave=eq.casella_invio", { headers: { apikey: k, Authorization: "Bearer " + k } })
+    const j = r.ok ? await r.json() : []
+    return Array.isArray(j) && j[0]?.valore === "riserva" ? "riserva" : "caf"
+  } catch (_) { return "caf" }
 }
 
 const CORS = {
@@ -58,7 +74,7 @@ Deno.serve(async (req) => {
     if (!profilo) return risposta({ error: "Accesso scaduto o utente non abilitato: esci e rientra nel programma" }, 401)
 
     // GET: dice solo se l'invio e' configurato
-    if (req.method === "GET") return risposta({ configurato: !!PASSWORD || !!RISERVA.pass, mittente: MITTENTE, riserva: RISERVA.pass ? RISERVA.user : "" })
+    if (req.method === "GET") return risposta({ configurato: !!PASSWORD || !!RISERVA.pass, mittente: MITTENTE, riserva: RISERVA.pass ? RISERVA.user : "", scelta: await casellaScelta() })
     if (req.method !== "POST") return risposta({ error: "Metodo non permesso" }, 405)
     if (profilo.sola_lettura) return risposta({ error: "Il tuo utente è in sola consultazione: non può inviare e-mail" }, 403)
     if (!PASSWORD && !RISERVA.pass) return risposta({ error: "Invio e-mail non ancora configurato: manca la password della casella del CAF (chiedi all'amministratore)" }, 503)
@@ -72,6 +88,7 @@ Deno.serve(async (req) => {
       return risposta({ ok: true, riserva: true, mittente: RISERVA.user })
     }
     const { a, oggetto, testo, html } = corpo
+    const preferita = corpo.casella === "riserva" || corpo.casella === "caf" ? corpo.casella : await casellaScelta()
     const dest = String(a || "").trim().toLowerCase()
     if (!emailValida(dest)) return risposta({ error: "Indirizzo del destinatario non valido" }, 400)
     if (!String(oggetto || "").trim() || !String(testo || "").trim()) return risposta({ error: "Mancano oggetto o testo" }, 400)
@@ -82,8 +99,8 @@ Deno.serve(async (req) => {
       subject: String(oggetto).slice(0, 200),
       text: String(testo).slice(0, 50000),
       html: html ? String(html).slice(0, 300000) : undefined,
-    })
-    return risposta({ ok: true, a: dest, da: profilo.nome, riserva: esito.riserva, mittente: esito.riserva ? RISERVA.user : MITTENTE })
+    }, false, preferita)
+    return risposta({ ok: true, a: dest, da: profilo.nome, riserva: esito.riserva, cambiata: esito.cambiata, mittente: esito.riserva ? RISERVA.user : MITTENTE })
   } catch (e) {
     const m = String((e as Error)?.message || e)
     if (/535|EAUTH|auth|credential|password/i.test(m)) return risposta({ error: RISERVA.pass ? "Né la casella del CAF né quella di riserva accettano la password: controllale" : "Aruba ha rifiutato l'accesso: la password della casella del CAF non è corretta" }, 502)
