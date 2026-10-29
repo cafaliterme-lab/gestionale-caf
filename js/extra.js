@@ -395,7 +395,7 @@ function mostraAttesaRipristino() {
   return { testo: function (t) { const el = ov.querySelector('.att'); if (el) el.textContent = t + ' Non chiudere la pagina.'; }, chiudi: function () { ov.remove(); } };
 }
 // 📧 Copia di sicurezza fuori dal programma: l'ultimo backup compresso va per e-mail alla casella del CAF
-// (parte da sola ogni lunedì dal cron di Vercel; qui si manda subito; al massimo una ogni 6 giorni)
+// (parte da sola ogni lunedì dal cron di Vercel; qui si manda subito; al massimo una ogni 5 giorni)
 async function inviaBackupEmailOra(b) {
   if (b) { b.disabled = true; b.textContent = '⏳ Invio…'; }
   try {

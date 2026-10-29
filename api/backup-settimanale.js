@@ -1,6 +1,6 @@
 // 💾 Ogni lunedì Vercel (vercel.json → crons) chiede a Supabase di mandare per e-mail alla casella del CAF
 // l'ultimo backup compresso (funzione «backup-email»). La funzione manda solo alla casella del CAF e al massimo
-// una volta ogni 6 giorni: questa chiamata usa solo la chiave pubblica del programma.
+// una volta ogni 5 giorni: questa chiamata usa solo la chiave pubblica del programma.
 const SUPABASE_URL = 'https://mmaqmprukghyazlibphv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tYXFtcHJ1a2doeWF6bGlicGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NDUyMTUsImV4cCI6MjEwNjUyMTIxNX0.ByRES--bYHZG6o_BX8Ha0YzqfcQIIr-D08Q-AbR8bhs';
 

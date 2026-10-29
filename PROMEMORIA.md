@@ -24,7 +24,7 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 24/10/2026. L'uso vero 
 | Dati | Supabase, progetto `mmaqmprukghyazlibphv` (eu-west-1, piano Free) | database, accesso utenti, funzioni `accesso-qr`, `admin-utenti`, `invia-email`, `recupera-password` |
 
 - **Piano Free di Supabase.** Il battito quotidiano (`api/battito.js`, cron Vercel) evita la pausa. Senza battito, se il programma non viene usato per circa 7 giorni, il progetto va in pausa (arriva prima un'e-mail di avviso). Si riattiva dal sito di Supabase con «Resume project», entro 90 giorni; i dati non si perdono.
-- **Copia per e-mail**: ogni lunedì `api/backup-settimanale.js` (cron Vercel) chiama la Edge Function `backup-email`, che manda l'ultimo backup compresso alla casella del CAF (max una ogni 6 giorni, `impostazioni.backup_email_ultimo`). Si importa con «Importa Backup» (.json.gz).
+- **Copia per e-mail**: ogni lunedì `api/backup-settimanale.js` (cron Vercel) chiama la Edge Function `backup-email`, che manda l'ultimo backup compresso alla casella del CAF (max una ogni 5 giorni, `impostazioni.backup_email_ultimo`). Si importa con «Importa Backup» (.json.gz).
 - **Backup automatici** (pg_cron): ogni notte, ogni lunedì e il 31 dicembre, nella tabella `backup_automatici`.
   - `crea_backup()` usa `dati_backup()`, che salva tutte le tabelle dei dati, compresi richiami, conte di cassa, appuntamenti e comunicazioni.
   - Il ripristino è `ripristina_dati(d)` (solo admin).

@@ -1,7 +1,8 @@
 // 💾 Copia di sicurezza fuori dal programma: una volta a settimana l'ultimo backup automatico (tabella
 // backup_automatici) parte compresso (.json.gz) per e-mail verso la casella del CAF, così esiste anche
 // lontano dal database e dal PC dell'ufficio. Lo chiama ogni lunedì il cron di Vercel (vercel.json).
-// Manda SOLO alla casella del CAF e al massimo una volta ogni 6 giorni (chi la chiama non può cambiare destinatario).
+// Manda SOLO alla casella del CAF e al massimo una volta ogni 5 giorni (chi la chiama non può cambiare destinatario): così una copia mandata a mano
+// di martedì non fa saltare quella automatica del lunedì dopo.
 // Segreti: SMTP_PASS (lo stesso di invia-email) · SUPABASE_SERVICE_ROLE_KEY (automatico).
 import nodemailer from "npm:nodemailer@6.9.16"
 import { Buffer } from "node:buffer"
@@ -11,7 +12,7 @@ const CHIAVE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const MITTENTE = Deno.env.get("SMTP_USER") || "aliterme@cafcislsicilia.com"
 const HOST = Deno.env.get("SMTP_HOST") || "smtps.aruba.it"
 const PASSWORD = Deno.env.get("SMTP_PASS") || ""
-const GIORNI_TRA_INVII = 6
+const GIORNI_TRA_INVII = 5
 
 const H = { apikey: CHIAVE, Authorization: "Bearer " + CHIAVE, "Content-Type": "application/json" }
 // il tasto del programma chiama la funzione dal browser: servono le intestazioni CORS (come invia-email)
