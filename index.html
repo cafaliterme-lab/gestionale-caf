@@ -982,6 +982,11 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
 </div>
 
 <div class="card">
+  <div class="raff-title">💽 Spazio sul server</div>
+  <div id="spazio-server"></div>
+</div>
+
+<div class="card">
   <div class="raff-title">🛟 Backup automatici e cartella Dropbox</div>
   <div id="backup-cartella" style="margin:0 0 12px"></div>
   <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Ogni lunedì notte il programma salva da solo una copia <b>completa di tutti gli anni</b> (pratiche, clienti, versamenti, scadenze, spese sede, acconti, tipi e impostazioni). Una copia viene fatta anche prima di svuotare il registro, di importare o di ripristinare un backup. Si tengono le ultime 12 settimane; il <b>31 dicembre</b> alle 23:30 viene fatto il salvataggio di fine anno, che si conserva per sempre. Nella cartella (es. Dropbox) ci sono <b>backup-completo.json</b> (sempre il più recente) e un file per anno, <b>salvataggi-2026.json</b>…: <b>ogni file contiene tutti i dati</b>, non solo quell'anno. Per rimettere tutto com'era usa <b>↩️ Ripristina</b> accanto a un backup, oppure "Importa Backup" con uno di questi file.</p>
@@ -1073,12 +1078,12 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ocr-documento.js?v=20261027e"></script>
 <script src="js/grafici.js?v=24"></script>
 <script src="js/stampe.js?v=33"></script>
-<script src="js/extra.js?v=20261030a"></script>
+<script src="js/extra.js?v=20261030b"></script>
 <script src="js/privacy.js?v=3"></script>
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=20261029a"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=20261030b"></script>
+<script src="js/guida.js?v=20261030c"></script>
 <script src="js/scadenze.js?v=20261029c"></script>
 <script src="js/config.js?v=202610079"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -1093,8 +1098,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/affitti.js?v=3"></script>
 <script src="js/scadenza-730.js?v=2"></script>
 <script src="js/sollecito-ritiro.js?v=3"></script>
-<script src="js/fine-anno.js?v=2"></script>
+<script src="js/fine-anno.js?v=3"></script>
 <script src="js/anni-vecchi.js?v=1"></script>
+<script src="js/spazio-server.js?v=1"></script>
 <script src="js/anno-precedente.js?v=2"></script>
 <script src="js/menu-frecce.js?v=1"></script>
 <script src="js/email.js?v=20261029e"></script>
@@ -1108,7 +1114,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/chiusura.js?v=2"></script>
 <script src="js/resoconto.js?v=6"></script>
 <script src="js/confronto-anni.js?v=1"></script>
-<script src="js/oggi.js?v=20261030a"></script>
+<script src="js/oggi.js?v=20261030as"></script>
 <script src="js/agenda.js?v=6"></script>
 <script src="js/comunicazioni.js?v=20261027f"></script>
 <script src="js/documenti-scadenza.js?v=20261027d"></script>

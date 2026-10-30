@@ -87,6 +87,7 @@ async function vociFineAnnoServer() {
         + (fermi.length ? 'Non entrano da più di 3 mesi: ' + fermi.map(function (u) { return u.nome; }).join(', ') + '. Se non lavorano più al CAF, togli il loro accesso.' : 'Tutti hanno usato il programma negli ultimi 3 mesi.'),
       azione: fermi.length ? "fineAnnoChiudi(); oggiTab('permessi')" : '', testoAzione: 'Utenti e permessi' });
   } catch (e) {}
+  try { const v = typeof voceSpazioFineAnno === 'function' ? await voceSpazioFineAnno() : null; if (v) voci.push(v); } catch (e) {}
   return voci;
 }
 

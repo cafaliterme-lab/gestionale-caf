@@ -615,6 +615,7 @@ function renderBackupEStorico() {
   renderEditorImportiFPS();
   if (typeof renderEditorCisl === 'function') renderEditorCisl();
   renderBackup();
+  if (typeof renderSpazio === 'function') renderSpazio();
   renderStoricoGlobale();
   preparaSvuotaAnno();
 }

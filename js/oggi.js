@@ -98,6 +98,7 @@ function renderOggi() {
     + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">📋 DA FARE</div>'
     + '<div style="display:flex; flex-wrap:wrap; gap:8px">'
     + (typeof tileFineAnno === 'function' ? tileFineAnno(tile) : '')
+    + (typeof tileSpazio === 'function' ? tileSpazio(tile) : '')
     + (typeof tileAvviso730 === 'function' ? tileAvviso730(tile) : '')
     + tile('📥', sommaPeso(daLavorare), 'Da lavorare', '#c0392b', "oggiVaiRegistro('aperte')", 'in arrivo, scansionate, in lavorazione')
     + (typeof contrattiColfAttivi === 'function' && contrattiColfAttivi().length ? (function () { const n = bustePagaMancanti().length; const mesi = Array.from(new Set(bustePagaMancanti().map(function (x) { return x.mese; }))).sort(); return tile('💼', n, 'Buste paga colf e badanti da compilare', '#1f8a70', 'apriBustePaga()', n ? 'mese di ' + mesi.map(nomeMese).join(', ') : 'tutte compilate fino a ' + nomeMese(meseBusteDovuto())); })() : '')
