@@ -30,7 +30,7 @@ async function vociControlloMattino() {
     voci.push({ icona: '💓', titolo: 'Battito di Vercel', ok: ore(t) < ORE_BATTITO_OK,
       testo: ore(t) < ORE_BATTITO_OK ? 'Partito ' + quandoMattino(t) + ': il server resta sveglio.'
         : t ? 'L\'ultimo è partito ' + quandoMattino(t) + '. Apri Vercel → progetto gestionale-caf → Settings → Cron Jobs e controlla che «/api/battito» sia attivo. Finché usi il programma ogni giorno il server resta sveglio lo stesso.'
-          : 'Non ancora registrato: il primo arriva domattina (tra le 7 e le 9). Se domani è ancora così, controlla Vercel → Settings → Cron Jobs.' });
+          : 'Non ancora registrato: il primo arriva domattina presto (prima delle 6). Se domani è ancora così, controlla Vercel → Settings → Cron Jobs.' });
   } catch (e) {}
   try {
     const r = await fetchSupabase('/rest/v1/backup_automatici?select=creato_il&order=creato_il.desc&limit=1');

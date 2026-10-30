@@ -61,7 +61,7 @@
   "crons": [
     {
       "path": "/api/battito",
-      "schedule": "17 6 * * *"
+      "schedule": "11 3 * * *"
     },
     {
       "path": "/api/backup-settimanale",
