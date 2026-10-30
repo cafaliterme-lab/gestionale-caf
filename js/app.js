@@ -1421,6 +1421,16 @@ async function importaBackup(){
     await elaboraImportazione(inp.files[0], msg, document.getElementById('btn-importa'));
     return;
   }
+  // copia di un solo anno (da «Anni con più di 5 anni»): riporta solo quell'anno, senza toccare il resto
+  if(/^copia-anno-/i.test(inp.files[0].name)){
+    const btn = document.getElementById('btn-importa');
+    btn.disabled = true; btn.textContent = 'Ripristino dell\'anno in corso...';
+    try{
+      if(await riportaAnnoDaCopia(JSON.parse(await inp.files[0].text()))){ inp.value = ''; msg.style.color = 'var(--accent)'; msg.textContent = '✅ Anno riportato nel programma.'; msg.style.display = 'block'; }
+    }catch(e){ msg.style.color = '#c0392b'; msg.textContent = '⚠️ Ripristino dell\'anno non riuscito: ' + e.message; msg.style.display = 'block'; }
+    btn.disabled = false; btn.textContent = 'Importa Backup';
+    return;
+  }
   if(!confirm('Importando questo file, tutti i dati attuali (pratiche, versamenti, collaboratori, utenti) verranno sostituiti. Prima il programma salva una copia di sicurezza in "Backup automatici". Continuare?')) return;
   const btn = document.getElementById('btn-importa');
   btn.disabled = true; btn.textContent = 'Importazione in corso...';

@@ -9,7 +9,7 @@ function chiediConfermaScritta(titolo, testo, parola) {
   return new Promise(function (risolvi) {
     const ov = document.createElement('div');
     ov.className = 'conferma-scritta';
-    ov.style.cssText = 'position:fixed; inset:0; z-index:450; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:480; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
     ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #c0392b; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:24px 26px; max-width:440px; width:100%; text-align:center">'
       + '<div style="font-size:34px">⚠️</div>'
       + '<div style="font-size:20px; font-weight:800; color:#c0392b; margin:4px 0 8px">' + esc(titolo) + '</div>'
@@ -1027,15 +1027,19 @@ async function svuotaAnno() {
     spese: document.getElementById('sva-spese').checked, scadenze: document.getElementById('sva-scadenze').checked };
   if (!anno) return;
   if (!cosa.pratiche && !cosa.versamenti && !cosa.spese && !cosa.scadenze) { avviso('⚠️ Scegli cosa cancellare', true); return; }
+  await eseguiSvuotaAnno(anno, cosa, document.getElementById('btn-svuota-anno'), '🗑️ Cancella i dati dell\'anno scelto');
+  preparaSvuotaAnno();
+}
+// cancella i dati scelti di un anno (anche dagli «Anni con più di 5 anni»): conferma scritta e backup completo prima
+async function eseguiSvuotaAnno(anno, cosa, btn, testoTasto) {
   const nP = (state.pratiche || []).concat(state.annullate || []).filter(function (p) { return annoPratica(p) === anno; }).length;
   const nV = (state.versamenti || []).filter(function (v) { return annoDiData(v.data) === anno; }).length;
   const nS = (state.speseSede || []).filter(function (x) { return annoDiData(x.data) === anno; }).length;
   const nSc = (state.scadenze || []).filter(function (x) { return String(x.data || '').slice(0, 4) === String(anno); }).length;
   const elenco = [cosa.pratiche ? nP + ' pratiche' : '', cosa.versamenti ? nV + ' versamenti CAF' : '', cosa.spese ? nS + ' spese sede' : '', cosa.scadenze ? nSc + ' scadenze' : ''].filter(Boolean).join(', ');
   const ok = await chiediConfermaScritta('Cancella l\'anno ' + anno, 'Verranno eliminati DEFINITIVAMENTE i dati del ' + anno + ': ' + elenco + '. Prima di cancellare il programma salva da solo un backup completo (lo trovi in "Backup automatici").', String(anno));
-  if (!ok) return;
-  const btn = document.getElementById('btn-svuota-anno');
-  btn.disabled = true; btn.textContent = 'Backup e cancellazione in corso...';
+  if (!ok) return false;
+  if (btn) { btn.disabled = true; btn.textContent = 'Backup e cancellazione in corso...'; }
   try {
     const { error: eb } = await supabase.rpc('crea_backup', { p_tipo: 'prima_di_svuotare' });
     if (eb) throw new Error('backup di sicurezza non riuscito, NIENTE è stato cancellato (' + eb.message + ')');
@@ -1051,11 +1055,12 @@ async function svuotaAnno() {
     avviso('🗑️ Dati del ' + anno + ' cancellati. Il backup di sicurezza è in "Backup automatici".');
     if (typeof render === 'function') render();
     if (typeof renderBackup === 'function') renderBackup();
+    return true;
   } catch (e) {
     avviso('❌ Cancellazione non completata: ' + e.message, true);
+    return false;
   } finally {
-    btn.disabled = false; btn.textContent = '🗑️ Cancella i dati dell\'anno scelto';
-    preparaSvuotaAnno();
+    if (btn) { btn.disabled = false; btn.textContent = testoTasto; }
   }
 }
 

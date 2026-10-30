@@ -2,6 +2,7 @@
    Dal 15 dicembre al 31 gennaio, solo per l'amministratore: un riquadro nella pagina Oggi apre una lista di controllo
    per chiudere bene l'anno e partire puliti con il nuovo. Ogni voce è ✅ se è a posto o ⚠️ se c'è da fare, con il tasto
    per sistemarla. Non cancella e non cambia niente da sola: ogni passo lo decide l'amministratore.
+   Tra le voci ci sono gli anni con più di 5 anni (js/anni-vecchi.js), da scaricare e togliere se lo decide l'amministratore.
    Si apre anche in ogni momento da Utenti e permessi («🧹 Controllo di fine anno»). */
 
 // periodo del riquadro: dal 15/12 al 31/01
@@ -58,6 +59,8 @@ function vociFineAnno(anno) {
     'Ultima copia per e-mail: ' + new Date(ultimaMail).toLocaleDateString('it-IT') + '.',
     ultimaMail ? 'L\'ultima copia per e-mail è del ' + new Date(ultimaMail).toLocaleDateString('it-IT') + ': quella automatica del lunedì non sta partendo (controlla le attività automatiche su Vercel). Intanto mandala a mano.' : 'Nessuna copia per e-mail ancora partita: controlla le attività automatiche su Vercel. Intanto mandala a mano.',
     'inviaBackupEmailOra(this)', '📧 Manda ora');
+  // anni con più di 5 anni: li propone, li cancella solo l'amministratore
+  if (typeof voceAnniVecchi === 'function') voci.push(voceAnniVecchi(anno));
   return voci;
 }
 // Voci che chiedono dati al server: ultima copia di sicurezza e utenti
