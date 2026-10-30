@@ -727,7 +727,7 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
           <button type="button" id="f-cong-doc-scad-wa" class="btn-scan-cf" style="display:none; background:#25d366; color:#fff" onclick="richiediNuovoDocumentoConiugeModulo('wa')" title="Chiedi al coniuge il nuovo documento su WhatsApp">💬 Richiedi nuovo</button>
           <button type="button" id="f-cong-doc-scad-mail" class="btn-scan-cf" style="display:none; background:#1d4f91; color:#fff" onclick="richiediNuovoDocumentoConiugeModulo('email')" title="Chiedi al coniuge il nuovo documento per e-mail">📧</button></div>
           <div id="f-cong-doc-scad-msg" style="font-size:12px; font-weight:700; margin-top:4px"></div></div>
-        <div><label>Cellulare coniuge</label><input id="f-cong-tel" type="tel" inputmode="tel" placeholder="Facoltativo"></div>
+        <div><label>Cellulare coniuge</label><input id="f-cong-tel" type="tel" inputmode="tel" placeholder="Facoltativo"><div id="f-cong-fisso-nota" style="font-size:11.5px; color:var(--sub); margin-top:3px"></div></div>
         <div><label>E-mail coniuge</label><input id="f-cong-email" type="email" inputmode="email" autocomplete="off" placeholder="Facoltativa" style="text-transform:lowercase" oninput="this.value=this.value.toLowerCase()"></div>
         <div style="display:flex; align-items:flex-end"><button type="button" class="btn-scan-cf" onclick="apriLetturaDocumentoPer('coniuge')" title="Leggi i dati del coniuge da carta d'identita', tessera sanitaria o patente">📄 Leggi documento coniuge</button></div>
       </div>
@@ -1084,7 +1084,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=20261029a"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=20261030e"></script>
+<script src="js/guida.js?v=20261030f"></script>
 <script src="js/scadenze.js?v=20261029c"></script>
 <script src="js/config.js?v=202610079"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -1094,7 +1094,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ricerca-elenchi.js?v=1"></script>
 <script src="js/data.js?v=202610247"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=20261030b"></script>
+<script src="js/app.js?v=20261030c"></script>
 <script src="js/lavoratore-colf.js?v=4"></script>
 <script src="js/affitti.js?v=3"></script>
 <script src="js/scadenza-730.js?v=2"></script>

@@ -98,17 +98,34 @@ function toggleCong(cbId, inId){
   if(on){ inp.focus(); } else { inp.value = ''; }
 }
 // Congiunta: il coniuge senza cellulare prende quello del dichiarante (di solito la famiglia ne usa uno solo); si può cambiare
+// Contatti del coniuge presi dal dichiarante (stessa famiglia): cellulare ed e-mail vanno nei campi vuoti del coniuge
+// e si aggiornano mentre si scrivono quelli del dichiarante, finché non si cambiano a mano. Il telefono fisso, che nel
+// modulo il coniuge non ha, si mostra sotto il suo cellulare e al salvataggio va anche nella sua scheda dell'archivio.
 function telefonoConiugeDaDichiarante(){
-  const t = document.getElementById('f-tel'), c = document.getElementById('f-cong-tel');
-  if(!t || !c || c.value.trim() || !t.value.trim()) return;
-  c.value = t.value.trim();
-  avviso('📱 Cellulare del coniuge: messo quello del dichiarante (' + c.value + '). Se ne ha uno suo, cambialo.');
+  const on = document.getElementById('f-congiunta-on');
+  if(!on || !on.checked) return;
+  const copia = function(daId, aId, testo){
+    const da = document.getElementById(daId), a = document.getElementById(aId);
+    if(!da || !a) return;
+    const v = da.value.trim(), attuale = a.value.trim();
+    if(attuale && attuale !== (a.dataset.copia || '')) return; // scritto a mano o preso dall'archivio: non si tocca
+    if(attuale === v) return;
+    a.value = v; a.dataset.copia = v;
+    if(v && !a.dataset.avvisato){ a.dataset.avvisato = '1'; avviso(testo + ' del coniuge: messo quello del dichiarante (' + v + '). Se ne ha uno suo, cambialo.'); }
+  };
+  copia('f-tel', 'f-cong-tel', '📱 Cellulare');
+  copia('f-email', 'f-cong-email', '📧 E-mail');
+  const fisso = (document.getElementById('f-tel-fisso') || {}).value || '', nota = document.getElementById('f-cong-fisso-nota');
+  if(nota) nota.innerHTML = fisso.trim() ? '📞 Telefono fisso di casa (dal dichiarante): <b>' + esc(fisso.trim()) + '</b>, si salva anche nella scheda del coniuge' : '';
 }
+// mentre si scrivono i contatti del dichiarante, si aggiornano quelli del coniuge
+document.addEventListener('input', function(e){ if(e.target && ['f-tel', 'f-tel-fisso', 'f-email'].indexOf(e.target.id) >= 0) telefonoConiugeDaDichiarante(); });
+document.addEventListener('change', function(e){ if(e.target && e.target.id === 'f-email-no') telefonoConiugeDaDichiarante(); });
 function toggleCongBox(){
   const on = document.getElementById('f-congiunta-on').checked;
   document.getElementById('f-cong-box').style.display = on ? '' : 'none';
   if(on) telefonoConiugeDaDichiarante();
-  if(!on){ CONG_AUTO = null; if(typeof avvisoCongiuntaAutomatica === 'function') avvisoCongiuntaAutomatica(); ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel','f-cong-email','f-cong-comune','f-cong-sesso','f-cong-doc-scad','f-cong-doc-num','f-cong-doc-tipo'].forEach(function(id){ const el = document.getElementById(id); if(el){ el.value=''; el.dataset.auto=''; el.dataset.manuale=''; } }); document.getElementById('cli-cerca-cong').value='';
+  if(!on){ CONG_AUTO = null; if(typeof avvisoCongiuntaAutomatica === 'function') avvisoCongiuntaAutomatica(); ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel','f-cong-email','f-cong-comune','f-cong-sesso','f-cong-doc-scad','f-cong-doc-num','f-cong-doc-tipo'].forEach(function(id){ const el = document.getElementById(id); if(el){ el.value=''; el.dataset.auto=''; el.dataset.manuale=''; el.dataset.copia=''; el.dataset.avvisato=''; } }); document.getElementById('cli-cerca-cong').value=''; if(document.getElementById('f-cong-fisso-nota')) document.getElementById('f-cong-fisso-nota').innerHTML='';
     if(typeof controllaCFConiuge === 'function') controllaCFConiuge(); if(typeof coloraScadenzaConiuge === 'function') coloraScadenzaConiuge(); }
   // importo convenzione: singola e congiunta possono avere importi predefiniti diversi
   const tipo = document.getElementById('f-tipo').value;
@@ -437,7 +454,7 @@ function avvisoCongiuntaAutomatica(){
 function invertiDichiaranteConiuge(){
   if(!CONG_AUTO || !CONG_AUTO.dich) return;
   const nuovoDich = CONG_AUTO.con, nuovoCon = CONG_AUTO.dich;
-  ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel','f-cong-email','f-cong-comune','f-cong-sesso','f-cong-doc-scad','f-cong-doc-num'].forEach(function(id){ const e = document.getElementById(id); if(e){ e.value = ''; e.dataset.auto = ''; e.dataset.manuale = ''; } });
+  ['f-cong-cognome','f-cong-nome','f-cong-data','f-cong-cf','f-cong-tel','f-cong-email','f-cong-comune','f-cong-sesso','f-cong-doc-scad','f-cong-doc-num'].forEach(function(id){ const e = document.getElementById(id); if(e){ e.value = ''; e.dataset.auto = ''; e.dataset.manuale = ''; e.dataset.copia = ''; e.dataset.avvisato = ''; } });
   ['f-tel','f-tel-fisso','f-email','f-doc-scad','f-doc-num','f-comune','f-riferimento'].forEach(function(id){ const e = document.getElementById(id); if(e) e.value = ''; });
   usaCliente(nuovoDich, 'main');
   usaCliente(nuovoCon, 'cong');
@@ -468,8 +485,9 @@ function usaCliente(c, ctx){
     if(c.comuneNascita){ document.getElementById('f-cong-comune').value = c.comuneNascita; document.getElementById('f-cong-comune').dataset.auto = ''; }
     comuneNelCampo('f-cong-cf', 'f-cong-comune');
     document.getElementById('f-cong-tel').value = c.telefono || '';
-    telefonoConiugeDaDichiarante();
     if(document.getElementById('f-cong-email')) document.getElementById('f-cong-email').value = c.email || '';
+    ['f-cong-tel', 'f-cong-email'].forEach(function(id){ const e = document.getElementById(id); if(e) e.dataset.copia = ''; });
+    telefonoConiugeDaDichiarante();
     if(document.getElementById('f-cong-doc-scad')) document.getElementById('f-cong-doc-scad').value = c.documentoScadenza || '';
     if(document.getElementById('f-cong-doc-num')) document.getElementById('f-cong-doc-num').value = c.documentoNumero || '';
     if(document.getElementById('f-cong-doc-tipo') && c.documentoTipo){ document.getElementById('f-cong-doc-tipo').innerHTML = opzioniTipoDoc(c.documentoTipo); }
@@ -484,6 +502,7 @@ function usaCliente(c, ctx){
     if(c.telefono) document.getElementById('f-tel').value = c.telefono;
     if(c.telefonoFisso) document.getElementById('f-tel-fisso').value = c.telefonoFisso;
     if(c.email) document.getElementById('f-email').value = c.email;
+    telefonoConiugeDaDichiarante();
     if(c.documentoScadenza){ document.getElementById('f-doc-scad').value = c.documentoScadenza; coloraScadenzaDocumento(); }
     if(document.getElementById('f-doc-num')) document.getElementById('f-doc-num').value = c.documentoNumero || '';
     if(document.getElementById('f-doc-tipo') && c.documentoTipo){ document.getElementById('f-doc-tipo').innerHTML = opzioniTipoDoc(c.documentoTipo); }
@@ -2788,7 +2807,10 @@ async function addPraticaInterna(){
     if(congCognome || congNome) aggiornaCollaboratoreDaPratica((congCognome + ' ' + congNome).trim(), congData, congCodiceFiscale, tipo, annoPr);
   }
   if(congCognome || congNome) salvaRuoloCliente((congCognome + ' ' + congNome).trim(), congData, congCodiceFiscale, 'coniuge', true, (cognome + ' ' + nomeProprio).trim(), cf);
-  if(congCognome || congNome){ try{ await registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono, '', congDocumentoScadenza, congEmail); }catch(e){ console.error('archivio clienti coniuge', e); }
+  // il fisso di casa va anche nella scheda del coniuge, se non ne ha già uno suo
+  const recConiuge = (congCognome || congNome) ? trovaInArchivio((congCognome + ' ' + congNome).trim(), congData, congCodiceFiscale) : null;
+  const fissoConiuge = recConiuge && recConiuge.telefonoFisso ? '' : telefonoFisso;
+  if(congCognome || congNome){ try{ await registraClienteSeNuovo(congCognome, congNome, congData, congCodiceFiscale, congTelefono, fissoConiuge, congDocumentoScadenza, congEmail); }catch(e){ console.error('archivio clienti coniuge', e); }
     if(congDocumentoNumero || congComuneNascita || congDocumentoTipo){ try{ await data.clienti.salvaDocumento({ codiceFiscale: congCodiceFiscale, nomeCompleto: (congCognome + ' ' + congNome).trim(), dataNascita: congData, documentoNumero: congDocumentoNumero, comuneNascita: congComuneNascita, documentoTipo: congDocumentoTipo }); }catch(e){ console.error('numero documento coniuge', e); } } }
 
   // Il numero è assegnato dal trigger del database (non passare numero, il trigger lo genererà)
