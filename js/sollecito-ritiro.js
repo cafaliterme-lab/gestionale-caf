@@ -39,7 +39,7 @@ function messaggioSollecitoRitiro(pratiche) {
       + ' La preghiamo di passare a ritirarla il prima possibile presso il CAF CISL di Alì Terme' + codaSollecito();
   }
   return 'Buongiorno, le ricordiamo che queste pratiche sono pronte già da tempo e non sono ancora state ritirate:\n'
-    + pratiche.map(function (p) { return '• ' + nomeProprio(p.nome) + ' – ' + cosaPratica(p) + ' (protocollo n. ' + formattaProtocollo(p) + ')'; }).join('\n')
+    + pratiche.map(rigaPraticaMessaggio).join('\n')
     + '\n\nVi preghiamo di passare a ritirarle il prima possibile presso il CAF CISL di Alì Terme' + codaSollecito();
 }
 

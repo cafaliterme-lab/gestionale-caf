@@ -3096,10 +3096,38 @@ function inviaWhatsApp(id){
     nuovoTel = t.trim();
   }
   if(nuovoTel) data.pratiche.aggiorna(id, { telefono: nuovoTel });
+  // allo stesso numero ci sono altre pratiche pronte e non ancora avvisate: si chiede se mandare un messaggio unico
+  const altre = (state.pratiche || []).filter(function(x){ return x.id !== p.id && x.stato === 'lavorata' && !x.annullata && !x.whatsappInviato && numeroWhatsApp(x.telefono) === num; })
+    .sort(function(a, b){ return (a.numero || 0) - (b.numero || 0); });
+  if(altre.length){ chiediMessaggioUnicoWhatsApp(p, num, altre); return; }
+  inviaWhatsAppSingola(p, num);
+}
+function inviaWhatsAppSingola(p, num){
   const modelli = modelliWhatsApp();
   // Apertura immediata dal clic: dopo un'attesa il browser bloccherebbe la nuova finestra
   if(modelli.length < 2){ apriWhatsApp(num, messaggioRitiro(p), p); return; }
   scegliMessaggioWhatsApp(p, num);
+}
+function chiediMessaggioUnicoWhatsApp(p, num, altre){
+  const tutte = [p].concat(altre);
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed; inset:0; z-index:400; background:rgba(15,27,45,.4); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:16px; max-width:520px; width:100%; max-height:85vh; overflow:auto; padding:18px 20px; box-shadow:0 20px 50px rgba(0,0,0,.3)">'
+    + '<div style="font-size:17px; font-weight:800; margin-bottom:4px">📱 Stesso numero, altre pratiche pronte</div>'
+    + '<div style="font-size:13px; margin-bottom:8px">Al numero <b>' + esc(p.telefono || num) + '</b> ci sono anche ' + (altre.length === 1 ? 'questa pratica pronta e non ancora avvisata' : 'queste pratiche pronte e non ancora avvisate') + ':</div>'
+    + '<div style="font-size:13px; padding:8px 10px; border-radius:10px; background:var(--bg); white-space:pre-wrap; margin-bottom:12px">' + esc(altre.map(rigaPraticaMessaggio).join('\n')) + '</div>'
+    + '<button type="button" data-r="tutte" style="display:block; width:100%; background:#25d366; color:#fff; font-size:15px; padding:12px; margin-bottom:8px">💬 Un solo messaggio per tutte (' + tutte.length + ' pratiche)</button>'
+    + '<button type="button" data-r="una" style="display:block; width:100%; background:var(--line); color:var(--ink); margin-bottom:8px">Solo la pratica di ' + esc(nomeProprio(p.nome)) + '</button>'
+    + '<div style="text-align:right"><button type="button" data-r="annulla" style="background:none; color:var(--sub); padding:4px 0">Annulla</button></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function(e){
+    const b = e.target.closest('button[data-r]');
+    if(e.target === ov || (b && b.dataset.r === 'annulla')){ ov.remove(); return; }
+    if(!b) return;
+    ov.remove();
+    if(b.dataset.r === 'tutte'){ inviaWhatsAppGruppo(num, tutte); if(typeof render === 'function') render(); }
+    else inviaWhatsAppSingola(p, num);
+  });
 }
 function apriWhatsApp(num, testo, p){
   if(p && typeof contestoComunicazione === 'function') contestoComunicazione({ nome: p.nome, cf: p.codiceFiscale || '', nascita: p.cf || '', praticaId: p.id, motivo: 'Pratica pronta' });
@@ -4941,25 +4969,32 @@ function avviaInvioMultiplo(){
   st.fase = 'invio';
   disegnaInvioMultiplo();
 }
+// Riga di una pratica nei messaggi con l'elenco: nella congiunta ci sono tutti e due i nomi
+// es. «• Rossi Mario e Bianchi Anna – dichiarazione 730 congiunta (protocollo n. 730-0012/2027)»
+function rigaPraticaMessaggio(p){
+  const cong = ((p.congCognome || '') + ' ' + (p.congNome || '')).trim();
+  return '• ' + nomeProprio(p.nome) + (cong ? ' e ' + nomeProprio(cong) : '') + ' – ' + (/^730/.test(p.tipo||'') ? 'dichiarazione 730' : (p.tipo || 'pratica').toLowerCase()) + (cong ? ' congiunta' : '') + ' (protocollo n. ' + formattaProtocollo(p) + ')';
+}
 // Un solo messaggio per più pratiche pronte con lo stesso cellulare
 function messaggioRitiroGruppo(pratiche){
-  const righe = pratiche.map(function(p){ return '• ' + nomeProprio(p.nome) + ' – ' + (/^730/.test(p.tipo||'') ? 'dichiarazione 730' : (p.tipo || 'pratica').toLowerCase()) + ' (protocollo n. ' + formattaProtocollo(p) + ')'; }).join('\n');
+  const righe = pratiche.map(rigaPraticaMessaggio).join('\n');
   return compilaMessaggio('Buongiorno, la informiamo che sono pronte queste pratiche:\n' + righe + '\n\nPotete passare a ritirarle presso il CAF CISL di Alì Terme' + (IMPOSTAZIONI.caf_indirizzo ? ', in {indirizzo}' : '') + '.' + (IMPOSTAZIONI.caf_telefono ? ' Per informazioni può chiamare il {telefono}.' : '') + (IMPOSTAZIONI.caf_orari ? ' Orari di apertura: {orari}.' : '') + ' Cordiali saluti.', pratiche[0]);
+}
+// Un messaggio unico per più pratiche pronte con lo stesso cellulare: tutte «avvisate» e una riga nelle comunicazioni per ogni cliente
+function inviaWhatsAppGruppo(num, pratiche){
+  const testo = messaggioRitiroGruppo(pratiche);
+  apriWhatsApp(num, testo, pratiche[0]);
+  pratiche.slice(1).forEach(function(p){
+    if(typeof registraComunicazione === 'function') registraComunicazione({ canale: 'whatsapp', telefono: num, testo: testo, nome: p.nome, cf: p.codiceFiscale || '', nascita: p.cf || '', praticaId: p.id, motivo: 'Pratica pronta', senzaContesto: true });
+    p.whatsappInviato = todayIT(); data.pratiche.aggiorna(p.id, { whatsappInviato: p.whatsappInviato });
+  });
 }
 function inviaProssimoMultiplo(){
   const st = INVIO_MULTIPLO;
   const g = st && st.coda[st.pos];
   if(!g) return;
   if(g.pratiche.length === 1){ apriWhatsApp(g.num, messaggioRitiro(g.pratiche[0], st.modello), g.pratiche[0]); }
-  else {
-    const testo = messaggioRitiroGruppo(g.pratiche);
-    apriWhatsApp(g.num, testo, g.pratiche[0]);
-    // le altre pratiche dello stesso messaggio: «avvisato» e una riga nelle comunicazioni per ogni cliente
-    g.pratiche.slice(1).forEach(function(p){
-      if(typeof registraComunicazione === 'function') registraComunicazione({ canale: 'whatsapp', telefono: g.num, testo: testo, nome: p.nome, cf: p.codiceFiscale || '', nascita: p.cf || '', praticaId: p.id, motivo: 'Pratica pronta', senzaContesto: true });
-      p.whatsappInviato = todayIT(); data.pratiche.aggiorna(p.id, { whatsappInviato: p.whatsappInviato });
-    });
-  }
+  else inviaWhatsAppGruppo(g.num, g.pratiche);
   st.inviati[g.id] = true;
   st.pos++;
   disegnaInvioMultiplo();
