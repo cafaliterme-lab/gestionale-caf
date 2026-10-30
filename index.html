@@ -71,6 +71,8 @@ button, a, label, summary, [onclick], [role=button], [data-az], [data-azione], t
   label.chk{min-height:34px}
 }
 #summary [data-dett]::after{content:'🔎'; position:absolute; top:4px; right:7px; font-size:11px; opacity:.75}
+/* telefono: la lentina va nell'angolo in basso, così non copre il titolo dei riquadri piccoli */
+@media (max-width:600px){ #summary [data-dett]::after{top:auto; bottom:3px; right:5px; font-size:10px; opacity:.6} }
 .vc-form{grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px 8px}
 .vc-form label{font-size:11.5px; margin-bottom:2px}
 .vc-form input{padding:5px 8px; font-size:13px; min-height:0; height:30px; border-radius:7px; transition:background .2s, border-color .2s}
@@ -361,6 +363,8 @@ body.sola-lettura .sc-fatta, body.sola-lettura .sc-elimina{display:none}
 .login-btn{width:100%; padding:12px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font-size:14px; font-weight:600; cursor:pointer; margin-bottom:10px}
 .login-btn:hover{border-color:var(--accent)}
 .userbar{display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:var(--sub)}
+/* PC: i contatori fissi in alto a destra (#badge-lavorate) coprivano i tasti della barra utente */
+@media (min-width:561px){ .userbar{padding-right:clamp(0px, calc(240px - (100vw - 960px) / 2), 240px)} }
 #guida-testo ul, #guida-testo ol{padding-left:22px; margin:6px 0} #guida-testo li{margin:3px 0} #guida-testo .g-nota{background:color-mix(in srgb, #1d4f91 9%, var(--card)); border-left:4px solid #1d4f91; padding:7px 10px; border-radius:8px; font-size:13px} #guida-indice a:hover{background:var(--line)}
 .userbar button{background:none; border:1px solid var(--line); border-radius:999px; padding:5px 12px; font-size:11.5px; color:var(--ink); cursor:pointer}
 .perm-row{display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px}
@@ -393,6 +397,7 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
 .barra-anno #anno-attivo{width:auto; min-width:110px; padding:5px 10px}
 /* menu: in evidenza le schede di tutti i giorni, le altre più piccole; resta fisso in alto scorrendo */
 .barra-fissa{position:sticky; top:0; z-index:45; background:var(--bg); padding:6px 0 8px; margin-bottom:10px}
+.nav-freccia{display:none}
 .navmenu{display:flex !important; flex-wrap:wrap; gap:6px; margin:0}
 /* ricerca unica sotto il menu */
 .ricerca-unica{position:relative; display:flex; align-items:center; gap:8px; margin-top:8px; background:var(--card); border:2px solid #5e4fa2; border-radius:12px; padding:0 12px}
@@ -429,6 +434,10 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
   /* telefono: menu su una riga che scorre col dito */
   .navmenu{flex-wrap:nowrap !important; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin-left:-16px !important; margin-right:-16px !important; padding:0 16px 2px}
   .navmenu::-webkit-scrollbar{display:none}
+  /* freccette ‹ › ai lati del menu che scorre (js/menu-frecce.js) */
+  .nav-freccia{display:block; position:absolute; z-index:3; width:30px; height:30px; padding:0 !important; border-radius:50%; border:1px solid var(--line); background:var(--card); color:var(--ink); font-size:20px; font-weight:800; line-height:1; box-shadow:0 2px 8px rgba(0,0,0,.18); cursor:pointer}
+  #nav-freccia-sx{left:-12px}
+  #nav-freccia-dx{right:-12px}
   .navmenu .nav-a-capo{display:none}
   .userbar{font-size:11px; gap:5px}
   .userbar button{font-size:11px; padding:4px 8px}
@@ -1069,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=20261029a"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=20261029f"></script>
+<script src="js/guida.js?v=20261030a"></script>
 <script src="js/scadenze.js?v=20261029c"></script>
 <script src="js/config.js?v=202610079"></script>
 <script src="js/auth.js?v=202610049"></script>
@@ -1079,13 +1088,14 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ricerca-elenchi.js?v=1"></script>
 <script src="js/data.js?v=202610247"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=20261029f"></script>
+<script src="js/app.js?v=20261030a"></script>
 <script src="js/lavoratore-colf.js?v=4"></script>
 <script src="js/affitti.js?v=3"></script>
 <script src="js/scadenza-730.js?v=2"></script>
 <script src="js/sollecito-ritiro.js?v=3"></script>
 <script src="js/fine-anno.js?v=1"></script>
 <script src="js/anno-precedente.js?v=2"></script>
+<script src="js/menu-frecce.js?v=1"></script>
 <script src="js/email.js?v=20261029e"></script>
 <script src="js/modulistica.js?v=1"></script>
 <script src="js/storico.js?v=8"></script>
@@ -1097,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/chiusura.js?v=2"></script>
 <script src="js/resoconto.js?v=6"></script>
 <script src="js/confronto-anni.js?v=1"></script>
-<script src="js/oggi.js?v=20261028b"></script>
+<script src="js/oggi.js?v=20261030a"></script>
 <script src="js/agenda.js?v=6"></script>
 <script src="js/comunicazioni.js?v=20261027f"></script>
 <script src="js/documenti-scadenza.js?v=20261027d"></script>
@@ -1108,9 +1118,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/tipi.js?v=8"></script>
 <script src="js/morosi.js?v=16"></script>
 <script src="js/colf.js?v=6"></script>
-<script src="js/slide.js?v=7"></script>
+<script src="js/slide.js?v=20261030a"></script>
 <script src="js/presenza.js?v=3"></script>
-<script src="js/chat.js?v=8"></script>
+<script src="js/chat.js?v=20261030a"></script>
 <script src="js/accesso-qr.js?v=6"></script>
 <script src="js/dettaglio-cont.js?v=15"></script>
 <script src="js/archivio-clienti.js?v=20261029c"></script>

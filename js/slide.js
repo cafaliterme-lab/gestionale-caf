@@ -80,7 +80,7 @@ const SLIDE_AMMINISTRATORE = [
     passi: ['<b>+ 💰 Acconto</b>: registra i soldi che il collaboratore ti versa (Pagamenti effettuati).', '<b>Da incassare</b> = incasso − pagamenti effettuati.', '<b>✓ Togli dai morosi</b>: le pratiche regolate col collaboratore escono dal tabulato, senza cambiare i conti.'],
     disegno: riquadroFinto('300,00 €', 'Incasso', '#8e5bd6') + riquadroFinto('250,00 €', 'Pagamenti effettuati', '#0e7c86') + riquadroFinto('50,00 €', 'Da incassare', '#c0392b') },
   { icona: '📊', titolo: 'Contabilità e guadagno netto', intro: 'La sezione CONTABILITA\' riassume l\'anno.',
-    passi: ['Fatture emesse, incasso, <b>versamenti CAF</b> e netto.', '<b>Guadagno netto</b> = incasso − versamenti CAF − fatture − spese sede.', 'Blocchi <b>SOLO 730</b> e <b>ALTRE PRATICHE</b>; ricerca fatture per periodo e pagamento.'],
+    passi: ['Fatture emesse, incasso, <b>versamenti CAF</b> e netto.', '<b>Guadagno netto</b> = incasso − fatture − spese sede (i versamenti al CAF pagano le fatture, non si tolgono due volte).', 'Blocchi <b>SOLO 730</b> e <b>ALTRE PRATICHE</b>; ricerca fatture per periodo e pagamento.'],
     disegno: riquadroFinto('5.000 €', 'Incasso', '#8e5bd6') + riquadroFinto('1.200 €', 'Versamenti CAF', '#2f7de1') + riquadroFinto('900 €', 'Guadagno netto', '#374151') },
   { icona: '🏢', titolo: 'Spese sede e versamenti CAF', intro: 'Le uscite della sede.',
     passi: ['<b>VERSAMENTI CAF</b>: la data si compila da sola con oggi.', '<b>SPESE GESTIONE SEDE</b>: TARI, acqua, luce… con i passaggi e la conferma "in contabilità".', '<b>Prelevati Angelo</b>: elenco da spuntare quando vengono restituiti.'],

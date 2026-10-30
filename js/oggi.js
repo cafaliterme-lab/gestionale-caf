@@ -50,7 +50,7 @@ function renderOggi() {
     rec.forEach(function (r) { if (r.data === oggiIT) incassoOggi += Number(r.importo || 0); });
   });
   // solo amministratore: fatture ancora da versare al CAF = fatture emesse (contano dalla consegna) − dato al CAF (bollettini, bonifici e spese detratte)
-  let daVersare = 0, fattAnno = 0, versAnno = 0, guadagnoNetto = 0, speseAnno = 0, incassoAnno = 0;
+  let daVersare = 0, fattAnno = 0, versAnno = 0, guadagnoNetto = 0, speseAnno = 0, incassoAnno = 0, fattAttesaAnno = 0;
   if (admin) {
     const pratCont = (typeof praticheContabili === 'function' ? praticheContabili(pratAnno) : pratAnno).concat(typeof fattureAnnullateAperte === 'function' ? fattureAnnullateAperte(anno) : []);
     fattAnno = pratCont.reduce(function (t, p) { return t + Number(p.compenso || 0); }, 0);
@@ -60,6 +60,8 @@ function renderOggi() {
     const incAnno = pratCont.reduce(function (t, p) { return t + Number(p.pagato || 0); }, 0);
     speseAnno = typeof totaleSpeseSede === 'function' ? totaleSpeseSede(anno) : 0;
     guadagnoNetto = Math.round((incAnno - fattAnno - speseAnno) * 100) / 100;
+    // fatture delle pratiche non ancora consegnate: contano alla consegna, il guadagno «a fine lavori» è più basso
+    fattAttesaAnno = typeof totaleFattureInAttesa === 'function' ? totaleFattureInAttesa(pratAnno) : 0;
     incassoAnno = incAnno;
   }
   const docMancanti = pratAnno.filter(function (p) { return !eConsegnata(p) && typeof documentiPratica === 'function' && documentiPratica(p).mancanti.length; }).length;
@@ -90,7 +92,7 @@ function renderOggi() {
     + tile('🆕', aperteOggi, 'Pratiche aperte oggi', '#1d4f91', "oggiVaiRegistroCerca('tutte', todayIT())", '')
     + tile('✅', sommaPeso(consegnateOggi), 'Consegnate oggi', '#1a7f37', "oggiVaiRegistroCerca('consegnate', todayIT())", 'nell\'anno: ' + consegnateAnno + ' consegnate / definite (congiunte = 2)')
     + (admin ? tile('💶', incassoOggi > 0 ? fmtEuro(incassoOggi) : 0, 'Incassato oggi', '#2f9e5f', 'apriChiusuraGiorno()', 'tocca per la chiusura di cassa') : '')
-    + (admin ? tile('📈', Math.abs(guadagnoNetto) > 0.004 ? fmtEuro(guadagnoNetto) : 0, 'Guadagno netto ' + anno, guadagnoNetto < -0.004 ? '#c0392b' : '#c2185b', "oggiTab('contabilita')", 'incasso ' + fmtEuro(incassoAnno) + ' − fatture ' + fmtEuro(fattAnno) + ' − spese sede ' + fmtEuro(speseAnno)) : '')
+    + (admin ? tile('📈', Math.abs(guadagnoNetto) > 0.004 ? fmtEuro(guadagnoNetto) : 0, 'Guadagno netto ' + anno, guadagnoNetto < -0.004 ? '#c0392b' : '#c2185b', "oggiTab('contabilita')", 'incasso ' + fmtEuro(incassoAnno) + ' − fatture ' + fmtEuro(fattAnno) + ' − spese sede ' + fmtEuro(speseAnno) + (fattAttesaAnno > 0.004 ? ' · 💡 quando avrai consegnato tutto: ' + fmtEuro(guadagnoNetto - fattAttesaAnno) : '')) : '')
     + (admin ? tile('🏦', Math.abs(daVersare) > 0.004 ? fmtEuro(daVersare) : 0, 'Fatture da versare al CAF', daVersare > 0.004 ? '#c0392b' : '#1a7f37', "oggiTab('caf')", 'fatture ' + fmtEuro(fattAnno) + ' − già dato ' + fmtEuro(versAnno) + ' (con le spese detratte)') : '')
     + '</div>'
     + '<div style="font-size:12px; font-weight:800; color:var(--sub); margin:10px 0 4px">📋 DA FARE</div>'
