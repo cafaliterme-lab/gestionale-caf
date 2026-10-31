@@ -2373,6 +2373,7 @@ function render(){
       <div id="raff-tipi" style="margin-top:14px"></div>`;
   }
   { const br = document.getElementById('btn-resoconto'); if(br) br.style.display = (auth.profilo && auth.profilo.ruolo === 'admin') ? 'inline-flex' : 'none'; }
+  { const bb = document.getElementById('btn-bilanci'); if(bb) bb.style.display = (auth.profilo && auth.profilo.ruolo === 'admin') ? 'inline-flex' : 'none'; }
   document.getElementById('raff-diff').textContent = vedeGuadagni() ? 'Guadagno netto (incasso totale − fatture emesse − spese sede): ' + fmtEuro(incassoLordo - fattureEmesse - speseSede) : '';
   aggiornaGrafici(fattureEmesse, incassoLordo);
   aggiornaGraficoTipi(pratC);
