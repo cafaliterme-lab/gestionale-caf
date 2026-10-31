@@ -101,7 +101,8 @@ function apriArchivioClienti(testo, filtri) {
       b.style.background = on ? '#1d4f91' : 'transparent'; b.style.color = on ? '#fff' : '#1d4f91';
     });
     const nomeBreve = function (c) { return c ? esc(String(c.nomeCompleto || '').split(' ')[0]) : ''; };
-    const bFoglio = function (dir, testo, attivo) { return '<button type="button" data-foglio="' + dir + '"' + (attivo ? '' : ' disabled') + ' style="padding:6px 14px; border-radius:999px; font-weight:800; cursor:pointer; border:none; background:#1d4f91; color:#fff; opacity:' + (attivo ? 1 : .35) + '">' + testo + '</button>'; };
+    // il tasto porta a un foglio preciso (non «+1»): se il tocco arriva due volte non salta un foglio
+    const bFoglio = function (dir, testo, attivo) { return '<button type="button" data-foglio="' + (ARCHIVIO_VISTA.foglio + dir) + '"' + (attivo ? '' : ' disabled') + ' style="padding:6px 14px; border-radius:999px; font-weight:800; cursor:pointer; border:none; background:#1d4f91; color:#fff; opacity:' + (attivo ? 1 : .35) + '">' + testo + '</button>'; };
     document.getElementById('arc-fogli').innerHTML = fogli > 1
       ? bFoglio(-1, '◀ Foglio precedente', ARCHIVIO_VISTA.foglio > 0)
         + '<b style="font-size:13.5px">Foglio ' + (ARCHIVIO_VISTA.foglio + 1) + ' di ' + fogli + '</b> <span class="sub2">(da ' + nomeBreve(mostra[0]) + ' a ' + nomeBreve(mostra[mostra.length - 1]) + ')</span>'
@@ -136,7 +137,7 @@ function apriArchivioClienti(testo, filtri) {
     const bp = e.target.closest('button[data-perfoglio]');
     if (bp) { try { localStorage.setItem('archivio-per-foglio', bp.dataset.perfoglio); } catch (x) {} ARCHIVIO_VISTA.foglio = 0; disegna(); document.getElementById('arc-lista').scrollTop = 0; return; }
     const bf = e.target.closest('button[data-foglio]');
-    if (bf) { ARCHIVIO_VISTA.foglio += Number(bf.dataset.foglio); disegna(); document.getElementById('arc-lista').scrollTop = 0; return; }
+    if (bf) { ARCHIVIO_VISTA.foglio = Math.max(0, Number(bf.dataset.foglio) || 0); disegna(); document.getElementById('arc-lista').scrollTop = 0; return; }
     const b = e.target.closest('button[data-az]');
     if (e.target === ov || (b && b.dataset.az === 'chiudi')) { ov.remove(); return; }
     if (b && (b.dataset.az === 'doc-wa' || b.dataset.az === 'doc-mail')) { if (typeof richiediDocumentoCliente === 'function') richiediDocumentoCliente(b.dataset.cid, b.dataset.az === 'doc-mail' ? 'email' : 'wa'); return; }
