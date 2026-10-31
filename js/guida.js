@@ -452,7 +452,7 @@ const GUIDA = [
 <li><b>💬 Avvisa</b>: manda al cliente su WhatsApp il promemoria della scadenza; resta annotato "AVVISATO il …";</li>
 <li><b>📧 Avvisa</b>: manda lo stesso promemoria per e-mail dalla casella del CAF; resta annotato "AVVISATO via e-mail il …";</li>
 <li><b>🔁 Rinnova</b>: apre una nuova pratica già compilata con i dati del cliente; scrivi la nuova scadenza e l'importo e salva. La nuova pratica prende il numero dell'anno in corso e la vecchia scadenza diventa <b>🔁 rinnovata</b>;</li>
-<li><b>Non rinnova</b>: chiude la scadenza se il cliente non prosegue.</li>
+<li><b>Non rinnova</b> (casella da spuntare, non da scrivere): chiude la scadenza se il cliente non prosegue. Il programma chiede poi se il contratto è finito: con <b>OK</b> la pratica diventa <b>Pratica cessata</b> (niente più buste paga né passaggio all'anno nuovo) e nelle sue note resta scritto «Non rinnova: contratto cessato il …»; con <b>Annulla</b> si chiude solo la scadenza.</li>
 </ul></li>
 <li>Cliente e scadenza passano all'anno successivo; la pratica resta nel registro dell'anno in cui è stata fatta.</li>
 </ul><p><b>✅ Per non sbagliare il passaggio d'anno</b>:</p><ol>

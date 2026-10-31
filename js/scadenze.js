@@ -133,10 +133,29 @@ async function segnaScadenza(id, fatta) {
   // annualità di un contratto di affitto: «pagata» porta la scadenza all'anno dopo invece di chiuderla
   const sa = (state.scadenze || []).find(function (x) { return x.id === id; });
   if (fatta && sa && sa.praticaId && typeof eAnnualitaAffitto === 'function' && eAnnualitaAffitto(sa)) { if (await annualitaAffittoPagata(sa)) { renderScadenze(); return; } }
+  // pratica del contratto colf, letta prima di salvare (dopo il salvataggio gli elenchi si ricaricano)
+  const pratica = sa && sa.praticaId ? (state.pratiche || []).find(function (x) { return x.id === sa.praticaId; }) : null;
   const r = await data.scadenze.aggiorna(id, { completata: fatta });
   if (r.error) { avviso('❌ ' + r.error, true); renderScadenze(); return; }
-  const sc = (state.scadenze || []).find(function (x) { return x.id === id; });
+  // la scadenza letta prima di salvare: dopo il salvataggio l'elenco si ricarica
+  const sc = sa || (state.scadenze || []).find(function (x) { return x.id === id; });
   avviso(fatta ? (sc && eScadenzaColf(sc) ? '✓ Segnata: il cliente non rinnova' : '✓ Scadenza segnata come fatta') : 'Scadenza riaperta');
+  if (fatta && sc && eScadenzaColf(sc)) await chiudiContrattoNonRinnovato(sc, pratica);
+}
+// «Non rinnova» su una scadenza colf: si chiede se il contratto è finito. Con Sì la pratica diventa «Pratica cessata»
+// (niente più buste paga né passaggio all'anno nuovo) e nelle sue note resta scritto che non ha rinnovato,
+// perché il database, per una pratica cessata, toglie da solo la sua scadenza dal calendario.
+async function chiudiContrattoNonRinnovato(sc, p) {
+  p = p || (sc.praticaId && (state.pratiche || []).find(function (x) { return x.id === sc.praticaId; }));
+  if (!p || p.stato === 'pratica_cessata') return;
+  if (!confirm('Il contratto di ' + (p.nome || sc.cliente || '') + ' è finito?\n\nCon OK la pratica ' + formattaProtocollo(p) + ' diventa «Pratica cessata»: il programma non chiede più le buste paga e non la porta nell\'anno nuovo.\nCon Annulla si chiude solo la scadenza.')) return;
+  const nota = 'Non rinnova: contratto cessato il ' + todayIT() + ' (scadenza assistenza del ' + dataIT(sc.data) + ')';
+  const r = await data.pratiche.aggiorna(p.id, { stato: 'pratica_cessata', note: (p.note ? p.note + '\n' : '') + nota });
+  if (r && r.error) { avviso('❌ Pratica non aggiornata: ' + r.error, true); return; }
+  p.stato = 'pratica_cessata'; p.note = (p.note ? p.note + '\n' : '') + nota;
+  avviso('✓ ' + formattaProtocollo(p) + ': pratica cessata, non rinnova');
+  if (typeof render === 'function') render();
+  if (typeof renderScadenze === 'function') renderScadenze();
 }
 async function rimuoviScadenza(id) {
   const s = (state.scadenze || []).find(function (x) { return x.id === id; });
