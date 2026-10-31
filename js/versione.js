@@ -1,6 +1,6 @@
 /* ---------------- 🏷️ Versione del programma ----------------
-   Numero della versione e storia delle novità. Si vede in alto nella Guida (cliccando si aprono le novità)
-   e in Utenti e permessi.
+   Numero della versione e storia delle novità. Si vede nell'intestazione verde accanto al titolo, in alto nella Guida
+   e in Utenti e permessi (toccandola si aprono le novità).
    Come si numera: correzioni piccole → 1.0.1, 1.0.2…; funzioni nuove → 1.1, 1.2…; cambi grandi → 2.0.
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
@@ -39,5 +39,8 @@ function apriNovitaVersioni() {
     + '</div>';
   document.body.appendChild(ov);
 }
-// scritta del tasto in Utenti e permessi
-document.addEventListener('DOMContentLoaded', function () { const el = document.getElementById('versione-programma'); if (el) el.textContent = testoVersione(); });
+// scritta del tasto in Utenti e permessi e della pastiglia nell'intestazione verde
+document.addEventListener('DOMContentLoaded', function () {
+  const el = document.getElementById('versione-programma'); if (el) el.textContent = testoVersione();
+  const h = document.getElementById('hero-versione'); if (h) h.textContent = 'v' + VERSIONE_PROGRAMMA;
+});
