@@ -1,7 +1,7 @@
 # Promemoria tecnico – Gestionale CAF CISL Alì Terme
 
 Questo file serve a chi riprende il programma: Claude in una nuova sessione o un altro tecnico.
-Va letto **prima** di modificare qualcosa. Aggiornato al 24/10/2026. L'uso vero del programma inizia nel 2027.
+Va letto **prima** di modificare qualcosa. Aggiornato al 31/10/2026. L'uso vero del programma inizia nel 2027.
 
 ## Chi lo usa e come parlargli
 
@@ -56,6 +56,9 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 24/10/2026. L'uso vero 
   - `scadenza-730.js`: avviso di settembre con i 730 da definire entro il 30/09;
 - `js/sollecito-ritiro.js`: 🔔 sollecito di ritiro dal 7 ottobre (riquadro in Oggi, WhatsApp uno per volta, stesso cellulare = un messaggio, motivo «Sollecito ritiro» nelle comunicazioni).
 - `js/fine-anno.js`: 🧹 controllo di fine anno «Pronti per il nuovo anno?» (riquadro Oggi solo admin dal 15/12 al 31/01, tasto in Utenti e permessi). Solo lista di controllo con tasti verso le pagine: non cancella niente da sola.
+- Congiunta (app.js `telefonoConiugeDaDichiarante`): cellulare ed e-mail del dichiarante vanno nei campi vuoti del coniuge anche se scritti dopo (dataset.copia), il fisso si mostra sotto (#f-cong-fisso-nota) e al salvataggio va nella scheda del coniuge se non ne ha uno.
+- WhatsApp (app.js): dal tasto 💬 della singola pratica, se allo stesso numero ci sono altre pratiche «lavorata» non avvisate → `chiediMessaggioUnicoWhatsApp` (un messaggio per tutte o solo questa); `rigaPraticaMessaggio` mette i due nomi della congiunta nei messaggi con elenco (anche sollecito).
+- Scadenze colf (scadenze.js): spunta «Non rinnova» → `chiudiContrattoNonRinnovato` chiede se il contratto è finito; con OK pratica `pratica_cessata` + nota (il trigger toglie la scadenza della pratica cessata).
 - `js/controllo-mattino.js`: 💓 riquadro al primo accesso del giorno dell'admin (localStorage `controllo-mattino-giorno`): battito (`impostazioni.battito_ultimo`, scritto da `api/battito.js` con la RPC `registra_battito()` per anon, migrazione 038; ok se < 36 ore; cron Vercel «11 3 * * *» UTC = tra le 4 e le 6 ora italiana, così è già passato quando si apre il programma), copia notturna (< 36 ore), copia e-mail (< 8 giorni), spazio. Verde si chiude dopo 20 s, rosso resta. Tasto anche in Utenti e permessi.
 - `js/spazio-server.js`: 💽 «Spazio sul server» in Utenti e permessi (sopra i backup): RPC `spazio_database()` (migrazione 037, solo admin) dà totale, limite 500 MB, spazio per gruppo di tabelle e salva il valore del mese in `impostazioni.spazio_mesi` (serve per la crescita al mese e gli anni che restano). Riquadro in Oggi e voce nel controllo di fine anno solo oltre il 70%. Il 30/10/2026: 14,8 MB, di cui 12,3 di base fissa di Supabase.
 - `js/anni-vecchi.js`: 🗄️ «Anni con più di 5 anni» (ANNI_DA_CONSERVARE=5), voce del controllo di fine anno. Per ogni anno ≤ anno chiuso − 5: «💾 Scarica la copia» (file `copia-anno-AAAA-…json`, versione 'anno', solo righe di quell'anno: pratiche, scadenze, buste_paga, pratiche_avvisi, versamenti, spese_sede) e «🗑️ Cancella» (`eseguiSvuotaAnno` in extra.js, backup prima). Mai automatico: se non cancella, l'anno dopo li ripropone tutti. «Importa Backup» con un file `copia-anno-*` chiama `riportaAnnoDaCopia`: rimette solo quell'anno (ignore-duplicates), senza toccare il resto.
