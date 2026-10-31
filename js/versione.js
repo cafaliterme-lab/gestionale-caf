@@ -9,6 +9,7 @@ const STORIA_VERSIONI = [
     novita: [
       'Archivio clienti: «Foglio successivo» e «Foglio precedente» vanno sempre di un foglio alla volta',
       'Doppio clic: il programma ignora il secondo clic (prima apriva per sbaglio il primo cliente dell\'archivio o saltava un foglio)',
+      '«Svuota registro» diventa «🧨 Azzera tutti gli anni»: toglie anche versamenti, spese, acconti, ISEE, conte di cassa e scadenze; l\'archivio clienti resta',
     ] },
   { versione: '1.0', data: '31/10/2026', titolo: 'Prima versione completa, pronta per il 2027',
     novita: [

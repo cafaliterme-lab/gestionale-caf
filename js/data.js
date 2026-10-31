@@ -887,6 +887,11 @@ async function svuotaRegistro() {
     const { error } = await sb.rpc('svuota_registro');
 
     if (error) throw new Error(error.message);
+    // azzera anche contabilità e scadenze di tutti gli anni; l'archivio clienti, i messaggi, gli utenti e le impostazioni restano
+    for (const t of ['scadenze', 'versamenti', 'spese_sede', 'acconti', 'isee', 'conte_cassa']) {
+      const { error: e2 } = await sb.from(t).delete().not('id', 'is', null);
+      if (e2) throw new Error('pratiche cancellate, ma non ' + t.replace('_', ' ') + ': ' + e2.message);
+    }
 
     await caricaTutto();
     return {};

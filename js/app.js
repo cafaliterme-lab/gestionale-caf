@@ -1478,13 +1478,13 @@ async function importaBackup(){
 
 async function svuotaRegistro(){
   const btn = document.getElementById('btn-svuota');
-  const ok = await chiediConfermaScritta('Svuota registro', 'Verranno eliminate DEFINITIVAMENTE tutte le pratiche di tutti gli anni. Prima di cancellare il programma salva da solo una copia di sicurezza (la trovi in "Backup automatici").', 'SVUOTA');
+  const ok = await chiediConfermaScritta('Azzera tutti gli anni', 'Verranno eliminati DEFINITIVAMENTE, per tutti gli anni: pratiche (con scadenze e buste paga), versamenti al CAF, spese sede, acconti, ISEE e conte di cassa; la numerazione riparte da 1. RESTANO l\'archivio clienti, i messaggi e le comunicazioni, gli utenti e le impostazioni. Prima di cancellare il programma salva da solo una copia di sicurezza completa (la trovi in "Backup automatici").', 'SVUOTA');
   if(!ok) return;
   if(btn){ btn.disabled = true; btn.textContent = 'Backup e eliminazione in corso...'; }
   const result = await data.admin.svuota();
   if(result.error){ console.error('svuotamento registro', result.error); }
-  else avviso('✓ Registro svuotato. La copia di sicurezza e\' in "Backup automatici".');
-  if(btn){ btn.disabled = false; btn.textContent = 'Svuota registro (elimina tutte le pratiche)'; }
+  else avviso('✓ Tutti gli anni azzerati (l\'archivio clienti resta). La copia di sicurezza e\' in "Backup automatici".');
+  if(btn){ btn.disabled = false; btn.textContent = '🧨 Azzera tutti gli anni (l\'archivio clienti resta)'; }
   render();
   if(typeof renderBackupEStorico === 'function') renderBackupEStorico();
 }

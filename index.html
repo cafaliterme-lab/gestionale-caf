@@ -1054,8 +1054,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <div class="card">
   <div class="raff-title" style="color:#c0392b">Zona pericolosa</div>
-  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Elimina definitivamente tutte le pratiche dal registro di protocollo, per tutti gli anni. Non si può annullare.</p>
-  <button type="button" id="btn-svuota" class="btn-add" style="background:var(--line); color:#c0392b" onclick="svuotaRegistro()">Svuota registro (elimina tutte le pratiche)</button>
+  <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Azzera <b>tutti gli anni</b>: pratiche (con scadenze e buste paga), versamenti al CAF, spese sede, acconti, ISEE e conte di cassa; la numerazione riparte da 1. <b>Restano</b> l'archivio clienti, messaggi e comunicazioni, utenti e impostazioni. Prima il programma fa da solo una copia completa; si conferma scrivendo SVUOTA.</p>
+  <button type="button" id="btn-svuota" class="btn-add" style="background:var(--line); color:#c0392b" onclick="svuotaRegistro()">🧨 Azzera tutti gli anni (l'archivio clienti resta)</button>
   <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line)">
     <div style="margin-bottom:12px"><button type="button" onclick="apriNovitaVersioni()" style="background:var(--line); color:#1d4f91; border:none; border-radius:999px; padding:7px 16px; font-weight:800; cursor:pointer">🏷️ <span id="versione-programma">Versione</span></button> <span style="font-size:12.5px; color:var(--sub)">la versione del programma e le sue novità</span></div>
     <div style="margin-bottom:12px"><button type="button" onclick="apriControlloFineAnno()" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 16px; font-weight:800; cursor:pointer">🧹 Controllo di fine anno</button> <span style="font-size:12.5px; color:var(--sub)">lista di controllo per chiudere l'anno e partire puliti con il nuovo (dal 15 dicembre compare anche nella pagina Oggi)</span></div>
@@ -1088,19 +1088,19 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=20261029a"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=20261031d"></script>
+<script src="js/guida.js?v=20261031e"></script>
 <script src="js/scadenze.js?v=20261029cn"></script>
 <script src="js/config.js?v=202610079"></script>
-<script src="js/versione.js?v=4"></script>
+<script src="js/versione.js?v=5"></script>
 <script src="js/doppio-clic.js?v=1"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
 </script>
 <script src="js/ricerca-elenchi.js?v=1"></script>
-<script src="js/data.js?v=202610247"></script>
+<script src="js/data.js?v=202610247z"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=20261030d"></script>
+<script src="js/app.js?v=20261031a"></script>
 <script src="js/lavoratore-colf.js?v=4"></script>
 <script src="js/affitti.js?v=3"></script>
 <script src="js/scadenza-730.js?v=2"></script>
