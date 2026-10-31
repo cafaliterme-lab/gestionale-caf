@@ -1,7 +1,8 @@
 /* ---------------- 💓 Controllo del mattino (solo amministratore) ----------------
    Al primo accesso del giorno (su ogni PC o telefono) compare in basso a destra un riquadro con lo stato
    delle cose automatiche che tengono vivo e al sicuro il programma:
-   - 💓 battito di Vercel (api/battito.js segna l'ora in impostazioni.battito_ultimo): tiene sveglio Supabase;
+   - 💓 battito di Vercel (api/battito.js → impostazioni.battito_vercel) e di riserva quello di Supabase stesso
+     (pg_cron «battito-supabase» → impostazioni.battito_supabase): tengono sveglio Supabase, basta che ne parta uno;
    - 💾 copia di sicurezza notturna (backup_automatici);
    - 📧 copia per e-mail del lunedì (impostazioni.backup_email_ultimo);
    - 💽 spazio sul server.
@@ -26,11 +27,15 @@ async function vociControlloMattino() {
   };
   const ore = function (t) { return t ? (Date.now() - t) / 3600000 : Infinity; };
   try {
-    const t = await leggi('battito_ultimo');
-    voci.push({ icona: '💓', titolo: 'Battito di Vercel', ok: ore(t) < ORE_BATTITO_OK,
-      testo: ore(t) < ORE_BATTITO_OK ? 'Partito ' + quandoMattino(t) + ': il server resta sveglio.'
-        : t ? 'L\'ultimo è partito ' + quandoMattino(t) + '. Apri Vercel → progetto gestionale-caf → Settings → Cron Jobs e controlla che «/api/battito» sia attivo. Finché usi il programma ogni giorno il server resta sveglio lo stesso.'
-          : 'Non ancora registrato: il primo arriva domattina presto (prima delle 6). Se domani è ancora così, controlla Vercel → Settings → Cron Jobs.' });
+    // due battiti: Vercel (prima delle 6) e, di riserva, Supabase stesso (verso le 6:23); basta che ne parta uno
+    const tv = await leggi('battito_vercel'), ts = await leggi('battito_supabase');
+    const vOk = ore(tv) < ORE_BATTITO_OK, sOk = ore(ts) < ORE_BATTITO_OK;
+    const riga = function (nome, t) { return nome + ' ' + (t ? quandoMattino(t) : 'non ancora registrato'); };
+    voci.push({ icona: '💓', titolo: 'Battito del server', ok: vOk || sOk,
+      testo: riga('Vercel', tv) + ' · ' + riga('Supabase', ts) + '. '
+        + (vOk && sOk ? 'Il server resta sveglio.'
+          : vOk || sOk ? 'Il server resta sveglio, ma il battito di ' + (vOk ? 'Supabase' : 'Vercel') + ' non è partito: ' + (vOk ? 'se domani è ancora così, controlla in Supabase → Integrations → Cron.' : 'quando puoi controlla Vercel → progetto gestionale-caf → Settings → Cron Jobs («/api/battito» attivo).')
+          : 'Nessuno dei due battiti è partito: controlla Vercel → Settings → Cron Jobs. Finché usi il programma ogni giorno il server resta sveglio lo stesso.') });
   } catch (e) {}
   try {
     const r = await fetchSupabase('/rest/v1/backup_automatici?select=creato_il&order=creato_il.desc&limit=1');
