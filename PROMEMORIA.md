@@ -76,6 +76,12 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 31/10/2026. L'uso vero 
   - Se lo strumento automatico si blocca su comandi «distruttivi» (`drop`, `delete`), si prepara il file e Angelo lo incolla nell'editor SQL di Supabase.
   - Esempio: `supabase/incolla-in-supabase.sql`.
 
+## Versione del programma
+
+- `js/versione.js`: `STORIA_VERSIONI` (la prima voce è la versione attuale), visibile nella Guida e in Utenti e permessi (🏷️, apre le novità).
+- **1.0 del 31/10/2026**: versione completa con cui si parte nel 2027 (tag git `v1.0`).
+- A ogni aggiornamento: nuova voce in cima a `STORIA_VERSIONI` (correzioni 1.0.1…, funzioni nuove 1.1…, cambi grandi 2.0), aumentare `?v=` di versione.js e mettere il tag git `vX.Y.Z` (`git tag vX.Y.Z && git push origin vX.Y.Z`).
+
 ## Come provare e pubblicare
 
 1. Avviare il sito in locale con `python3 -m http.server 8765` dalla cartella del programma.

@@ -1054,6 +1054,7 @@ document.addEventListener('DOMContentLoaded', function() {
   <p style="font-size:12.5px; color:var(--sub); margin:0 0 10px">Elimina definitivamente tutte le pratiche dal registro di protocollo, per tutti gli anni. Non si può annullare.</p>
   <button type="button" id="btn-svuota" class="btn-add" style="background:var(--line); color:#c0392b" onclick="svuotaRegistro()">Svuota registro (elimina tutte le pratiche)</button>
   <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line)">
+    <div style="margin-bottom:12px"><button type="button" onclick="apriNovitaVersioni()" style="background:var(--line); color:#1d4f91; border:none; border-radius:999px; padding:7px 16px; font-weight:800; cursor:pointer">🏷️ <span id="versione-programma">Versione</span></button> <span style="font-size:12.5px; color:var(--sub)">la versione del programma e le sue novità</span></div>
     <div style="margin-bottom:12px"><button type="button" onclick="apriControlloFineAnno()" style="background:#1d4f91; color:#fff; border:none; border-radius:999px; padding:7px 16px; font-weight:800; cursor:pointer">🧹 Controllo di fine anno</button> <span style="font-size:12.5px; color:var(--sub)">lista di controllo per chiudere l'anno e partire puliti con il nuovo (dal 15 dicembre compare anche nella pagina Oggi)</span></div>
     <div style="font-weight:800; color:#c0392b; margin-bottom:4px">🗓️ Cancella un solo anno</div>
     <p style="font-size:12.5px; color:var(--sub); margin:0 0 8px">Elimina solo i dati dell'anno scelto. Prima della cancellazione il programma salva da solo un backup completo. L'archivio clienti non viene toccato.</p>
@@ -1084,9 +1085,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=20261029a"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=20261031b"></script>
+<script src="js/guida.js?v=20261031c"></script>
 <script src="js/scadenze.js?v=20261029cn"></script>
 <script src="js/config.js?v=202610079"></script>
+<script src="js/versione.js?v=1"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
   let state = { pratiche: [], versamenti: [], isee: [], collaboratori: [], nextNum: 1 };
