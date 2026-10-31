@@ -7,7 +7,8 @@
 const STORIA_VERSIONI = [
   { versione: '1.0.1', data: '31/10/2026', titolo: 'Correzione',
     novita: [
-      'Archivio clienti: «Foglio successivo» e «Foglio precedente» vanno sempre di un foglio alla volta, anche con un tocco doppio',
+      'Archivio clienti: «Foglio successivo» e «Foglio precedente» vanno sempre di un foglio alla volta',
+      'Doppio clic: il programma ignora il secondo clic (prima apriva per sbaglio il primo cliente dell\'archivio o saltava un foglio)',
     ] },
   { versione: '1.0', data: '31/10/2026', titolo: 'Prima versione completa, pronta per il 2027',
     novita: [

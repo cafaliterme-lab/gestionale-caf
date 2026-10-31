@@ -80,7 +80,7 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 31/10/2026. L'uso vero 
 
 - `js/versione.js`: `STORIA_VERSIONI` (la prima voce è la versione attuale), visibile nella Guida e in Utenti e permessi (🏷️, apre le novità).
 - **1.0 del 31/10/2026**: versione completa con cui si parte nel 2027 (tag git `v1.0` solo locale: il proxy rifiuta il push dei tag).
-- **1.0.1 del 31/10/2026**: archivio, tasti dei fogli con il numero del foglio di arrivo (niente salti con il tocco doppio).
+- **1.0.1 del 31/10/2026**: archivio, tasti dei fogli con il numero del foglio di arrivo; `js/doppio-clic.js` ignora (fase di cattura) il secondo clic di un doppio clic e i clic veri a meno di 0,3 s dal precedente (Angelo fa doppio clic per abitudine: apriva il primo cliente dell'archivio e saltava i fogli). Nei test Playwright lasciare almeno 0,3 s tra un clic e l'altro.
 - A ogni aggiornamento: nuova voce in cima a `STORIA_VERSIONI` (correzioni 1.0.1…, funzioni nuove 1.1…, cambi grandi 2.0), aumentare `?v=` di versione.js e mettere il tag git `vX.Y.Z` (`git tag vX.Y.Z && git push origin vX.Y.Z`).
 
 ## Come provare e pubblicare
