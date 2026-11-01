@@ -16,12 +16,17 @@ function indirizzoSportello() { return (/(^|\.)vercel\.app$|^localhost$|^127\.0\
 // v1.6: il link «Scrivici online» va in TUTTI i messaggi ai clienti (WhatsApp ed e-mail), anche se il testo non ha
 // il blocco dei recapiti; poi diventa personale. Non va nei messaggi che non sono per i clienti (testo indicato in TESTO_SENZA_LINK).
 let TESTO_SENZA_LINK = null;
+// v1.6.1: se manca, si aggiunge anche l'e-mail del CAF (es. il messaggio «pratica pronta» non l'aveva)
 function conLinkSportello(testo, d) {
+  if (!testo || !String(testo).trim()) return testo;
   const base = linkSportelloDaScrivere();
-  if (!base || !testo || !String(testo).trim()) return testo;
+  const mail = typeof emailCaf === 'function' ? emailCaf() : '';
   let t = String(testo);
-  if (t.indexOf(base) < 0) t = t.replace(/\s+$/, '') + '\n\nScrivici online: ' + base;
-  return personalizzaLinkSportello(t, d || {});
+  const aggiunte = [];
+  if (mail && t.toLowerCase().indexOf(mail.toLowerCase()) < 0) aggiunte.push('E-mail: ' + mail);
+  if (base && t.indexOf(base) < 0) aggiunte.push('Scrivici online: ' + base);
+  if (aggiunte.length) t = t.replace(/\s+$/, '') + '\n\n' + aggiunte.join('\n');
+  return base ? personalizzaLinkSportello(t, d || {}) : t;
 }
 // link personale (v1.5): nei messaggi a UN cliente il link porta nome, cellulare ed e-mail, che la pagina scrivici scrive da sola.
 // Cambia solo il link «nudo» (non già personalizzato); su ricevute, cartello e stampe il link resta senza dati.

@@ -5,6 +5,10 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.6.1', data: '01/11/2026', titolo: 'E-mail del CAF in tutti i messaggi',
+    novita: [
+      'Nei messaggi ai clienti che non l\'avevano (es. «pratica pronta») in fondo c\'è anche l\'e-mail del CAF, sopra il link «Scrivici online»',
+    ] },
   { versione: '1.6', data: '01/11/2026', titolo: 'Link «Scrivici online» in tutti i messaggi',
     novita: [
       'Il link personale «Scrivici online» c\'è in tutti i messaggi WhatsApp ed e-mail ai clienti: pratica pronta, solleciti, documenti, pagamenti, risposte, richiami, auguri e invii a tanti insieme',
