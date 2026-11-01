@@ -1,7 +1,7 @@
 # Promemoria tecnico – Gestionale CAF CISL Alì Terme
 
 Questo file serve a chi riprende il programma: Claude in una nuova sessione o un altro tecnico.
-Va letto **prima** di modificare qualcosa. Aggiornato al 31/10/2026. L'uso vero del programma inizia nel 2027.
+Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.4. L'uso vero del programma inizia nel 2027.
 
 ## Chi lo usa e come parlargli
 
@@ -85,7 +85,7 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 31/10/2026. L'uso vero 
 - `js/versione.js`: `STORIA_VERSIONI` (la prima voce è la versione attuale), visibile nella Guida e in Utenti e permessi (🏷️, apre le novità).
 - **1.0 del 31/10/2026**: versione completa con cui si parte nel 2027 (tag git `v1.0` solo locale: il proxy rifiuta il push dei tag).
 - **1.0.1 del 31/10/2026**: archivio, tasti dei fogli con il numero del foglio di arrivo; `js/doppio-clic.js` ignora (fase di cattura) il secondo clic di un doppio clic e i clic veri a meno di 0,3 s dal precedente (Angelo fa doppio clic per abitudine: apriva il primo cliente dell'archivio e saltava i fogli). Nei test Playwright lasciare almeno 0,3 s tra un clic e l'altro. Dalla 1.2.1 sulle righe `label` (caselle) vale solo il blocco del doppio clic vero (e.detail>1). «Svuota registro» → «🧨 Azzera tutti gli anni» (`svuotaRegistro` in data.js: backup, RPC svuota_registro, poi delete di scadenze, versamenti, spese_sede, acconti, isee, conte_cassa; clienti, comunicazioni, utenti, impostazioni restano).
-- A ogni aggiornamento: nuova voce in cima a `STORIA_VERSIONI` (correzioni 1.0.1…, funzioni nuove 1.1…, cambi grandi 2.0), aumentare `?v=` di versione.js e mettere il tag git `vX.Y.Z` (`git tag vX.Y.Z && git push origin vX.Y.Z`).
+- A ogni aggiornamento: nuova voce in cima a `STORIA_VERSIONI` (correzioni 1.0.1…, funzioni nuove 1.1…, cambi grandi 2.0), aumentare `?v=` di versione.js e mettere il tag git `vX.Y.Z` (`git tag vX.Y.Z && git push origin vX.Y.Z`; da questa sessione il push dei tag era rifiutato, 403: in quel caso basta la voce in STORIA_VERSIONI).
 
 ## Come provare e pubblicare
 
