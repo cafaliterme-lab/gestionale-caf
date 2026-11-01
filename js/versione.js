@@ -5,6 +5,11 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.6', data: '01/11/2026', titolo: 'Link «Scrivici online» in tutti i messaggi',
+    novita: [
+      'Il link personale «Scrivici online» c\'è in tutti i messaggi WhatsApp ed e-mail ai clienti: pratica pronta, solleciti, documenti, pagamenti, risposte, richiami, auguri e invii a tanti insieme',
+      'Non c\'è nei messaggi che non sono per i clienti (richieste CUD, accesso al programma per gli operatori) e nel messaggio libero dalla scheda del cliente',
+    ] },
   { versione: '1.5', data: '01/11/2026', titolo: 'Link personale per scriverci',
     novita: [
       'Nei messaggi WhatsApp ed e-mail a un cliente il link «Scrivici online» apre la pagina con nome e cellulare (o e-mail) del cliente già scritti: deve solo scrivere la richiesta',

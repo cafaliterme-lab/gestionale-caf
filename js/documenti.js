@@ -606,6 +606,7 @@ function inviaCUD(k, id) {
   if (!lista.length) return;
   const righe = lista.map(function (p, i) { return (lista.length > 1 ? (i + 1) + '. ' : '') + (p.nome || '') + ' – ' + (p.codiceFiscale || ('nato/a il ' + (p.cf || '?'))); });
   const testo = 'Buongiorno, dal CAF CISL di Alì Terme chiediamo ' + (lista.length > 1 ? 'i CUD dei seguenti contribuenti' : 'il CUD di') + ':\n' + righe.join('\n') + '\n\nGrazie.' + (nomeOperatoreCUD() ? '\n' + nomeOperatoreCUD() + ' – CAF CISL Alì Terme' : '');
+  TESTO_SENZA_LINK = testo;
   apriChatWhatsApp(num, testo, function (modo) { popupRichiestaCUDInviata(lista, tel, d, modo === 'copia' ? num : ''); });
 }
 function inviaCUDBriguglio(id) { inviaCUD('bs', id); }

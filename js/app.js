@@ -2942,10 +2942,11 @@ function modoWhatsAppPC(){ try{ return localStorage.getItem('whatsapp-pc-modo') 
 function impostaModoWhatsAppPC(m){ try{ localStorage.setItem('whatsapp-pc-modo', m); }catch(e){} }
 function apriChatWhatsApp(num, testo, dopo){
   // link «Scrivici online» con nome e cellulare del cliente già pronti (v1.5)
-  if(testo && num && typeof personalizzaLinkSportello === 'function'){
+  // v1.6: se il messaggio non ha il link, si aggiunge in fondo (tutti i messaggi ai clienti)
+  if(testo && num && typeof conLinkSportello === 'function' && testo !== TESTO_SENZA_LINK){
     const ctx = typeof CONTESTO_COMUNICAZIONE !== 'undefined' && CONTESTO_COMUNICAZIONE && Date.now() - CONTESTO_COMUNICAZIONE.quando < 120000 ? CONTESTO_COMUNICAZIONE : null;
     const chi = !(ctx && ctx.nome) && typeof personaDaTelefono === 'function' ? personaDaTelefono(num) : null;
-    testo = personalizzaLinkSportello(testo, { tel: num, nome: (ctx && ctx.nome) || (chi && chi.nome) || '' });
+    testo = conLinkSportello(testo, { tel: num, nome: (ctx && ctx.nome) || (chi && chi.nome) || '' });
   }
   const t = testo ? encodeURIComponent(testo) : '';
   // traccia nel registro delle comunicazioni (una volta, quando il messaggio parte davvero)

@@ -889,6 +889,7 @@ function inviaAccessoUtente(u) {
     if (b.dataset.azione === 'wa') {
       const tel = document.getElementById('accesso-tel').value;
       const num = numeroWhatsApp(tel);
+      if (typeof TESTO_SENZA_LINK !== 'undefined') TESTO_SENZA_LINK = t;
       apriChatWhatsApp(num || '', t);
     }
     const oggetto = 'Accesso al programma CAF CISL Alì Terme', corpo = t.replace(/\*/g, '');

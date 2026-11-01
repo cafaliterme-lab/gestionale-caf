@@ -116,7 +116,7 @@ function disegnaSchedaPersona() {
     + '</div><button type="button" data-chiudi="1" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">✕ Chiudi</button></div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin:12px 0">'
     + (tel || fisso ? link('tel:' + String(tel || fisso).replace(/[^\d+]/g, ''), '📞 Chiama', '#1d4f91') : '')
-    + (tel && typeof inviaWhatsAppLibero === 'function' ? b('inviaWhatsAppLibero(' + esc(JSON.stringify(tel)) + ', ' + esc(JSON.stringify('Gentile ' + (typeof nomeProprio === 'function' ? nomeProprio(x.nome) : x.nome) + ', ')) + ', ' + nomeJs + ')', '💬 WhatsApp', '#25d366') : '')
+    + (tel && typeof inviaWhatsAppLibero === 'function' ? b('waLiberoScheda(' + esc(JSON.stringify(tel)) + ', ' + esc(JSON.stringify('Gentile ' + (typeof nomeProprio === 'function' ? nomeProprio(x.nome) : x.nome) + ', ')) + ', ' + nomeJs + ')', '💬 WhatsApp', '#25d366') : '')
     + (typeof apriEmail === 'function' ? b('apriEmail({ titolo: \'E-mail a ' + esc(x.nome.replace(/'/g, ' ')) + '\', nome: ' + nomeJs + ', a: ' + esc(JSON.stringify(email)) + ', oggetto: \'CAF CISL Alì Terme\', testo: \'\' })', '📧 E-mail', '#8e5bd6') : '')
     + (scrive ? b('document.getElementById(\'popup-persona\').remove(); apriPraticaPerNome(' + nomeJs + ', ' + cfJs + ')', '➕ Nuova pratica', '#1a7f37', 'Apri l\'inserimento pratica con i suoi dati') : '')
     + (scrive && typeof prenotaPer === 'function' && !c.decedutoIl ? b('prenotaPer({ nome: ' + nomeJs + ', codice_fiscale: ' + cfJs + ', telefono: ' + esc(JSON.stringify(tel)) + ', email: ' + esc(JSON.stringify(email)) + ', dopo: function(){ disegnaSchedaPersona(); } })', '🗓️ Prenota appuntamento', '#0f766e') : '')
@@ -141,3 +141,6 @@ function disegnaSchedaPersona() {
       : '<div class="empty">Nessuna pratica: è solo nell\'archivio clienti.</div>')
     + '</div>';
 }
+
+// 💬 messaggio libero dalla scheda: lo scrive l'operatore, quindi niente link aggiunto in fondo (il testo resta «Gentile …, »)
+function waLiberoScheda(tel, testo, nome) { if (typeof TESTO_SENZA_LINK !== 'undefined') TESTO_SENZA_LINK = testo; return inviaWhatsAppLibero(tel, testo, nome); }

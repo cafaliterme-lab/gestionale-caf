@@ -14,6 +14,12 @@ function emailCliente(p) {
 }
 
 async function chiamaInviaEmail(metodo, corpo) {
+  // v1.6: link «Scrivici online» (personale) in tutte le e-mail ai clienti, anche quelle mandate a tanti insieme
+  if (corpo && corpo.a && corpo.testo && !corpo.senzaLink && !corpo.provaRiserva && typeof conLinkSportello === 'function') {
+    const chi = typeof personaDaEmail === 'function' ? personaDaEmail(corpo.a) : null;
+    corpo = Object.assign({}, corpo, { testo: conLinkSportello(corpo.testo, { nome: (chi && chi.nome) || '', email: corpo.a }) });
+  }
+  if (corpo && corpo.senzaLink) { corpo = Object.assign({}, corpo); delete corpo.senzaLink; }
   const invia = function () {
     return fetch(SUPABASE_URL + '/functions/v1/invia-email', {
       method: metodo,
@@ -110,7 +116,7 @@ function apriEmail(opz) {
     const oggetto = document.getElementById('em-ogg').value.trim();
     let testo = document.getElementById('em-testo').value;
     // link «Scrivici online» con nome ed e-mail del cliente già pronti (v1.5)
-    if (typeof personalizzaLinkSportello === 'function') { const chi = typeof personaDaEmail === 'function' ? personaDaEmail(a) : null; testo = personalizzaLinkSportello(testo, { nome: opz.nome || (chi && chi.nome) || '', email: a }); }
+    if (!opz.senzaLink && typeof conLinkSportello === 'function') { const chi = typeof personaDaEmail === 'function' ? personaDaEmail(a) : null; testo = conLinkSportello(testo, { nome: opz.nome || (chi && chi.nome) || '', email: a }); }
     const esito = document.getElementById('em-esito');
     if (!emailValida(a)) { esito.innerHTML = '<b style="color:#c0392b">❌ Scrivi un indirizzo e-mail valido (es. nome@esempio.it)</b>'; document.getElementById('em-a').focus(); return; }
     if (!oggetto || !testo.trim()) { esito.innerHTML = '<b style="color:#c0392b">❌ Oggetto e testo non possono essere vuoti</b>'; return; }
@@ -118,7 +124,7 @@ function apriEmail(opz) {
     try {
       const html = opz.html ? '<div style="font-family:Arial,Helvetica,sans-serif; font-size:14px; white-space:pre-wrap">' + esc(testo) + '</div><hr>' + opz.html : undefined;
       const da = (document.getElementById('em-da') || {}).value || casellaInvio();
-      await chiamaInviaEmail('POST', { a: a, oggetto: oggetto, testo: testo, html: html, casella: da });
+      await chiamaInviaEmail('POST', { a: a, oggetto: oggetto, testo: testo, html: html, casella: da, senzaLink: !!opz.senzaLink });
       ov.remove();
       popupEmailInviata(a, opz.nome);
       if (typeof registraComunicazione === 'function') registraComunicazione({ canale: 'email', email: a, nome: opz.nome, motivo: opz.motivo || motivoDaTesto(oggetto + ' ' + testo), testo: oggetto + ' – ' + testo });
@@ -217,7 +223,7 @@ function emailScadenzaColf(idScadenza) {
     } });
 }
 function emailAccessoUtente(u, testo) {
-  apriEmail({ titolo: 'Invia l\'accesso a ' + (u.nome || ''), nome: u.nome, a: u.email || '', oggetto: 'Accesso al programma CAF CISL Alì Terme', testo: testo });
+  apriEmail({ titolo: 'Invia l\'accesso a ' + (u.nome || ''), nome: u.nome, a: u.email || '', oggetto: 'Accesso al programma CAF CISL Alì Terme', testo: testo, senzaLink: true });
 }
 
 function bottoneEmail(onclick, etichetta, titolo) {
