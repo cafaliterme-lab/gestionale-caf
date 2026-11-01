@@ -10,8 +10,8 @@ let RICHIESTE = null, RICHIESTE_NUOVE_VISTE = null;
 const STATI_RICHIESTA = { nuova: ['🆕 Nuova', '#c0392b'], lavorazione: ['🛠️ In lavorazione', '#d98b1e'], chiusa: ['✅ Chiusa', '#1a7f37'] };
 
 function puoRichieste() { return !!(auth && auth.profilo && (auth.profilo.ruolo === 'admin' || (auth.profilo.tabs && auth.profilo.tabs.richieste === true))); }
-// link corto (vercel.json: /scrivici → scrivici.html); in prova sul PC (localhost) si usa il file
-function indirizzoSportello() { return location.origin + (/localhost|127\.0\.0\.1/.test(location.hostname) ? '/scrivici.html' : '/scrivici'); }
+// link corto: la pagina sta nella cartella scrivici/ (index.html), si apre con /scrivici e /scrivici/; scrivici.html porta lì
+function indirizzoSportello() { return location.origin + '/scrivici'; }
 // da scrivere su ricevute e messaggi (senza https://), solo se lo sportello è acceso
 function linkSportelloDaScrivere() { return sportelloAttivo() ? indirizzoSportello().replace(/^https?:\/\//, '') : ''; }
 function sportelloAttivo() { return typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI.sportello_attivo === 'si'; }
@@ -157,9 +157,11 @@ function copiaLinkSportello() {
 function stampaCartelloSportello() {
   const w = window.open('', '_blank');
   if (!w) { avviso('Il browser ha bloccato la finestra di stampa', true); return; }
-  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Scrivi al CAF</title><style>body{font-family:Arial,sans-serif; text-align:center; color:#0f1b2d; padding:30px} h1{color:#00612f; font-size:34px; margin:10px 0} p{font-size:20px} .qr svg{width:300px; height:300px} .url{font-size:16px; color:#1d4f91; font-weight:bold}</style></head><body>'
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Scrivi al CAF</title><style>body{font-family:Arial,sans-serif; text-align:center; color:#0f1b2d; padding:30px} h1{color:#00612f; font-size:34px; margin:10px 0} p{font-size:20px} .qr svg{width:300px; height:300px} .url{color:#1d4f91; font-weight:bold; letter-spacing:.02em}</style></head><body>'
     + '<h1>📨 Scrivi al CAF CISL di Alì Terme</h1><p>Inquadra il codice con la fotocamera del telefono<br>e mandaci la tua richiesta: <b>ti ricontattiamo noi</b>.</p>'
-    + '<div class="qr">' + qrSvg(indirizzoSportello()) + '</div><p class="url">' + indirizzoSportello() + '</p>'
+    + '<div class="qr">' + qrSvg(indirizzoSportello()) + '</div>'
+    + '<p style="margin:18px 0 4px">oppure scrivi questo indirizzo nel telefono o nel computer:</p>'
+    + '<p class="url" style="font-size:30px; border:3px solid #00612f; border-radius:14px; display:inline-block; padding:10px 22px; margin:4px 0 14px">' + indirizzoSportello().replace(/^https?:\/\//, '') + '</p>'
     + '<p style="font-size:15px">730 · ISEE · colf e badanti · affitti · successioni · appuntamenti · informazioni</p></body></html>');
   w.document.close();
   setTimeout(function () { w.print(); }, 500);

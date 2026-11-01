@@ -5,6 +5,11 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.3.2', data: '01/11/2026', titolo: 'Correzione dello sportello',
+    novita: [
+      'Il link corto gestionale-caf.vercel.app/scrivici ora si apre sempre (la pagina sta nella sua cartella; anche il vecchio …/scrivici.html porta lì)',
+      'Cartello da appendere: sotto il QR c\'è l\'indirizzo scritto in grande, da copiare a mano',
+    ] },
   { versione: '1.3.1', data: '01/11/2026', titolo: 'Link dello sportello dappertutto',
     novita: [
       'Link corto per i clienti: gestionale-caf.vercel.app/scrivici (con il tasto «📋 Copia il link» in Utenti e permessi)',

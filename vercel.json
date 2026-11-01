@@ -50,6 +50,15 @@
           "value": "private, no-store"
         }
       ]
+    },
+    {
+      "source": "/scrivici(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, must-revalidate"
+        }
+      ]
     }
   ],
   "git": {
@@ -66,12 +75,6 @@
     {
       "path": "/api/backup-settimanale",
       "schedule": "41 6 * * 1"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/scrivici",
-      "destination": "/scrivici.html"
     }
   ]
 }
