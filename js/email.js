@@ -108,7 +108,9 @@ function apriEmail(opz) {
     if (!b || b.dataset.azione === 'no') { ov.remove(); return; }
     const a = document.getElementById('em-a').value.trim().toLowerCase();
     const oggetto = document.getElementById('em-ogg').value.trim();
-    const testo = document.getElementById('em-testo').value;
+    let testo = document.getElementById('em-testo').value;
+    // link «Scrivici online» con nome ed e-mail del cliente già pronti (v1.5)
+    if (typeof personalizzaLinkSportello === 'function') { const chi = typeof personaDaEmail === 'function' ? personaDaEmail(a) : null; testo = personalizzaLinkSportello(testo, { nome: opz.nome || (chi && chi.nome) || '', email: a }); }
     const esito = document.getElementById('em-esito');
     if (!emailValida(a)) { esito.innerHTML = '<b style="color:#c0392b">❌ Scrivi un indirizzo e-mail valido (es. nome@esempio.it)</b>'; document.getElementById('em-a').focus(); return; }
     if (!oggetto || !testo.trim()) { esito.innerHTML = '<b style="color:#c0392b">❌ Oggetto e testo non possono essere vuoti</b>'; return; }

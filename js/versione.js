@@ -5,6 +5,12 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.5', data: '01/11/2026', titolo: 'Link personale per scriverci',
+    novita: [
+      'Nei messaggi WhatsApp ed e-mail a un cliente il link «Scrivici online» apre la pagina con nome e cellulare (o e-mail) del cliente già scritti: deve solo scrivere la richiesta',
+      'Su ricevute, cartello con il QR e stampe il link resta quello normale, senza dati',
+      'Il link porta sempre a gestionale-caf.vercel.app, anche se il programma è aperto da un indirizzo vecchio',
+    ] },
   { versione: '1.4.1', data: '01/11/2026', titolo: 'Eliminare le richieste web chiuse',
     novita: [
       'Richieste web: sulle richieste chiuse c\'è il tasto rosso «🗑️ Elimina» (solo amministratore)',

@@ -11,7 +11,24 @@ const STATI_RICHIESTA = { nuova: ['🆕 Nuova', '#c0392b'], lavorazione: ['🛠�
 
 function puoRichieste() { return !!(auth && auth.profilo && (auth.profilo.ruolo === 'admin' || (auth.profilo.tabs && auth.profilo.tabs.richieste === true))); }
 // link corto: la pagina sta nella cartella scrivici/ (index.html), si apre con /scrivici e /scrivici/; scrivici.html porta lì
-function indirizzoSportello() { return location.origin + '/scrivici'; }
+// l'indirizzo vero è sempre quello di Vercel (anche se il programma è aperto da un indirizzo vecchio, es. github.io)
+function indirizzoSportello() { return (/(^|\.)vercel\.app$|^localhost$|^127\.0\.0\.1$/.test(location.hostname) ? location.origin : 'https://gestionale-caf.vercel.app') + '/scrivici'; }
+// link personale (v1.5): nei messaggi a UN cliente il link porta nome, cellulare ed e-mail, che la pagina scrivici scrive da sola.
+// Cambia solo il link «nudo» (non già personalizzato); su ricevute, cartello e stampe il link resta senza dati.
+function personalizzaLinkSportello(testo, d) {
+  const base = linkSportelloDaScrivere(); if (!base || !testo || !d) return testo;
+  const enc = function (v) { return encodeURIComponent(v).replace(/['()!*]/g, function (c) { return '%' + c.charCodeAt(0).toString(16).toUpperCase(); }).replace(/%20/g, '+'); };
+  const nome = String(d.nome || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  let tel = String(d.tel || '').replace(/\D/g, ''); if (/^(00)?39\d{9,10}$/.test(tel)) tel = tel.replace(/^(00)?39/, '');
+  const email = String(d.email || '').trim().toLowerCase();
+  const p = [];
+  if (nome) p.push('n=' + enc(nome));
+  if (tel.length >= 9 && tel.length <= 15) p.push('t=' + tel);
+  if (/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(email)) p.push('e=' + enc(email));
+  if (!p.length) return testo;
+  const re = new RegExp('(^|[^\\w/.:-])' + base.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&') + '(?![\\w/?#&=%.-])', 'g');
+  return testo.replace(re, '$1https://' + base + '?' + p.join('&'));
+}
 // da scrivere su ricevute e messaggi (senza https://), solo se lo sportello è acceso
 function linkSportelloDaScrivere() { return sportelloAttivo() ? indirizzoSportello().replace(/^https?:\/\//, '') : ''; }
 function sportelloAttivo() { return typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI.sportello_attivo === 'si'; }
