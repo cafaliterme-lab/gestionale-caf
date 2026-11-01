@@ -5,6 +5,11 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.2.2', data: '01/11/2026', titolo: 'Correzione della cronologia',
+    novita: [
+      'Cronologia della pratica: in cima i «📌 Passaggi principali» con le date (presa in carico, lavorata, fattura, avvisi, consegna/definita, pagamento)',
+      'La registrazione delle modifiche delle pratiche era spenta dal 5 ottobre: riaccesa, e ogni notte si riaccende da sola se qualcosa la spegne',
+    ] },
   { versione: '1.2.1', data: '01/11/2026', titolo: 'Correzione',
     novita: [
       'Elenchi con le caselle da spuntare (es. WhatsApp multiplo): si possono spuntare più righe in fretta, il blocco del doppio clic non ne perde più nessuna',

@@ -351,7 +351,7 @@ const GUIDA = [
 </ul>` },
 
   { id: 'cronologia', icona: '📜', titolo: 'Cronologia della pratica', parole: 'cronologia storico modifiche chi ha modificato quando pratica storia eventi messaggi inviati whatsapp email controllo',
-    testo: `<p>Nel registro, aprendo una pratica, il tasto <b>📜 Cronologia</b> (accanto a ✏️ Modifica) mostra, <b>dal primo all'ultimo</b>, tutto quello che è successo alla pratica:</p><ul>
+    testo: `<p>Nel registro, aprendo una pratica, il tasto <b>📜 Cronologia</b> (accanto a ✏️ Modifica) mostra in cima i <b>📌 Passaggi principali</b> con le loro date (presa in carico e da chi, fine lavorazione, fattura, avvisi WhatsApp/e-mail, consegna/definita, pagamento e pagamenti arretrati, stato attuale) e sotto, <b>dal primo all'ultimo</b>, tutto quello che è successo alla pratica:</p><ul>
 <li>🆕 quando è stata <b>inserita</b> e da chi;</li>
 <li>✏️ ogni <b>modifica</b>, campo per campo con il valore di prima e quello nuovo (stato, fattura, pagato, consegna, telefono, note…), con <b>chi</b> l'ha fatta e <b>quando</b>;</li>
 <li>💬📧 i <b>WhatsApp e le e-mail</b> mandati per quella pratica (pratica pronta, solleciti, documenti…), con il testo del messaggio da aprire.</li></ul>
