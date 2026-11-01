@@ -70,6 +70,47 @@ function clienteDaRichiesta(x) {
   if (!num) return null;
   return (typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : []).find(function (c) { return numeroWhatsApp(c.telefono) === num; }) || null;
 }
+// v1.7: chi conosciamo già da quel numero (archivio + pratiche, coniuge compreso) e, se scritto, la persona «per chi»;
+// per ognuno data di nascita, codice fiscale e ultima pratica. Solo per l'ufficio: nella pagina dei clienti non va niente.
+function personeDaRichiesta(x) {
+  const cifre = function (s) { return typeof soloCifre === 'function' ? soloCifre(s) : String(s || '').replace(/\D/g, ''); };
+  const n = cifre(x.telefono), visti = {}, out = [];
+  const arch = typeof ARCHIVIO_CLIENTI !== 'undefined' ? ARCHIVIO_CLIENTI : [];
+  const prat = (typeof state !== 'undefined' && state.pratiche) || [];
+  const metti = function (nome, nascita, cf) {
+    nome = String(nome || '').trim().toUpperCase(); if (!nome) return;
+    const k = cf || nome; if (visti[k]) return; visti[k] = true;
+    const c = arch.find(function (a) { return (cf && a.codiceFiscale === cf) || a.nomeCompleto === nome; });
+    out.push({ nome: nome, nascita: nascita || (c && c.dataNascita) || '', cf: cf || (c && c.codiceFiscale) || '' });
+  };
+  if (n) {
+    arch.forEach(function (c) { if (cifre(c.telefono) === n || cifre(c.telefonoFisso) === n) metti(c.nomeCompleto, c.dataNascita, c.codiceFiscale); });
+    prat.forEach(function (p) {
+      if (cifre(p.telefono) === n) metti(p.nome, p.cf, p.codiceFiscale);
+      if (p.congiunta && cifre(p.congTelefono || p.telefono) === n) metti(((p.congCognome || '') + ' ' + (p.congNome || '')).trim(), p.congData, p.congCodiceFiscale);
+    });
+  }
+  // la persona scritta in «La richiesta è per…» (es. «IL CONIUGE: ROSSI ANNA»)
+  const m = /:\s*(.+)$/.exec(String(x.per_chi || ''));
+  if (m) { const nome = m[1].trim().toUpperCase(); const c = arch.find(function (a) { return a.nomeCompleto === nome || a.nomeCompleto === nome.split(' ').reverse().join(' '); }); if (c) metti(c.nomeCompleto, c.dataNascita, c.codiceFiscale); }
+  out.forEach(function (o) {
+    const sue = prat.filter(function (p) { return !p.annullata && ((o.cf && (p.codiceFiscale === o.cf || p.congCodiceFiscale === o.cf)) || p.nome === o.nome); })
+      .sort(function (a, b) { return String(b.inseritoIl || '').localeCompare(String(a.inseritoIl || '')) || (b.numero || 0) - (a.numero || 0); });
+    o.ultima = sue[0] || null; o.congiunta = !!(o.ultima && o.cf && o.ultima.congCodiceFiscale === o.cf && o.ultima.codiceFiscale !== o.cf);
+  });
+  return out;
+}
+function personeRichiestaHTML(x) {
+  const l = personeDaRichiesta(x); if (!l.length) return '';
+  return '<div style="font-size:12.5px; margin:0 0 8px; padding:6px 10px; border-radius:8px; border:1px dashed #8e5bd6">'
+    + '<b style="color:#8e5bd6">📇 Dall\'archivio</b>' + l.map(function (o) {
+      const u = o.ultima;
+      return '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:3px 0"><span style="flex:1 1 300px"><b>' + esc(o.nome) + '</b>'
+        + (o.nascita ? ' · nato/a il ' + esc(o.nascita) : '') + (o.cf ? ' · CF <span style="font-family:monospace">' + esc(o.cf) + '</span>' : '')
+        + (u ? '<br><span style="color:var(--sub)">Ultima pratica: ' + esc(u.tipo || '') + ' n. ' + esc(typeof formattaProtocollo === 'function' ? formattaProtocollo(u) : String(u.numero || '')) + (u.data ? ' del ' + esc(u.data) : '') + ' · ' + esc(typeof statoLabel === 'function' ? statoLabel(u.stato) : u.stato || '') + (o.congiunta ? ' (come coniuge)' : '') + '</span>' : '<br><span style="color:var(--sub)">Nessuna pratica quest\'anno</span>') + '</span>'
+        + (typeof apriSchedaPersonaNome === 'function' ? '<button type="button" data-az="scheda" data-nome="' + esc(o.nome) + '" data-cf="' + esc(o.cf) + '" style="border:none; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer; background:#5e4fa2; color:#fff">👤 Apri la scheda</button>' : '') + '</div>';
+    }).join('') + '</div>';
+}
 
 let FILTRO_RICHIESTE = 'aperte';
 // tasti e cambi di stato dell'elenco (nella sezione del menu o nella finestra)
@@ -79,6 +120,7 @@ function collegaEventiRichieste(el, chiudi) {
     const f = e.target.closest('[data-filtro]'); if (f) { FILTRO_RICHIESTE = f.dataset.filtro; disegnaRichieste(); return; }
     const b = e.target.closest('[data-az]'); if (!b) return;
     if (b.dataset.az === 'elimina-chiuse') { eliminaRichiesteChiuse(); return; }
+    if (b.dataset.az === 'scheda') { if (typeof apriSchedaPersonaNome === 'function') apriSchedaPersonaNome(b.dataset.nome, b.dataset.cf); return; }
     const x = (RICHIESTE || []).find(function (r) { return r.id === b.dataset.id; }); if (!x) return;
     azioneRichiesta(b.dataset.az, x);
   });
@@ -137,7 +179,9 @@ function disegnaRichieste() {
         return '<div style="border:1px solid var(--line); border-left:5px solid ' + st[1] + '; border-radius:10px; padding:10px 12px; margin-bottom:8px">'
           + '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap"><span><b>' + esc(x.nome) + '</b>' + (cli ? ' <span style="font-size:11.5px; color:#1a7f37; font-weight:700">· già in archivio</span>' : '') + '<br><span style="font-size:12.5px; color:var(--sub)">📞 ' + esc(x.telefono) + (x.email ? ' · ✉️ ' + esc(x.email) : '') + '</span></span>'
           + '<span style="text-align:right; font-size:12px; color:var(--sub)">' + esc(quandoStorico(x.creato_il)) + '<br><b style="color:#8e5bd6">' + esc(x.tipo || '') + '</b></span></div>'
+          + (x.per_chi ? '<div style="margin-top:6px; font-size:13px">👥 <b>La richiesta è per: ' + esc(x.per_chi) + '</b></div>' : '')
           + '<div style="white-space:pre-wrap; font-size:14px; margin:8px 0; padding:8px 10px; background:var(--bg); border-radius:8px">' + esc(x.messaggio) + '</div>'
+          + personeRichiestaHTML(x)
           + (x.gestita_da ? '<div style="font-size:12px; color:var(--sub); margin-bottom:6px">Gestita da <b>' + esc(x.gestita_da) + '</b>' + (x.gestita_il ? ' il ' + esc(quandoStorico(x.gestita_il)) : '') + '</div>' : '')
           + '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center">'
           + '<select data-stato="' + x.id + '" style="width:auto; padding:4px 8px; font-size:12.5px">' + Object.keys(STATI_RICHIESTA).map(function (k) { return '<option value="' + k + '"' + (k === x.stato ? ' selected' : '') + '>' + STATI_RICHIESTA[k][0] + '</option>'; }).join('') + '</select>'

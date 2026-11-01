@@ -5,6 +5,12 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.7', data: '01/11/2026', titolo: 'Richieste web: per chi è e dati dall\'archivio',
+    novita: [
+      'Pagina «Scrivi al CAF»: il cliente può indicare per chi è la richiesta (sé stesso, il coniuge, un figlio, un genitore, un altro familiare o un\'altra persona) e scriverne il nome',
+      'Sezione Richieste web: sotto ogni richiesta, «📇 Dall\'archivio» mostra le persone che conosciamo da quel numero (anche il coniuge delle congiunte) e la persona indicata, con data di nascita, codice fiscale, ultima pratica e il tasto «👤 Apri la scheda»',
+      'Nessun dato in più nel link mandato ai clienti: i dati dell\'archivio li vede solo l\'ufficio',
+    ] },
   { versione: '1.6.2', data: '01/11/2026', titolo: 'Campi verdi anche nella modifica',
     novita: [
       'I campi diventano verdi quando sono compilati bene anche nella ✏️ Modifica della pratica (coniuge, lavoratore colf, affitto e inquilini compresi), nei dati dell\'affitto e degli inquilini dell\'inserimento e nella Nuova scadenza',

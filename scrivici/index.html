@@ -42,6 +42,12 @@ button:disabled{ opacity:.6 }
       <input id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" required>
       <label for="email">E-mail <span class="facolt">(facoltativa)</span></label>
       <input id="email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120">
+      <label for="perchi">La richiesta è per</label>
+      <select id="perchi" name="perchi">
+        <option value="">Me stesso / me stessa</option><option>Il coniuge</option><option>Un figlio / una figlia</option><option>Un genitore</option><option>Un altro familiare</option><option>Un'altra persona</option>
+      </select>
+      <div id="perchi-box" style="display:none"><label for="perchi-nome">Nome e cognome della persona <span class="facolt">(facoltativo)</span></label>
+      <input id="perchi-nome" name="perchi-nome" maxlength="80"></div>
       <label for="tipo">Per cosa ci scrivi</label>
       <select id="tipo" name="tipo">
         <option>Dichiarazione 730 / redditi</option><option>ISEE</option><option>Colf e badanti</option><option>Contratti di affitto</option>
@@ -87,6 +93,7 @@ const testo = function (id, t) { document.getElementById(id).textContent = t; };
     }
   } catch (e) {}
 })();
+document.getElementById('perchi').addEventListener('change', function () { document.getElementById('perchi-box').style.display = this.value ? 'block' : 'none'; });
 document.getElementById('form').addEventListener('submit', async function (ev) {
   ev.preventDefault();
   const esito = document.getElementById('esito'), b = document.getElementById('invia');
@@ -95,7 +102,8 @@ document.getElementById('form').addEventListener('submit', async function (ev) {
   b.disabled = true; b.textContent = 'Invio in corso…';
   try {
     const v = function (id) { return document.getElementById(id).value; };
-    const r = await rpc('invia_richiesta_cliente', { p_nome: v('nome'), p_telefono: v('tel'), p_email: v('email'), p_tipo: v('tipo'), p_messaggio: v('messaggio'), p_consenso: true, p_controllo: v('sito') });
+    const perChi = v('perchi') ? (v('perchi') + (v('perchi-nome').trim() ? ': ' + v('perchi-nome').trim() : '')) : '';
+    const r = await rpc('invia_richiesta_cliente2', { p_nome: v('nome'), p_telefono: v('tel'), p_email: v('email'), p_tipo: v('tipo'), p_messaggio: v('messaggio'), p_consenso: true, p_controllo: v('sito'), p_per_chi: perChi });
     if (r && r.ok) {
       document.getElementById('form').style.display = 'none';
       esito.className = 'msg ok'; esito.style.display = 'block';
