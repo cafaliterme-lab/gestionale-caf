@@ -46,6 +46,7 @@ function collegaEventiRichieste(el, chiudi) {
     if (chiudi && (e.target === el || e.target.closest('[data-chiudi]'))) { chiudi(); return; }
     const f = e.target.closest('[data-filtro]'); if (f) { FILTRO_RICHIESTE = f.dataset.filtro; disegnaRichieste(); return; }
     const b = e.target.closest('[data-az]'); if (!b) return;
+    if (b.dataset.az === 'elimina-chiuse') { eliminaRichiesteChiuse(); return; }
     const x = (RICHIESTE || []).find(function (r) { return r.id === b.dataset.id; }); if (!x) return;
     azioneRichiesta(b.dataset.az, x);
   });
@@ -98,6 +99,7 @@ function disegnaRichieste() {
     + (pop ? '<button type="button" data-chiudi style="' + tasto + '; background:var(--line); color:var(--ink)">✕</button>' : '<button type="button" onclick="renderRichiesteTab()" style="' + tasto + '; background:var(--line); color:var(--ink)">🔄 Aggiorna</button>') + '</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 8px">Arrivano dallo sportello online (' + esc(indirizzoSportello()) + ') · ' + (sportelloAttivo() ? '<b style="color:#1a7f37">sportello ACCESO</b>' : '<b style="color:#c0392b">sportello SPENTO</b>: non arrivano richieste nuove') + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">' + chip('aperte', 'Da gestire') + chip('nuova', '🆕 Nuove') + chip('lavorazione', '🛠️ In lavorazione') + chip('chiusa', '✅ Chiuse') + chip('tutte', 'Tutte') + '</div>'
+    + (eAdminRichieste() && FILTRO_RICHIESTE === 'chiusa' && conta('chiusa') ? '<div style="margin-bottom:8px"><button type="button" data-az="elimina-chiuse" style="' + tasto + '; background:#c0392b; color:#fff">🗑️ Elimina tutte le chiuse (' + conta('chiusa') + ')</button> <span style="font-size:12px; color:var(--sub)">solo l\'amministratore · quelle non chiuse restano</span></div>' : '')
     + (lista.length ? lista.map(function (x) {
         const st = STATI_RICHIESTA[x.stato] || STATI_RICHIESTA.nuova, cli = clienteDaRichiesta(x);
         return '<div style="border:1px solid var(--line); border-left:5px solid ' + st[1] + '; border-radius:10px; padding:10px 12px; margin-bottom:8px">'
@@ -110,7 +112,7 @@ function disegnaRichieste() {
           + '<button type="button" data-az="wa" data-id="' + x.id + '" style="' + tasto + '; background:#25d366; color:#fff">💬 Rispondi su WhatsApp</button>'
           + (x.email ? '<button type="button" data-az="email" data-id="' + x.id + '" style="' + tasto + '; background:#1d4f91; color:#fff">📧 Rispondi per e-mail</button>' : '')
           + '<button type="button" data-az="app" data-id="' + x.id + '" style="' + tasto + '; background:#2f9e9e; color:#fff">📅 Appuntamento</button>'
-          + (auth.profilo && auth.profilo.ruolo === 'admin' && x.stato === 'chiusa' ? '<button type="button" data-az="elimina" data-id="' + x.id + '" title="Elimina definitivamente questa richiesta chiusa" style="' + tasto + '; background:var(--line); color:#c0392b">🗑️</button>' : '')
+          + (eAdminRichieste() && x.stato === 'chiusa' ? '<button type="button" data-az="elimina" data-id="' + x.id + '" title="Elimina definitivamente questa richiesta chiusa" style="' + tasto + '; background:#c0392b; color:#fff">🗑️ Elimina</button>' : '')
           + '</div></div>';
       }).join('') : '<div class="empty" style="padding:14px">Nessuna richiesta' + (FILTRO_RICHIESTE === 'aperte' ? ' da gestire' : '') + '.</div>');
 }
@@ -138,12 +140,26 @@ async function azioneRichiesta(az, x) {
     if (typeof nuovoAppuntamento === 'function') nuovoAppuntamento('', '', { nome: x.nome, telefono: x.telefono, note: 'Sportello online: ' + (x.tipo || '') });
     if (x.stato === 'nuova') cambiaStatoRichiesta(x, 'lavorazione');
   } else if (az === 'elimina') {
+    if (!eAdminRichieste() || x.stato !== 'chiusa') { avviso('Si possono eliminare solo le richieste chiuse', true); return; }
     if (!confirm('Eliminare definitivamente la richiesta di ' + x.nome + '?')) return;
-    const r = await fetchSupabase('/rest/v1/richieste_clienti?id=eq.' + x.id, 'DELETE', null, { Prefer: 'return=minimal' });
+    const r = await fetchSupabase('/rest/v1/richieste_clienti?id=eq.' + x.id + '&stato=eq.chiusa', 'DELETE', null, { Prefer: 'return=minimal' });
     if (!r.ok) { avviso('❌ Non eliminata', true); return; }
     RICHIESTE = (RICHIESTE || []).filter(function (r2) { return r2.id !== x.id; });
     disegnaRichieste();
   }
+}
+function eAdminRichieste() { return !!(auth.profilo && auth.profilo.ruolo === 'admin'); }
+// svuota l'archivio delle richieste chiuse (solo amministratore; le non chiuse restano)
+async function eliminaRichiesteChiuse() {
+  if (!eAdminRichieste()) return;
+  const chiuse = (RICHIESTE || []).filter(function (r) { return r.stato === 'chiusa'; });
+  if (!chiuse.length) { avviso('Nessuna richiesta chiusa da eliminare'); return; }
+  if (!confirm('Eliminare definitivamente ' + (chiuse.length === 1 ? 'la richiesta chiusa' : 'tutte le ' + chiuse.length + ' richieste chiuse') + '?\n\nLe richieste nuove e in lavorazione restano.')) return;
+  const r = await fetchSupabase('/rest/v1/richieste_clienti?stato=eq.chiusa', 'DELETE', null, { Prefer: 'return=minimal' });
+  if (!r.ok) { avviso('❌ Non eliminate', true); return; }
+  RICHIESTE = (RICHIESTE || []).filter(function (r2) { return r2.stato !== 'chiusa'; });
+  avviso('✓ Eliminate ' + chiuse.length + (chiuse.length === 1 ? ' richiesta chiusa' : ' richieste chiuse'));
+  disegnaRichieste();
 }
 
 // ---- Utenti e permessi (solo amministratore): interruttore e cartello con QR ----

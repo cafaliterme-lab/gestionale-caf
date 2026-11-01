@@ -5,6 +5,11 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.4.1', data: '01/11/2026', titolo: 'Eliminare le richieste web chiuse',
+    novita: [
+      'Richieste web: sulle richieste chiuse c\'è il tasto rosso «🗑️ Elimina» (solo amministratore)',
+      'Nel filtro «✅ Chiuse» il tasto «🗑️ Elimina tutte le chiuse» svuota l\'archivio con una sola conferma; le richieste nuove e in lavorazione restano',
+    ] },
   { versione: '1.4', data: '01/11/2026', titolo: 'Sezione «Richieste web»',
     novita: [
       'Nuova sezione «📨 RICHIESTE WEB» nel menu in alto, con il pallino rosso delle richieste nuove; la vedono l\'amministratore e gli operatori con il permesso',
