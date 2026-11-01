@@ -5,6 +5,10 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.2.1', data: '01/11/2026', titolo: 'Correzione',
+    novita: [
+      'Elenchi con le caselle da spuntare (es. WhatsApp multiplo): si possono spuntare più righe in fretta, il blocco del doppio clic non ne perde più nessuna',
+    ] },
   { versione: '1.2', data: '01/11/2026', titolo: 'Cronologia della pratica',
     novita: [
       'Tasto «📜 Cronologia» nella scheda di ogni pratica: inserimento, modifiche campo per campo (prima → dopo) con chi e quando, e i messaggi WhatsApp ed e-mail mandati, in ordine di tempo',

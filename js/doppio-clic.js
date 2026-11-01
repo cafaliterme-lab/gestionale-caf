@@ -11,7 +11,9 @@
     if (!e.isTrusted || e.detail === 0) return;
     if (e.target && e.target.closest && e.target.closest('input, textarea, select')) return;
     const ora = Date.now();
-    const troppoVicino = e.detail > 1 || ora - ultimo < 300;
+    // sulle righe con una casella da spuntare (elenchi da selezionare in fretta) vale solo il vero doppio clic
+    const etichetta = e.target && e.target.closest && e.target.closest('label');
+    const troppoVicino = e.detail > 1 || (!etichetta && ora - ultimo < 300);
     ultimo = ora;
     if (troppoVicino) { e.preventDefault(); e.stopImmediatePropagation(); }
   }, true);
