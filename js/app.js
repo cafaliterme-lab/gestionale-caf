@@ -1086,6 +1086,7 @@ function applicaPermessi(){
     bar.innerHTML = '<span>Non autenticato</span>';
     document.getElementById('nav-permessi').style.display = 'none';
     const ns0 = document.getElementById('nav-storico'); if(ns0) ns0.style.display = 'none';
+    const nr0 = document.getElementById('nav-richieste'); if(nr0) nr0.style.display = 'none';
     ['nav-oggi','nav-agenda','ricerca-unica'].forEach(function(id){ const el = document.getElementById(id); if(el) el.style.display = 'none'; });
     Object.keys(TAB_LABELS).forEach(function(tab){
       const btn = document.querySelector('.navmenu button[data-tab="'+tab+'"]');
@@ -1108,6 +1109,9 @@ function applicaPermessi(){
   // Storico contribuente: per chi vede l'inserimento o il registro (solo consultazione)
   const ns = document.getElementById('nav-storico');
   if(ns) ns.style.display = (isAdmin || tabs.registro || tabs.anagrafica) ? '' : 'none';
+  // richieste dallo sportello online: amministratore e operatori con il permesso «richieste»
+  const nr = document.getElementById('nav-richieste');
+  if(nr) nr.style.display = (isAdmin || tabs.richieste === true) ? '' : 'none';
   // Oggi: per chi vede l'inserimento o il registro (riepilogo di cosa c'è da fare)
   // Oggi, Agenda e ricerca unica: per chi vede l'inserimento o il registro
   const lavoro = isAdmin || tabs.registro || tabs.anagrafica;
@@ -1828,6 +1832,7 @@ function showTab(btn){
   if(tab === 'agenda' && typeof renderAgenda === 'function') renderAgenda();
   if(tab === 'spese' && typeof renderSpese === 'function') renderSpese();
   if(tab === 'modulistica' && typeof renderModulistica === 'function') renderModulistica();
+  if(tab === 'richieste' && typeof renderRichiesteTab === 'function') renderRichiesteTab();
   if(tab === 'storico' && typeof renderStorico === 'function'){ renderStorico(); setTimeout(function(){ const i = document.getElementById('storico-cerca'); if(i && !STORICO.scelto) i.focus(); }, 50); }
   if(tab === 'permessi'){ renderPermessi(); if(typeof renderPresenze === 'function') renderPresenze(); if(typeof renderTipiPratica === 'function'){ renderTipiPratica(true); renderEtichetteMenu(true); renderStatiPratica(true); } if(typeof renderBackupEStorico === 'function') renderBackupEStorico(); }
 }

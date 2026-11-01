@@ -312,6 +312,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .navmenu button[data-tab="messaggi"]{--tc:#128c7e}
 .navmenu button[data-tab="permessi"]{--tc:#4b5563}
 .navmenu button[data-tab="modulistica"]{--tc:#b35f0c}
+.navmenu button[data-tab="richieste"]{--tc:#8e5bd6}
+.nav-pallino{display:inline-block; min-width:18px; padding:0 5px; margin-left:5px; border-radius:999px; background:#c0392b; color:#fff; font-size:11px; font-weight:800; line-height:18px; text-align:center}
 .navmenu button[data-tab="spese"]{--tc:#a0522d}
 .navmenu button.active{background:var(--tc); border-color:var(--tc); color:#fff; box-shadow:0 4px 12px color-mix(in srgb, var(--tc) 45%, transparent)}
 @media (max-width:600px){ .navmenu{grid-template-columns:repeat(2, 1fr)} .navmenu button{white-space:normal; padding:8px 8px; font-size:11.5px} }
@@ -424,6 +426,7 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
 .navmenu button[data-tab="scadenze"]::before{content:"⏰ "}
 .navmenu button[data-tab="messaggi"]::before{content:"💬 "}
 .navmenu button[data-tab="modulistica"]::before{content:"📄 "}
+.navmenu button[data-tab="richieste"]::before{content:"📨 "}
 .navmenu button[data-tab="permessi"]::before{content:"👥 "}
 .navmenu button.nav-separatore{display:none}
 /* Registro: i riquadri dei tipi di pratica in una sezione che si apre e si chiude */
@@ -557,6 +560,7 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
   <button type="button" data-tab="scadenze" onclick="showTab(this)">SCADENZE</button>
   <button type="button" data-tab="messaggi" onclick="showTab(this)">MESSAGGI</button>
   <button type="button" data-tab="modulistica" onclick="showTab(this)">MODULISTICA</button>
+  <button type="button" data-tab="richieste" id="nav-richieste" onclick="showTab(this)" style="display:none">RICHIESTE WEB</button>
   <button type="button" data-tab="permessi" id="nav-permessi" onclick="showTab(this)" style="display:none">UTENTI&nbsp;E&nbsp;PERMESSI</button>
 </div>
 <div id="ricerca-unica" class="ricerca-unica" style="display:none">
@@ -911,6 +915,7 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
 </section>
 
 <section class="tabsec" id="tab-modulistica"></section>
+<section class="tabsec" id="tab-richieste"></section>
 <section class="tabsec" id="tab-storico"></section>
 
 <section class="tabsec" id="tab-permessi">
@@ -1089,10 +1094,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/cisl.js?v=6"></script>
 <script src="js/documenti.js?v=20261029as"></script>
 <script src="js/installa.js?v=5"></script>
-<script src="js/guida.js?v=20261101cs"></script>
+<script src="js/guida.js?v=20261101cst"></script>
 <script src="js/scadenze.js?v=20261029cn"></script>
 <script src="js/config.js?v=202610079"></script>
-<script src="js/versione.js?v=10sb"></script>
+<script src="js/versione.js?v=10sbt"></script>
 <script src="js/doppio-clic.js?v=2"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
@@ -1101,7 +1106,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ricerca-elenchi.js?v=1"></script>
 <script src="js/data.js?v=202610247z"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=20261101b"></script>
+<script src="js/app.js?v=20261101bt"></script>
 <script src="js/lavoratore-colf.js?v=4"></script>
 <script src="js/affitti.js?v=3"></script>
 <script src="js/scadenza-730.js?v=2"></script>
@@ -1109,7 +1114,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/fine-anno.js?v=4"></script>
 <script src="js/bilanci.js?v=1"></script>
 <script src="js/cronologia.js?v=2"></script>
-<script src="js/richieste.js?v=1sb"></script>
+<script src="js/richieste.js?v=1sbt"></script>
 <script src="js/anni-vecchi.js?v=1"></script>
 <script src="js/spazio-server.js?v=1"></script>
 <script src="js/controllo-mattino.js?v=3"></script>

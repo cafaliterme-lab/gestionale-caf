@@ -1,7 +1,7 @@
 /* ---------------- 📨 Sportello online: richieste dei clienti ----------------
    I clienti scrivono dalla pagina pubblica scrivici.html (senza password; possono solo mandare, non leggere).
    Qui le vedono l'amministratore e gli operatori con il permesso «📨 Richieste dai clienti» (Utenti e permessi).
-   - riquadro in Oggi con le richieste nuove (e un avviso quando ne arriva una);
+   - sezione «📨 RICHIESTE WEB» nel menu (con il numero delle nuove) e riquadro in Oggi che porta lì; avviso quando ne arriva una;
    - elenco con filtro per stato (nuova → in lavorazione → chiusa), risposta su WhatsApp o e-mail, appuntamento;
    - l'amministratore accende/spegne lo sportello (impostazioni.sportello_attivo) e stampa il cartello con il QR.
    Lo sportello parte SPENTO. */
@@ -29,7 +29,7 @@ function richiesteNuove() { return (RICHIESTE || []).filter(function (x) { retur
 function tileRichieste(tile) {
   if (!puoRichieste() || (!sportelloAttivo() && !richiesteNuove().length)) return '';
   const n = richiesteNuove().length;
-  return tile('📨', n, 'Richieste dai clienti', '#8e5bd6', 'apriRichieste()', n ? 'arrivate dallo sportello online, da gestire' : 'nessuna richiesta nuova');
+  return tile('📨', n, 'Richieste dai clienti', '#8e5bd6', "oggiTab('richieste')", n ? 'arrivate dallo sportello online, da gestire' : 'nessuna richiesta nuova');
 }
 
 // cliente già in archivio con lo stesso cellulare
@@ -40,37 +40,62 @@ function clienteDaRichiesta(x) {
 }
 
 let FILTRO_RICHIESTE = 'aperte';
-async function apriRichieste() {
-  if (!puoRichieste()) { avviso('Non hai il permesso per le richieste dei clienti', true); return; }
-  const vecchio = document.getElementById('popup-richieste'); if (vecchio) vecchio.remove();
-  const ov = document.createElement('div');
-  ov.id = 'popup-richieste';
-  ov.style.cssText = 'position:fixed; inset:0; z-index:456; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:10px';
-  ov.addEventListener('click', function (e) {
-    if (e.target === ov || e.target.closest('[data-chiudi]')) { ov.remove(); return; }
+// tasti e cambi di stato dell'elenco (nella sezione del menu o nella finestra)
+function collegaEventiRichieste(el, chiudi) {
+  el.addEventListener('click', function (e) {
+    if (chiudi && (e.target === el || e.target.closest('[data-chiudi]'))) { chiudi(); return; }
     const f = e.target.closest('[data-filtro]'); if (f) { FILTRO_RICHIESTE = f.dataset.filtro; disegnaRichieste(); return; }
     const b = e.target.closest('[data-az]'); if (!b) return;
     const x = (RICHIESTE || []).find(function (r) { return r.id === b.dataset.id; }); if (!x) return;
     azioneRichiesta(b.dataset.az, x);
   });
-  ov.addEventListener('change', function (e) {
+  el.addEventListener('change', function (e) {
     const s = e.target.closest('select[data-stato]'); if (!s) return;
     const x = (RICHIESTE || []).find(function (r) { return r.id === s.dataset.stato; }); if (x) cambiaStatoRichiesta(x, s.value);
   });
+}
+// sezione «📨 RICHIESTE WEB» del menu
+async function renderRichiesteTab() {
+  const sec = document.getElementById('tab-richieste'); if (!sec) return;
+  if (!puoRichieste()) { sec.innerHTML = '<div class="card"><div class="empty">Non hai il permesso per le richieste dei clienti.</div></div>'; return; }
+  if (!document.getElementById('richieste-box')) {
+    sec.innerHTML = '<div class="card" id="richieste-box" style="border-top:6px solid #8e5bd6"><div class="sub2">⏳ Carico le richieste…</div></div>';
+    collegaEventiRichieste(document.getElementById('richieste-box'), null);
+  }
+  await caricaRichieste();
+  disegnaRichieste();
+}
+// numero delle richieste nuove sul tasto del menu
+function aggiornaPallinoRichieste() {
+  const b = document.getElementById('nav-richieste'); if (!b) return;
+  const n = richiesteNuove().length;
+  b.innerHTML = 'RICHIESTE WEB' + (n ? ' <span class="nav-pallino">' + n + '</span>' : '');
+}
+async function apriRichieste() {
+  if (!puoRichieste()) { avviso('Non hai il permesso per le richieste dei clienti', true); return; }
+  // c'è la sezione nel menu: si va lì
+  if (typeof oggiTab === 'function' && document.getElementById('tab-richieste') && oggiTab('richieste')) return;
+  const vecchio = document.getElementById('popup-richieste'); if (vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-richieste';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:456; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:10px';
+  collegaEventiRichieste(ov, function () { ov.remove(); });
   ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:14px; border-top:6px solid #8e5bd6; max-width:820px; width:100%; max-height:92vh; overflow:auto; padding:14px 16px; box-shadow:0 10px 40px rgba(0,0,0,.3)"><div class="sub2">⏳ Carico le richieste…</div></div>';
   document.body.appendChild(ov);
   await caricaRichieste();
   disegnaRichieste();
 }
 function disegnaRichieste() {
-  const ov = document.getElementById('popup-richieste'); if (!ov) return;
+  aggiornaPallinoRichieste();
+  const pop = document.getElementById('popup-richieste'), box = document.getElementById('richieste-box');
+  const dove = pop ? pop.firstChild : box; if (!dove) return;
   const tutte = RICHIESTE || [];
   const lista = tutte.filter(function (x) { return FILTRO_RICHIESTE === 'tutte' ? true : FILTRO_RICHIESTE === 'aperte' ? x.stato !== 'chiusa' : x.stato === FILTRO_RICHIESTE; });
   const conta = function (f) { return tutte.filter(function (x) { return f === 'aperte' ? x.stato !== 'chiusa' : f === 'tutte' ? true : x.stato === f; }).length; };
   const chip = function (k, t) { const on = FILTRO_RICHIESTE === k; return '<button type="button" data-filtro="' + k + '" style="border:2px solid #8e5bd6; border-radius:999px; padding:4px 12px; font-size:12.5px; font-weight:700; cursor:pointer; background:' + (on ? '#8e5bd6' : 'transparent') + '; color:' + (on ? '#fff' : '#8e5bd6') + '">' + t + ' (' + conta(k) + ')</button>'; };
   const tasto = 'border:none; border-radius:999px; padding:5px 11px; font-size:12.5px; font-weight:700; cursor:pointer';
-  ov.firstChild.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap"><b style="font-size:18px; color:#8e5bd6">📨 Richieste dai clienti</b>'
-    + '<button type="button" data-chiudi style="' + tasto + '; background:var(--line); color:var(--ink)">✕</button></div>'
+  dove.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap"><b style="font-size:18px; color:#8e5bd6">📨 Richieste dai clienti (sportello web)</b>'
+    + (pop ? '<button type="button" data-chiudi style="' + tasto + '; background:var(--line); color:var(--ink)">✕</button>' : '<button type="button" onclick="renderRichiesteTab()" style="' + tasto + '; background:var(--line); color:var(--ink)">🔄 Aggiorna</button>') + '</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin:2px 0 8px">Arrivano dallo sportello online (' + esc(indirizzoSportello()) + ') · ' + (sportelloAttivo() ? '<b style="color:#1a7f37">sportello ACCESO</b>' : '<b style="color:#c0392b">sportello SPENTO</b>: non arrivano richieste nuove') + '</div>'
     + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">' + chip('aperte', 'Da gestire') + chip('nuova', '🆕 Nuove') + chip('lavorazione', '🛠️ In lavorazione') + chip('chiusa', '✅ Chiuse') + chip('tutte', 'Tutte') + '</div>'
     + (lista.length ? lista.map(function (x) {
@@ -174,6 +199,8 @@ setInterval(async function () {
   await caricaRichieste();
   const ora = richiesteNuove().length;
   if (prima !== null && ora > prima) avviso('📨 Nuova richiesta dallo sportello online: ' + (RICHIESTE[0] ? RICHIESTE[0].nome : '') + ' · aprila dalla pagina Oggi');
+  aggiornaPallinoRichieste();
+  if (document.getElementById('richieste-box') && document.getElementById('tab-richieste').classList.contains('active')) disegnaRichieste();
   if (RICHIESTE_NUOVE_VISTE !== ora) { RICHIESTE_NUOVE_VISTE = ora; if (typeof render === 'function' && document.getElementById('popup-richieste') == null) render(); }
 }, 120000);
-setTimeout(function () { if (puoRichieste()) caricaRichieste().then(function () { RICHIESTE_NUOVE_VISTE = richiesteNuove().length; if (typeof render === 'function') render(); }); }, 6000);
+setTimeout(function () { if (puoRichieste()) caricaRichieste().then(function () { RICHIESTE_NUOVE_VISTE = richiesteNuove().length; aggiornaPallinoRichieste(); if (typeof render === 'function') render(); }); }, 6000);
