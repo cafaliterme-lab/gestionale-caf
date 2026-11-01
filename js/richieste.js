@@ -32,14 +32,16 @@ function conLinkSportello(testo, d) {
 // Cambia solo il link «nudo» (non già personalizzato); su ricevute, cartello e stampe il link resta senza dati.
 function personalizzaLinkSportello(testo, d) {
   const base = linkSportelloDaScrivere(); if (!base || !testo || !d) return testo;
-  const enc = function (v) { return encodeURIComponent(v).replace(/['()!*]/g, function (c) { return '%' + c.charCodeAt(0).toString(16).toUpperCase(); }).replace(/%20/g, '+'); };
+  // v1.7.2: spazi come %20 (non «+»): WhatsApp tagliava il link al «+» e arrivava solo il cognome
+  const enc = function (v) { return encodeURIComponent(v).replace(/['()!*]/g, function (c) { return '%' + c.charCodeAt(0).toString(16).toUpperCase(); }); };
   const nome = String(d.nome || '').replace(/\s+/g, ' ').trim().slice(0, 80);
   let tel = String(d.tel || '').replace(/\D/g, ''); if (/^(00)?39\d{9,10}$/.test(tel)) tel = tel.replace(/^(00)?39/, '');
   const email = String(d.email || '').trim().toLowerCase();
   const p = [];
-  if (nome) p.push('n=' + enc(nome));
+  // prima il cellulare (solo cifre), poi e-mail e nome: se un programma taglia il link, il numero arriva comunque
   if (tel.length >= 9 && tel.length <= 15) p.push('t=' + tel);
   if (/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(email)) p.push('e=' + enc(email));
+  if (nome) p.push('n=' + enc(nome));
   if (!p.length) return testo;
   const re = new RegExp('(^|[^\\w/.:-])' + base.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&') + '(?![\\w/?#&=%.-])', 'g');
   return testo.replace(re, '$1https://' + base + '?' + p.join('&'));
