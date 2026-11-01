@@ -2479,7 +2479,7 @@ function render(){
       ${p.whatsappInviato ? `<div class="meta" style="color:#1a9e4b">💬 Avvisato su WhatsApp il ${esc(p.whatsappInviato)}</div>` : ''}
       <div class="meta">${(Number(p.compenso||0) || Number(p.richiesto||0) || Number(p.pagato||0)) ? `<span style="font-weight:700">💶 Fattura ${Number(p.compenso||0) ? fmtEuro(p.compenso) : '-'}${praticaContabile(p)._fattAttesa ? ' <span style="color:#b35f0c">(⏳ in attesa di consegna: non ancora in contabilità)</span>' : ''} · Richiesto ${Number(p.richiesto||0) ? fmtEuro(p.richiesto) : '-'} · Pagato ${Number(p.pagato||0) ? fmtEuro(p.pagato) : '-'}${typeof residuoPratica === 'function' && residuoPratica(p) > 0.004 ? ' · <span style="color:#c0392b">manca ' + fmtEuro(residuoPratica(p)) + '</span>' : ''}</span> ` : ''}${bottoneAvanti(p)} ${p.consegnataIl ? `<span style="color:#8d5a3b; font-weight:700">${parolaConsegna(p).icona} ${parolaConsegna(p).fatta} il ${esc(p.consegnataIl)}${p.consegnataDa ? ' da ' + esc(p.consegnataDa) : ''}</span> ` : ''}${bottoneConsegna(p)}</div>
       ${p._editing ? `
-        <div class="grid" style="margin-top:8px">
+        <div class="grid modulo-verde" style="margin-top:8px">
           <div><label>Cognome</label><input id="e-cognome-${p.id}" value="${esc(dividiNominativo(p).cognome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
           <div><label>Nome</label><input id="e-nomeproprio-${p.id}" value="${esc(dividiNominativo(p).nome)}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
           <div class="full" id="e-congwrap-${p.id}" style="${tipoAmmetteCongiunta(p.tipo) || p.congiunta ? '' : 'display:none'}"><label class="chk"><input type="checkbox" id="e-congon-${p.id}" ${p.congiunta ? 'checked' : ''} onchange="(function(){var on=document.getElementById('e-congon-${p.id}').checked; document.getElementById('e-congbox-${p.id}').style.display = on?'':'none';})()"> Congiunta</label>
@@ -4624,13 +4624,33 @@ function campoCompilatoBene(el){
   if(el.id === 'f-codfisc') return typeof cfValido !== 'function' || cfValido(v);
   if(el.id === 'f-cf' || el.id === 'f-cong-data' || el.id === 'f-data' || el.id === 'f-data-fine') return !!parseDataIT(v);
   if(el.id === 'f-compenso' || el.id === 'f-pagato' || el.id === 'f-richiesto') return !isNaN(parseImporto(v));
+  // v1.6.2: modifica della pratica (e-campo-id), affitti (aff-campo-…), inquilini (classe i-campo), lavoratore colf, scadenze
+  let e = /^e-([a-z]+)-/.exec(el.id || ''), chiave = e ? e[1] : '';
+  if(!chiave){ const a = /^aff-([a-z]+)-/.exec(el.id || ''); if(a) chiave = 'aff' + a[1]; }
+  if(!chiave){ const c = /(^|\s)i-([a-z]+)/.exec(el.className || ''); if(c && el.closest('.aff-inq')) chiave = 'i' + c[2]; }
+  if(!chiave && /^f-lav-/.test(el.id || '')) chiave = 'lav' + el.id.replace(/^f-lav-/, '').replace(/-/g, '');
+  if(chiave){
+    if(['cf','congdata','docscad','congdocscad','scadass','df','lavdata','lavdocscad','lavpermscad','affinizio','afffine','idata','idocscad'].indexOf(chiave) >= 0) return !!parseDataIT(v);
+    if(['congcf','lavcf','icf'].indexOf(chiave) >= 0) return typeof cfValido !== 'function' || cfValido(v);
+    if(['tel','congtel','lavtel','itel'].indexOf(chiave) >= 0) return !!numeroWhatsApp(v) || v.replace(/\D/g, '').length >= 9;
+    if(chiave === 'telfisso') return v.replace(/\D/g, '').length >= 6;
+    if(['email','congemail'].indexOf(chiave) >= 0) return typeof emailValida !== 'function' || emailValida(v);
+    if(['comp','ric','pag'].indexOf(chiave) >= 0) return !isNaN(parseImporto(v));
+  }
   return true;
 }
 // anche le schede del cliente in archivio: nuovo cliente e modifica
-const MODULI_VERDI = '.form-anagrafica, #popup-nuovo-cliente, #popup-mod-cliente';
+// v1.6.2: anche la modifica della pratica, gli affitti con gli inquilini e la nuova scadenza (classe modulo-verde)
+const MODULI_VERDI = '.form-anagrafica, #popup-nuovo-cliente, #popup-mod-cliente, .modulo-verde';
+function campoDaColorare(el){
+  if(!/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) || /^(checkbox|hidden|radio|file|button|submit)$/.test(el.type)) return false;
+  // i campi per cercare nell'archivio non sono dati da compilare
+  if(/cerca/.test(el.id || '') || el.classList.contains('i-cerca')) return false;
+  return true;
+}
 function aggiornaColoriModulo(){
-  document.querySelectorAll('.form-anagrafica input[id^="f-"], .form-anagrafica select[id^="f-"], #popup-nuovo-cliente [id^="nc-"], #popup-mod-cliente [id^="mc-"]').forEach(function(el){
-    if(!/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) || el.type === 'checkbox' || el.type === 'hidden' || el.type === 'radio') return;
+  document.querySelectorAll('.form-anagrafica input[id^="f-"], .form-anagrafica select[id^="f-"], .form-anagrafica textarea[id^="f-"], #popup-nuovo-cliente [id^="nc-"], #popup-mod-cliente [id^="mc-"], .form-anagrafica [id^="aff-"], .form-anagrafica .aff-inq input, .form-anagrafica .aff-inq select, .modulo-verde input, .modulo-verde select, .modulo-verde textarea').forEach(function(el){
+    if(!campoDaColorare(el)) return;
     el.classList.toggle('compilato', campoCompilatoBene(el));
   });
 }

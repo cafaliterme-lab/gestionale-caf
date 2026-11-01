@@ -81,9 +81,9 @@ button, a, label, summary, [onclick], [role=button], [data-az], [data-azione], t
 .vc-form input[id^="vc-ci"]:not(:placeholder-shown), .vc-form input[id^="vc-bi"]:not(:placeholder-shown){text-align:right}
 @media (max-width:600px){.vc-form{grid-template-columns:1fr 1fr} .vc-form > div:nth-child(3){grid-column:1/-1} .vc-form input{padding:5px 6px} .vc-form input[id^="vc-bd"]{width:86px!important; flex:none} .vc-form input[id^="vc-bi"], .vc-form input[id^="vc-ci"]{width:66px!important; flex:none}}
 .form-anagrafica input, .form-anagrafica select{background:color-mix(in srgb, var(--accent) 10%, var(--card)); border-color:color-mix(in srgb, var(--accent) 30%, var(--line))}
-.form-anagrafica select.compilato, #popup-nuovo-cliente .compilato, #popup-mod-cliente .compilato, .form-anagrafica input.compilato{background:color-mix(in srgb, #2f9e5f 18%, var(--card)); border-color:#2f9e5f; transition:background .2s, border-color .2s}
+.form-anagrafica select.compilato, #popup-nuovo-cliente .compilato, #popup-mod-cliente .compilato, .form-anagrafica input.compilato, .form-anagrafica textarea.compilato, .modulo-verde .compilato{background:color-mix(in srgb, #2f9e5f 18%, var(--card)); border-color:#2f9e5f; transition:background .2s, border-color .2s}
 /* campo riempito con i suggerimenti di Chrome: il colore di Chrome (grigio/azzurro) coprirebbe il verde */
-.form-anagrafica input.compilato:-webkit-autofill, #popup-nuovo-cliente input.compilato:-webkit-autofill, #popup-mod-cliente input.compilato:-webkit-autofill{-webkit-box-shadow:0 0 0 1000px color-mix(in srgb, #2f9e5f 18%, var(--card)) inset; box-shadow:0 0 0 1000px color-mix(in srgb, #2f9e5f 18%, var(--card)) inset; -webkit-text-fill-color:var(--ink)}
+.form-anagrafica input.compilato:-webkit-autofill, #popup-nuovo-cliente input.compilato:-webkit-autofill, #popup-mod-cliente input.compilato:-webkit-autofill, .modulo-verde input.compilato:-webkit-autofill{-webkit-box-shadow:0 0 0 1000px color-mix(in srgb, #2f9e5f 18%, var(--card)) inset; box-shadow:0 0 0 1000px color-mix(in srgb, #2f9e5f 18%, var(--card)) inset; -webkit-text-fill-color:var(--ink)}
 .form-anagrafica input#cli-cerca, .form-anagrafica input#cli-cerca-cong{background:color-mix(in srgb, #f08a24 22%, var(--card)); border:2px solid #f08a24; font-weight:600}
 .form-anagrafica input#cli-cerca::placeholder, .form-anagrafica input#cli-cerca-cong::placeholder{color:#b8661a}
 button{
@@ -857,7 +857,7 @@ body{height:auto; min-height:100%} /* altrimenti il menu fisso si ferma dopo la 
 <section class="tabsec" id="tab-scadenze">
 <div class="card">
   <div class="raff-title">Nuova scadenza</div>
-  <div class="grid">
+  <div class="grid modulo-verde">
     <div class="full"><label>Descrizione (se vuota uso le note)</label><input id="sc-titolo" placeholder="Es. Invio 730 precompilato, IMU acconto, rinnovo ISEE..."></div>
     <div><label>Data</label><input id="sc-data" type="date"></div>
     <div><label>Avvisami</label>
@@ -1097,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/guida.js?v=20261101fst"></script>
 <script src="js/scadenze.js?v=20261029cn"></script>
 <script src="js/config.js?v=202610079"></script>
-<script src="js/versione.js?v=14sbt"></script>
+<script src="js/versione.js?v=15sbt"></script>
 <script src="js/doppio-clic.js?v=2"></script>
 <script src="js/auth.js?v=202610049"></script>
 <script>
@@ -1106,7 +1106,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/ricerca-elenchi.js?v=1"></script>
 <script src="js/data.js?v=202610247z"></script>
 <script src="js/import-clienti.js?v=202610049"></script>
-<script src="js/app.js?v=20261101dt"></script>
+<script src="js/app.js?v=20261101et"></script>
 <script src="js/lavoratore-colf.js?v=4"></script>
 <script src="js/affitti.js?v=3"></script>
 <script src="js/scadenza-730.js?v=2"></script>

@@ -5,6 +5,11 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.6.2', data: '01/11/2026', titolo: 'Campi verdi anche nella modifica',
+    novita: [
+      'I campi diventano verdi quando sono compilati bene anche nella ✏️ Modifica della pratica (coniuge, lavoratore colf, affitto e inquilini compresi), nei dati dell\'affitto e degli inquilini dell\'inserimento e nella Nuova scadenza',
+      'Restano bianchi se il dato non è giusto (data sbagliata, codice fiscale incompleto, e-mail o cellulare non validi); le caselle per cercare nell\'archivio non si colorano',
+    ] },
   { versione: '1.6.1', data: '01/11/2026', titolo: 'E-mail del CAF in tutti i messaggi',
     novita: [
       'Nei messaggi ai clienti che non l\'avevano (es. «pratica pronta») in fondo c\'è anche l\'e-mail del CAF, sopra il link «Scrivici online»',
