@@ -1,7 +1,7 @@
 # Promemoria tecnico – Gestionale CAF CISL Alì Terme
 
 Questo file serve a chi riprende il programma: Claude in una nuova sessione o un altro tecnico.
-Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.7. L'uso vero del programma inizia nel 2027.
+Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.7.1. L'uso vero del programma inizia nel 2027.
 
 ## Chi lo usa e come parlargli
 
@@ -116,3 +116,4 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.7
 - Idee non ancora fatte: nessuna richiesta aperta.
 - Campi verdi (v1.6.2): `campoCompilatoBene` + `aggiornaColoriModulo` in app.js (ogni 700 ms e a ogni input). Contenitori: `.form-anagrafica`, `#popup-nuovo-cliente`, `#popup-mod-cliente` e la classe `.modulo-verde` (griglia della ✏️ Modifica pratica, Nuova scadenza). Regole per id `e-campo-<id>`, `aff-campo-<k>`, inquilini (classe `i-campo` dentro `.aff-inq`), `f-lav-…`. Esclusi i campi con «cerca» nell'id e `.i-cerca`. Un modulo nuovo diventa verde aggiungendo `modulo-verde` al suo contenitore.
 - Sportello v1.7 (migrazione 043, solo aggiunte): colonna `richieste_clienti.per_chi` e RPC `invia_richiesta_cliente2(…, p_per_chi)` usata da `scrivici/index.html` (la vecchia `invia_richiesta_cliente` resta, non più usata). In richieste.js `personeDaRichiesta(x)` / `personeRichiestaHTML(x)`: persone da archivio e pratiche con lo stesso numero (coniuge compreso) + persona di «per chi», con nascita, CF, ultima pratica, tasto `data-az="scheda"` → `apriSchedaPersonaNome`. Niente data di nascita nel link ai clienti (scelta di Angelo, privacy).
+- Doppioni (v1.7.1, `cercaDoppione` in app.js): per i 730 conta qualsiasi tipo 730 (`e730`) e la persona come coniuge in una 730 congiunta (stesso `cong_codice_fiscale`, o nome se manca il CF); le annullate non contano; omonimi con CF diverso distinti. Per gli altri tipi resta stesso nome + stesso tipo + stesso anno (affitti e ALTRE PRATICHE esclusi).

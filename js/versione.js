@@ -5,6 +5,12 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.7.1', data: '01/11/2026', titolo: 'Controllo dei 730 doppi',
+    novita: [
+      'Una persona può avere un solo 730 all\'anno: il programma blocca il doppione anche se il tipo è diverso (730 SEDE, 730 RICCA, 730 BRIGUGLIO o di altri collaboratori)',
+      'Blocca anche il 730 di chi è già il coniuge in una 730 congiunta dello stesso anno',
+      'Le pratiche annullate non contano come doppione; due omonimi con codice fiscale diverso restano distinti',
+    ] },
   { versione: '1.7', data: '01/11/2026', titolo: 'Richieste web: per chi è e dati dall\'archivio',
     novita: [
       'Pagina «Scrivi al CAF»: il cliente può indicare per chi è la richiesta (sé stesso, il coniuge, un figlio, un genitore, un altro familiare o un\'altra persona) e scriverne il nome',

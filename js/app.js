@@ -2793,7 +2793,7 @@ async function addPraticaInterna(){
   if(typeof eAffitto === 'function' && eAffitto(tipo)){ const errA = erroreAffitto(affitto); if(errA){ msg.textContent = '⚠️ ' + errA; msg.style.display = 'block'; msg.scrollIntoView({ behavior:'smooth', block:'center' }); return; } }
   const doppione = (eAltrePratiche(tipo) || rinnovo || (typeof eAffitto === 'function' && eAffitto(tipo))) ? null : await cercaDoppione(annoPr, nome, tipo, codiceFiscale, null);
   if(doppione){
-    msg.textContent = '⚠️ ' + nome + ' ha gia\' una pratica ' + tipo + ' nel ' + annoPr + ' (protocollo ' + doppione + '). Non e\' possibile inserire un doppione.';
+    msg.textContent = '⚠️ ' + nome + ' ha gia\' una pratica ' + (e730({ tipo: tipo }) ? '730' : tipo) + ' nel ' + annoPr + ' (protocollo ' + doppione + '). Non e\' possibile inserire un doppione.';
     msg.style.display = 'block';
     return;
   }
@@ -3996,7 +3996,7 @@ async function salvaModifica(id){
   if(typeof eAffitto === 'function' && eAffitto(campi.tipo)){ const errA = erroreAffitto(campi); if(errA){ avviso('❌ ' + errA, true); return; } }
   const doppione = (eAltrePratiche(campi.tipo) || (typeof eAffitto === 'function' && eAffitto(campi.tipo))) ? null : await cercaDoppione(annoP, campi.nome, campi.tipo, p.codiceFiscale, id);
   if(doppione){
-    avviso('❌ ' + campi.nome + ' ha gia\' una pratica ' + campi.tipo + ' nel ' + annoP + ' (protocollo ' + doppione + '): modifica non salvata.', true);
+    avviso('❌ ' + campi.nome + ' ha gia\' una pratica ' + (e730({ tipo: campi.tipo }) ? '730' : campi.tipo) + ' nel ' + annoP + ' (protocollo ' + doppione + '): modifica non salvata.', true);
     return;
   }
   delete p._editing;
@@ -4218,22 +4218,52 @@ async function caricaNomiOperatori(){
 }
 
 // Stesso nominativo + stesso tipo + stesso anno = doppione; due omonimi con codice fiscale diverso restano distinti.
+// v1.7.1: per i 730 conta qualsiasi 730 (730 SEDE, 730 RICCA, 730 BRIGUGLIO, … anche dei collaboratori) e anche
+// la persona già presente come CONIUGE in una 730 congiunta dello stesso anno.
 async function cercaDoppione(anno, nome, tipo, codiceFiscale, escludiId){
   if(!nome || !tipo) return null;
-  let elenco = (state.pratiche||[]).map(function(p){ return { id:p.id, numero:p.numero, anno:annoPratica(p), nome:p.nome, tipo:p.tipo, codiceFiscale:p.codiceFiscale, serie:p.serie, trasferitaIn:p.trasferitaIn, protocolloOrigine:p.continuazione ? p.protocolloOrigine : '' }; });
+  const tutti730 = e730({ tipo: tipo });
+  const NOME = String(nome).toUpperCase().trim();
+  const mappa = function(r){ return { id:r.id, numero:r.numero, anno:r.anno, nome:r.nome, tipo:r.tipo, codiceFiscale:r.codice_fiscale, serie:r.serie, trasferitaIn:r.trasferita_in, protocolloOrigine:r.continuazione ? r.protocollo_origine : '',
+    annullata:r.annullata, congiunta:r.congiunta, congCodiceFiscale:r.cong_codice_fiscale, congNome:((r.cong_cognome||'') + ' ' + (r.cong_nome||'')).trim() }; };
+  let elenco = (state.pratiche||[]).map(function(p){ return { id:p.id, numero:p.numero, anno:annoPratica(p), nome:p.nome, tipo:p.tipo, codiceFiscale:p.codiceFiscale, serie:p.serie, trasferitaIn:p.trasferitaIn, protocolloOrigine:p.continuazione ? p.protocolloOrigine : '',
+    annullata:p.annullata, congiunta:p.congiunta, congCodiceFiscale:p.congCodiceFiscale, congNome:((p.congCognome||'') + ' ' + (p.congNome||'')).trim() }; });
+  const campi = 'id,numero,anno,nome,tipo,codice_fiscale,serie,trasferita_in,continuazione,protocollo_origine,annullata,congiunta,cong_codice_fiscale,cong_cognome,cong_nome';
   try{
-    const { data: righe, error } = await supabase.from('pratiche').select('id,numero,anno,nome,tipo,codice_fiscale,serie,trasferita_in,continuazione,protocollo_origine').eq('anno', anno).eq('nome', nome).eq('tipo', tipo);
-    if(!error && Array.isArray(righe)) elenco = righe.map(function(r){ return { id:r.id, numero:r.numero, anno:r.anno, nome:r.nome, tipo:r.tipo, codiceFiscale:r.codice_fiscale, serie:r.serie, trasferitaIn:r.trasferita_in, protocolloOrigine:r.continuazione ? r.protocollo_origine : '' }; });
+    let q = supabase.from('pratiche').select(campi).eq('anno', anno).eq('nome', nome);
+    if(!tutti730) q = q.eq('tipo', tipo);
+    const { data: righe, error } = await q;
+    if(!error && Array.isArray(righe)){
+      const dalDb = righe.map(mappa);
+      // per i 730 anche come coniuge (stesso codice fiscale)
+      if(tutti730 && codiceFiscale){
+        const r2 = await supabase.from('pratiche').select(campi).eq('anno', anno).eq('cong_codice_fiscale', codiceFiscale);
+        if(!r2.error && Array.isArray(r2.data)) r2.data.forEach(function(r){ dalDb.push(mappa(r)); });
+      }
+      // si tengono anche quelle in memoria (es. coniuge trovato per nome), senza ripetere
+      const visti = {}; dalDb.forEach(function(x){ visti[x.id] = true; });
+      elenco = dalDb.concat(elenco.filter(function(x){ return !visti[x.id]; }));
+    }
   }catch(e){ console.error('controllo doppioni', e); }
+  const stessoTipo = function(t){ return tutti730 ? e730({ tipo: t }) : t === tipo; };
   const trovato = elenco.find(function(p){
-    if(p.id === escludiId) return false;
+    if(p.id === escludiId || p.annullata) return false;
     // contratto colf già trasferito o rinnovato: è chiuso, non conta come doppione
     if(p.trasferitaIn) return false;
-    if(Number(p.anno) !== Number(anno) || (p.nome||'').toUpperCase() !== nome.toUpperCase() || p.tipo !== tipo) return false;
+    if(Number(p.anno) !== Number(anno) || (p.nome||'').toUpperCase() !== NOME || !stessoTipo(p.tipo)) return false;
     return !(codiceFiscale && p.codiceFiscale && p.codiceFiscale !== codiceFiscale);
   });
   if(trovato && trovato.protocolloOrigine) return trovato.protocolloOrigine + ' (continuazione)';
-  return trovato ? serieDi(trovato) + '-' + String(trovato.numero).padStart(4,'0') + '/' + anno : null;
+  if(trovato) return serieDi(trovato) + '-' + String(trovato.numero).padStart(4,'0') + '/' + anno + (trovato.tipo !== tipo ? ', ' + trovato.tipo : '');
+  if(tutti730){
+    const comeConiuge = elenco.find(function(p){
+      if(p.id === escludiId || p.annullata || !p.congiunta || Number(p.anno) !== Number(anno) || !e730(p)) return false;
+      if(codiceFiscale && p.congCodiceFiscale) return p.congCodiceFiscale === codiceFiscale;
+      return p.congNome && p.congNome.toUpperCase() === NOME;
+    });
+    if(comeConiuge) return serieDi(comeConiuge) + '-' + String(comeConiuge.numero).padStart(4,'0') + '/' + anno + ', come coniuge nella 730 congiunta di ' + (comeConiuge.nome || '');
+  }
+  return null;
 }
 
 function e730(p){ return /^730\b/.test(String(p.tipo||'').toUpperCase()); }
