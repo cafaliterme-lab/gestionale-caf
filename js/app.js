@@ -2519,6 +2519,7 @@ function render(){
         <select class="stato-tab-sel" onchange="cambiaStato('${p.id}', this.value)">${statoOptions(p.stato, p.tipo)}</select>
         ${bottoneWhatsApp(p)}
         <button onclick="modifica('${p.id}')">✏️ Modifica</button>
+        <button onclick="apriCronologiaPratica('${p.id}')" title="Tutto quello che è successo alla pratica: inserimento, modifiche, pagamenti, consegna, messaggi">📜 Cronologia</button>
       </div>
       <div class="row-actions" style="align-items:center; padding-top:6px; border-top:1px dashed var(--line)">
         <span style="font-size:11.5px; font-weight:800; color:var(--sub)">🖨️ Stampe:</span>

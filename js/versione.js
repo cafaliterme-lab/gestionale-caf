@@ -5,6 +5,10 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.2', data: '01/11/2026', titolo: 'Cronologia della pratica',
+    novita: [
+      'Tasto «📜 Cronologia» nella scheda di ogni pratica: inserimento, modifiche campo per campo (prima → dopo) con chi e quando, e i messaggi WhatsApp ed e-mail mandati, in ordine di tempo',
+    ] },
   { versione: '1.1', data: '31/10/2026', titolo: 'Bilanci e confronto tra gli anni',
     novita: [
       'Contabilità → 📒 Bilanci e confronto tra gli anni: il bilancio di ogni anno salvato per sempre, tabella di tutti gli anni con le variazioni e grafici, stampa/PDF',

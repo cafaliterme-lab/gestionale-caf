@@ -350,6 +350,12 @@ const GUIDA = [
 <li><b>📅 Chiusura di cassa del giorno</b>: scegli il giorno (di solito oggi) e stampi gli <b>incassi</b> divisi per contanti, POS e bonifico, le <b>spese della sede</b> pagate quel giorno, i <b>contanti da mettere in cassa</b> (contanti incassati meno spese pagate in contanti) e le <b>pratiche aperte</b> nel giorno. L'incasso di una pratica conta nel giorno della consegna; se non è ancora consegnata, nel giorno di apertura.</li>
 </ul>` },
 
+  { id: 'cronologia', icona: '📜', titolo: 'Cronologia della pratica', parole: 'cronologia storico modifiche chi ha modificato quando pratica storia eventi messaggi inviati whatsapp email controllo',
+    testo: `<p>Nel registro, aprendo una pratica, il tasto <b>📜 Cronologia</b> (accanto a ✏️ Modifica) mostra, <b>dal primo all'ultimo</b>, tutto quello che è successo alla pratica:</p><ul>
+<li>🆕 quando è stata <b>inserita</b> e da chi;</li>
+<li>✏️ ogni <b>modifica</b>, campo per campo con il valore di prima e quello nuovo (stato, fattura, pagato, consegna, telefono, note…), con <b>chi</b> l'ha fatta e <b>quando</b>;</li>
+<li>💬📧 i <b>WhatsApp e le e-mail</b> mandati per quella pratica (pratica pronta, solleciti, documenti…), con il testo del messaggio da aprire.</li></ul>
+<p>Serve per controllare, per esempio, chi ha cambiato un pagamento o quando è stato avvisato il cliente. È solo da leggere: non cambia niente.</p>` },
   { id: 'bilanci', icona: '📒', titolo: 'Bilanci e confronto tra gli anni', parole: 'bilancio bilanci confronto anni raffronto grafici fine anno percentuale pagamenti guadagno clienti nuovi tornati persi archivio storico',
     testo: `<p>Solo l'<b>amministratore</b>: in <b>CONTABILITÀ</b> il tasto <b>📒 Bilanci e confronto tra gli anni</b>.</p><ul>
 <li>Il <b>bilancio di ogni anno</b> raccoglie pratiche (730, altre, congiunte, per tipo e per mese), clienti (nuovi, tornati, persi), conti (fatture, incassato, versato al CAF, spese sede, <b>guadagno netto</b>, prezzo medio) e pagamenti (<b>% pagato sul dovuto</b>, non pagate, come pagano i clienti).</li>
