@@ -204,15 +204,19 @@ async function cambiaStatoRichiesta(x, stato) {
 }
 async function azioneRichiesta(az, x) {
   const nome = typeof nomeProprio === 'function' ? nomeProprio(x.nome) : x.nome;
-  const testo = 'Buongiorno ' + nome + ', abbiamo ricevuto la sua richiesta al CAF CISL di Alì Terme (' + (x.tipo || 'informazioni') + ').\n\n';
+  // alla prima risposta si conferma la richiesta; nelle successive solo il saluto (la conversazione è già avviata)
+  const testo = x.stato === 'nuova' ? 'Buongiorno ' + nome + ', abbiamo ricevuto la sua richiesta al CAF CISL di Alì Terme (' + (x.tipo || 'informazioni') + ').\n\n' : 'Buongiorno ' + nome + ', ';
+  // v1.7.4: e-mail del CAF e link «Scrivici online» in fondo solo alla PRIMA risposta (richiesta ancora «Nuova»); nelle successive no
+  const prima = x.stato === 'nuova';
   if (az === 'wa') {
     const num = numeroWhatsApp(x.telefono);
     if (!num) { avviso('Il numero non sembra un cellulare', true); return; }
+    if (!prima && typeof TESTO_SENZA_LINK !== 'undefined') TESTO_SENZA_LINK = testo;
     apriChatWhatsApp(num, testo);
     if (typeof registraComunicazione === 'function') registraComunicazione({ canale: 'whatsapp', telefono: num, testo: testo, nome: x.nome, motivo: 'Risposta sportello online', senzaContesto: true });
     if (x.stato === 'nuova') cambiaStatoRichiesta(x, 'lavorazione');
   } else if (az === 'email') {
-    apriEmail({ a: x.email, oggetto: 'La sua richiesta al CAF CISL di Alì Terme', testo: testo, titolo: 'Risposta a ' + x.nome });
+    apriEmail({ a: x.email, oggetto: 'La sua richiesta al CAF CISL di Alì Terme', testo: testo, titolo: 'Risposta a ' + x.nome, senzaLink: !prima });
     if (x.stato === 'nuova') cambiaStatoRichiesta(x, 'lavorazione');
   } else if (az === 'app') {
     if (typeof nuovoAppuntamento === 'function') nuovoAppuntamento('', '', { nome: x.nome, telefono: x.telefono, note: 'Sportello online: ' + (x.tipo || '') });

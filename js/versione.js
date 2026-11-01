@@ -5,6 +5,10 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.7.4', data: '01/11/2026', titolo: 'Risposte alle richieste web più pulite',
+    novita: [
+      'Richieste web: solo la prima risposta (WhatsApp o e-mail) ha in fondo l\'e-mail del CAF e il link «Scrivici online»; le risposte successive partono con il solo saluto, senza recapiti',
+    ] },
   { versione: '1.7.3', data: '01/11/2026', titolo: 'Il 730 integrativo non è un doppione',
     novita: [
       'Il 730 INTEGRATIVI/RETTIFICATIVI si può inserire anche per chi ha già un 730 nello stesso anno (o è coniuge in una congiunta); resta bloccato solo un secondo integrativo uguale',

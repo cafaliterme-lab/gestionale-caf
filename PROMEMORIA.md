@@ -1,7 +1,7 @@
 # Promemoria tecnico – Gestionale CAF CISL Alì Terme
 
 Questo file serve a chi riprende il programma: Claude in una nuova sessione o un altro tecnico.
-Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.7.3. L'uso vero del programma inizia nel 2027.
+Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.7.4. L'uso vero del programma inizia nel 2027.
 
 ## Chi lo usa e come parlargli
 
@@ -119,3 +119,4 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.7
 - Doppioni (v1.7.1, `cercaDoppione` in app.js): per i 730 conta qualsiasi tipo 730 (`e730`) e la persona come coniuge in una 730 congiunta (stesso `cong_codice_fiscale`, o nome se manca il CF); le annullate non contano; omonimi con CF diverso distinti. Per gli altri tipi resta stesso nome + stesso tipo + stesso anno (affitti e ALTRE PRATICHE esclusi).
 - Link personale (v1.7.2): spazi codificati `%20`, MAI `+` (WhatsApp taglia il link al `+`); ordine parametri t, e, n (il cellulare per primo). Il testo in `comunicazioni` è salvato tagliato a 400 caratteri, quindi il link spesso non si vede lì.
 - Doppioni v1.7.3: `e730Base(tipo)` = 730 ma non INTEGRATIVO/RETTIFICATIVO; l'integrativo si controlla solo con lo stesso tipo (come le altre pratiche).
+- Risposte alle richieste web (v1.7.4, `azioneRichiesta`): prima risposta = richiesta in stato «nuova» → testo di conferma + fondo (e-mail e link); dopo → solo «Buongiorno Nome, » con `TESTO_SENZA_LINK` (WhatsApp) e `senzaLink: true` (e-mail; in `apriEmail` salta anche i recapiti).

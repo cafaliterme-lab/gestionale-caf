@@ -80,7 +80,8 @@ async function provaCasellaRiserva(b) {
 // opz: { a, oggetto, testo, html, titolo, nome, dopo(a) }
 function apriEmail(opz) {
   // in tutte le e-mail ci sono i recapiti del CAF, compresa l'e-mail
-  if (typeof righeContattiCaf === 'function' && typeof emailCaf === 'function') {
+  // senzaLink (accesso operatori, risposte successive alle richieste web): niente recapiti né link in fondo
+  if (!opz.senzaLink && typeof righeContattiCaf === 'function' && typeof emailCaf === 'function') {
     let t = pulisciTestoEmail(opz.testo);
     const mail = emailCaf();
     if (t.toLowerCase().indexOf(mail.toLowerCase()) < 0) {
