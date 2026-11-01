@@ -10,7 +10,10 @@ let RICHIESTE = null, RICHIESTE_NUOVE_VISTE = null;
 const STATI_RICHIESTA = { nuova: ['🆕 Nuova', '#c0392b'], lavorazione: ['🛠️ In lavorazione', '#d98b1e'], chiusa: ['✅ Chiusa', '#1a7f37'] };
 
 function puoRichieste() { return !!(auth && auth.profilo && (auth.profilo.ruolo === 'admin' || (auth.profilo.tabs && auth.profilo.tabs.richieste === true))); }
-function indirizzoSportello() { return location.origin + '/scrivici.html'; }
+// link corto (vercel.json: /scrivici → scrivici.html); in prova sul PC (localhost) si usa il file
+function indirizzoSportello() { return location.origin + (/localhost|127\.0\.0\.1/.test(location.hostname) ? '/scrivici.html' : '/scrivici'); }
+// da scrivere su ricevute e messaggi (senza https://), solo se lo sportello è acceso
+function linkSportelloDaScrivere() { return sportelloAttivo() ? indirizzoSportello().replace(/^https?:\/\//, '') : ''; }
 function sportelloAttivo() { return typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI.sportello_attivo === 'si'; }
 
 async function caricaRichieste() {
@@ -125,6 +128,9 @@ function rigaSportelloHTML() {
   return '<div class="card riga-sportello" style="margin-bottom:12px; border-left:5px solid #8e5bd6">'
     + '<div class="raff-title">📨 Sportello online per i clienti</div>'
     + '<div style="font-size:12.5px; color:var(--sub); margin-bottom:8px">I clienti scrivono dalla pagina <b>' + esc(indirizzoSportello()) + '</b> (senza password: possono solo mandare la richiesta). Le richieste le vedi tu e gli operatori a cui dai il permesso «📨 Richieste dai clienti» qui sotto.</div>'
+    + '<div style="font-size:15px; margin-bottom:8px">🔗 Link da dare ai clienti: <b style="color:#8e5bd6; user-select:all">' + esc(indirizzoSportello().replace(/^https?:\/\//, '')) + '</b> '
+    + '<button type="button" onclick="copiaLinkSportello()" style="border:none; border-radius:999px; padding:4px 10px; font-weight:700; cursor:pointer; background:var(--line); color:var(--ink)">📋 Copia il link</button>'
+    + '<div style="font-size:12px; color:var(--sub)">Con lo sportello acceso il link compare da solo sulle ricevute, sui promemoria degli appuntamenti e in fondo ai messaggi WhatsApp ed e-mail; spento, sparisce.</div></div>'
     + '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">'
     + '<button type="button" onclick="impostaSportello(' + (on ? 'false' : 'true') + ')" style="border:none; border-radius:999px; padding:8px 16px; font-weight:800; cursor:pointer; background:' + (on ? '#1a7f37' : '#c0392b') + '; color:#fff">' + (on ? '🟢 ACCESO · tocca per spegnere' : '🔴 SPENTO · tocca per accendere') + '</button>'
     + '<button type="button" onclick="apriRichieste()" style="border:none; border-radius:999px; padding:8px 14px; font-weight:700; cursor:pointer; background:#8e5bd6; color:#fff">📨 Vedi le richieste</button>'
@@ -142,6 +148,11 @@ async function impostaSportello(acceso) {
   avviso(acceso ? '🟢 Sportello online acceso: i clienti possono scrivervi' : '🔴 Sportello online spento: la pagina dice di chiamare in ufficio');
   document.querySelectorAll('.riga-sportello').forEach(function (el) { el.outerHTML = rigaSportelloHTML(); });
   if (typeof render === 'function') render();
+}
+function copiaLinkSportello() {
+  const t = indirizzoSportello();
+  const fatto = function () { avviso('📋 Link copiato: ' + t.replace(/^https?:\/\//, '') + ' (incollalo dove vuoi: WhatsApp, Facebook, biglietti da visita…)'); };
+  try { navigator.clipboard.writeText(t).then(fatto, function () { prompt('Copia il link:', t); }); } catch (e) { prompt('Copia il link:', t); }
 }
 function stampaCartelloSportello() {
   const w = window.open('', '_blank');

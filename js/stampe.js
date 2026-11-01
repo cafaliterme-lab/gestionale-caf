@@ -267,6 +267,8 @@ function datiCafStampa() {
     telefono: imp.caf_telefono || '',
     email: imp.caf_email || (typeof emailCaf === 'function' ? emailCaf() : ''),
     orari: orari || imp.caf_orari || '',
+    // sportello online «Scrivi al CAF» (solo se acceso)
+    online: typeof linkSportelloDaScrivere === 'function' ? linkSportelloDaScrivere() : '',
   };
 }
 
@@ -385,7 +387,7 @@ function stampaPDF() {
     + '</style></head><body>'
     + '<div class="barra"><button onclick="window.print()">🖨️ Stampa / Salva come PDF</button><button class="chiudi" onclick="window.close()">Chiudi</button></div>'
     + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1><div class="sub2">' + esc(titolo) + ' ' + STAMPA.anno + ' · stampato il ' + esc(todayIT()) + '</div></div>'
-    + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : '', caf.orari ? '🕘 <b>Orari:</b> ' + esc(caf.orari) : ''].filter(Boolean).join('<br>') + '</div></div>'
+    + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : '', caf.online ? '💻 Scrivici online: <b>' + esc(caf.online) + '</b>' : '', caf.orari ? '🕘 <b>Orari:</b> ' + esc(caf.orari) : ''].filter(Boolean).join('<br>') + '</div></div>'
     + '<div class="filtri">' + descrizioneFiltri().map(esc).join('<br>') + '</div>'
     + '<div class="riep">' + voci.map(function (v) { return '<div>' + esc(v[0]) + '<b>' + (v[2] ? fmtEuro(v[1]) : v[1]) + '</b></div>'; }).join('') + '</div>'
     + '<table><thead><tr>' + colonne.map(function (c, i) { return '<th' + (i === 5 || i === 6 ? ' class="num"' : '') + '>' + c + '</th>'; }).join('') + '</tr></thead><tbody>' + corpo + '</tbody></table>'

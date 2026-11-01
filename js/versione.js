@@ -5,6 +5,11 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.3.1', data: '01/11/2026', titolo: 'Link dello sportello dappertutto',
+    novita: [
+      'Link corto per i clienti: gestionale-caf.vercel.app/scrivici (con il tasto «📋 Copia il link» in Utenti e permessi)',
+      'Con lo sportello acceso il link compare da solo su ricevute, promemoria degli appuntamenti e in fondo ai messaggi WhatsApp ed e-mail; spento, sparisce',
+    ] },
   { versione: '1.3', data: '01/11/2026', titolo: 'Sportello online per i clienti',
     novita: [
       'Pagina pubblica «Scrivi al CAF» (scrivici.html): i clienti mandano una richiesta senza password, con consenso privacy e protezioni contro lo spam',

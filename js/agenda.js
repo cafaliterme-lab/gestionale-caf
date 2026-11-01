@@ -383,7 +383,7 @@ function stampaAppuntamento(id) {
     + '.quando{text-align:center; border:3px solid #0f766e; border-radius:14px; padding:12px; margin:8px 0 14px} .quando .g{font-size:20px; font-weight:800; text-transform:capitalize} .quando .o{font-size:30px; font-weight:900; color:#0f766e; margin-top:4px} .quando .t{font-size:13px; margin-top:4px}'
     + 'h2{font-size:14px; margin:10px 0 4px} ul{margin:0; padding-left:20px} li{margin:3px 0} .nota{margin-top:10px; padding:8px 10px; background:#f2f5f9; border-radius:8px} .piede{margin-top:14px; font-size:12px; border-top:1px solid #cfd6e0; padding-top:8px}'
     + '</style></head><body>'
-    + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1><div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div></div>'
+    + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1><div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : '', caf.online ? '💻 Scrivici online: <b>' + esc(caf.online) + '</b>' : ''].filter(Boolean).join(' · ') + '</div></div></div>'
     + '<div class="titolo">PROMEMORIA APPUNTAMENTO</div>'
     + '<div class="chi">Gentile <b>' + esc(a.nome) + '</b>, la aspettiamo</div>'
     + '<div class="quando"><div class="g">' + esc(giorno) + '</div><div class="o">ore ' + esc(a.ora) + '</div>' + (a.tipo ? '<div class="t">per la pratica <b>' + esc(a.tipo) + '</b></div>' : '') + '</div>'

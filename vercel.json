@@ -67,5 +67,11 @@
       "path": "/api/backup-settimanale",
       "schedule": "41 6 * * 1"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/scrivici",
+      "destination": "/scrivici.html"
+    }
   ]
 }

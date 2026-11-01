@@ -158,7 +158,8 @@ function righeContattiCaf() {
   try { orari = testoOrari(leggiTabellaOrari()); } catch (e) {}
   orari = orari || imp.caf_orari || '';
   return ['CAF CISL Alì Terme' + (imp.caf_indirizzo ? ', ' + imp.caf_indirizzo : ''),
-    imp.caf_telefono ? 'Tel. ' + imp.caf_telefono : '', 'E-mail: ' + emailCaf(), orari ? 'Orari: ' + orari : ''].filter(Boolean).join('\n');
+    imp.caf_telefono ? 'Tel. ' + imp.caf_telefono : '', 'E-mail: ' + emailCaf(), orari ? 'Orari: ' + orari : '',
+    typeof linkSportelloDaScrivere === 'function' && linkSportelloDaScrivere() ? 'Scrivici online: ' + linkSportelloDaScrivere() : ''].filter(Boolean).join('\n');
 }
 function emailCaf() {
   const imp = (typeof IMPOSTAZIONI !== 'undefined' && IMPOSTAZIONI) || {};

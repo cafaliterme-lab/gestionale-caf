@@ -95,7 +95,7 @@ function ricevutaHTML(p, perEmail) {
   const copia = function (perChi) {
     return '<div class="ric">'
       + '<div class="testa">' + (logo ? '<img src="' + (perEmail ? location.origin + location.pathname.replace(/[^\/]*$/, '') + 'icone/icona-192.png' : logo.src) + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1>'
-      + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div>'
+      + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : '', caf.online ? '💻 Scrivici online: <b>' + esc(caf.online) + '</b>' : ''].filter(Boolean).join(' · ') + '</div></div>'
       + '<div class="copia">' + perChi + '</div></div>'
       + '<div class="titolo">RICEVUTA DI PRESA IN CARICO</div>'
       + '<div class="proto">' + esc(tipoPraticaRicevuta(p)) + ' · Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b></div>'
@@ -154,7 +154,7 @@ function ricevutaConsegnaHTML(p) {
   const copia = function (perChi) {
     return '<div class="ric">'
       + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1>'
-      + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div>'
+      + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : '', caf.online ? '💻 Scrivici online: <b>' + esc(caf.online) + '</b>' : ''].filter(Boolean).join(' · ') + '</div></div>'
       + '<div class="copia">' + perChi + '</div></div>'
       + '<div class="titolo">RICEVUTA DI CONSEGNA</div>'
       + '<div class="proto">Pratica <b>' + esc(tipoPraticaRicevuta(p)) + '</b> · Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b></div>'
@@ -245,7 +245,7 @@ function ricevutaPagamentoHTML(p) {
   const copia = function (perChi) {
     return '<div class="ric">'
       + '<div class="testa">' + (logo ? '<img src="' + logo.src + '" alt="">' : '') + '<div><h1>CAF CISL – Sede di Alì Terme</h1>'
-      + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : ''].filter(Boolean).join(' · ') + '</div></div>'
+      + '<div class="caf">' + [caf.indirizzo ? '📍 ' + esc(caf.indirizzo) : '', caf.telefono ? '📞 ' + esc(caf.telefono) : '', caf.email ? '✉️ ' + esc(caf.email) : '', caf.online ? '💻 Scrivici online: <b>' + esc(caf.online) + '</b>' : ''].filter(Boolean).join(' · ') + '</div></div>'
       + '<div class="copia">' + perChi + '</div></div>'
       + '<div class="titolo">RICEVUTA DI PAGAMENTO</div>'
       + '<div class="proto">Protocollo n. <b>' + esc(formattaProtocollo(p)) + '</b> · Data di emissione <b>' + esc(dataRic) + '</b></div>'
