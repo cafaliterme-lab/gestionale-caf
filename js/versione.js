@@ -5,6 +5,10 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.7.3', data: '01/11/2026', titolo: 'Il 730 integrativo non è un doppione',
+    novita: [
+      'Il 730 INTEGRATIVI/RETTIFICATIVI si può inserire anche per chi ha già un 730 nello stesso anno (o è coniuge in una congiunta); resta bloccato solo un secondo integrativo uguale',
+    ] },
   { versione: '1.7.2', data: '01/11/2026', titolo: 'Correzione del link personale',
     novita: [
       'Il link «Scrivici online» nei messaggi WhatsApp si apriva con il solo cognome: ora porta cellulare, nome e cognome per intero',
