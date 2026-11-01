@@ -5,6 +5,12 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.3', data: '01/11/2026', titolo: 'Sportello online per i clienti',
+    novita: [
+      'Pagina pubblica «Scrivi al CAF» (scrivici.html): i clienti mandano una richiesta senza password, con consenso privacy e protezioni contro lo spam',
+      'Richieste dai clienti: riquadro in Oggi, elenco con stato (nuova, in lavorazione, chiusa), risposta su WhatsApp o e-mail, appuntamento',
+      'L\'amministratore accende/spegne lo sportello, stampa il cartello con il QR e dà agli operatori il permesso «📨 Richieste dai clienti»',
+    ] },
   { versione: '1.2.2', data: '01/11/2026', titolo: 'Correzione della cronologia',
     novita: [
       'Cronologia della pratica: in cima i «📌 Passaggi principali» con le date (presa in carico, lavorata, fattura, avvisi, consegna/definita, pagamento)',

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scrivi al CAF CISL Alì Terme</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="icone/icona-192.png">
+<style>
+:root{ --bg:#f3f6f4; --card:#fff; --ink:#1f2a24; --sub:#5c6b63; --line:#dde3de; --verde:#00612f; --blu:#1d4f91; --rosso:#c0392b }
+@media (prefers-color-scheme: dark){ :root{ --bg:#141815; --card:#1f241f; --ink:#eef1ec; --sub:#a3b0a8; --line:#333a32 } }
+*{ box-sizing:border-box }
+body{ margin:0; font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--ink); font-size:16px }
+header{ background:linear-gradient(90deg,var(--blu),var(--verde)); color:#fff; padding:18px 16px; display:flex; align-items:center; gap:12px }
+header img{ width:52px; height:52px; border-radius:12px; background:#fff }
+header h1{ margin:0; font-size:20px } header div{ font-size:13.5px; opacity:.92 }
+main{ max-width:620px; margin:0 auto; padding:16px }
+.card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:0 4px 18px rgba(0,0,0,.06) }
+label{ display:block; font-weight:700; font-size:14px; margin:12px 0 4px }
+input, select, textarea{ width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px; font-size:16px; background:var(--bg); color:var(--ink); font-family:inherit }
+textarea{ min-height:120px; resize:vertical }
+.facolt{ font-weight:400; color:var(--sub); font-size:12.5px }
+.consenso{ display:flex; gap:10px; align-items:flex-start; font-size:13.5px; margin-top:14px; font-weight:400 }
+.consenso input{ width:22px; height:22px; flex:none; margin-top:1px }
+button{ width:100%; margin-top:16px; padding:14px; border:none; border-radius:999px; background:var(--verde); color:#fff; font-size:17px; font-weight:800; cursor:pointer }
+button:disabled{ opacity:.6 }
+.msg{ margin-top:12px; padding:12px; border-radius:10px; font-weight:700; display:none }
+.ok{ background:#e8f6ee; color:#1a7f37; border:1px solid #1a7f37 } .err{ background:#fdecea; color:var(--rosso); border:1px solid var(--rosso) }
+.contatti{ font-size:13.5px; color:var(--sub); margin-top:14px; line-height:1.5 }
+.nascosto{ position:absolute; left:-5000px; width:1px; height:1px; overflow:hidden }
+</style>
+</head>
+<body>
+<header><img src="icone/icona-192.png" alt=""><span><h1>Scrivi al CAF CISL di Alì Terme</h1><div>Chiedi informazioni, una pratica o un appuntamento: ti ricontattiamo noi.</div></span></header>
+<main>
+  <div class="card" id="modulo">
+    <div id="chiuso" class="msg err"></div>
+    <form id="form" autocomplete="on">
+      <label for="nome">Nome e cognome</label>
+      <input id="nome" name="nome" autocomplete="name" maxlength="80" required>
+      <label for="tel">Cellulare <span class="facolt">(ti ricontattiamo qui)</span></label>
+      <input id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" required>
+      <label for="email">E-mail <span class="facolt">(facoltativa)</span></label>
+      <input id="email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120">
+      <label for="tipo">Per cosa ci scrivi</label>
+      <select id="tipo" name="tipo">
+        <option>Dichiarazione 730 / redditi</option><option>ISEE</option><option>Colf e badanti</option><option>Contratti di affitto</option>
+        <option>Successioni</option><option>IMU / F24</option><option>Prendere un appuntamento</option><option>Informazioni</option><option>Altro</option>
+      </select>
+      <label for="messaggio">La tua richiesta</label>
+      <textarea id="messaggio" name="messaggio" maxlength="2000" required placeholder="Scrivi qui cosa ti serve…"></textarea>
+      <div class="nascosto" aria-hidden="true"><label for="sito">Sito</label><input id="sito" name="sito" tabindex="-1" autocomplete="off"></div>
+      <label class="consenso"><input type="checkbox" id="consenso"> <span>Acconsento al trattamento dei miei dati personali da parte del CAF CISL di Alì Terme solo per rispondere a questa richiesta (Reg. UE 2016/679).</span></label>
+      <button type="submit" id="invia">📨 Invia la richiesta</button>
+    </form>
+    <div id="esito" class="msg"></div>
+    <div class="contatti" id="contatti"></div>
+  </div>
+</main>
+<script>
+const URL_SB = 'https://mmaqmprukghyazlibphv.supabase.co', CHIAVE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tYXFtcHJ1a2doeWF6bGlicGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NDUyMTUsImV4cCI6MjEwNjUyMTIxNX0.ByRES--bYHZG6o_BX8Ha0YzqfcQIIr-D08Q-AbR8bhs';
+async function rpc(nome, corpo) {
+  const r = await fetch(URL_SB + '/rest/v1/rpc/' + nome, { method: 'POST', headers: { apikey: CHIAVE, Authorization: 'Bearer ' + CHIAVE, 'Content-Type': 'application/json' }, body: JSON.stringify(corpo || {}) });
+  if (!r.ok) throw new Error('errore ' + r.status);
+  return r.json();
+}
+const testo = function (id, t) { document.getElementById(id).textContent = t; };
+(async function () {
+  try {
+    const s = await rpc('stato_sportello');
+    const c = [s.indirizzo ? '📍 ' + s.indirizzo : '', s.telefono ? '📞 ' + s.telefono : '', s.orari ? '🕘 ' + s.orari : ''].filter(Boolean).join('\n');
+    const box = document.getElementById('contatti'); box.style.whiteSpace = 'pre-line'; box.textContent = c;
+    if (!s.attivo) {
+      document.getElementById('form').style.display = 'none';
+      const ch = document.getElementById('chiuso'); ch.style.display = 'block';
+      ch.textContent = 'Il servizio online in questo momento non è attivo.' + (s.telefono ? ' Chiamaci al ' + s.telefono + '.' : ' Chiamaci in ufficio.');
+    }
+  } catch (e) {}
+})();
+document.getElementById('form').addEventListener('submit', async function (ev) {
+  ev.preventDefault();
+  const esito = document.getElementById('esito'), b = document.getElementById('invia');
+  esito.className = 'msg'; esito.style.display = 'none';
+  if (!document.getElementById('consenso').checked) { esito.className = 'msg err'; esito.style.display = 'block'; esito.textContent = 'Per inviare la richiesta serve il consenso al trattamento dei dati.'; return; }
+  b.disabled = true; b.textContent = 'Invio in corso…';
+  try {
+    const v = function (id) { return document.getElementById(id).value; };
+    const r = await rpc('invia_richiesta_cliente', { p_nome: v('nome'), p_telefono: v('tel'), p_email: v('email'), p_tipo: v('tipo'), p_messaggio: v('messaggio'), p_consenso: true, p_controllo: v('sito') });
+    if (r && r.ok) {
+      document.getElementById('form').style.display = 'none';
+      esito.className = 'msg ok'; esito.style.display = 'block';
+      esito.textContent = '✅ Richiesta ricevuta, grazie! Ti ricontatteremo al più presto al numero che hai scritto.';
+      return;
+    }
+    esito.className = 'msg err'; esito.style.display = 'block'; esito.textContent = (r && r.errore) || 'Richiesta non inviata: riprova o chiamaci.';
+  } catch (e) {
+    esito.className = 'msg err'; esito.style.display = 'block'; esito.textContent = 'Non riesco a inviare in questo momento: controlla la connessione e riprova, oppure chiamaci.';
+  }
+  b.disabled = false; b.textContent = '📨 Invia la richiesta';
+});
+</script>
+</body>
+</html>

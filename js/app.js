@@ -1501,7 +1501,7 @@ async function renderPermessi(){
   const operatori = allProfili.filter(function(u){ return u.id !== io; });
 
   if(!operatori.length) {
-    wrap.innerHTML = (typeof rigaCasellaInvioHTML === 'function' ? rigaCasellaInvioHTML() : '') + (typeof rigaImpostazioneColfHTML === 'function' ? rigaImpostazioneColfHTML() : '') + '<div class="empty">Nessun altro utente oltre a te</div>';
+    wrap.innerHTML = (typeof rigaSportelloHTML === 'function' ? rigaSportelloHTML() : '') + (typeof rigaCasellaInvioHTML === 'function' ? rigaCasellaInvioHTML() : '') + (typeof rigaImpostazioneColfHTML === 'function' ? rigaImpostazioneColfHTML() : '') + '<div class="empty">Nessun altro utente oltre a te</div>';
     return;
   }
 
@@ -1516,7 +1516,9 @@ async function renderPermessi(){
         + '<div class="perm-row" style="padding-left:22px; font-size:12.5px"><span style="color:#c0392b; font-weight:600">↳ 🔒 Guadagno netto e proventi (solo se autorizzato)</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="cont_guadagni" '+(tabs.cont_guadagni===true?'checked':'')+' id="perm-'+u.id+'-cont_guadagni"> Autorizzato</label></div>';
       }
       return riga;
-    }).join('');
+    }).join('')
+      // sportello online: le richieste dei clienti si vedono solo con questo permesso
+      + '<div class="perm-row"><span>📨 RICHIESTE DAI CLIENTI (sportello online)</span><label class="chk"><input type="checkbox" class="perm-check" data-user-id="'+u.id+'" data-tab="richieste" '+(tabs.richieste===true?'checked':'')+' id="perm-'+u.id+'-richieste"> Visibile</label></div>';
     const ruoloAttuale = u.ruolo === 'admin' ? 'admin' : (u.sola_lettura ? 'consultazione' : 'operatore');
     const selRuolo = '<select class="perm-ruolo" data-user-id="'+u.id+'" data-prima="'+ruoloAttuale+'" style="padding:6px 8px; font-size:13px; max-width:260px" onchange="var c=document.getElementById(\'perm-'+u.id+'-tabs\'); if(c) c.style.display = this.value===\'admin\' ? \'none\' : \'\';">'
       + [['operatore','Operatore'],['consultazione','Sola consultazione'],['admin','Amministratore']].map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===ruoloAttuale?' selected':'')+'>'+o[1]+'</option>'; }).join('') + '</select>';
@@ -1537,7 +1539,7 @@ async function renderPermessi(){
   const buttonHtml = '<div style="margin-top:12px; text-align:left"><button type="button" class="btn-add" onclick="salvaPermessi()">💾 Salva permessi</button></div>';
   const chatHtml = '<div class="perm-row" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:var(--bg); border:1px solid var(--line)"><span><b>💬 Chat interna</b> <span style="font-size:12px; color:var(--sub)">(il tasto in basso a destra; per ogni utente si può togliere qui sotto)</span></span>'
     + '<label class="chk"><input type="checkbox" ' + (IMPOSTAZIONI.chat_attiva !== 'no' ? 'checked' : '') + ' onchange="impostaChatAttiva(this.checked)"> Attiva per tutti</label></div>';
-  wrap.innerHTML = chatHtml + (typeof rigaCasellaInvioHTML === 'function' ? rigaCasellaInvioHTML() : '') + (typeof rigaImpostazioneColfHTML === 'function' ? rigaImpostazioneColfHTML() : '') + cardsHtml + buttonHtml;
+  wrap.innerHTML = chatHtml + (typeof rigaSportelloHTML === 'function' ? rigaSportelloHTML() : '') + (typeof rigaCasellaInvioHTML === 'function' ? rigaCasellaInvioHTML() : '') + (typeof rigaImpostazioneColfHTML === 'function' ? rigaImpostazioneColfHTML() : '') + cardsHtml + buttonHtml;
 }
 
 async function impostaChatAttiva(si){
