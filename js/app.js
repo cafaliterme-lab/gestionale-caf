@@ -3690,12 +3690,14 @@ function popupLavorata(p){
     campi.richiesto = ric > 0 ? ric : '';
     const avvisa = document.getElementById('lv-wa').checked;
     b.disabled = true;
+    // v1.8.1: WhatsApp si apre SUBITO, dentro il clic. Dopo l'attesa del salvataggio il browser lo bloccava
+    // (non si apriva niente e compariva solo la barra «Messaggio aperto… Partito?»)
+    if(avvisa){ const vecchio = p.stato; p.stato = 'lavorata'; try{ inviaWhatsApp(p.id); }catch(er){ console.error('whatsapp lavorata', er); } p.stato = vecchio; }
     const r = await data.pratiche.aggiorna(p.id, campi);
-    if(r && r.error){ b.disabled = false; msg.textContent = 'Non salvato: ' + r.error; return; }
+    if(r && r.error){ b.disabled = false; msg.textContent = 'Non salvato: ' + r.error + (avvisa ? ' (il messaggio WhatsApp si è già aperto: non mandarlo finché la pratica non è salvata)' : ''); return; }
     ov.remove();
     avviso('🔵 ' + formattaProtocollo(p) + ' lavorata' + (campi.numFattura ? ' · fattura n. ' + campi.numFattura + ' ' + fmtEuro(campi.compenso) : '') + (Number(campi.pagato||0) ? ' · pagato ' + fmtEuro(campi.pagato) : ''));
     render();
-    if(avvisa) setTimeout(function(){ const q = (state.pratiche||[]).find(function(x){ return x.id === p.id; }); if(q){ q.stato = 'lavorata'; inviaWhatsApp(p.id); } }, 300);
   });
 }
 // Stati di "non pagato": Non paga + quelli aggiunti dall'amministratore con "non … pag" nel nome (es. "Non ha pagato")

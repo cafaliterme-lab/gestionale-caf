@@ -5,6 +5,10 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.8.1', data: '02/11/2026', titolo: 'Correzione: WhatsApp quando segni «lavorata»',
+    novita: [
+      '«✓ Segna come lavorata» con la spunta «Avvisa il cliente su WhatsApp»: WhatsApp si apre subito; prima il browser lo bloccava e compariva solo la domanda «Partito?»',
+    ] },
   { versione: '1.8', data: '02/11/2026', titolo: 'Successioni: dichiarante e dante causa',
     novita: [
       'Successioni: riquadro «⚱️ Dante causa» con cognome, nome, codice fiscale, data e luogo di nascita e data di morte obbligatoria, con ricerca nell\'archivio e lettura del documento; anche nella ✏️ Modifica',
