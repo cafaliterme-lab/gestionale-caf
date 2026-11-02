@@ -1,7 +1,7 @@
 # Promemoria tecnico – Gestionale CAF CISL Alì Terme
 
 Questo file serve a chi riprende il programma: Claude in una nuova sessione o un altro tecnico.
-Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.8.1. L'uso vero del programma inizia nel 2027.
+Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.8.2. L'uso vero del programma inizia nel 2027.
 
 ## Chi lo usa e come parlargli
 
@@ -122,3 +122,4 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.8
 - Risposte alle richieste web (v1.7.4, `azioneRichiesta`): prima risposta = richiesta in stato «nuova» → testo di conferma + fondo (e-mail e link); dopo → solo «Buongiorno Nome, » con `TESTO_SENZA_LINK` (WhatsApp) e `senzaLink: true` (e-mail; in `apriEmail` salta anche i recapiti).
 - Successioni (v1.8, `js/successioni.js`, migrazione 044 solo aggiunte): colonne `dc_cognome, dc_nome, dc_data_nascita, dc_luogo_nascita, dc_codice_fiscale, dc_data_morte` (camel `dcCognome…`). Riquadro `#dc-wrap-f` (inserimento) e `#dc-editwrap-<id>` (modifica), id campi `dc-<campo>-<k>`; data di morte obbligatoria (in modifica solo se il riquadro non è tutto vuoto: le vecchie si possono ancora modificare). Doppione = stesso defunto (CF, o nome + nascita) in qualsiasi anno: `cercaDoppioneSuccessione`; `cercaDoppione` non si usa per le successioni. Dopo il salvataggio `proponiDecessoArchivio` chiede di mettere `decedutoIl` al cliente in archivio. Lettura documento: destinazione `defunto` in ocr-documento.js. Niente scadenza automatica dei 12 mesi (scelta di Angelo).
 - Regola WhatsApp (v1.8.1): `window.open` / apertura dell'app va fatta DENTRO il clic, prima di ogni `await` (altrimenti il browser blocca la finestra). In `popupLavorata` l'avviso WhatsApp parte prima del salvataggio.
+- v1.8.2: `apriFinestraWhatsApp(url, nome)` in app.js sostituisce i `window.open` di WhatsApp: se il browser blocca (null) mostra il tasto «💬 Apri WhatsApp» (clic nuovo). Controllo completo del 2/11: giro di tutte le sezioni con database finto (`giro.js` nello scratchpad) senza errori; tutte le aperture di WhatsApp verificate (nessuna dopo un `await`).

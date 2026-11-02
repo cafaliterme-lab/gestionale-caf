@@ -97,7 +97,9 @@ function tabellaMorosiHTML(lista, sola) {
 function ricordaMoroso(id) {
   const p = (state.pratiche || []).find(function (x) { return x.id === id; });
   if (!p) return;
-  const testo = 'Gentile ' + (p.nome || '') + ', le ricordiamo che per la pratica ' + formattaProtocolloTesto(p) + ' (' + (p.tipo || '') + ') del ' + annoPratica(p) + ' risulta ancora da saldare l\'importo di ' + fmtEuro(residuoPratica(p)) + '. Può passare in sede quando le è comodo. Grazie, CAF CISL Alì Terme.';
+  const testo = 'Gentile ' + (typeof nomeProprio === 'function' ? nomeProprio(p.nome || '') : (p.nome || '')) + ', le ricordiamo che per la pratica ' + formattaProtocolloTesto(p) + ' (' + (p.tipo || '') + ') del ' + annoPratica(p) + ' risulta ancora da saldare l\'importo di ' + fmtEuro(residuoPratica(p)) + '. Può passare in sede quando le è comodo. Grazie, CAF CISL Alì Terme.';
+  // v1.8.2: il messaggio resta nella cronologia della pratica e del cliente, con il motivo giusto
+  if (typeof contestoComunicazione === 'function') contestoComunicazione({ nome: p.nome, cf: p.codiceFiscale || '', nascita: p.cf || '', praticaId: p.id, motivo: 'Sollecito pagamento' });
   apriChatWhatsApp(numeroWhatsApp(p.telefono), testo);
 }
 

@@ -5,6 +5,11 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.8.2', data: '02/11/2026', titolo: 'WhatsApp più sicuro',
+    novita: [
+      'Se il browser blocca l\'apertura di WhatsApp (per esempio dopo aver scritto il numero che mancava), compare il tasto «💬 Apri WhatsApp»: il messaggio non si perde più',
+      'Sollecito di pagamento (tabulato morosi): saluto con il nome giusto e il messaggio resta nella cronologia della pratica',
+    ] },
   { versione: '1.8.1', data: '02/11/2026', titolo: 'Correzione: WhatsApp quando segni «lavorata»',
     novita: [
       '«✓ Segna come lavorata» con la spunta «Avvisa il cliente su WhatsApp»: WhatsApp si apre subito; prima il browser lo bloccava e compariva solo la domanda «Partito?»',

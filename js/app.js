@@ -2975,7 +2975,7 @@ function apriChatWhatsApp(num, testo, dopo){
   }
   if(eDispositivoMobile()){
     registra();
-    window.open('https://wa.me/' + (num || '') + (t ? '?text=' + t : ''), '_blank');
+    apriFinestraWhatsApp('https://wa.me/' + (num || '') + (t ? '?text=' + t : ''), '_blank');
     if(testo && !dopo && typeof mostraBarraNoWhatsApp === 'function') mostraBarraNoWhatsApp();
     if(dopo) dopo('telefono');
     return;
@@ -3000,10 +3000,31 @@ function apriChatWhatsApp(num, testo, dopo){
     if(!dopo) popupMessaggioCopiato(num);
   } else {
     // sempre la stessa scheda di WhatsApp Web aperta dal programma (non una nuova a ogni messaggio)
-    window.open('https://web.whatsapp.com/send?' + (num ? 'phone=' + num + (t ? '&' : '') : '') + (t ? 'text=' + t : ''), 'whatsapp_caf');
+    apriFinestraWhatsApp('https://web.whatsapp.com/send?' + (num ? 'phone=' + num + (t ? '&' : '') : '') + (t ? 'text=' + t : ''), 'whatsapp_caf');
   }
   if(testo && !dopo && typeof mostraBarraNoWhatsApp === 'function') mostraBarraNoWhatsApp();
   if(dopo) dopo(modo);
+}
+// v1.8.2: se il browser blocca la finestra (es. dopo una domanda o un'attesa: il clic «scade»), un tasto la riapre con un clic nuovo
+function apriFinestraWhatsApp(url, nome){
+  let w = null;
+  try{ w = window.open(url, nome); }catch(e){ w = null; }
+  if(w) return true;
+  const vecchio = document.getElementById('popup-wa-bloccato'); if(vecchio) vecchio.remove();
+  const ov = document.createElement('div');
+  ov.id = 'popup-wa-bloccato';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:495; background:rgba(15,27,45,.5); display:flex; align-items:center; justify-content:center; padding:16px';
+  ov.innerHTML = '<div style="background:var(--card); color:var(--ink); border-radius:18px; border:3px solid #25d366; box-shadow:0 20px 50px rgba(0,0,0,.3); padding:20px 22px; max-width:440px; width:100%; text-align:center">'
+    + '<div style="font-size:32px">💬</div><div style="font-size:18px; font-weight:800; margin-bottom:6px">Il browser ha fermato WhatsApp</div>'
+    + '<div style="font-size:13.5px; margin-bottom:14px">Il messaggio è pronto: premi il tasto per aprirlo.<br><span style="color:var(--sub); font-size:12.5px">Per non vedere più questo avviso: icona «finestre bloccate» nella barra dell\'indirizzo → «Consenti sempre».</span></div>'
+    + '<button type="button" data-apri="1" style="background:#25d366; color:#fff; font-weight:800; font-size:16px; padding:12px 22px; border:none; border-radius:999px; cursor:pointer">💬 Apri WhatsApp</button>'
+    + '<div style="margin-top:10px"><button type="button" data-chiudi="1" style="background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:6px 14px; cursor:pointer">Chiudi</button></div></div>';
+  ov.addEventListener('click', function(e){
+    if(e.target.closest('[data-apri]')){ window.open(url, nome); ov.remove(); return; }
+    if(e.target === ov || e.target.closest('[data-chiudi]')) ov.remove();
+  });
+  document.body.appendChild(ov);
+  return false;
 }
 function popupAppWhatsAppNonAperta(num, testo){
   const vecchio = document.getElementById('popup-wa-app'); if(vecchio) vecchio.remove();
