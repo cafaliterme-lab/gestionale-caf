@@ -5,6 +5,10 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.8.3', data: '02/11/2026', titolo: 'Documenti scaduti per collaboratore',
+    novita: [
+      'Finestra «🪪 Documenti scaduti o in scadenza» (dalla pagina Oggi): menu «🤝 Collaboratore / sede» per vedere e avvisare solo i clienti di un collaboratore o della sede; «Manda a tutti» su WhatsApp ed e-mail manda solo a quelli scelti',
+    ] },
   { versione: '1.8.2', data: '02/11/2026', titolo: 'WhatsApp più sicuro',
     novita: [
       'Se il browser blocca l\'apertura di WhatsApp (per esempio dopo aver scritto il numero che mancava), compare il tasto «💬 Apri WhatsApp»: il messaggio non si perde più',

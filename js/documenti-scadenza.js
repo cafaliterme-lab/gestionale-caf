@@ -5,7 +5,19 @@
 
 const GIORNI_PREAVVISO_DOCUMENTO = 30;
 const GIORNI_PREAVVISO_PERMESSO = 60;
-const DOC_SCADENZA = { coda: [], pos: 0, filtro: '' }; // filtro: '' tutti, 'da' da avvisare, 'avvisati' già avvisati
+const DOC_SCADENZA = { coda: [], pos: 0, filtro: '', collab: '' }; // filtro: '' tutti, 'da' da avvisare, 'avvisati' già avvisati
+// v1.8.3: collab = collaboratore/sede scelto ('' tutti, '-' senza collaboratore): vale per l'elenco e per «Manda a tutti»
+function docDelCollab(r) { const c = DOC_SCADENZA.collab; return !c || (c === '-' ? !r.c.collaboratore : r.c.collaboratore === c); }
+function clientiDocumentoScelti() { return clientiDocumentoDaRinnovare().filter(docDelCollab); }
+function menuCollabDocumenti() {
+  const tutti = clientiDocumentoDaRinnovare(), n = {}; let senza = 0;
+  tutti.forEach(function (r) { if (r.c.collaboratore) n[r.c.collaboratore] = (n[r.c.collaboratore] || 0) + 1; else senza++; });
+  const voci = (typeof getTipiList === 'function' ? getTipiList() : []).filter(function (t) { return n[t]; });
+  Object.keys(n).forEach(function (t) { if (voci.indexOf(t) < 0) voci.push(t); });
+  const opz = function (v, testo) { return '<option value="' + esc(v) + '"' + (DOC_SCADENZA.collab === v ? ' selected' : '') + '>' + esc(testo) + '</option>'; };
+  return '<select onchange="DOC_SCADENZA.collab=this.value; DOC_SCADENZA.coda=[]; DOC_SCADENZA.pos=0; disegnaDocumentiInScadenza()" title="Solo i clienti di un collaboratore o della sede" style="width:auto; padding:4px 8px; font-size:12.5px; font-weight:700; border:2px solid #c0392b; border-radius:999px">'
+    + opz('', '🤝 Tutti i collaboratori e la sede (' + tutti.length + ')') + voci.map(function (t) { return opz(t, t + ' (' + n[t] + ')'); }).join('') + (senza ? opz('-', 'Senza collaboratore (' + senza + ')') : '') + '</select>';
+}
 
 // Le carte d'identità cartacee sono da sostituire con quella elettronica (regolamento UE 2019/1157, dal 3 agosto 2026):
 // compaiono nell'elenco anche se la data scritta non è ancora passata, con un messaggio apposta.
@@ -113,7 +125,8 @@ function avvisaDocumentoEmail(id) {
 function avviaInvioDocumentiWhatsApp() {
   // un messaggio per cellulare: chi ha lo stesso numero (collaboratore, famiglia) è nello stesso messaggio
   const gruppi = {}; DOC_SCADENZA.coda = [];
-  clientiDocumentoDaRinnovare().filter(function (r) { return haWhatsApp(r.c.telefono) && !avvisoDocumentoInviato(r.c); }).forEach(function (r) {
+  const numeriScelti = {}; clientiDocumentoScelti().forEach(function (r) { if (haWhatsApp(r.c.telefono)) numeriScelti[numeroWhatsApp(r.c.telefono)] = true; });
+  clientiDocumentoDaRinnovare().filter(function (r) { return haWhatsApp(r.c.telefono) && numeriScelti[numeroWhatsApp(r.c.telefono)] && !avvisoDocumentoInviato(r.c); }).forEach(function (r) {
     const k = numeroWhatsApp(r.c.telefono);
     if (!gruppi[k]) { gruppi[k] = []; DOC_SCADENZA.coda.push(gruppi[k]); }
     gruppi[k].push(r);
@@ -131,7 +144,7 @@ function prossimoDocumentoWhatsApp() {
 }
 // E-mail a tutti quelli con solo e-mail non ancora avvisati: partono dalla casella del CAF
 async function inviaDocumentiEmailATutti(b) {
-  const tutti = clientiDocumentoDaRinnovare().filter(function (r) { return !haWhatsApp(r.c.telefono) && r.c.email && !avvisoDocumentoInviato(r.c); });
+  const tutti = clientiDocumentoScelti().filter(function (r) { return !haWhatsApp(r.c.telefono) && r.c.email && !avvisoDocumentoInviato(r.c); });
   if (!tutti.length) { avviso('Nessuna e-mail da mandare'); return; }
   // stessa e-mail per più clienti: una sola e-mail con tutti i nominativi
   const perEmail = {}, lista = [];
@@ -166,7 +179,7 @@ function apriDocumentiInScadenza() {
 }
 function disegnaDocumentiInScadenza() {
   const ov = document.getElementById('popup-doc-scadenza'); if (!ov) return;
-  const tutti = clientiDocumentoDaRinnovare();
+  const tutti = clientiDocumentoScelti();
   const conCell = tutti.filter(function (r) { return haWhatsApp(r.c.telefono); });
   const soloMail = tutti.filter(function (r) { return !haWhatsApp(r.c.telefono) && r.c.email; });
   const nessuno = tutti.filter(function (r) { return !haWhatsApp(r.c.telefono) && !r.c.email; });
@@ -188,11 +201,11 @@ function disegnaDocumentiInScadenza() {
     + '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start"><div><div style="font-size:19px; font-weight:800; color:#c0392b">🪪 Documenti scaduti o in scadenza</div>'
     + '<div class="sub2">Tutti i clienti dell\'archivio con il documento già scaduto o che scade entro ' + GIORNI_PREAVVISO_DOCUMENTO + ' giorni. Quando scrivi la nuova scadenza escono da soli dall\'elenco.</div></div>'
     + '<button type="button" data-chiudi="1" style="flex:none; white-space:nowrap; background:var(--line); color:var(--ink); border:none; border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer">✕ Chiudi</button></div>'
-    + (!tutti.length ? '<div class="empty" style="margin-top:12px">Nessun documento scaduto o in scadenza 👍</div>' : '')
+    + (!tutti.length ? (DOC_SCADENZA.collab ? '<div style="margin-top:10px">' + menuCollabDocumenti() + '</div><div class="empty" style="margin-top:12px">Nessun documento scaduto o in scadenza per questa scelta 👍</div>' : '<div class="empty" style="margin-top:12px">Nessun documento scaduto o in scadenza 👍</div>') : '')
     + (tutti.length ? (function () {
         const nAvv = tutti.filter(function (r) { return avvisoDocumentoInviato(r.c); }).length;
         const chip = function (v, testo) { const on = DOC_SCADENZA.filtro === v; return '<button type="button" onclick="DOC_SCADENZA.filtro=\'' + v + '\'; disegnaDocumentiInScadenza()" style="border:2px solid #c0392b; background:' + (on ? '#c0392b' : 'transparent') + '; color:' + (on ? '#fff' : '#c0392b') + '; border-radius:999px; padding:4px 12px; font-weight:800; cursor:pointer">' + testo + '</button>'; };
-        return '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px">' + chip('', 'Tutti (' + tutti.length + ')') + chip('da', '⏳ Da avvisare (' + (tutti.length - nAvv) + ')') + chip('avvisati', '✓ Già avvisati (' + nAvv + ')') + '</div>'
+        return '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; align-items:center">' + menuCollabDocumenti() + chip('', 'Tutti (' + tutti.length + ')') + chip('da', '⏳ Da avvisare (' + (tutti.length - nAvv) + ')') + chip('avvisati', '✓ Già avvisati (' + nAvv + ')') + '</div>'
           + campoRicercaElenco('doc-scadenza', 'Cerca un nome, un telefono o un\'e-mail…');
       })() : '')
     + (conCell.length ? titolo('📱 Con cellulare', conCell.length, inCorso
