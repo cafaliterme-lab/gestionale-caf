@@ -5,6 +5,13 @@
    A ogni aggiornamento: nuova voce IN CIMA a STORIA_VERSIONI (la prima è la versione attuale) e tag git «vX.Y.Z». */
 
 const STORIA_VERSIONI = [
+  { versione: '1.8', data: '02/11/2026', titolo: 'Successioni: dichiarante e dante causa',
+    novita: [
+      'Successioni: riquadro «⚱️ Dante causa» con cognome, nome, codice fiscale, data e luogo di nascita e data di morte obbligatoria, con ricerca nell\'archivio e lettura del documento; anche nella ✏️ Modifica',
+      'Il controllo dei doppioni guarda il defunto: una sola successione per persona deceduta, lo stesso erede può farne più di una',
+      'Se il defunto è nell\'archivio clienti, il programma propone di segnarlo deceduto (niente più auguri, campagna 730 e messaggi)',
+      'Nel registro la riga «⚱️ Dante causa … ✝️ deceduto/a il …» e la ricerca anche per nome del defunto',
+    ] },
   { versione: '1.7.4', data: '01/11/2026', titolo: 'Risposte alle richieste web più pulite',
     novita: [
       'Richieste web: solo la prima risposta (WhatsApp o e-mail) ha in fondo l\'e-mail del CAF e il link «Scrivici online»; le risposte successive partono con il solo saluto, senza recapiti',

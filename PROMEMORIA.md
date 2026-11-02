@@ -1,7 +1,7 @@
 # Promemoria tecnico – Gestionale CAF CISL Alì Terme
 
 Questo file serve a chi riprende il programma: Claude in una nuova sessione o un altro tecnico.
-Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.7.4. L'uso vero del programma inizia nel 2027.
+Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.8. L'uso vero del programma inizia nel 2027.
 
 ## Chi lo usa e come parlargli
 
@@ -120,3 +120,4 @@ Va letto **prima** di modificare qualcosa. Aggiornato al 1/11/2026, versione 1.7
 - Link personale (v1.7.2): spazi codificati `%20`, MAI `+` (WhatsApp taglia il link al `+`); ordine parametri t, e, n (il cellulare per primo). Il testo in `comunicazioni` è salvato tagliato a 400 caratteri, quindi il link spesso non si vede lì.
 - Doppioni v1.7.3: `e730Base(tipo)` = 730 ma non INTEGRATIVO/RETTIFICATIVO; l'integrativo si controlla solo con lo stesso tipo (come le altre pratiche).
 - Risposte alle richieste web (v1.7.4, `azioneRichiesta`): prima risposta = richiesta in stato «nuova» → testo di conferma + fondo (e-mail e link); dopo → solo «Buongiorno Nome, » con `TESTO_SENZA_LINK` (WhatsApp) e `senzaLink: true` (e-mail; in `apriEmail` salta anche i recapiti).
+- Successioni (v1.8, `js/successioni.js`, migrazione 044 solo aggiunte): colonne `dc_cognome, dc_nome, dc_data_nascita, dc_luogo_nascita, dc_codice_fiscale, dc_data_morte` (camel `dcCognome…`). Riquadro `#dc-wrap-f` (inserimento) e `#dc-editwrap-<id>` (modifica), id campi `dc-<campo>-<k>`; data di morte obbligatoria (in modifica solo se il riquadro non è tutto vuoto: le vecchie si possono ancora modificare). Doppione = stesso defunto (CF, o nome + nascita) in qualsiasi anno: `cercaDoppioneSuccessione`; `cercaDoppione` non si usa per le successioni. Dopo il salvataggio `proponiDecessoArchivio` chiede di mettere `decedutoIl` al cliente in archivio. Lettura documento: destinazione `defunto` in ocr-documento.js. Niente scadenza automatica dei 12 mesi (scelta di Angelo).

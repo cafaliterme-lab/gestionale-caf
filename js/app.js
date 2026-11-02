@@ -2271,11 +2271,11 @@ function filtra(lista, escludi){
   if(FILTRO_RIF && !escludi.rif){ lista = lista.filter(function(p){ return riferimentoPratica(p) === FILTRO_RIF; }); }
   // contribuente: titolare o coniuge, per nome o codice fiscale (apostrofi, spazi e accenti non contano)
   const cli = filtroContribuente();
-  if(cli){ const kc = chiaveRicerca(cli); lista = lista.filter(function(p){ const t = [p.nome, p.congiunta, ((p.congCognome||'') + ' ' + (p.congNome||'')), p.codiceFiscale, p.congCodiceFiscale, ((p.lavCognome||'') + ' ' + (p.lavNome||'')), p.lavCodiceFiscale, (typeof nomiInquilini === 'function' ? nomiInquilini(p).join(' ') : '')].join(' ').toUpperCase(); return t.indexOf(cli) >= 0 || (!!kc && chiaveRicerca(t).indexOf(kc) >= 0); }); }
+  if(cli){ const kc = chiaveRicerca(cli); lista = lista.filter(function(p){ const t = [p.nome, p.congiunta, ((p.congCognome||'') + ' ' + (p.congNome||'')), p.codiceFiscale, p.congCodiceFiscale, ((p.lavCognome||'') + ' ' + (p.lavNome||'')), p.lavCodiceFiscale, (typeof nomiInquilini === 'function' ? nomiInquilini(p).join(' ') : ''), ((p.dcCognome||'') + ' ' + (p.dcNome||'')), p.dcCodiceFiscale].join(' ').toUpperCase(); return t.indexOf(cli) >= 0 || (!!kc && chiaveRicerca(t).indexOf(kc) >= 0); }); }
   const q = ((document.getElementById('cerca')||{}).value||'').trim().toLowerCase();
   if(!q) return lista;
   return lista.filter(function(p){
-    return [String(p.numero).padStart(4,'0'), formattaProtocollo(p), p.nome, p.congiunta, p.congData, ((p.lavCognome||'') + ' ' + (p.lavNome||'')), p.lavCodiceFiscale, (typeof nomiInquilini === 'function' ? nomiInquilini(p).join(' ') : ''), p.telefono, p.telefonoFisso, p.tipo, p.cf, p.data, p.consegnataIl, p.note, statoLabel(p.stato), p.numFattura, p.inseritoDa].join(' ').toLowerCase().indexOf(q) >= 0;
+    return [String(p.numero).padStart(4,'0'), formattaProtocollo(p), p.nome, p.congiunta, p.congData, ((p.lavCognome||'') + ' ' + (p.lavNome||'')), p.lavCodiceFiscale, (typeof nomiInquilini === 'function' ? nomiInquilini(p).join(' ') : ''), ((p.dcCognome||'') + ' ' + (p.dcNome||'')), p.telefono, p.telefonoFisso, p.tipo, p.cf, p.data, p.consegnataIl, p.note, statoLabel(p.stato), p.numFattura, p.inseritoDa].join(' ').toLowerCase().indexOf(q) >= 0;
   });
 }
 
@@ -2470,6 +2470,7 @@ function render(){
       ${typeof documentoCardHTML === 'function' ? documentoCardHTML(p) : ''}
       ${typeof continuazioneCardHTML === 'function' ? continuazioneCardHTML(p) : ''}
       ${typeof affittoCardHTML === 'function' ? affittoCardHTML(p) : ''}
+      ${typeof successioneCardHTML === 'function' ? successioneCardHTML(p) : ''}
       ${typeof lavoratoreCardHTML === 'function' ? lavoratoreCardHTML(p) : ''}
       ${typeof documentiCardHTML === 'function' ? documentiCardHTML(p) : ''}
       ${storicoClienteHTML(p)}
@@ -2502,11 +2503,12 @@ function render(){
           <div><label>Scadenza documento</label><input id="e-docscad-${p.id}" value="${esc(p.documentoScadenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           <div><label>N. documento</label><input id="e-docnum-${p.id}" value="${esc(p.documentoNumero||'')}" style="text-transform:uppercase; font-family:monospace"></div>
           <div><label>Tipo documento</label><select id="e-doctipo-${p.id}">${opzioniTipoDoc(p.documentoTipo)}</select></div>
-          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="aggiornaCongiuntaEdit('${p.id}', this.value); if(typeof mostraLavoratoreEdit === 'function') mostraLavoratoreEdit('${p.id}', this.value); if(typeof mostraAffittoEdit === 'function') mostraAffittoEdit('${p.id}', this.value); document.getElementById('e-desctipo-box-${p.id}').style.display = eAltrePratiche(this.value) ? '' : 'none'; document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
+          <div><label>Tipo pratica</label><select id="e-tipo-${p.id}" onchange="aggiornaCongiuntaEdit('${p.id}', this.value); if(typeof mostraLavoratoreEdit === 'function') mostraLavoratoreEdit('${p.id}', this.value); if(typeof mostraAffittoEdit === 'function') mostraAffittoEdit('${p.id}', this.value); if(typeof mostraSuccessioneEdit === 'function') mostraSuccessioneEdit('${p.id}', this.value); document.getElementById('e-desctipo-box-${p.id}').style.display = eAltrePratiche(this.value) ? '' : 'none'; document.getElementById('e-scadass-box-${p.id}').style.display = eColf(this.value) ? '' : 'none'; applicaFatturaAutomatica(this.value, 'e-comp-${p.id}')">${tipoOptions(p.tipo)}</select></div>
           <div id="e-desctipo-box-${p.id}" style="${eAltrePratiche(p.tipo) ? '' : 'display:none'}"><label>Descrizione della pratica *</label><input id="e-desctipo-${p.id}" value="${esc(p.descrizioneTipo)}" maxlength="120"></div>
           <div id="e-scadass-box-${p.id}" style="${eColf(p.tipo) ? '' : 'display:none'}"><label>Scadenza assistenza</label><input id="e-scadass-${p.id}" value="${esc(p.scadenzaAssistenza)}" inputmode="numeric" placeholder="GG/MM/AAAA" oninput="autoSlashData(this)"></div>
           ${typeof lavoratoreEditHTML === 'function' ? lavoratoreEditHTML(p) : ''}
           ${typeof affittoEditHTML === 'function' ? affittoEditHTML(p) : ''}
+          ${typeof successioneEditHTML === 'function' ? successioneEditHTML(p) : ''}
           <div><label>Fattura (€)</label><input id="e-comp-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.compenso)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div>
           <div><label title="Solo promemoria: non entra in contabilità">Pagamento richiesto (€)</label><input id="e-ric-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.richiesto)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)"></div><div class="full" id="e-ric-cisl-${p.id}" style="${p.iscrittoCisl ? '' : 'display:none'}">${typeof selectPrezziCisl === 'function' ? selectPrezziCisl('e-ric-' + p.id, 'e-comp-' + p.id) : ''}</div>
           <div><label>Pagato effettivo (€)</label><div style="display:flex; gap:6px"><input id="e-pag-${p.id}" type="text" inputmode="decimal" placeholder="0,00" value="${importoInCampo(p.pagato)}" oninput="filtraImporto(this)" onblur="formattaCampoImporto(this)" style="flex:1; min-width:0"><select id="e-met-${p.id}" title="Tipo di pagamento" style="width:auto; flex:0 0 auto">${metodoOptions(p.metodoPagamento)}</select></div></div>
@@ -2791,7 +2793,14 @@ async function addPraticaInterna(){
   // contratto di affitto: regime, date e inquilini (un proprietario può registrare più contratti nello stesso anno: niente controllo doppioni)
   const affitto = typeof datiAffitto === 'function' ? datiAffitto('f', tipo) : {};
   if(typeof eAffitto === 'function' && eAffitto(tipo)){ const errA = erroreAffitto(affitto); if(errA){ msg.textContent = '⚠️ ' + errA; msg.style.display = 'block'; msg.scrollIntoView({ behavior:'smooth', block:'center' }); return; } }
-  const doppione = (eAltrePratiche(tipo) || rinnovo || (typeof eAffitto === 'function' && eAffitto(tipo))) ? null : await cercaDoppione(annoPr, nome, tipo, codiceFiscale, null);
+  // successione: dati del dante causa; il doppione si controlla sul defunto, non sul dichiarante
+  const successione = typeof datiSuccessione === 'function' ? datiSuccessione('f', tipo) : {};
+  if(typeof eSuccessione === 'function' && eSuccessione(tipo)){
+    const errS = erroreSuccessione(successione, false); if(errS){ msg.textContent = '⚠️ ' + errS; msg.style.display = 'block'; msg.scrollIntoView({ behavior:'smooth', block:'center' }); return; }
+    const dS = await cercaDoppioneSuccessione(successione, null);
+    if(dS){ msg.textContent = '⚠️ C\'è già la successione di ' + (successione.dcCognome + ' ' + successione.dcNome).trim() + ' (protocollo ' + dS + '). Non è possibile inserire un doppione.'; msg.style.display = 'block'; msg.scrollIntoView({ behavior:'smooth', block:'center' }); return; }
+  }
+  const doppione = (eAltrePratiche(tipo) || rinnovo || (typeof eAffitto === 'function' && eAffitto(tipo)) || (typeof eSuccessione === 'function' && eSuccessione(tipo))) ? null : await cercaDoppione(annoPr, nome, tipo, codiceFiscale, null);
   if(doppione){
     msg.textContent = '⚠️ ' + nome + ' ha gia\' una pratica ' + (e730Base(tipo) ? '730' : tipo) + ' nel ' + annoPr + ' (protocollo ' + doppione + '). Non e\' possibile inserire un doppione.';
     msg.style.display = 'block';
@@ -2833,6 +2842,7 @@ async function addPraticaInterna(){
     anno: annoPr,
     ...lavoratore,
     ...affitto,
+    ...successione,
     nome, congiunta, congCognome, congNome, congData, congCodiceFiscale, congTelefono, congEmail, comuneNascita, congComuneNascita, congDocumentoScadenza, congDocumentoNumero, congDocumentoTipo, documentoTipo, telefono, telefonoFisso, email, cf, codiceFiscale, documentoScadenza, documentoNumero, documenti, tipo, compenso, pagato, richiesto, metodoPagamento, data: dataPratica, note, viaEmail, iscrittoCisl,
     stato: statoNuovo,
     dataFine: (!eColf(tipo) && document.getElementById('f-stato').value === 'lavorata') ? todayIT() : '',
@@ -2856,6 +2866,8 @@ async function addPraticaInterna(){
   }
   if(eColf(tipo) && typeof concludiRinnovoScadenza === 'function') await concludiRinnovoScadenza(rinnovo, nuovaPratica.protocolloOrigine);
   confermaPraticaSalvata(result.id, nome, tipo, documenti.mancanti);
+  // successione: se il defunto è in archivio, si propone di segnarlo deceduto (niente più messaggi)
+  if(successione.dcDataMorte && typeof proponiDecessoArchivio === 'function') setTimeout(function(){ proponiDecessoArchivio(successione); }, 600);
 
   document.getElementById('f-cognome').value='';
   document.getElementById('f-nome').value='';
@@ -2875,6 +2887,7 @@ async function addPraticaInterna(){
   document.getElementById('f-congiunta-on').checked=false;
   if(typeof pulisciLavoratoreModulo === 'function') pulisciLavoratoreModulo();
   if(typeof pulisciAffittoModulo === 'function') pulisciAffittoModulo();
+  if(typeof pulisciSuccessioneModulo === 'function') pulisciSuccessioneModulo();
   toggleCongBox();
   pickChip('f-stato-btns','f-stato','arrivo');
   document.getElementById('f-tel').value='';
@@ -3941,6 +3954,7 @@ async function salvaModifica(id){
     congiunta: [cc, cn].filter(Boolean).join(' '),
     ...(typeof datiLavoratoreEdit === 'function' ? datiLavoratoreEdit(id, g('e-tipo')) : {}),
     ...(typeof datiAffitto === 'function' ? datiAffitto(id, g('e-tipo'), p) : {}),
+    ...(typeof datiSuccessione === 'function' ? datiSuccessione(id, g('e-tipo')) : {}),
     telefono: g('e-tel').trim(),
     telefonoFisso: g('e-telfisso').trim(),
     email: g('e-email').trim().toLowerCase(),
@@ -3994,7 +4008,11 @@ async function salvaModifica(id){
   }
   const annoP = annoPratica(p);
   if(typeof eAffitto === 'function' && eAffitto(campi.tipo)){ const errA = erroreAffitto(campi); if(errA){ avviso('❌ ' + errA, true); return; } }
-  const doppione = (eAltrePratiche(campi.tipo) || (typeof eAffitto === 'function' && eAffitto(campi.tipo))) ? null : await cercaDoppione(annoP, campi.nome, campi.tipo, p.codiceFiscale, id);
+  if(typeof eSuccessione === 'function' && eSuccessione(campi.tipo) && 'dcCognome' in campi){
+    const errS = erroreSuccessione(campi, true); if(errS){ avviso('❌ ' + errS, true); return; }
+    if(campi.dcCognome){ const dS = await cercaDoppioneSuccessione(campi, id); if(dS){ avviso('❌ C\'è già la successione di ' + (campi.dcCognome + ' ' + campi.dcNome).trim() + ' (protocollo ' + dS + '): modifica non salvata.', true); return; } }
+  }
+  const doppione = (eAltrePratiche(campi.tipo) || (typeof eAffitto === 'function' && eAffitto(campi.tipo)) || (typeof eSuccessione === 'function' && eSuccessione(campi.tipo))) ? null : await cercaDoppione(annoP, campi.nome, campi.tipo, p.codiceFiscale, id);
   if(doppione){
     avviso('❌ ' + campi.nome + ' ha gia\' una pratica ' + (e730Base(campi.tipo) ? '730' : campi.tipo) + ' nel ' + annoP + ' (protocollo ' + doppione + '): modifica non salvata.', true);
     return;
@@ -4013,6 +4031,7 @@ async function salvaModifica(id){
   if((cc || cn) && (campi.congCodiceFiscale || campi.congTelefono || campi.congEmail)) registraClienteSeNuovo(cc, cn, campi.congData, cfValido(campi.congCodiceFiscale) ? campi.congCodiceFiscale : '', campi.congTelefono, '', '', campi.congEmail);
   if(campi.lavCognome || campi.lavNome){ if(typeof registraLavoratoreArchivio === 'function') registraLavoratoreArchivio(campi); }
   if(campi.inquilini && campi.inquilini.length && typeof registraInquiliniArchivio === 'function') registraInquiliniArchivio(campi.inquilini);
+  if(campi.dcDataMorte && typeof proponiDecessoArchivio === 'function') await proponiDecessoArchivio(campi);
   // pagato tutto ma lo stato e' ancora "lavorata", "da pagare"...: si propone di passare a "Pagato"
   if(propostaStatoPagato(campi.tipo, p.stato, campi.compenso, campi.pagato) && confirm('Il cliente ha pagato tutto (' + fmtEuro(campi.pagato) + ').\n\nPasso lo stato della pratica da "' + statoLabel(p.stato) + '" a "Pagato"?')){
     const r2 = await data.pratiche.aggiorna(id, { stato: 'pagato' });
@@ -4284,6 +4303,7 @@ function aggiornaCongiuntaForm(){
   const ok = tipoAmmetteCongiunta((document.getElementById('f-tipo')||{}).value);
   if(typeof mostraLavoratoreModulo === 'function') mostraLavoratoreModulo((document.getElementById('f-tipo')||{}).value);
   if(typeof mostraAffittoModulo === 'function') mostraAffittoModulo((document.getElementById('f-tipo')||{}).value);
+  if(typeof mostraSuccessioneModulo === 'function') mostraSuccessioneModulo((document.getElementById('f-tipo')||{}).value);
   const riga = chk.closest('.full');
   if(riga) riga.style.display = ok ? '' : 'none';
   if(!ok && chk.checked){ chk.checked = false; toggleCongBox(); }
@@ -4660,11 +4680,12 @@ function campoCompilatoBene(el){
   // v1.6.2: modifica della pratica (e-campo-id), affitti (aff-campo-…), inquilini (classe i-campo), lavoratore colf, scadenze
   let e = /^e-([a-z]+)-/.exec(el.id || ''), chiave = e ? e[1] : '';
   if(!chiave){ const a = /^aff-([a-z]+)-/.exec(el.id || ''); if(a) chiave = 'aff' + a[1]; }
+  if(!chiave){ const dc = /^dc-([a-z]+)-/.exec(el.id || ''); if(dc) chiave = 'dc' + dc[1]; }
   if(!chiave){ const c = /(^|\s)i-([a-z]+)/.exec(el.className || ''); if(c && el.closest('.aff-inq')) chiave = 'i' + c[2]; }
   if(!chiave && /^f-lav-/.test(el.id || '')) chiave = 'lav' + el.id.replace(/^f-lav-/, '').replace(/-/g, '');
   if(chiave){
-    if(['cf','congdata','docscad','congdocscad','scadass','df','lavdata','lavdocscad','lavpermscad','affinizio','afffine','idata','idocscad'].indexOf(chiave) >= 0) return !!parseDataIT(v);
-    if(['congcf','lavcf','icf'].indexOf(chiave) >= 0) return typeof cfValido !== 'function' || cfValido(v);
+    if(['cf','congdata','docscad','congdocscad','scadass','df','lavdata','lavdocscad','lavpermscad','affinizio','afffine','idata','idocscad','dcnascita','dcmorte'].indexOf(chiave) >= 0) return !!parseDataIT(v);
+    if(['congcf','lavcf','icf','dccf'].indexOf(chiave) >= 0) return typeof cfValido !== 'function' || cfValido(v);
     if(['tel','congtel','lavtel','itel'].indexOf(chiave) >= 0) return !!numeroWhatsApp(v) || v.replace(/\D/g, '').length >= 9;
     if(chiave === 'telfisso') return v.replace(/\D/g, '').length >= 6;
     if(['email','congemail'].indexOf(chiave) >= 0) return typeof emailValida !== 'function' || emailValida(v);
@@ -4682,7 +4703,7 @@ function campoDaColorare(el){
   return true;
 }
 function aggiornaColoriModulo(){
-  document.querySelectorAll('.form-anagrafica input[id^="f-"], .form-anagrafica select[id^="f-"], .form-anagrafica textarea[id^="f-"], #popup-nuovo-cliente [id^="nc-"], #popup-mod-cliente [id^="mc-"], .form-anagrafica [id^="aff-"], .form-anagrafica .aff-inq input, .form-anagrafica .aff-inq select, .modulo-verde input, .modulo-verde select, .modulo-verde textarea').forEach(function(el){
+  document.querySelectorAll('.form-anagrafica input[id^="f-"], .form-anagrafica select[id^="f-"], .form-anagrafica textarea[id^="f-"], #popup-nuovo-cliente [id^="nc-"], #popup-mod-cliente [id^="mc-"], .form-anagrafica [id^="aff-"], .form-anagrafica [id^="dc-"], .form-anagrafica .aff-inq input, .form-anagrafica .aff-inq select, .modulo-verde input, .modulo-verde select, .modulo-verde textarea').forEach(function(el){
     if(!campoDaColorare(el)) return;
     el.classList.toggle('compilato', campoCompilatoBene(el));
   });
